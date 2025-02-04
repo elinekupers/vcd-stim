@@ -1,0 +1,8 @@
+*~
+*.m~
+*.asv
+*.DS_Store
+*.log
+workspaces/
+figs/
+
