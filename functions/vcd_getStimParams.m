@@ -65,8 +65,8 @@ for ii = 1:length(type)
         case {'gabor',1}
             
             % Where to store stimulus images?
-            p.stimfile = fullfile(vcd_rootPath,'workspaces','gabors.mat');
-            p.infofile = fullfile(vcd_rootPath,'workspaces','gabors_info.csv');
+            p.stimfile = fullfile(vcd_rootPath,'workspaces','stimuli','gabors.mat');
+            p.infofile = fullfile(vcd_rootPath,'workspaces','info','gabors_info.csv');
             % TEMPORAL
             % Fixed params
             p.duration        	  = duration;                               % frames (nr of monitor refreshes)
@@ -109,8 +109,8 @@ for ii = 1:length(type)
             
         case {'rdk',2}
             % Where to store stimulus images?
-            p.stimfile = fullfile(vcd_rootPath,'workspaces','rdk.mat');
-            p.infofile = fullfile(vcd_rootPath,'workspaces','rdk_info.csv');
+            p.stimfile = fullfile(vcd_rootPath,'workspaces','stimuli','rdk.mat');
+            p.infofile = fullfile(vcd_rootPath,'workspaces','info','rdk_info.csv');
 
             % TEMPORAL
             p.duration        = duration;                                   % frames (nr of monitor refreshes)
@@ -122,7 +122,7 @@ for ii = 1:length(type)
             p.img_sz_deg      = parafov_circle_diam_deg;                    % stimulus aperture diameter (deg)
             p.img_sz_pix      = parafov_circle_diam_pix;                    % stimulus aperture diameter (pix)
             
-            p.num_mot_dir     = 8; 
+            p.num_mot_dir      = 8; 
             p.motdir_bins      = [0:(360/p.num_mot_dir):359]+10;             % sample direction of coherent motion from [0-359] in deg (0 deg is aligned with 12 o'clock)
             p.motdir_jitter_sd = 2;                                          % std of normal distribution to sample orientation jitter 
             p.motdir_jitter_mu = 1;                                          % mean of normal distribution to sample orientation jitter 
@@ -148,8 +148,9 @@ for ii = 1:length(type)
             
         case {'dot',3}
             % Where to store stimulus images?
-            p.stimfile = fullfile(vcd_rootPath,'workspaces','dots.mat');
-            
+            p.stimfile = fullfile(vcd_rootPath,'workspaces','stimuli','dot.mat');
+            p.infofile = fullfile(vcd_rootPath,'workspaces','info','dot_info.csv');
+
             % TEMPORAL
             p.duration        = duration;                                   % frames (nr of monitor refreshes)
             
@@ -178,10 +179,10 @@ for ii = 1:length(type)
             
         case {'cobj',4}
             % Where to store stimulus images?
-            p.stimfile = fullfile(vcd_rootPath,'workspaces','objects.mat');
+            p.stimfile = fullfile(vcd_rootPath,'workspaces','stimuli','objects.mat');
             
             % Where to find stimulus info?
-            p.infofile = fullfile(vcd_rootPath,'workspaces','objects_info.csv');
+            p.infofile = fullfile(vcd_rootPath,'workspaces','info','objects_info.csv');
             
             % TEMPORAL
             p.duration      = duration;                                     % frames (nr of monitor refreshes)
@@ -217,10 +218,10 @@ for ii = 1:length(type)
             
         case {'ns',5}
             % Where to store stimulus images?
-            p.stimfile = fullfile(vcd_rootPath,'workspaces','scenes.mat');
+            p.stimfile = fullfile(vcd_rootPath,'workspaces','stimuli''scenes.mat');
             
             % Where to find stimulus info?
-            p.infofile = fullfile(vcd_rootPath,'workspaces','scenes_info.csv');
+            p.infofile = fullfile(vcd_rootPath,'workspaces','info','scenes_info.csv');
             
             % TEMPORAL
             p.duration    = duration;                                       % frames (nr of monitor refreshes)
@@ -278,7 +279,7 @@ for ii = 1:length(type)
 end
 
 if store_params
-    save(fullfile(vcd_rootPath,'workspaces','p_stim.mat'),'stim') 
+    save(fullfile(vcd_rootPath,'workspaces','info','p_stim.mat'),'stim') 
 end
 
 return
