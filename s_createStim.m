@@ -6,14 +6,15 @@ dispname = '7TASBOLDSCREEN32'; % or 'KKOFFICEQ3277'
 display = vcd_getDisplayParams(dispname);
 
 %% Get stimulus parameters
+p.load_params  = true;
 p.store_params = true;
 p.store_imgs   = true;
 saveFigsFolder = fullfile(vcd_rootPath,'figs');
 
 p.stim   = vcd_getStimParams('all',dispname,p.store_params); % Choose from <'gabor'> <'rdk'> <'dot'> <'cobj'> <'ns'> <'all'>
-p.task   = vcd_getTaskParams;
-trials   = vcd_makeTrials(p);
-
+p.exp    = vcd_getSessionParams;
+p.trials = vcd_makeTrials(p);
+subject_sessions = vcd_createSessions(p)
 
 %% Gabor
 [gbr_im,gbr_info,p] = vcd_gabor(p);
