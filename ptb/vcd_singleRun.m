@@ -1,9 +1,10 @@
-function [images,maskimages] = vcd_singleRun(subjnum, runnum, varargin)
+function [images,maskimages] = vcd_singleRun(subjID, sesID, runnum, varargin)
 
 
 %% %%%%%%%%%%%%% PARSE INPUTS %%%%%%%%%%%%%
 p = inputParser;
 p.addRequired ('subjnum'        , @isnumeric);
+p.addRequired ('sesID'          , @isnumeric);
 p.addRequired ('runnum'         , @isnumeric);
 p.addParameter('root'           , vcd_rootPath, @isstring);      % root folder
 p.addParameter('tmpFolder'      , datestr(now,30), @isstring);  % today's date
@@ -22,7 +23,7 @@ p.addParameter('debugmode'      , false     , @islogical)       % whether to use
 p.addParameter('store_params'   , true      , @islogical)       % whether to store stimulus params
 
 % Parse inputs
-p.parse(subjnum, runnum, varargin{:});
+p.parse(subjID, runnum, varargin{:});
 
 % Rename variables into general params struct
 params    = struct();
@@ -32,7 +33,7 @@ for ff = 1:length(rename_me)
 end
 clear rename_me ff
 
-%% %%%%%%%%%%%%% DISPLAY PARAMS %%%%%%%%%%%%%
+%% %%%%%%%%%%%%% PERIPHERALS PARAMS %%%%%%%%%%%%%
 
 if params.debugmode
     dispName = 'KKOFFICEQ3277';
@@ -46,8 +47,12 @@ end
 % Nova1x32 with BOLDscreen and big eye mirrors:
 ptonparams = {[disp.w_pix disp.h_pix disp.refresh_hz 24],[],-2};  % {[1920 1080 120 24],[],-2} BOLDSCREEN (squaring CLUT because we need to simulate normal monitors)
 
-%% %%%%%%%%%%%%% KEYPRESS PARAMS %%%%%%%%%%%%%
+% Buttonbox / keyboard
 params.ignorekeys = KbName({params.triggerkey});  % dont record TR triggers as subject responses
+
+% SETUP RNG
+rand('twister', sum(100*clock));
+params.rand = rand;
 
 %% %%%%%%%%%%%%% STIM PARAMS %%%%%%%%%%%%%
 
@@ -70,17 +75,14 @@ if params.loadParams
     load(fullfile(params.infofolder,'trials.mat'),'all_trials');
     params.trials = all_trials; clear all_trials;
     
-    params.task = vcd_getTaskParams;
+    params.exp = vcd_getTaskParams;
     
 else
     params.stim = vcd_getStimParams('all',dispName,true);
-    params.task = vcd_getTaskParams;
+    params.exp = vcd_getSessionParams;
     params.trials = vcd_makeTrials(p);
 end
 
-%% %%%%%%%%%%%%% SETUP RNG %%%%%%%%%%%%%
-rand('twister', sum(100*clock));
-params.rand = rand;
 
 %% %%%%%%%%%%%%% LOAD STIMULI %%%%%%%%%%%%%
 
@@ -96,25 +98,27 @@ if ~exist('images','var') || isempty(images)
     % load(params.stim.cobj.stimfile, 'objects'); images.cobj = objects; clear objects;
     % load(params.stim.ns.stimfile, 'scenes'); images.ns = scenes; clear scenes;
 
+%%%%%%%%%%%%% EK TO DO %%%%%%%%%%%%%
+%       % load maskimages/????
+%       load(stimfile,'maskimages');
+%       if ~exist('maskimages','var')
+%           maskimages = {};
+%       end
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-      % load maskimages/????
-      load(stimfile,'maskimages');
-      if ~exist('maskimages','var')
-          maskimages = {};
-      end
 
       % resize if desired
-      for fn = 1:length(params.task.stimClassLabels)
+      for fn = 1:length(params.exp.stimClassLabels)
       
-          if ~isempty(params.stim.(params.task.stimClassLabels{fn}).dres) && ...
-                  length(params.stim.params.task.stimClassLabels{fn}.dres)==2
+          if ~isempty(params.stim.(params.exp.stimClassLabels{fn}).dres) && ...
+                  length(params.stim.params.exp.stimClassLabels{fn}.dres)==2
           tic;
           fprintf('resampling the stimuli; this may take a while');
             % GRAY
-          if strcmp(params.task.stimClassLabels{fn},'gabor') || ...
-                  strcmp(params.task.stimClassLabels{fn},'rdk') || ...
-                  strcmp(params.task.stimClassLabels{fn},'dot') || ...
-                  strcmp(params.task.stimClassLabels{fn},'cobj')
+          if strcmp(params.exp.stimClassLabels{fn},'gabor') || ...
+                  strcmp(params.exp.stimClassLabels{fn},'rdk') || ...
+                  strcmp(params.exp.stimClassLabels{fn},'dot') || ...
+                  strcmp(params.exp.stimClassLabels{fn},'cobj')
 
               tmp_im = reshape(params.stim.(stimClassLabels{fn}), ...
                   size(params.stim.(stimClassLabels{fn}),1),... x
@@ -122,7 +126,7 @@ if ~exist('images','var') || isempty(images)
                   []);
               iscolor = false;
               % COLOR
-          elseif strcmp(params.task.stimClassLabels{fn},'ns')
+          elseif strcmp(params.exp.stimClassLabels{fn},'ns')
               tmp_im = reshape(params.stim.(stimClassLabels{fn}), ...
                   size(params.stim.(stimClassLabels{fn}),1),... x
                   size(params.stim.(stimClassLabels{fn}),2),... y
@@ -143,6 +147,7 @@ if ~exist('images','var') || isempty(images)
               images.(stimClassLabels{fn}){p} = temp;
           end
           
+          %%%%%%%%%%%%% EK TO DO %%%%%%%%%%%%%
 %           for p = 1:length(maskimages)
 %               temp = cast([],class(maskimages{p}));
 %               for q=1:size(maskimages{p},3)
@@ -158,20 +163,24 @@ if ~exist('images','var') || isempty(images)
 end
 
 % a vector with number of images in each class
-for fn = 1:length(params.task.stimClassLabels)
-    numinclass(fn) = cellfun(@(x) size(x,choose(iscolor,4,3)),images.(params.task.stimClassLabels{fn})); 
+for fn = 1:length(params.exp.stimClassLabels)
+    numinclass(fn) = cellfun(@(x) size(x,choose(iscolor,4,3)),images.(params.exp.stimClassLabels{fn})); 
 end
 
 %% %%%%%%%%%%%%% DEFINE MINIBLOCK ORDER %%%%%%%%%%%%%
 
 params.runnum
 
-
-
-length(all_trials.gabor.tasks(1).miniblock)
-
-classorder
-
+if params.loadParams
+    d = dir(fullfile(params.infofolder,'subject_sessions_*.mat'));
+    load(fullfile(params.infofolder,d(end).name),'subject_sessions'); % pick the last one we saved
+    
+    params.run_order = subject_sessions(params.sesID,params.subjID).run(params.runnum,:);
+    
+else
+    subject_sessions = vcd_getStimParams('all',dispName,true);
+    params.run_order = subject_sessions(params.sesID,params.subjID).run(params.runnum,:); 
+end
 
 
 %% %%%%%%%%%%%%% EYELINK PARAMS %%%%%%%%%%%%%
@@ -180,7 +189,7 @@ classorder
 if params.wanteyetracking
     tfun = @() cat(2,fprintf('STIMULUS STARTED.\n'),Eyelink('Message','SYNCTIME'));
     if ~isfield(params, 'eyelinkfile') || isempty(params.eyelinkfile) 
-        eyelinkfile = fullfile(vcd_rootPath,'data',sprintf('eye_%s_vcd_subj-%s_run-%d.edf',datestr(now,'yyyymmdd-HHMMSS'),subjnum,runnum));
+        eyelinkfile = fullfile(vcd_rootPath,'data',sprintf('eye_%s_vcd_subj-%s_run-%d.edf',datestr(now,'yyyymmdd-HHMMSS'),subjID,runnum));
     else
         eyelinkfile = params.eyelinkfile;
     end
@@ -202,11 +211,11 @@ soafun = @() round(params.stim.fix.dotmeanchange*params.stim.fps + params.stim.f
 
 setupscript  = 'showinstructionscreen(''runvcdcore_presubjectinstructions.txt'',250,75,25,78)';  % inputs are (fileIn,txtOffset,instTextWrap,textsize,background)
 
-for ii = 1:length(params.task.stimTaskLabels)
-    if regexp('*scc*',params.task.stimTaskLabels{ii})
+for ii = 1:length(params.exp.stimTaskLabels)
+    if regexp('*scc*',params.exp.stimTaskLabels{ii})
         script_stimTask(ii) = sprintf('runvcdcore_scc.txt');
     else
-        script_stimTask(ii) = sprintf('runvcdcore_%s.txt',params.task.stimTaskLabels{ii});
+        script_stimTask(ii) = sprintf('runvcdcore_%s.txt',params.exp.stimTaskLabels{ii});
     end
 end
 
@@ -298,7 +307,7 @@ timeofshowstimcall = datestr(now);
 
 % GO!
 [timeframes, timekeys, digitrecord, trialoffsets] = ...
-    vcd_showStimulus(p, trials, images, setupscript, soafun);
+    vcd_showStimulus(p, images, setupscript, soafun);
 
 
 

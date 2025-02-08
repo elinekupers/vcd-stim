@@ -1,7 +1,7 @@
 function [timeframes, timekeys, digitrecord, trialoffsets] = ...
     vcd_showStimulus(p, disp, images)
 
-
+%% EK START HERE -- INDEX IMAGES THAT NEED TO BE LOADED
 cond_order = getRunConditionOrder(p.subjID, p.sesID, p.runNr);
 
 
@@ -14,27 +14,21 @@ scan.centers = [disp.xc + p.stim.x0_pix + p.offset_pix(1), ...
 win = firstel(Screen('Windows'));
 rect = Screen('Rect',win);
 
-% prepare the images
+%% PREPARE IMAGES
 
-
-
-
-
-
+%%%%%%% FLIP UP/DOWN, LEFT/RIGHT
 % if p.movieflip(1)  % flip up-down
 %     scan.centers = repmat([disp.w_pix disp.h_pix],length(scan.centers),1)-scan.centers;
 % end
 
-
+%%%%%%% CENTER RECT
 % scan.rects = CenterRectOnPoint([0 0 scan.squareSize scan.squareSize],scan.centers(:,1), scan.centers(:,2));
 
-
-
+%%%%%%% MAKE TEXTURES
 
 % ptb stuff
 HideCursor;
 Priority(9);
-
 
 Screen('FillRect',win,grayval,rect);
 
