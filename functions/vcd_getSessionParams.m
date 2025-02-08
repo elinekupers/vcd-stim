@@ -1,11 +1,11 @@
-function p = vcd_getTaskParams()
+function p = vcd_getSessionParams()
 
 % Preallocate space
 p = struct('session',[],'run',[],'miniblock',[],'trial', []);
 
 %% Define big stim-task crossing table
 p.stimClassLabels = {'gabor','rdk','dot','cobj','ns'};
-p.taskClassLabels = {'FIX','CD','SCC','PC','WM','LTM','IMG','WHAT','WHERE','ACT'};
+p.taskClassLabels = {'fix','cd','scc','pc','wm','ltm','img','what','where','how'};
 
 p.crossings = false(length(p.stimClassLabels),length(p.taskClassLabels));
 
@@ -26,25 +26,31 @@ p.crossings(4,9) = false;
 
 p.stimTaskLabels = p.stimTaskLabels(p.crossings');
 
-% Set session params
-p.session.task_start = [1,1,1,1,1,4,4,1,1,1];
-p.session.runs_per_session = 12;
+% General exp params
+p.n_unique_trial_repeats = 4;
 
-% Set general miniblock params
+% Set session params
+p.session.task_start = [1,1,1,1,1,6,6,1,1,1];
+p.session.runs_per_session = 10;
+
+% Set miniblock params
 p.miniblock.n_trials_single_epoch = 8;
 p.miniblock.n_trials_double_epoch = 4;
 
-p.run.n_single_epoch_miniblocks = 3;
-p.run.n_double_epoch_miniblocks = 3;
-
-p.session.miniblocks_per_session = p.run.n_single_epoch_miniblocks + p.run.n_double_epoch_miniblocks;
-
-
-% Set trial design params
+% Set trial params
 p.trial.single_epoch_tasks = logical([1 1 1 1 0 0 0 1 1 1]);
 p.trial.double_epoch_tasks = ~p.trial.single_epoch_tasks;
 p.trial.stim_LR_loc_cue    = logical([1 1 1 1 0]);
-p.trial.nr_unique_repeats  = 10;
+% p.trial.nr_unique_repeats  = 10; % <-- what's this for?
+
+
+% Infer run and session params
+p.run.n_single_epoch_miniblocks = 3;
+p.run.n_double_epoch_miniblocks = 3;
+p.run.miniblocks_per_run = p.run.n_single_epoch_miniblocks + p.run.n_double_epoch_miniblocks;
+
+
+
 
 
 

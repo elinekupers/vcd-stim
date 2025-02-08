@@ -33,7 +33,7 @@ trial_vec_i = NaN(size(conds_master,1)/2,2);
 
 % add the condition master to struct
 n_unique_cases = numel(unique(conds_master(:,1)));
-trial_vec = repelem(1:n_unique_cases,2);
+trial_vec = repelem(1:size(trial_vec_i,1),2); % or     trial_vec = repelem(1:(n_unique_cases/2),2); ????
 
 % Define thickening of central cue
 if ~fix_task_flag
@@ -149,7 +149,6 @@ if ~fix_task_flag
     clear counter
     
 elseif fix_task_flag
-    trial_vec = repelem(1:(n_unique_cases/2),2);
     thickening_dir = 3.*ones(size(trial_vec))'; % we thicken at both sides
 
     for tt = 1:2:length(trial_vec)
