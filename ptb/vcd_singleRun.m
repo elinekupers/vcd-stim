@@ -1,29 +1,29 @@
-function [images,maskimages] = vcd_singleRun(subjID, sesID, runnum, varargin)
+function [status,images,maskimages] = vcd_singleRun(subjID, sesID, runnum, varargin)
 
 
 %% %%%%%%%%%%%%% PARSE INPUTS %%%%%%%%%%%%%
 p = inputParser;
-p.addRequired ('subjnum'        , @isnumeric);
+p.addRequired ('subjID'        , @isnumeric);
 p.addRequired ('sesID'          , @isnumeric);
 p.addRequired ('runnum'         , @isnumeric);
 p.addParameter('root'           , vcd_rootPath, @isstring);      % root folder
 p.addParameter('tmpFolder'      , datestr(now,30), @isstring);  % today's date
-p.addParameter('loadParams'     , true      , @islogical)       % whether load stim/condition params or regenerate
+p.addParameter('loadparams'     , true      , @islogical)       % whether load stim/condition params or regenerate
 p.addParameter('infofolder'     , fullfile(vcd_rootPath,'workspaces','info'), @isstring); % where the *_info.csv file is
 p.addParameter('stimfolder'     , fullfile(vcd_rootPath,'workspaces','stimuli'), @isstring); % where the images can be obtained
 p.addParameter('instrtextfolder', fullfile(vcd_rootPath,'workspaces','instructions'), @isstring); % where the task instructions can be obtained
 p.addParameter('eyelinkfile'    , []        , @isstring);       % where the eyelink edf file can be obtained
-p.addParameter('laptopKey'      , -3        , @isnumeric);      % listen to all keyboards/boxes (is this similar to k=-3;?)
+p.addParameter('laptopkey'      , -3        , @isnumeric);      % listen to all keyboards/boxes (is this similar to k=-3;?)
 p.addParameter('wanteyetracking', false     , @islogical);      % whether to try to hook up to the eyetracker
 p.addParameter('triggerkey'     , {'5%','t'}, @(x) iscell(x) || isstring(x)) % key that starts the experiment
 p.addParameter('triggerkeyname' , '''5'' or ''t''', @isstring)  % for display only
-p.addParameter('offsetPix'      , [0 0]     , @isnumeric);      % offset of screen in pixels [10 20] means move 10-px right, 20-px down
+p.addParameter('offsetpix'      , [0 0]     , @isnumeric);      % offset of screen in pixels [10 20] means move 10-px right, 20-px down
 p.addParameter('movieflip'      , [0 0]     , @isnumeric)       % whether to flip up-down, whether to flip left-right
 p.addParameter('debugmode'      , false     , @islogical)       % whether to use debug mode (no BOLDscreen, no eyelink)
-p.addParameter('store_params'   , true      , @islogical)       % whether to store stimulus params
+p.addParameter('storeparams'   , true      , @islogical)       % whether to store stimulus params
 
 % Parse inputs
-p.parse(subjID, runnum, varargin{:});
+p.parse(subjID, sesID, runnum, varargin{:});
 
 % Rename variables into general params struct
 params    = struct();
@@ -31,7 +31,7 @@ rename_me = fieldnames(p.Results);
 for ff = 1:length(rename_me)
     eval([sprintf('params.%s = p.Results.%s;', rename_me{ff},rename_me{ff})]);
 end
-clear rename_me ff
+clear rename_me ff p
 
 %% %%%%%%%%%%%%% PERIPHERALS PARAMS %%%%%%%%%%%%%
 
@@ -39,7 +39,7 @@ if params.debugmode
     dispName = 'KKOFFICEQ3277';
     disp = vcd_getDisplayParams('KKOFFICEQ3277');
     wanteyetracking = false;
-    Screen('Preference', 'SkipSyncTests', 1)
+    Screen('Preference', 'SkipSyncTests', 1);
 else
     disp = vcd_getDisplayParams(); % BOLDSCREEN is default
 end
@@ -68,19 +68,21 @@ params.rand = rand;
 % We want a master trial function and a function thats in the trial
 % specifics given the subject and session nr
 
-if params.loadParams
-    load(fullfile(params.infofolder,'p_stim.mat'),'stim');
+if params.loadparams
+    d = dir(fullfile(params.infofolder,'stim*.mat'));
+    load(fullfile(d(end).folder,d(end).name),'stim');
     params.stim = stim; clear stim;
     
-    load(fullfile(params.infofolder,'trials.mat'),'all_trials');
+    d = dir(fullfile(params.infofolder,'trials*.mat'));
+    load(fullfile(d(end).folder,d(end).name),'all_trials');
     params.trials = all_trials; clear all_trials;
     
-    params.exp = vcd_getTaskParams;
+    params.exp = vcd_getSessionParams;
     
 else
-    params.stim = vcd_getStimParams('all',dispName,true);
-    params.exp = vcd_getSessionParams;
-    params.trials = vcd_makeTrials(p);
+    params.stim   = vcd_getStimParams('all',disp.name,true);
+    params.exp    = vcd_getSessionParams;
+    params.trials = vcd_makeTrials(params);
 end
 
 
@@ -91,12 +93,24 @@ if ~exist('images','var') || isempty(images)
     images = struct('gabor',[],'rdk',[],'dot',[],'cobj',[], 'ns',[]);
 
     % GABORS: 6D array: [x,y,orient,contrast,phase,delta]
-
-    load(params.stim.gabor.stimfile, 'gabor'); images.gabor = gabor; clear gabor;
-    % load(params.stim.rdk.stimfile, 'rdk'); images.rdk = rdk; clear rdk;
-    % load(params.stim.dot.stimfile, 'dot'); images.dot = dot; clear dot;
-    % load(params.stim.cobj.stimfile, 'objects'); images.cobj = objects; clear objects;
-    % load(params.stim.ns.stimfile, 'scenes'); images.ns = scenes; clear scenes;
+    load(params.stim.gabor.stimfile, 'gabors'); 
+    images.gabor = gabors; clear gabors;
+    
+    % RDKs: 8 directions x 3 coherence levels cell array: [x,y,3, frames]
+    load(params.stim.rdk.stimfile, 'rdk'); 
+    images.rdk = rdk; clear rdk;
+    
+    % Simple dot: 2D array: [x,y]
+    load(params.stim.dot.stimfile, 'simple_dot'); 
+    images.dot = simple_dot; clear simple_dot;
+    
+    % Complex objects: 4D array: [x,y,object,rotation]
+    load(params.stim.cobj.stimfile, 'objects'); 
+    images.cobj = objects; clear objects;
+    
+    % NS: 5D array: [x,y,superordinate cat, ns_loc, obj_loc]
+    load(params.stim.ns.stimfile, 'scenes'); 
+    images.ns = scenes; clear scenes;
 
 %%%%%%%%%%%%% EK TO DO %%%%%%%%%%%%%
 %       % load maskimages/????
@@ -111,7 +125,7 @@ if ~exist('images','var') || isempty(images)
       for fn = 1:length(params.exp.stimClassLabels)
       
           if ~isempty(params.stim.(params.exp.stimClassLabels{fn}).dres) && ...
-                  length(params.stim.params.exp.stimClassLabels{fn}.dres)==2
+                  length(params.stim.(params.exp.stimClassLabels{fn}).dres)==2
           tic;
           fprintf('resampling the stimuli; this may take a while');
             % GRAY
@@ -162,26 +176,31 @@ if ~exist('images','var') || isempty(images)
 
 end
 
-% a vector with number of images in each class
+% Get a vector with number of images in each class
 for fn = 1:length(params.exp.stimClassLabels)
-    numinclass(fn) = cellfun(@(x) size(x,choose(iscolor,4,3)),images.(params.exp.stimClassLabels{fn})); 
+    sz = size(images.(params.exp.stimClassLabels{fn}));
+    if params.stim.(params.exp.stimClassLabels{fn}).iscolor
+        numinclass(fn) = prod(sz(4:end));
+    else
+        numinclass(fn) = prod(sz(3:end));
+    end
 end
 
 %% %%%%%%%%%%%%% DEFINE MINIBLOCK ORDER %%%%%%%%%%%%%
 
-params.runnum
-
-if params.loadParams
+if params.loadparams
     d = dir(fullfile(params.infofolder,'subject_sessions_*.mat'));
     load(fullfile(params.infofolder,d(end).name),'subject_sessions'); % pick the last one we saved
     
-    params.run_order = subject_sessions(params.sesID,params.subjID).run(params.runnum,:);
+    subj_session = subject_sessions(params.sesID,params.subjID).run(params.runnum,:);
     
 else
     subject_sessions = vcd_getStimParams('all',dispName,true);
-    params.run_order = subject_sessions(params.sesID,params.subjID).run(params.runnum,:); 
+    subj_session = subject_sessions(params.sesID,params.subjID).run(params.runnum,:); 
 end
 
+% INDEX IMAGES THAT NEED TO BE LOADED
+im_order = vcd_getRunImagesToLoad(subj_session,images,params);
 
 %% %%%%%%%%%%%%% EYELINK PARAMS %%%%%%%%%%%%%
 
@@ -307,7 +326,7 @@ timeofshowstimcall = datestr(now);
 
 % GO!
 [timeframes, timekeys, digitrecord, trialoffsets] = ...
-    vcd_showStimulus(p, images, setupscript, soafun);
+    vcd_showStimulus(p, images, im_order, setupscript, soafun);
 
 
 
