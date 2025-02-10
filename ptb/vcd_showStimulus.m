@@ -1,8 +1,7 @@
 function [timeframes, timekeys, digitrecord, trialoffsets] = ...
-    vcd_showStimulus(p, disp, images)
+    vcd_showStimulus(p, images, subj_session, setupscript, soafun)
 
-%% EK START HERE -- INDEX IMAGES THAT NEED TO BE LOADED
-cond_order = getRunConditionOrder(p.subjID, p.sesID, p.runNr);
+
 
 
 % Get [x,y]-center in pixels of peripheral stimuli given display size, stim size and offest 
