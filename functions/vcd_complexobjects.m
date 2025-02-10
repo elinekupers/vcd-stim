@@ -90,7 +90,12 @@ else
     end
     
     if p.stim.store_imgs    
-        save(p.stim.cobj.stimfile, 'objects','-v7.3')
+        fprintf('\nStoring images..')
+        saveDir = fileparts(fullfile(p.stim.cobj.stimfile));
+        if ~exist(saveDir,'dir'), mkdir(saveDir); end
+        tmp = strsplit(p.stim.cobj.stimfile,'.mat');
+        info = t;
+        save(fullfile(sprintf('%s_%s.mat',tmp{1},datestr(now,30))),'objects','info','-v7.3');
     end
 end
 % 
