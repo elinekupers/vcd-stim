@@ -441,7 +441,7 @@ for stimClass_idx = 1:length(p.exp.stimClassLabels)
                             trial(local_trial_nr,stimloc).stim_loc           = cond_master(miniblock_trials(local_trial_nr,mm)+(stimloc-1),4);
                             trial(local_trial_nr,stimloc).cue_status         = cond_master(miniblock_trials(local_trial_nr,mm)+(stimloc-1),5);
                             
-                            trial(local_trial_nr,stimloc).motdir_bin         = cond_master(miniblock_trials(local_trial_nr,mm)+(stimloc-1),6);
+                            trial(local_trial_nr,stimloc).motdir         	 = cond_master(miniblock_trials(local_trial_nr,mm)+(stimloc-1),6);
                             trial(local_trial_nr,stimloc).coh                = cond_master(miniblock_trials(local_trial_nr,mm)+(stimloc-1),7);
                             trial(local_trial_nr,stimloc).ref_delta          = cond_master(miniblock_trials(local_trial_nr,mm)+(stimloc-1),8);
                             trial(local_trial_nr,stimloc).repeat_nr          = cond_master(miniblock_trials(local_trial_nr,mm)+(stimloc-1),9);
