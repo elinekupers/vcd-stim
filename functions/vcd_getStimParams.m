@@ -27,7 +27,6 @@ stim = struct();
 stim.store_imgs                 = true;
 stim.frame_bin                  = 2;                                       % we update disp every 10 VBL monitor refreshes
 stim.frame_dur_s                = stim.frame_bin * (1/disp.refresh_hz);    % duration of frame bin (seconds)
-stim.iscolor                    = true;                                % use color or not
 stim.bckgrnd_grayval            = uint8(127);                          % background color (rgb)
 
 % Default params to inherit (or overwrite)
@@ -67,6 +66,7 @@ for ii = 1:length(type)
             % Where to store stimulus images?
             p.stimfile = fullfile(vcd_rootPath,'workspaces','stimuli','gabors.mat');
             p.infofile = fullfile(vcd_rootPath,'workspaces','info','gabors_info.csv');
+            
             % TEMPORAL
             % Fixed params
             p.duration        	  = duration;                               % frames (nr of monitor refreshes)
@@ -79,6 +79,9 @@ for ii = 1:length(type)
             % Fixed params
             p.img_sz_deg      = parafov_circle_diam_deg;                    % height (or width) of stimulus support (deg)
             p.img_sz_pix      = parafov_circle_diam_pix;                    % height (or width) of square stimulus support (pix)
+            p.dres            = [];                                         % scale factor
+            p.iscolor         = false;                                      % use color or not [[[IF WE USE COLOR: MAKE SURE TO SQUARE IMAGE VALS FOR CLUT]]
+           
             p.gauss_std_deg   = 0.5;                                        % standard deviation of gaussian window (deg)
             p.gauss_std_pix   = round(p.gauss_std_deg.*disp.ppd);
             
@@ -121,6 +124,8 @@ for ii = 1:length(type)
             % SPATIAL
             p.img_sz_deg      = parafov_circle_diam_deg;                    % stimulus aperture diameter (deg)
             p.img_sz_pix      = parafov_circle_diam_pix;                    % stimulus aperture diameter (pix)
+            p.dres            = [];                                         % scale factor
+            p.iscolor         = false;                                      % use color or not [[[IF WE USE COLOR: MAKE SURE TO SQUARE IMAGE VALS FOR CLUT]]
             
             p.num_mot_dir      = 8; 
             p.motdir_bins      = [0:(360/p.num_mot_dir):359]+10;             % sample direction of coherent motion from [0-359] in deg (0 deg is aligned with 12 o'clock)
@@ -132,7 +137,7 @@ for ii = 1:length(type)
             % RDK specific                                                        
             p.dots_density     = 16.7;                                      % dots/deg??
             p.dots_size        = 3;                                         % radius in pixels??
-            p.dots_color       = [255 255 255;0 0 0]./255;                  % 50:50 white:black, color in RGB [0-1]
+            p.dots_color       = [255 255 255;0 0 0];                       % 50:50 white:black, color in RGB [0-1]
             p.max_dots_per_frame = 200;                                     % from Kiani lab (roughly matches to nr of pixels in aperture)
             p.dots_contrast    = 1;                                         % Michelson [0-1] (fraction)
             
@@ -148,16 +153,21 @@ for ii = 1:length(type)
             
         case {'dot',3}
             % Where to store stimulus images?
-            p.stimfile = fullfile(vcd_rootPath,'workspaces','stimuli','dot.mat');
-            p.infofile = fullfile(vcd_rootPath,'workspaces','info','dot_info.csv');
+            p.stimfile        = fullfile(vcd_rootPath,'workspaces','stimuli','dot.mat');
+            p.infofile        = fullfile(vcd_rootPath,'workspaces','info','dot_info.csv');
+            p.iscolor         = false;                                      % use color or not [[[IF WE USE COLOR: MAKE SURE TO SQUARE IMAGE VALS FOR CLUT]]
 
             % TEMPORAL
             p.duration        = duration;                                   % frames (nr of monitor refreshes)
             
             % SPATIAL
-            p.img_sz_deg      = 1;                                          % radius in deg
-            p.img_sz_pix      = p.img_sz_deg * disp.ppd;                    % radius in pix
-            p.color           = [255 255 255]./255;                         % white, color in RGB [0-1]
+            p.img_sz_deg      = 1.1;                                        % radius in deg
+            p.img_sz_pix      = round(p.img_sz_deg * disp.ppd);             % radius in deg
+            p.dres            = [];                                         % scale factor
+
+            p.radius_deg      = 0.5;                                        % radius in deg
+            p.radius_pix      = p.radius_deg * disp.ppd;                        % radius in pix
+            p.color           = [255 255 255];                              % white, color in uint8 RGB
             p.contrast        = 1;                                          % Michelson [0-1] (fraction)
             p.x0_deg          = x0_deg;                                     % x-center loc in deg (translation from 0,0)
             p.y0_deg          = x0_deg;                                     % y-center loc in deg (translation from 0,0)
@@ -178,11 +188,11 @@ for ii = 1:length(type)
             stim.dot = p;
             
         case {'cobj',4}
-            % Where to store stimulus images?
-            p.stimfile = fullfile(vcd_rootPath,'workspaces','stimuli','objects.mat');
-            
-            % Where to find stimulus info?
-            p.infofile = fullfile(vcd_rootPath,'workspaces','info','objects_info.csv');
+            % GENERAL
+            p.stimfile = fullfile(vcd_rootPath,'workspaces','stimuli','objects.mat'); % Where to store stimulus images?
+            p.infofile = fullfile(vcd_rootPath,'workspaces','info','object_info.csv');  % Where to find stimulus info?
+            p.iscolor         = false;                                      % use color or not [[[IF WE USE COLOR: MAKE SURE TO SQUARE IMAGE VALS FOR CLUT]]
+            p.dres          = [];                                           % scale factor
             
             % TEMPORAL
             p.duration      = duration;                                     % frames (nr of monitor refreshes)
@@ -197,31 +207,30 @@ for ii = 1:length(type)
             p.y0_pix        = y0_pix;                                       % y-center loc in pix (translation from 0,0)
             
             p.num_unique_objects = 16;                                      % orientation "bins" from which we create final gabor orientations (deg), 0 = 12 o'clock
-            p.facing_dir_deg        = repmat(90 + [-34, 34],1,p.num_unique_objects/2); % rotate 10 deg away from canonical view
+            p.facing_dir_deg     = repmat(90 + [-34, 34],1,p.num_unique_objects/2); % rotate 10 deg away from canonical view
 
-            p.super_cat    = {'human','animal','object','place'};           % 4 superordinate categories
+            p.super_cat          = {'human','animal','object','place'};     % 4 superordinate categories
             
-            p.basic_cat{1} = {'facemale','facefemale','facefemale'};                             
-            p.basic_cat{2} = {'small','small','big','big'};                               
-            p.basic_cat{3} = {'tool','tool','food','food','vehicle','vehicle'};                      
-            p.basic_cat{4} = {'building','building','building'};                               
+            p.basic_cat{1}       = {'facemale','facefemale','facefemale'};                             
+            p.basic_cat{2}       = {'small','small','big','big'};                               
+            p.basic_cat{3}       = {'tool','tool','food','food','vehicle','vehicle'};                      
+            p.basic_cat{4}       = {'building','building','building'};                               
             
-            p.sub_cat{1} = {'damon','lisa','sophia'};                    
-            p.sub_cat{2} = {'parrot','cat','bear','giraffe'};
-            p.sub_cat{3} = {'drill','brush','pizza','banana','bus','car'};      
-            p.sub_cat{4} = {'church','house','watertower'};
+            p.sub_cat{1}         = {'damon','lisa','sophia'};                    
+            p.sub_cat{2}         = {'parrot','cat','bear','giraffe'};
+            p.sub_cat{3}         = {'drill','brush','pizza','banana','bus','car'};      
+            p.sub_cat{4}         = {'church','house','watertower'};
 
-            p.delta_from_ref = [-15, -5, 5, 15];                            % how much should stim pose rotate from reference (WM: for double epochs)
+            p.delta_from_ref     = [-15, -5, 5, 15];                        % how much should stim pose rotate from reference (WM: for double epochs)
                                                                             % the bigger the delta, the easier the trial. Negative is counter-clockwise, positive is clockwise
             % Add params to struct
             stim.cobj = p;
             
         case {'ns',5}
-            % Where to store stimulus images?
-            p.stimfile = fullfile(vcd_rootPath,'workspaces','stimuli''scenes.mat');
-            
-            % Where to find stimulus info?
-            p.infofile = fullfile(vcd_rootPath,'workspaces','info','scenes_info.csv');
+            % GENERAL
+            p.stimfile = fullfile(vcd_rootPath,'workspaces','stimuli','scenes.mat'); % Where to store stimulus images?
+            p.infofile = fullfile(vcd_rootPath,'workspaces','info','scenes_info.csv'); % Where to find stimulus info?
+            p.iscolor = true;                                               % Use color or not? [IF YES: MAKE SURE TO SQUARE IMAGE VALS FOR CLUT] 
             
             % TEMPORAL
             p.duration    = duration;                                       % frames (nr of monitor refreshes)
@@ -240,30 +249,30 @@ for ii = 1:length(type)
             p.x0_pix        = x0_pix;                                       % x-center loc in pix (translation from 0,0)
             p.y0_pix        = y0_pix;                                       % y-center loc in pix (translation from 0,0)
             
-            p.super_cat    = {'human','animal','food','objects','places'};  % 5 superordinate categories
+            p.super_cat     = {'human','animal','food','objects','places'};  % 5 superordinate categories
             
-            p.basic_cat{1} = {'indoor','outdoor'};
-            p.basic_cat{2} = {'indoor','outdoor'};
-            p.basic_cat{3} = {'indoor','outdoor'};
-            p.basic_cat{4} = {'indoor','outdoor'};
-            p.basic_cat{5} = {'indoor','outdoor'};
+            p.basic_cat{1}  = {'indoor','outdoor'};
+            p.basic_cat{2}  = {'indoor','outdoor'};
+            p.basic_cat{3}  = {'indoor','outdoor'};
+            p.basic_cat{4}  = {'indoor','outdoor'};
+            p.basic_cat{5}  = {'indoor','outdoor'};
 
-            p.sub_cat{1,1} = {'face1_left','face2_center','face3_right'};                  
-            p.sub_cat{1,2} = {'face1_left','face2_center','face3_right'};                  
+            p.sub_cat{1,1}  = {'face1_left','face2_center','face3_right'};                  
+            p.sub_cat{1,2}  = {'face1_left','face2_center','face3_right'};                  
             
-            p.sub_cat{2,1} = {'cat1_left','cat2_center','cat3_right'};                  
-            p.sub_cat{2,2} = {'giraffe1_left','giraffe2_center','giraffe3_right'};                                                
+            p.sub_cat{2,1}  = {'cat1_left','cat2_center','cat3_right'};                  
+            p.sub_cat{2,2}  = {'giraffe1_left','giraffe2_center','giraffe3_right'};                                                
            
-            p.sub_cat{3,1} = {'donut1_left','donut2_center','donut3_right'};
-            p.sub_cat{3,2} = {'banana1_left','banana2_center','banana3_right'};              
+            p.sub_cat{3,1}  = {'donut1_left','donut2_center','donut3_right'};
+            p.sub_cat{3,2}  = {'banana1_left','banana2_center','banana3_right'};              
             
-            p.sub_cat{4,1} = {'vase1_left','vase2_center','vase3_right'};
-            p.sub_cat{4,2} = {'bus1_left','bus2_center','bus3_right'};                  
+            p.sub_cat{4,1}  = {'vase1_left','vase2_center','vase3_right'};
+            p.sub_cat{4,2}  = {'bus1_left','bus2_center','bus3_right'};                  
 
-            p.sub_cat{5,1} = {'bathroom1_left','bathroom2_center','bathroom3_right'};     
-            p.sub_cat{5,2} = {'building1_left','building2_center','building3_right'};     
+            p.sub_cat{5,1}  = {'bathroom1_left','bathroom2_center','bathroom3_right'};     
+            p.sub_cat{5,2}  = {'building1_left','building2_center','building3_right'};     
 
-            p.change_im = {'easy','hard'};
+            p.change_im     = {'easy','hard'};
 %             p.delta_from_ref  = [-5 15 5 15];                               % how much should scene pov rotate L/R for WM
                                                                             % the bigger the delta, the easier the trial 
             
@@ -279,7 +288,7 @@ for ii = 1:length(type)
 end
 
 if store_params
-    save(fullfile(vcd_rootPath,'workspaces','info','p_stim.mat'),'stim') 
+    save(fullfile(vcd_rootPath,'workspaces','info',sprintf('stim_%s.mat',datestr(now,30))),'stim') 
 end
 
 return
