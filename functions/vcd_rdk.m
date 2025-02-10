@@ -130,7 +130,6 @@ for cc = 1:length(p.stim.rdk.dots_coherence)
                     end
                     g = gca;
                     f = getframe(g);
-%                     imwrite(f.cdata,'~/Desktop/rdk_test.png') 
                     frames = cat(4,frames,f.cdata);
                     clear f
                     %             %draw on the
@@ -167,9 +166,15 @@ end
 
 
 if p.store_imgs
-    save('~/Desktop/rdk100.mat', 'rdk','info','-v7.3')
-%     save(p.stim.rdk.stimfile, 'rdk','info','-v7.3')
-%     writetable(info, p.stim.rdk.infofile)
+    saveDir = fileparts(fullfile(p.stim.rdk.stimfile));
+    if ~exist(saveDir,'dir'), mkdir(saveDir); end
+    tmp = strsplit(p.stim.rdk.stimfile,'.mat');
+    save(fullfile(sprintf('%s_%s.mat',tmp{1},datestr(now,30))),'rdk','info','-v7.3');
+    
+    saveDir = fileparts(fullfile(p.stim.rdk.infofile));
+    if ~exist(saveDir,'dir'), mkdir(saveDir); end
+    tmp = strsplit(p.stim.rdk.infofile,'.csv');
+    writetable(info, fullfile(sprintf('%s_%s.csv',tmp{1},datestr(now,30))))
 end
 
 return

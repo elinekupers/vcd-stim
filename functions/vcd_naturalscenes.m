@@ -8,7 +8,7 @@ function scenes = vcd_naturalscenes(p)
 %   or valid csv file in stim.ns.infofile, e.g.: fullfile(vcd_rootPath,'workspaces','scenes_info.csv')
 %
 % INPUTS:
-%  p            : struct with stimulus params 
+%  p            : struct with stimulus params
 %
 % OUTPUTS:
 % scenes        :   uint8 images of natural scenes, dimensions are
@@ -21,8 +21,8 @@ function scenes = vcd_naturalscenes(p)
 %% Load existing resized images
 if isfield(p.stim.ns, 'stimfile') && exist(p.stim.ns.stimfile,'file')
     load(p.stim.ns.stimfile,'scenes');
-
-%% Load images from stim info file and resize if requested
+    
+    %% Load images from stim info file and resize if requested
 elseif isfield(p.stim.ns, 'infofile') && exist(p.stim.ns.infofile,'file')
     
     p.stim.ns.stimfile = fullfile(vcd_rootPath,'workspaces','stimuli','scenes.mat');
@@ -31,10 +31,10 @@ elseif isfield(p.stim.ns, 'infofile') && exist(p.stim.ns.infofile,'file')
     
     % Define superordinate and basic categories, and number of exemplars per basic category
     superordinate = unique(t.superordinate,'stable'); % 4 superordinate categories
-    basic         = unique(t.basic,'stable');  % basic 
+    basic         = unique(t.basic,'stable');  % basic
     ns_loc        = unique(t.ns_loc,'stable'); % indoor/outdoor
     obj_loc       = unique(t.obj_loc,'stable'); % dominant object location
-
+    
     n_images = length(superordinate)*length(ns_loc)*length(obj_loc);
     
     if p.stim.ns.iscolor
@@ -42,7 +42,7 @@ elseif isfield(p.stim.ns, 'infofile') && exist(p.stim.ns.infofile,'file')
             length(superordinate), length(ns_loc),length(obj_loc)));
     else
         scenes0 = uint8(ones(p.stim.ns.og_res_stim,p.stim.ns.og_res_stim, ...
-             length(superordinate), length(ns_loc),length(obj_loc)));
+            length(superordinate), length(ns_loc),length(obj_loc)));
     end
     
     for ss = 1:length(superordinate)
@@ -53,7 +53,7 @@ elseif isfield(p.stim.ns, 'infofile') && exist(p.stim.ns.infofile,'file')
                     strcmp(t.superordinate,superordinate(ss)) & ...
                     strcmp(t.ns_loc,ns_loc(ex)) & ...
                     strcmp(t.obj_loc,obj_loc(bb))}));
-            
+                
                 if p.stim.ns.iscolor
                     scenes0(:,:,:,ss,ex,bb) = imread(fullfile(d.folder,d.name));
                 else
@@ -69,8 +69,8 @@ elseif isfield(p.stim.ns, 'infofile') && exist(p.stim.ns.infofile,'file')
         tic;
         if p.stim.ns.iscolor
             scenes_rz = reshape(scenes0,size(scenes0,1),size(scenes0,2),size(scenes0,3), ...
-                    size(scenes0,4)*size(scenes0,5)*size(scenes0,6));
-                
+                size(scenes0,4)*size(scenes0,5)*size(scenes0,6));
+            
             temp = cast([],class(scenes_rz));
             for pp = 1:size(scenes_rz,4)
                 statusdots(pp,size(scenes_rz,4));
@@ -80,7 +80,7 @@ elseif isfield(p.stim.ns, 'infofile') && exist(p.stim.ns.infofile,'file')
         else
             scenes_rz = reshape(scenes0,size(scenes0,1),size(scenes0,2), ...
                 size(scenes0,3)*size(scenes0,4)*size(scenes0,5));
-
+            
             temp = cast([],class(scenes_rz(:,:,pp)));
             for pp = 1:size(scenes_rz,4)
                 statusdots(pp,size(scenes_rz,3));
@@ -102,7 +102,12 @@ elseif isfield(p.stim.ns, 'infofile') && exist(p.stim.ns.infofile,'file')
     clear scenes0 scenes_rz
     
     if p.stim.store_imgs
-        save(p.stim.ns.stimfile, 'scenes','-v7.3')
+            fprintf('\nStoring images..')
+            saveDir = fileparts(fullfile(p.stim.ns.stimfile));
+            if ~exist(saveDir,'dir'), mkdir(saveDir); end
+            tmp = strsplit(p.stim.ns.stimfile,'.mat');
+            info = t;
+            save(fullfile(sprintf('%s_%s.mat',tmp{1},datestr(now,30))),'scenes','info','-v7.3');
     end
 else
     error('[%s]: Stimfile or infofile cannot be found or loaded',mfilename)

@@ -53,12 +53,19 @@ ang_deg = p.stim.dot.loc_deg - 90;
 ang_rad = deg2rad(ang_deg);
 
 info = table(bin',ang_deg',ang_rad');
-info.Properties.VariableNames = {'bin','ori_deg_0=East','ori_rad'};
+info.Properties.VariableNames = {'bin','ori_deg_0East','ori_rad'};
 
 if p.stim.store_imgs
     fprintf('\nStoring images..')
-    save(fullfile(p.stim.dot.stimfile), 'simple_dot','-v7.3');
-    writetable(info, fullfile(p.stim.dot.infofile))
+    saveDir = fileparts(fullfile(p.stim.dot.stimfile));
+    if ~exist(saveDir,'dir'), mkdir(saveDir); end
+    tmp = strsplit(p.stim.dot.stimfile,'.mat');
+    save(fullfile(sprintf('%s_%s.mat',tmp{1},datestr(now,30))),'simple_dot','info','-v7.3');
+    
+    saveDir = fileparts(fullfile(p.stim.dot.infofile));
+    if ~exist(saveDir,'dir'), mkdir(saveDir); end
+    tmp = strsplit(p.stim.dot.infofile,'.csv');
+    writetable(info, fullfile(sprintf('%s_%s.csv',tmp{1},datestr(now,30))))
 end
 
 
