@@ -1,6 +1,6 @@
 function [rdk,info,p] = vcd_rdk(p, disp)
 % VCD function:
-%  [rdk_im,info,p] = vcd_rdk(p, disp)
+%  [rdk,info,p] = vcd_rdk(p, disp)
 %
 % Purpose:
 %   Create a random dot motion kinetograms for  experimental display. 
