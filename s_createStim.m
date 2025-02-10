@@ -1,6 +1,6 @@
 %% s_createStim.m
 
-verbose = true; % plot stimuli or not 
+verbose = true; % plot stimuli or not
 
 dispname = '7TASBOLDSCREEN32'; % or 'KKOFFICEQ3277'
 display = vcd_getDisplayParams(dispname);
@@ -12,45 +12,61 @@ p.store_imgs   = true;
 saveFigsFolder = fullfile(vcd_rootPath,'figs');
 
 p.stim   = vcd_getStimParams('all',dispname,p.store_params); % Choose from <'gabor'> <'rdk'> <'dot'> <'cobj'> <'ns'> <'all'>
+
+
 p.exp    = vcd_getSessionParams;
 p.trials = vcd_makeTrials(p);
-subject_sessions = vcd_createSessions(p)
+subject_sessions = vcd_createSessions(p);
 
 %% Gabor
-[gbr_im,gbr_info,p] = vcd_gabor(p);
+gbr_im = vcd_gabor(p);
 
-%%
-figure(1); clf;
-set(gcf, 'Position', [0 0 1024 1080], 'color','w')
+%% RDK
+rdk_im = vcd_rdk(p, display);
+
+%% Simple dot
+img_dot  = vcd_simpledot(p);
+
+%% Complex object
+img_obj  = vcd_complexobjects(p);
+
+%% Natural scenes
+img_ns  = vcd_naturalscenes(p);
+
+
+%% Visualize stimuli
+
 if verbose
-    for dd = 1:size(gbr_im,6)
-        if dd==1, dlta = 0; else, dlta = p.stim.gabor.delta_from_ref(dd-1); end
-        for cont = 1:size(gbr_im,5) 
-            for pp = 1:size(gbr_im,4) 
-                for ori = 1:size(gbr_im,3) 
-                    clf;
-                    imshow(gbr_im(:,:,ori,pp,cont,dd),[0 256]);
-                    
-                    title(sprintf('%d:deg c:%1.2f ph:%d dlta:%d', ...
+    
+    %% Gabor
+    figure(1); clf;
+    set(gcf, 'Position', [0 0 1024 1080], 'color','w')
+    if verbose
+        for dd = 1:size(gbr_im,6)
+            if dd==1, dlta = 0; else, dlta = p.stim.gabor.delta_from_ref(dd-1); end
+            for cont = 1:size(gbr_im,5)
+                for pp = 1:size(gbr_im,4)
+                    for ori = 1:size(gbr_im,3)
+                        clf;
+                        imshow(gbr_im(:,:,ori,pp,cont,dd),[0 256]);
+                        
+                        title(sprintf('%d:deg c:%1.2f ph:%d dlta:%d', ...
                             p.stim.gabor.ori_deg(ori),...
                             p.stim.gabor.contrast(cont),...
                             p.stim.gabor.ph_deg(pp),...
                             dlta))
-                    drawnow;
-                    if p.store_imgs
-                        filename = sprintf('vcd_gabor_o%dc%dph%dd%d.png',ori,cont,pp,dd);
-                        print(fH,'-dpng','-r300',fullfile(saveFigsFolder,filename));
+                        drawnow;
+                        if p.store_imgs
+                            filename = sprintf('vcd_gabor_o%dc%dph%dd%d.png',ori,cont,pp,dd);
+                            print(fH,'-dpng','-r300',fullfile(saveFigsFolder,filename));
+                        end
                     end
                 end
             end
         end
     end
-end
 
-%% RDK
-[rdk_im,rdk_info,p] = vcd_rdk(p, display);
-
-if verbose
+    %% RDK
     
     for cc = 1:length(p.stim.rdk.dots_coherence)
         for dd = 1:length(p.stim.rdk.dots_direction)
@@ -58,16 +74,44 @@ if verbose
                 fullfile('~/Desktop'), sprintf('vcd_rdk_coh%1.3f_dir%02d',p.stim.rdk.dots_coherence(cc),p.stim.rdk.dots_direction(dd)));
         end
     end
+    
+    
+    
+    %% Simple dot
+    bckground = uint8(ones(disp.h_pix,disp.w_pix))*p.stim.bckgrnd_grayval;
+    
+    im1 = bckground;
+    
+    for ang = p.stim.dot.loc_deg
+        angle = deg2rad(ang-90);
+        [x_shift,y_shift] = pol2cart(angle,p.stim.dot.iso_eccen);
+    
+        ys = display.yc + round(y_shift*display.ppd);
+        xs = display.xc + round(x_shift*display.ppd);
+        dot_halfsz = (size(img_dot,1)/2)-0.5;
+        dot_coords_x = (xs - dot_halfsz) : (xs + dot_halfsz);
+        dot_coords_y = (ys - dot_halfsz) : (ys + dot_halfsz);
+    
+        im1( dot_coords_y, dot_coords_x) = img_dot;
+    end
+    
+    figure;
+    imshow(im1,[1 256]);
+    hold on;
+    plot(display.xc+[-5:5], display.yc.*ones(1,11),'k',display.xc*ones(1,11),display.yc+[-5:5],'k')
+    title('simple dot - one hemifield');
+    axis image;
+
+    %% Complex objects
+    
+    for objectNr = 1:size(objects,3)
+        figure(objectNr); clf;
+        for ii = 1:size(objects,4)
+            subplot(2,11,ii); hold all;
+            imshow(objects(:,:,objectNr,ii),[1 255]);
+        end
+    end
+    
+    %% Natural scenes
+    
 end
-%% Simple dot
-params  = vcd_getStimParams('dot');
-[img_dot,coord,params.dot]  = vcd_simpledot(params);
-
-%% Complex object
-params  = vcd_getStimParams('cobj');
-img_obj  = vcd_complexobjects(params);
-
-%% Natural scenes
-params  = vcd_getStimParams('ns');
-img_ns  = vcd_naturalscenes(params);
-
