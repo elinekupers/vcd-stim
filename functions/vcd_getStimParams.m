@@ -137,7 +137,7 @@ for ii = 1:length(type)
             % RDK specific                                                        
             p.dots_density     = 16.7;                                      % dots/deg??
             p.dots_size        = 3;                                         % radius in pixels??
-            p.dots_color       = [255 255 255;0 0 0];                       % 50:50 white:black, color in RGB [0-1]
+            p.dots_color       = [255 255 255;0 0 0]./255;                  % 50:50 white:black, color in RGB [0-1]
             p.max_dots_per_frame = 200;                                     % from Kiani lab (roughly matches to nr of pixels in aperture)
             p.dots_contrast    = 1;                                         % Michelson [0-1] (fraction)
             
