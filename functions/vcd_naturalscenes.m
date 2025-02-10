@@ -1,6 +1,6 @@
-function scenes = vcd_naturalscenes(stim)
+function scenes = vcd_naturalscenes(p)
 %
-%  scenes = vcd_naturalscenes(stim)
+%  scenes = vcd_naturalscenes(p)
 %
 % Purpose:
 %   Load natural scene images for VCD experimental display.
@@ -8,7 +8,7 @@ function scenes = vcd_naturalscenes(stim)
 %   or valid csv file in stim.ns.infofile, e.g.: fullfile(vcd_rootPath,'workspaces','scenes_info.csv')
 %
 % INPUTS:
-%  stim         : struct with stimulus params 
+%  p            : struct with stimulus params 
 %
 % OUTPUTS:
 % scenes        :   uint8 images of natural scenes, dimensions are
@@ -19,58 +19,62 @@ function scenes = vcd_naturalscenes(stim)
 %
 
 %% Load existing resized images
-if isfield(stim.ns, 'stimfile') && exist(stim.ns.stimfile,'file')
-    load(stim.ns.stimfile,'scenes');
+if isfield(p.stim.ns, 'stimfile') && exist(p.stim.ns.stimfile,'file')
+    load(p.stim.ns.stimfile,'scenes');
 
 %% Load images from stim info file and resize if requested
-elseif isfield(stim.ns, 'infofile') && exist(stim.ns.infofile,'file')
+elseif isfield(p.stim.ns, 'infofile') && exist(p.stim.ns.infofile,'file')
     
-    stim.ns.stimfile = fullfile(vcd_rootPath,'workspaces','scenes.mat');
+    p.stim.ns.stimfile = fullfile(vcd_rootPath,'workspaces','stimuli','scenes.mat');
     
-    t = readtable(stim.ns.infofile);
+    t = readtable(p.stim.ns.infofile);
     
     % Define superordinate and basic categories, and number of exemplars per basic category
     superordinate = unique(t.superordinate,'stable'); % 4 superordinate categories
-    basic = unique(t.basic,'stable');  % basic ,'kid_face', 'dog','bird','cow','tool','transport','sign','streets_trails','bathrooms','kitchens'
-    n_exemplars = 7; %length(unique(t.exemplar)); % for now we have 6 exemplars (subordinate category level)
+    basic         = unique(t.basic,'stable');  % basic 
+    ns_loc        = unique(t.ns_loc,'stable'); % indoor/outdoor
+    obj_loc       = unique(t.obj_loc,'stable'); % dominant object location
 
+    n_images = length(superordinate)*length(ns_loc)*length(obj_loc);
     
-    if stim.iscolor
-        scenes0 = uint8(ones(stim.ns.og_res_stim,stim.ns.og_res_stim,3,...
-            n_exemplars,length(basic),length(superordinate)));
+    if p.stim.ns.iscolor
+        scenes0 = uint8(ones(p.stim.ns.og_res_stim,p.stim.ns.og_res_stim,3,...
+            length(superordinate), length(ns_loc),length(obj_loc)));
     else
-        scenes0 = uint8(ones(stim.ns.og_res_stim,stim.ns.og_res_stim, ...
-            n_exemplars*n_views,length(superordinate)));
+        scenes0 = uint8(ones(p.stim.ns.og_res_stim,p.stim.ns.og_res_stim, ...
+             length(superordinate), length(ns_loc),length(obj_loc)));
     end
     
     for ss = 1:length(superordinate)
-        bb = ss; % for now we only have one basic category per superordinate 
-        for ex = 1:n_exemplars
-            d = dir(fullfile(vcd_rootPath,'workspaces','ns', superordinate{ss},...
-                basic{ss}, t.filename{ ...
-                strcmp(t.superordinate,superordinate(ss)) & ...
-                strcmp(t.basic,basic(bb)) & ...
-                (t.exemplar==ex)}));
-            if stim.iscolor
-                scenes0(:,:,:,ex,bb,ss) = imread(fullfile(d.folder,d.name));
-            else
-                scenes0(:,:,ex,bb,ss) = imread(fullfile(d.folder,d.name));
+        for ex = 1:length(ns_loc)
+            for bb = 1:length(obj_loc)
+                d = dir(fullfile(vcd_rootPath,'workspaces','stimuli','vcd_natural_scenes', ...
+                    t.filename{ ...
+                    strcmp(t.superordinate,superordinate(ss)) & ...
+                    strcmp(t.ns_loc,ns_loc(ex)) & ...
+                    strcmp(t.obj_loc,obj_loc(bb))}));
+            
+                if p.stim.ns.iscolor
+                    scenes0(:,:,:,ss,ex,bb) = imread(fullfile(d.folder,d.name));
+                else
+                    scenes0(:,:,ss,ex,bb) = imread(fullfile(d.folder,d.name));
+                end
             end
         end
     end
     
     % resize if desired
-    if ~isempty(stim.ns.dres) && ~isequal(stim.ns.dres,1)
+    if ~isempty(p.stim.ns.dres) && ~isequal(p.stim.ns.dres,1)
+        disp('Resampling the stimuli; this may take a while');
         tic;
-        fprintf('[%]: resampling the stimuli; this may take a while',mfilename);
-        if stim.iscolor
+        if p.stim.ns.iscolor
             scenes_rz = reshape(scenes0,size(scenes0,1),size(scenes0,2),size(scenes0,3), ...
                     size(scenes0,4)*size(scenes0,5)*size(scenes0,6));
                 
             temp = cast([],class(scenes_rz));
             for pp = 1:size(scenes_rz,4)
                 statusdots(pp,size(scenes_rz,4));
-                temp(:,:,:,pp) = imresize(scenes_rz(:,:,:,pp),stim.ns.dres);
+                temp(:,:,:,pp) = imresize(scenes_rz(:,:,:,pp),p.stim.ns.dres);
             end
             
         else
@@ -80,12 +84,13 @@ elseif isfield(stim.ns, 'infofile') && exist(stim.ns.infofile,'file')
             temp = cast([],class(scenes_rz(:,:,pp)));
             for pp = 1:size(scenes_rz,4)
                 statusdots(pp,size(scenes_rz,3));
-                temp(:,:,pp) = imresize(scenes_rz(:,:,pp),stim.ns.dres);
+                temp(:,:,pp) = imresize(scenes_rz(:,:,pp),p.stim.ns.dres);
             end
         end
         
-        fprintf('[%]: done!\n',mfilename);
+        
         toc
+        fprintf('[%]: done!\n',mfilename);
         scenes_rz = temp;
     else
         scenes_rz = scenes0;
@@ -96,8 +101,8 @@ elseif isfield(stim.ns, 'infofile') && exist(stim.ns.infofile,'file')
     
     clear scenes0 scenes_rz
     
-    if stim.store_imgs
-        save(stim.ns.stimfile, 'scenes','-v7.3')
+    if p.stim.store_imgs
+        save(p.stim.ns.stimfile, 'scenes','-v7.3')
     end
 else
     error('[%s]: Stimfile or infofile cannot be found or loaded',mfilename)
