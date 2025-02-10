@@ -1,6 +1,6 @@
-function [img, coord, p] = vcd_simpledot(p, disp)
+function [simple_dot, p] = vcd_simpledot(p)
 %
-%  [img] = vcd_simpledot(p)
+%  [simple_dot, p] = vcd_simpledot(p)
 %
 % Purpose:
 %   Create a simple dot image for experimental display.
@@ -8,11 +8,10 @@ function [img, coord, p] = vcd_simpledot(p, disp)
 %
 % INPUTS:
 %   p       : dot params   (see vcd_setStimParams.m)
-%   disp    : display params (see vcd_getDisplayParams.m)
 %
 % OUTPUTS:
-%   img     : dot image 
-%   p       : updated params
+%   simple_dot     : dot image 
+%   p              : updated params
 
 % Written by Eline Kupers 2024/12
 %
@@ -20,38 +19,77 @@ function [img, coord, p] = vcd_simpledot(p, disp)
 %% Check inputs
 
 % Make sure the image has an uneven number of pixels, so we have center pix
-if mod(p.img_sz_pix,2)==0
-    p.img_sz_pix = p.img_sz_pix +1;
+if mod(p.stim.dot.img_sz_pix,2)==0
+    p.stim.dot.img_sz_pix = p.stim.dot.img_sz_pix +1;
 end
 
 % Create spatial support
-thetas = linspace(0,2*pi, p.img_sz_pix);
-X = p.radius_pix * cos(thetas);
-Y = p.radius_pix * sin(thetas);
+x = (0:(p.stim.dot.img_sz_pix - 1));
+y = (0:(p.stim.dot.img_sz_pix - 1));
+x = x - x(end) / 2;
+y = y - y(end) / 2;
+[X, Y] = meshgrid(x, y);
 
-coord  = [X; Y];
+% clean up
+clear x y
 
-%% Get polar angle bins
+% Center at zero first
+centerY = 0;
+centerX = 0;
+
+simple_dot = (Y - centerY).^2 ...
+    + (X - centerX).^2 <= p.stim.dot.radius_pix.^2;
+
+% convert to uint8 
+simple_dot = uint8(simple_dot);
+simple_dot(simple_dot==0) = p.stim.bckgrnd_grayval;
+simple_dot(simple_dot==1) = p.stim.dot.color(1);
+
+
+fprintf('\nDone!')
+
+bin = [1:length(p.stim.dot.loc_deg)];
+ang_deg = p.stim.dot.loc_deg - 90; 
+ang_rad = deg2rad(ang_deg);
+
+info = table(bin',ang_deg',ang_rad');
+info.Properties.VariableNames = {'bin','ori_deg_0=East','ori_rad'};
+
+if p.stim.store_imgs
+    fprintf('\nStoring images..')
+    save(fullfile(p.stim.dot.stimfile), 'simple_dot','-v7.3');
+    writetable(info, fullfile(p.stim.dot.infofile))
+end
 
 
 
-bins
 
 
-% translate
-coord(1,:) = coord(1,:);% + p.x0_pix;
-coord(2,:) = coord(2,:);% + p.y0_pix;
-
-% figure(1); clf; hold all;
-% r = rectangle('Position',  [-0.5*p.img_sz_pix, -0.5*p.img_sz_pix, p.img_sz_pix, p.img_sz_pix], ...
-%     'FaceColor', [127 127 127]./255, 'EdgeColor', 'none');
-% h = drawcircle('Center',[p.x0_pix,p.y0_pix],'Radius',p.radius_pix, 'Color',p.color, 'InteractionsAllowed', 'none', 'FaceAlpha', 1, 'LineWidth', 1);
-% xlim([-0.5,0.5].*p.img_sz_pix)
-% ylim([-0.5,0.5].*p.img_sz_pix)
-% colormap gray; axis square; axis off;
-
-% f = getframe(gcf);
-% img = f.cdata;
+% visualize dot locations
+% display = vcd_getDisplayParams;
+% bckground = uint8(ones(display.h_pix,display.w_pix))*p.stim.bckgrnd_grayval;
+% 
+% im1 = bckground;
+% 
+% for ang = p.stim.dot.loc_deg
+%     angle = deg2rad(ang-90);
+%     [x_shift,y_shift] = pol2cart(angle,p.stim.dot.iso_eccen);
+% 
+%     ys = display.yc + round(y_shift*display.ppd);
+%     xs = display.xc + round(x_shift*display.ppd);
+%     dot_halfsz = (size(simple_dot,1)/2)-0.5;
+%     dot_coords_x = (xs - dot_halfsz) : (xs + dot_halfsz);
+%     dot_coords_y = (ys - dot_halfsz) : (ys + dot_halfsz);
+%     
+%     im1( dot_coords_y, dot_coords_x) = simple_dot;
+% end
+% 
+% figure;
+% imshow(im1,[1 256]);
+% hold on;
+% plot(display.xc+[-5:5], display.yc.*ones(1,11),'k',display.xc*ones(1,11),display.yc+[-5:5],'k')
+% title('simple dot - one hemifield');
+% axis image;
 
 return
 
