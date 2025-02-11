@@ -48,24 +48,42 @@ simple_dot(simple_dot==1) = p.stim.dot.color(1);
 
 fprintf('\nDone!')
 
-bin = [1:length(p.stim.dot.loc_deg)];
-ang_deg = p.stim.dot.loc_deg - 90; 
-ang_rad = deg2rad(ang_deg);
 
-info = table(bin',ang_deg',ang_rad');
-info.Properties.VariableNames = {'bin','ori_deg_0East','ori_rad'};
+bins = [1:length(p.stim.dot.loc_deg)];
 
+if ~isempty(p.stim.dot.delta_from_ref)
+    dot_ref_locs = [0, p.stim.dot.delta_from_ref];
+else
+    dot_ref_locs = 0;
+end
+
+all_angles_deg  = p.stim.dot.loc_deg + dot_ref_locs';
+
+% Wrap around
+all_angles_deg(all_angles_deg < 0) = 360+all_angles_deg(all_angles_deg < 0);
+
+% Rerotate to make 0 deg upper vertical     
+all_angles_deg = all_angles_deg - 90; % 
+all_angles_rad = deg2rad(all_angles_deg);
+
+% add conditions to table
+info = table(repmat(bins',length(dot_ref_locs),1), ...
+             reshape(all_angles_deg',1,[])', ...
+             reshape(all_angles_rad',1,[])', ...
+             repelem(dot_ref_locs,length(p.stim.dot.loc_deg))');
+% add column names
+info.Properties.VariableNames = {'bin','ori_deg','ori_rad','delta_deg_ref'};
+
+% Store
 if p.stim.store_imgs
     fprintf('\nStoring images..')
     saveDir = fileparts(fullfile(p.stim.dot.stimfile));
     if ~exist(saveDir,'dir'), mkdir(saveDir); end
-    tmp = strsplit(p.stim.dot.stimfile,'.mat');
-    save(fullfile(sprintf('%s_%s.mat',tmp{1},datestr(now,30))),'simple_dot','info','-v7.3');
+    save(fullfile(sprintf('%s_%s.mat',p.stim.dot.stimfile,datestr(now,30))),'simple_dot','info','-v7.3');
     
     saveDir = fileparts(fullfile(p.stim.dot.infofile));
     if ~exist(saveDir,'dir'), mkdir(saveDir); end
-    tmp = strsplit(p.stim.dot.infofile,'.csv');
-    writetable(info, fullfile(sprintf('%s_%s.csv',tmp{1},datestr(now,30))))
+    writetable(info, fullfile(sprintf('%s_%s.csv',p.stim.dot.infofile,datestr(now,30))))
 end
 
 

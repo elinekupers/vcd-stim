@@ -24,13 +24,13 @@ if isfield(p.stim.cobj, 'stimfile') && exist(p.stim.cobj.stimfile,'file')
     load(p.stim.cobj.stimfile,'objects');
 else
 
-    t = readtable(fullfile(p.stim.cobj.infofile));
+    info = readtable(fullfile(p.stim.cobj.infofile));
     
     % Define superordinate and basic categories, and number of exemplars per basic category
-    superordinate = unique(t.superordinate,'stable'); % 4 superordinate categories
-    basic         = unique(t.basic,'stable');                 % 8 basic categories (4x2)
-    subordinate   = unique(t.subordinate,'stable');             % 16 sub categories (8x2)
-    rotation      = unique(t.rot);
+    superordinate = unique(info.superordinate,'stable'); % 4 superordinate categories
+    basic         = unique(info.basic,'stable');                 % 8 basic categories (4x2)
+    subordinate   = unique(info.subordinate,'stable');             % 16 sub categories (8x2)
+    rotation      = unique(info.rot);
     n_views       = length(rotation);
     
     % Preallocate space
@@ -93,9 +93,7 @@ else
         fprintf('\nStoring images..')
         saveDir = fileparts(fullfile(p.stim.cobj.stimfile));
         if ~exist(saveDir,'dir'), mkdir(saveDir); end
-        tmp = strsplit(p.stim.cobj.stimfile,'.mat');
-        info = t;
-        save(fullfile(sprintf('%s_%s.mat',tmp{1},datestr(now,30))),'objects','info','-v7.3');
+        save(fullfile(sprintf('%s_%s.mat',p.stim.cobj.stimfile,datestr(now,30))),'objects','info','-v7.3');
     end
 end
 % 

@@ -64,8 +64,8 @@ for ii = 1:length(type)
         case {'gabor',1}
             
             % Where to store stimulus images?
-            p.stimfile = fullfile(vcd_rootPath,'workspaces','stimuli','gabors.mat');
-            p.infofile = fullfile(vcd_rootPath,'workspaces','info','gabors_info.csv');
+            p.stimfile = fullfile(vcd_rootPath,'workspaces','stimuli','gabors'); % mat file
+            p.infofile = fullfile(vcd_rootPath,'workspaces','info','gabors_info'); % csv file
             
             % TEMPORAL
             % Fixed params
@@ -112,8 +112,8 @@ for ii = 1:length(type)
             
         case {'rdk',2}
             % Where to store stimulus images?
-            p.stimfile = fullfile(vcd_rootPath,'workspaces','stimuli','rdk.mat');
-            p.infofile = fullfile(vcd_rootPath,'workspaces','info','rdk_info.csv');
+            p.stimfile = fullfile(vcd_rootPath,'workspaces','stimuli','rdk'); % mat file
+            p.infofile = fullfile(vcd_rootPath,'workspaces','info','rdk_info'); % csv file
 
             % TEMPORAL
             p.duration        = duration;                                   % frames (nr of monitor refreshes)
@@ -153,8 +153,8 @@ for ii = 1:length(type)
             
         case {'dot',3}
             % Where to store stimulus images?
-            p.stimfile        = fullfile(vcd_rootPath,'workspaces','stimuli','dot.mat');
-            p.infofile        = fullfile(vcd_rootPath,'workspaces','info','dot_info.csv');
+            p.stimfile        = fullfile(vcd_rootPath,'workspaces','stimuli','dot'); % mat file
+            p.infofile        = fullfile(vcd_rootPath,'workspaces','info','dot_info'); % csv file
             p.iscolor         = false;                                      % use color or not [[[IF WE USE COLOR: MAKE SURE TO SQUARE IMAGE VALS FOR CLUT]]
 
             % TEMPORAL
@@ -189,8 +189,8 @@ for ii = 1:length(type)
             
         case {'cobj',4}
             % GENERAL
-            p.stimfile = fullfile(vcd_rootPath,'workspaces','stimuli','objects.mat'); % Where to store stimulus images?
-            p.infofile = fullfile(vcd_rootPath,'workspaces','info','object_info.csv');  % Where to find stimulus info?
+            p.stimfile = fullfile(vcd_rootPath,'workspaces','stimuli','objects'); % mat-file Where to store stimulus images?
+            p.infofile = fullfile(vcd_rootPath,'workspaces','info','object_info');  % csv-file Where to find stimulus info?
             p.iscolor         = false;                                      % use color or not [[[IF WE USE COLOR: MAKE SURE TO SQUARE IMAGE VALS FOR CLUT]]
             p.dres          = [];                                           % scale factor
             
@@ -228,8 +228,8 @@ for ii = 1:length(type)
             
         case {'ns',5}
             % GENERAL
-            p.stimfile = fullfile(vcd_rootPath,'workspaces','stimuli','scenes.mat'); % Where to store stimulus images?
-            p.infofile = fullfile(vcd_rootPath,'workspaces','info','scenes_info.csv'); % Where to find stimulus info?
+            p.stimfile = fullfile(vcd_rootPath,'workspaces','stimuli','scenes'); % mat-file Where to store stimulus images?
+            p.infofile = fullfile(vcd_rootPath,'workspaces','info','scenes_info'); % csv-file Where to find stimulus info?
             p.iscolor = true;                                               % Use color or not? [IF YES: MAKE SURE TO SQUARE IMAGE VALS FOR CLUT] 
             
             % TEMPORAL
