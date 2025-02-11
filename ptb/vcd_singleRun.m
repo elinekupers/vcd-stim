@@ -90,27 +90,37 @@ end
 
 if ~exist('images','var') || isempty(images)
 
-    images = struct('gabor',[],'rdk',[],'dot',[],'cobj',[], 'ns',[]);
+    images = struct('gabor',[],'rdk',[],'dot',[],'cobj',[], 'ns',[], 'info',[]);
 
     % GABORS: 6D array: [x,y,orient,contrast,phase,delta]
-    load(params.stim.gabor.stimfile, 'gabors'); 
+    d = dir(params.stim.gabor.stimfile); 
+    load(fullfile(d(end).folder,d(end).name), 'gabors','info'); 
     images.gabor = gabors; clear gabors;
+    images.info.gabor = info; clear info;
     
     % RDKs: 8 directions x 3 coherence levels cell array: [x,y,3, frames]
-    load(params.stim.rdk.stimfile, 'rdk'); 
+    d = dir(params.stim.rdk.stimfile); 
+    load(fullfile(d(end).folder,d(end).name), 'rdk','info');
     images.rdk = rdk; clear rdk;
-    
+    images.info.rdk = info; clear info;
+
     % Simple dot: 2D array: [x,y]
-    load(params.stim.dot.stimfile, 'simple_dot'); 
+    d = dir(params.stim.dot.stimfile);
+    load(fullfile(d(end).folder,d(end).name), 'simple_dot','info');
     images.dot = simple_dot; clear simple_dot;
+    images.info.dot = info; clear info;
     
     % Complex objects: 4D array: [x,y,object,rotation]
-    load(params.stim.cobj.stimfile, 'objects'); 
+    d = dir(params.stim.cobj.stimfile);
+    load(fullfile(d(end).folder,d(end).name), 'objects','info');
     images.cobj = objects; clear objects;
+    images.info.cobj = info; clear info;
     
     % NS: 5D array: [x,y,superordinate cat, ns_loc, obj_loc]
-    load(params.stim.ns.stimfile, 'scenes'); 
+    d = dir(params.stim.ns.stimfile);
+    load(fullfile(d(end).folder,d(end).name), 'scenes','info');
     images.ns = scenes; clear scenes;
+    images.info.ns = info; clear info;
 
 %%%%%%%%%%%%% EK TO DO %%%%%%%%%%%%%
 %       % load maskimages/????
