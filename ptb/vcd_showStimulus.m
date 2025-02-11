@@ -152,6 +152,32 @@ for t = 1:numTrials
     Screen('FillRect', windowPtr, target(this_trial).color); 
     Screen('DrawTextures', windowPtr, target(this_trial).Tex, [], target(this_trial).Rects);
     Screen('Flip',windowPtr); 
+    
+    
+    %% RDK screen stuff
+    %             %draw on the
+    %             if any(isnan(prod(pos,1))==0)
+    %                 Screen('DrawDots', screen_struct.cur_window, pos, dots_struct.dot_size, dots_struct.dot_color', AP.spec.center);
+    %
+    %                 %update the loop
+    %                 loopi = loopi + 1;
+    %                 if loopi > dots_struct.interval
+    %                     loopi = 1;
+    %                 end
+    %
+    %
+    %                 %flip the screen to make things
+    %                 Screen('Flip', screen_struct.cur_window);
+    %             end
+    
+    %             %flip the screen to clean it
+    %             Screen('Flip', screen_struct.cur_window);
+    
+    %         end
+    
+    
+    
+    
 
     % collect response and measure timing
     if t > 1 %ignore the first cell
