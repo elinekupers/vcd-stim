@@ -1092,7 +1092,7 @@ for stimClass_idx = 1:length(p.exp.stimClassLabels)
 end
 
 if p.store_params
-    saveDir = fileparts(fullfile(vcd_rootPath,'workspaces','info'));
+    saveDir = fullfile(vcd_rootPath,'workspaces','info');
     if ~exist(saveDir,'dir'), mkdir(saveDir); end
     save(fullfile(saveDir,sprintf('trials_%s.mat',datestr(now,30))),'all_trials','priority_stim_manip')
 end
