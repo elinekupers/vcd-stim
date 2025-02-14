@@ -25,6 +25,8 @@ rect = Screen('Rect',win);
 
 %%%%%%% MAKE TEXTURES
 
+% bckgrnd_im = vcd_pinknoisebackground(p, type, borderwidth, num)
+
 % ptb stuff
 HideCursor;
 Priority(9);
