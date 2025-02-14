@@ -1,4 +1,4 @@
-function stim = vcd_getStimParams(type, dispname, store_params)
+function stim = vcd_getStimParams(type, disp_params, store_params)
 
 if ~exist('type','var') || isempty(type)
     type = {'all'};
@@ -12,12 +12,14 @@ if any(strcmp(type{:},'all'))
     type = {'gabor','rdk','dot','cobj','ns'};
 end
 
+if ~exist('disp_params','var') || isempty(store_params)
+    dispname = '7TASBOLDSCREEN32'; % or 'KKOFFICEQ3277' or psychophys room??
+    disp_params = vcd_getDisplayParams(dispname);
+end
+
 if ~exist('store_params','var') || isempty(store_params)
     store_params = false;
 end
-
-% Get display params
-disp = vcd_getDisplayParams(dispname);
 
 % Setup struct
 stim = struct();
@@ -26,19 +28,27 @@ stim = struct();
 
 stim.store_imgs                 = true;
 stim.frame_bin                  = 2;                                       % we update disp every 10 VBL monitor refreshes
-stim.frame_dur_s                = stim.frame_bin * (1/disp.refresh_hz);    % duration of frame bin (seconds)
+stim.frame_dur_s                = stim.frame_bin * (1/disp_params.refresh_hz);    % duration of frame bin (seconds)
 stim.bckgrnd_grayval            = uint8(127);                          % background color (rgb)
 
 % Default params to inherit (or overwrite)
-duration                   = 120;                                       % nr of frame bins
-x0_deg                     = [-3.5 0 3.5];                             % [Left Center Right] (degrees) 
-y0_deg                     = [0 0 0];                                  % [Left Center Right] (degrees) 
-x0_pix                     = round(x0_deg.*disp.ppd);                  % [Left Center Right] (pixels)  
-y0_pix                     = round(y0_deg.*disp.ppd);                  % [Left Center Right] (pixels)  
-parafov_circle_diam_deg    = 4;                                        % desired parafoveal circular diameter aperture (degrees) 
-ctr_square_deg             = 8.4;                                      % desired center square side length (degrees) 
-parafov_circle_diam_pix    = round(parafov_circle_diam_deg.*disp.ppd); % desired parafoveal circular diameter aperture (pixels) 
-ctr_square_pix             = round(ctr_square_deg.*disp.ppd);          % desired center square side length in pixels (pixels) 
+duration                        = 120;                                      % nr of frame bins
+x0_deg                          = [-4 0 4];                                 % [Left Center Right] (degrees) 
+y0_deg                          = [0 0 0];                                  % [Left Center Right] (degrees) 
+x0_pix                          = round(x0_deg.*disp_params.ppd);           % [Left Center Right] (pixels)  
+y0_pix                          = round(y0_deg.*disp_params.ppd);           % [Left Center Right] (pixels)  
+parafov_circle_diam_deg         = 4;                                        % desired parafoveal circular diameter aperture (degrees) 
+ctr_square_deg                  = 8.4;                                      % desired center square side length (degrees) 
+parafov_circle_diam_pix         = round(parafov_circle_diam_deg.*disp_params.ppd); % desired parafoveal circular diameter aperture (pixels) 
+ctr_square_pix                  = round(ctr_square_deg.*disp_params.ppd);          % desired center square side length in pixels (pixels) 
+
+%% NOISE BACKGROUND Puzzle piece
+
+stim.bckground.alpha = 1; %<alpha> (optional) is the exponent to apply to the amplitude spectrum (i.e. 1/f^alpha).  default: 1.
+stim.bckground.num   = 1; %<num> (optional) is the number of images desired.  default: 1.
+stim.bckground.mode  = 0; %<mode> (optional) is means fixed amplitude spectrum + random phase
+stim.bckground.std_clip_range = 3.5; % std of image values, that defines the range we use to rescale image to 1 255.
+
 
 %% FIXATION DOT
 
@@ -51,7 +61,7 @@ stim.fix.dotsize_deg            = 0.2;                     % dot diameter in deg
 stim.fix.dotsizeborder_pix      = 3;                       % pixel-width for dot border
 stim.fix.lumstep                = 10;                      
 stim.fix.dotcol_rgba            = {uint8(repmat([0:15:255]',[1 3])) 0.5};  % dot color, 16 gray levels (incl. blank, white)  50% opacity
-stim.fix.dotdiam_pix            = [2*round(stim.fix.dotsize_deg * disp.ppd) stim.fix.dotsizeborder_pix];  % fixation diameter in pixels (EVEN)
+stim.fix.dotdiam_pix            = [2*round(stim.fix.dotsize_deg * disp_params.ppd) stim.fix.dotsizeborder_pix];  % fixation diameter in pixels (EVEN)
 
 fprintf('*** FIXATION MARK: fixation [diam rim] = [%d %d] pixels ***\n',stim.fix.dotdiam_pix);
 
@@ -64,7 +74,7 @@ for ii = 1:length(type)
         case {'gabor',1}
             
             % Where to store stimulus images?
-            p.stimfile = fullfile(vcd_rootPath,'workspaces','stimuli','gabors'); % mat file
+            p.stimfile = fullfile(vcd_rootPath,'workspaces','stimuli',sprintf('gabors_%s',disp_params.name)); % mat file
             p.infofile = fullfile(vcd_rootPath,'workspaces','info','gabors_info'); % csv file
             
             % TEMPORAL
@@ -83,10 +93,10 @@ for ii = 1:length(type)
             p.iscolor         = false;                                      % use color or not [[[IF WE USE COLOR: MAKE SURE TO SQUARE IMAGE VALS FOR CLUT]]
            
             p.gauss_std_deg   = 0.5;                                        % standard deviation of gaussian window (deg)
-            p.gauss_std_pix   = round(p.gauss_std_deg.*disp.ppd);
+            p.gauss_std_pix   = round(p.gauss_std_deg.*disp_params.ppd);
             
             p.sf_cpd          = 4;                                          % spatial frequency (cycles/deg)
-            p.cycles_per_pix  = (p.sf_cpd/p.img_sz_deg)/disp.ppd;           % nr of cycles per image (pix)
+            p.cycles_per_pix  = (p.sf_cpd/p.img_sz_deg)/disp_params.ppd;           % nr of cycles per image (pix)
             
             p.x0_deg          = x0_deg;                                     % x-center loc in deg (translation from 0,0)
             p.y0_deg          = y0_deg;                                     % y-center loc in deg (translation from 0,0)
@@ -112,7 +122,7 @@ for ii = 1:length(type)
             
         case {'rdk',2}
             % Where to store stimulus images?
-            p.stimfile = fullfile(vcd_rootPath,'workspaces','stimuli','rdk'); % mat file
+            p.stimfile = fullfile(vcd_rootPath,'workspaces','stimuli',sprintf('rdk_%s',disp_params.name)); % mat file
             p.infofile = fullfile(vcd_rootPath,'workspaces','info','rdk_info'); % csv file
 
             % TEMPORAL
@@ -153,7 +163,7 @@ for ii = 1:length(type)
             
         case {'dot',3}
             % Where to store stimulus images?
-            p.stimfile        = fullfile(vcd_rootPath,'workspaces','stimuli','dot'); % mat file
+            p.stimfile        = fullfile(vcd_rootPath,'workspaces','stimuli',sprintf('dot_%s',disp_params.name)); % mat file
             p.infofile        = fullfile(vcd_rootPath,'workspaces','info','dot_info'); % csv file
             p.iscolor         = false;                                      % use color or not [[[IF WE USE COLOR: MAKE SURE TO SQUARE IMAGE VALS FOR CLUT]]
 
@@ -162,11 +172,11 @@ for ii = 1:length(type)
             
             % SPATIAL
             p.img_sz_deg      = 1.1;                                        % radius in deg
-            p.img_sz_pix      = round(p.img_sz_deg * disp.ppd);             % radius in deg
+            p.img_sz_pix      = round(p.img_sz_deg * disp_params.ppd);             % radius in deg
             p.dres            = [];                                         % scale factor
 
             p.radius_deg      = 0.5;                                        % radius in deg
-            p.radius_pix      = p.radius_deg * disp.ppd;                        % radius in pix
+            p.radius_pix      = p.radius_deg * disp_params.ppd;                        % radius in pix
             p.color           = [255 255 255];                              % white, color in uint8 RGB
             p.contrast        = 1;                                          % Michelson [0-1] (fraction)
             p.x0_deg          = x0_deg;                                     % x-center loc in deg (translation from 0,0)
@@ -174,7 +184,7 @@ for ii = 1:length(type)
             p.x0_pix          = x0_pix;                                     % x-center loc in pix (translation from 0,0)
             p.y0_pix          = y0_pix;                                     % y-center loc in pix (translation from 0,0)
             
-            p.iso_eccen       = 5.5;                                        % eccentricity of dots from center (degrees)
+            p.iso_eccen       = 4.5;                                        % eccentricity of dots from center (degrees)
             p.num_loc         = 16;                                          % orientation "bins" from which we create final gabor orientations (deg), 0 = 12 o'clock
             p.loc_jitter_sd   = 1;                                          % std of normal distribution to sample orientation jitter
             p.loc_jitter_mu   = 1;                                          % mean of normal distribution to sample orientation jitter 
@@ -189,7 +199,7 @@ for ii = 1:length(type)
             
         case {'cobj',4}
             % GENERAL
-            p.stimfile = fullfile(vcd_rootPath,'workspaces','stimuli','objects'); % mat-file Where to store stimulus images?
+            p.stimfile = fullfile(vcd_rootPath,'workspaces','stimuli',sprintf('objects_%s',disp_params.name)); % mat-file Where to store stimulus images?
             p.infofile = fullfile(vcd_rootPath,'workspaces','info','object_info');  % csv-file Where to find stimulus info?
             p.iscolor         = false;                                      % use color or not [[[IF WE USE COLOR: MAKE SURE TO SQUARE IMAGE VALS FOR CLUT]]
             p.dres          = [];                                           % scale factor
@@ -228,7 +238,7 @@ for ii = 1:length(type)
             
         case {'ns',5}
             % GENERAL
-            p.stimfile = fullfile(vcd_rootPath,'workspaces','stimuli','scenes'); % mat-file Where to store stimulus images?
+            p.stimfile = fullfile(vcd_rootPath,'workspaces','stimuli',sprintf('scenes_%s',disp_params.name)); % mat-file Where to store stimulus images?
             p.infofile = fullfile(vcd_rootPath,'workspaces','info','scenes_info'); % csv-file Where to find stimulus info?
             p.iscolor = true;                                               % Use color or not? [IF YES: MAKE SURE TO SQUARE IMAGE VALS FOR CLUT] 
             
@@ -241,7 +251,7 @@ for ii = 1:length(type)
                                                             
             p.og_res_stim = 425;                                            % original resolution of NSD stimuli
             p.rz_res_stim = 714;                                            % resized resolution of NSD stimuli
-            p.dres = ((ctr_square_deg/disp.h_deg * disp.h_pix) / p.og_res_stim);  % scale factor to apply
+            p.dres = ((ctr_square_deg/disp_params.h_deg * disp_params.h_pix) / p.og_res_stim);  % scale factor to apply
 %             assert(isequal(stim.ns.rz_res_stim, round(stim.ns.img_sz_pix * -stim.dres))); % check: slightly larger than OG NSD stim size?? = 744 pixels 7TAS BOLDscreen Nova1x32
             
             p.x0_deg        = x0_deg;                                       % x-center loc in deg (translation from 0,0)
@@ -284,11 +294,11 @@ for ii = 1:length(type)
     
     fprintf('*** %s: Using a stimulus size of %2.2f deg (%3.2f pixels). ***\n', upper(type{ii}), p.img_sz_deg, p.img_sz_pix);
     fprintf('*** %s: Using a stimulus duration of %d frame bins (%3.2f seconds), where 1 bin is %d frames of 1/%d Hz ***\n', ...
-        upper(type{ii}), p.duration, p.duration*stim.frame_dur_s, stim.frame_bin, disp.refresh_hz);
+        upper(type{ii}), p.duration, p.duration*stim.frame_dur_s, stim.frame_bin, disp_params.refresh_hz);
 end
 
 if store_params
-    save(fullfile(vcd_rootPath,'workspaces','info',sprintf('stim_%s.mat',datestr(now,30))),'stim') 
+    save(fullfile(vcd_rootPath,'workspaces','info',sprintf('stim_%s_%s.mat',disp_params.name,datestr(now,30))),'stim') 
 end
 
 return
