@@ -1,22 +1,23 @@
-function subject_sessions = vcd_createSessions(p)
+function [subject_sessions,session_master] = vcd_createSessions(p)
 
-if p.load_params
-    
-    % check if trial struct is already defined
-    d = dir(fullfile(vcd_rootPath,'workspaces','info','trials*.mat'));
-    
-    if length(d) > 1
-        warning('[%s]: Multiple trial.mat files! Will pick the most recent one', mfilename);
+% check if trial struct is already defined
+if isempty(p.trials) || ~isfield(p,'trials')
+    if p.load_params
+
+        % load trial info
+        d = dir(fullfile(vcd_rootPath,'workspaces','info','trials*.mat'));
+
+        if ~isempty(d(end).name) && length(d) > 1
+            warning('[%s]: Multiple trial.mat files! Will pick the most recent one', mfilename);
+            load(fullfile(d(end).folder,d(end).name));
+            p.trials = all_trials;
+        else
+            error('[%s]: Can''t find trial.mat files! Please check', mfilename);
+        end
+
+    else % or create it
+        p.trials = vcd_makeTrials(p);
     end
-    
-    if ~isempty(d(end).name)
-        load(fullfile(d(end).folder,d(end).name));
-    else
-        error('[%s]: Can''t find trial.mat files! Please check', mfilename);
-    end
-    
-else
-    all_trials = vcd_makeTrials(p);
 end
 
 if ~isfield(p,'exp')
@@ -28,16 +29,35 @@ end
 % Different trial order per block (already accomplished in vcd_makeTrials.m)
 % Across a single session, each subject will experience the same miniblocks and unique images.
 
+nearZero = @(x,tol) abs(x) < tol;
+tolerance = 10.^-10;
 
+% reset RNG
+rng('shuffle','twister');
 
-session = [];
+% Time we shave off between end of run, to check if we can fit another run 
+fudge_factor = 10; % seconds
+
+%% %%%%%%%%%%%%%%%%%% EK TEMPORARY HACK
+p.exp.n_runs_per_session = 8;
+%%%%%%%%%%%%%%%%%%
+
+session_master = [];
 miniblock = [];
 
 for ses = 1:p.exp.n_sessions
     fprintf('\nSESSION %d:',ses)
     
     t_total = [];
-    trial_order_timing = num2cell(zeros(1,5));
+    % trial_order_timing: 
+    % 1: run nr, 
+    % 2: block nr, 
+    % 3: blockID, 
+    % 4: unique image nr,
+    % 5: spatial cue dir,
+    % 6: event duration, 
+    % 7: total run duration 
+    trial_order_timing = {}; %cell(1,7);
     
     % Same blocks / same trials / same retinal image per subject
     miniblock_distr = p.exp.ses_blocks(:,:,ses);
@@ -55,15 +75,15 @@ for ses = 1:p.exp.n_sessions
                 
                 if (n_blocks > 0)
                     
-                    fprintf('\n%s\t x %s\t:\t %d block(s)',p.exp.stimClassLabels{sc},p.exp.taskClassLabels{tc},n_blocks)
+                    fprintf('%s\t x %s\t:\t %d block(s)\n',p.exp.stimClassLabels{sc},p.exp.taskClassLabels{tc},n_blocks)
                     
                     curr_miniblocks = [stimtask_tracker(sc,tc) : (stimtask_tracker(sc,tc)+n_blocks-1)];
                     
                     for ii = 1:length(curr_miniblocks)
-                        miniblock(bb).name        = sprintf('%s-%s',p.exp.taskClassLabels{tc},p.exp.stimClassLabels{sc});
-                        miniblock(bb).ID          = find(strcmp(miniblock(bb).name,p.exp.stimTaskLabels));
-                        miniblock(bb).st_block    = curr_miniblocks(ii);
-                        miniblock(bb).trial       = all_trials.stim(sc).tasks(tc).miniblock(curr_miniblocks(ii)).trial;
+                        miniblock(bb).name                      = sprintf('%s-%s',p.exp.taskClassLabels{tc},p.exp.stimClassLabels{sc});
+                        miniblock(bb).ID                        = find(strcmp(miniblock(bb).name,p.exp.stimTaskLabels));
+                        miniblock(bb).within_session_repeat     = sprintf('%d-out-of-%d',curr_miniblocks(ii),n_blocks);
+                        miniblock(bb).trial                     = p.trials.stim(sc).tasks(tc).miniblock(curr_miniblocks(ii)).trial;
                         
                         if p.exp.trial.double_epoch_tasks(tc)
                             miniblock(bb).trial_type = 2; % double epoch;
@@ -79,33 +99,70 @@ for ses = 1:p.exp.n_sessions
         end
     end
     
-    % Shuffle blocks
-    shuffle_idx = randperm(length(miniblock),length(miniblock));
-    miniblock_shuffled = miniblock(shuffle_idx);
-    itis = shuffle_concat(p.exp.trial.ITI,1);
     
-    fudge_factor = 20; % seconds
+    % Make sure that runs have at least 2 miniblocks that use double-epoch 
+    % trials, otherwise some runs will be much longer than others..
+    while 1
+        run_ok = 0;
+        run_not_ok = false;
+        % Shuffle blocks
+        shuffle_idx = randperm(length(miniblock),length(miniblock));
+        miniblock_shuffled = miniblock(shuffle_idx);
+        
+        tt = struct2cell(miniblock_shuffled);
+        tm = cell2mat(tt(end,:));
+        for jj = 1:6:length(tm)-1
+            if sum(tm(jj:(jj+5))==2)>2
+                run_not_ok = true;
+            else
+                run_ok = run_ok + 1;
+            end
+            
+            if run_not_ok
+                break;
+            end
+        end
+        if run_ok == p.exp.n_runs_per_session
+           break;
+        end
+    end
+    
+        
+    itis = shuffle_concat(p.exp.trial.ITI,1);
     
     % Divide blocks into runs
     rr = 1;
     total_block_i = 1;
     
-    while rr < p.exp.n_runs_per_session && ...
+    while rr <= p.exp.n_runs_per_session && ...
             (total_block_i <= length(miniblock_shuffled))
         
         % reset counter
         total_run_time = 0;
         bb = 1;
         
-        if total_run_time == 0
-            if rr > 1 
-                run_t0 = num2cell(zeros(1,5));
-                 trial_order_timing = [trial_order_timing; run_t0];
-            end
-            % Add pre-blank period
-            total_run_time = p.exp.run.pre_blank_dur;
-            t_preblank = num2cell([0, NaN, NaN, p.exp.run.pre_blank_dur, total_run_time]);
-            trial_order_timing = [trial_order_timing; t_preblank];
+        if total_run_time == 0 % Add pre-blank period
+%             if rr > 1 
+%                 total_run_time = p.exp.run.pre_blank_dur;
+%                 t_preblank = [num2cell([rr, zeros(1,6)]); ...
+%                               num2cell([rr, 0, 0, NaN, NaN, p.exp.run.pre_blank_dur, total_run_time])];
+%             else % Add pre-blank period
+%                 
+                total_run_time = p.exp.run.pre_blank_dur;
+                t_preblank = [num2cell([rr, zeros(1,7)]); ...
+                              num2cell([rr, 0, 0, NaN, NaN, 0, p.exp.run.pre_blank_dur, total_run_time])];
+%             end
+            
+            trial_order_timing = [trial_order_timing; t_preblank]; 
+
+            run(rr).block(bb).name       = 'pre-blank';
+            run(rr).block(bb).ID         = 0;
+            run(rr).block(bb).within_session_repeat   = NaN;
+            run(rr).block(bb).trial      = [];
+            run(rr).block(bb).trial_type = []; % single or double epoch
+            run(rr).block(bb).timing     = cell2table(t_preblank, 'VariableNames',{'run','block','stimtaskID','unique_im','spatial_cue','onset_time','event_dur','run_time'});
+            
+            bb=bb+1;
         end
         
         if isempty(itis)
@@ -114,7 +171,7 @@ for ses = 1:p.exp.n_sessions
         
         
         while (total_run_time < (p.exp.run.total_run_dur - p.exp.run.post_blank_dur - fudge_factor)) && ...
-            (total_block_i <= length(miniblock_shuffled))
+            (total_block_i <= length(miniblock_shuffled)) && bb <= p.exp.run.miniblocks_per_run+1
             
             if size(miniblock_shuffled(total_block_i).trial,1) > size(miniblock_shuffled(total_block_i).trial,2)
                 n_trials_per_block = size(miniblock_shuffled(total_block_i).trial,1);
@@ -137,117 +194,211 @@ for ses = 1:p.exp.n_sessions
             end
             
             % Task cue
-            t_taskcue = num2cell([length(p.exp.stimTaskLabels)+1, NaN, NaN, p.exp.miniblock.task_cue_dur,  total_run_time+p.exp.miniblock.task_cue_dur]);
+            t_taskcue = num2cell([rr, bb-1, miniblock_shuffled(total_block_i).ID, p.exp.miniblock.task_cue_ID, NaN, total_run_time, p.exp.miniblock.task_cue_dur,  total_run_time+p.exp.miniblock.task_cue_dur]);
             
-            % Trial IDs
+            
+            % Image IDs
             fn = fieldnames(miniblock_shuffled(total_block_i).trial);
             tmp = struct2cell(miniblock_shuffled(total_block_i).trial);
             unique_im_nr_idx = strcmp(fn,{'unique_im_nr'});
-            t_id = cell(n_trials_per_block*2,1);
+            t_im_id = cell(n_trials_per_block*2,1);
             tmp2 = squeeze(tmp(unique_im_nr_idx,:,:));
-            t_id(1:2:end,:) = mat2cell(cell2mat(tmp2),ones(1,n_trials_per_block));
-            t_id(2:2:end,:) = {[0]};
+            t_im_id(1:2:end,:) = mat2cell(cell2mat(tmp2),ones(1,n_trials_per_block));
+            t_im_id(2:2:end,:) = {p.exp.miniblock.ITI_ID};
             
             % Thickening dir
             thicking_nr_idx = strcmp(fn,{'covert_att_loc_cue'});
             t_spat_cue =  cell(n_trials_per_block*2,1);
             t_spat_cue(1:2:end,:) = squeeze(tmp(thicking_nr_idx,:,1));
-            t_spat_cue(2:2:end,:) = {[0]};
+            t_spat_cue(2:2:end,:) = {NaN};
             
-            % Get block ID
-            b_id = num2cell(repmat(miniblock_shuffled(total_block_i).ID,2*n_trials_per_block,1));
+            % Assign stimtask ID
+            t_st_id = num2cell(repmat(miniblock_shuffled(total_block_i).ID,2*n_trials_per_block,1));
+            t_st_id(2:2:end,1) = {0}; 
             
             % get timing
             if miniblock_shuffled(total_block_i).trial_type == 1
-                t_t = [repmat(p.exp.trial.single_epoch_dur,1,n_trials_per_block);itis(1:n_trials_per_block)];
+                t_trial_time = [repmat(p.exp.trial.single_epoch_dur,1,n_trials_per_block); itis(1:n_trials_per_block)];
             else
-                t_t = [repmat(p.exp.trial.double_epoch_dur,1,n_trials_per_block);itis(1:n_trials_per_block)];
+                t_trial_time = [repmat(p.exp.trial.double_epoch_dur,1,n_trials_per_block); itis(1:n_trials_per_block)];
             end
-            t_t = t_t(:);
-            t_c = total_run_time + cumsum(t_t);
+
+            t_trial_time = t_trial_time(:);
+            t_trial_time(end,end) = 0; % we don't need the final ITI for the last trial of the block, because we have an IBI
+            t_cumul_time = t_taskcue{end} + cumsum(t_trial_time);
+            t_onset_time = t_cumul_time - t_trial_time; 
             
             % concat columns
-            t_total = [b_id, t_id, t_spat_cue, num2cell(t_t), num2cell(t_c)];
+            t_total = [num2cell(repmat(rr,2*n_trials_per_block,1)), num2cell(repmat(bb-1,2*n_trials_per_block,1)), ...
+                            t_st_id, t_im_id, t_spat_cue, num2cell(t_onset_time), num2cell(t_trial_time), num2cell(t_cumul_time)];
             
+
             % Add inter-block-interval (1 TR + whatever is left)
-            IBI = p.exp.TR + mod(t_total{end,end},p.exp.TR);
-            t_ibi = {0,NaN,NaN,IBI,t_total{end,end} + IBI};
-            
+            sampled_IBI = (diff(p.exp.miniblock.IBI).*rand(1) + min(p.exp.miniblock.IBI));
+            IBI =  sampled_IBI + (1 - mod(t_total{end,end}+sampled_IBI,1));
+            t_ibi = {rr, bb-1, 0, p.exp.miniblock.IBI_ID, NaN, t_total{end,end}, IBI, t_total{end,end} + IBI};
+
             % concat more columns
             t_total = [t_taskcue; t_total; t_ibi];
             
             % keep track of order and timing of trials
             trial_order_timing = cat(1,trial_order_timing, t_total);
             
+            % add timing to miniblock struct 
+            miniblock_shuffled(total_block_i).timing = cell2table(t_total, ...
+                'VariableNames',{'run','block','stimtaskID','unique_im','spatial_cue','onset_time','event_dur','run_time'});
+            
             % add block to run
-            run(rr,bb) = miniblock_shuffled(total_block_i);
+            run(rr).block(bb) = miniblock_shuffled(total_block_i);
             
             % Update total run time
-            total_run_time = t_total{end,end};
+            total_run_time = trial_order_timing{end,end};
             
             % Update counters
-            itis(1:n_trials_per_block)=[];
+            itis(1:(n_trials_per_block-1))=[];
             bb = bb + 1;
             total_block_i = total_block_i + 1;
-            
-            % Add blank/task cue between blocks
-            
+
         end % total run time
         
-       
-        % Add pre-blank period
-        t_postblank = num2cell([0, NaN, NaN, p.exp.run.post_blank_dur, total_run_time+p.exp.run.post_blank_dur]);
+        % get last IBI and change to round out block to a full second +
+        % postblank period
+        bad_IBI = t_total{end,end-1};
+        total_run_time = total_run_time - bad_IBI; % revert total run time
+        
+        % round out post blank period to finish on full TR
+        total_run_time2 = total_run_time+p.exp.run.post_blank_dur;
+        round_me_out = (ceil(total_run_time2/p.exp.TR) - (total_run_time2/p.exp.TR)).*p.exp.TR;
+        
+        postblank_dur_fullTR = p.exp.run.post_blank_dur + round_me_out;
+
+        % Add post-blank period and update total duration
+        run(rr).block(bb-1).timing.event_dur(end) = 0; % reset postblank_dur to 0
+        assert(nearZero(run(rr).block(bb-1).timing.run_time(end-1)-total_run_time, tolerance));
+        
+        run(rr).block(bb-1).timing.run_time(end) = total_run_time; % restate previous trial total_run_time;
+        
+        % do the same for trial_order_timing matrix
+        trial_order_timing{end,end-1} = 0;
+        trial_order_timing{end,end} = total_run_time;
+        t_postblank = num2cell([rr, bb-1, 0, 0, NaN, total_run_time, postblank_dur_fullTR, total_run_time+postblank_dur_fullTR]);
+        
         trial_order_timing = [trial_order_timing; t_postblank];
         
-        % start a new run
+        run(rr).block(bb).name       = 'post-blank';
+        run(rr).block(bb).ID         = 0;
+        run(rr).block(bb).within_session_repeat   = NaN;
+        run(rr).block(bb).trial      = [];
+        run(rr).block(bb).trial_type = []; % single or double epoch
+        run(rr).block(bb).timing     = cell2table(t_postblank, 'VariableNames',{'run','block','stimtaskID','unique_im','spatial_cue','onset_time','event_dur','run_time'});
+
+        assert(nearZero(mod(run(rr).block(bb).timing.run_time(end),p.exp.TR),tolerance))
+        
+        % go to the next run
         rr = rr + 1;
-    end % run check
+      
+    end % run nr check
     
-    session(ses).run = run;
-    session(ses).trial_order_timing = trial_order_timing;
+    session_master(ses).run = run;
+    session_master(ses).trial_order_timing = cell2table(trial_order_timing, 'VariableNames',{'run','block','stimtaskID','unique_im','spatial_cue','onset_time','event_dur','run_time'});
     
 end % session
 
-% s = struct2cell(session(1).run);
-% s = permute(s,[2,3,1]); % change to [runs, blocks, fieldnames]
 %
-% run_cond_order = {};
-%
-% for jj = 1:size(s,1)
-%     run_cond_order{jj} = repelem(cell2mat(s(jj,:,2)), 8);
+% foo = {};
+% for xx= 1:8 
+%     for yy = 1:8 
+%         foo = cat(1, foo, table2cell(session_master(ses).run(xx).block(yy).timing)); 
+%     end 
 % end
-%
-for ses = 1:length(session)
-   
+% 
+% assert(isequal(foo,table2cell(session_master(ses).trial_order_timing)))
 
-    newRun_idx = [find(cell2mat(session(ses).trial_order_timing(:,5))==0); length(session(ses).trial_order_timing(:,5))];
-    for ii = 1:(length(newRun_idx)-1)
-        figure(ii); clf; set(gcf,'Position',[2663,297,665,517])
-        timepoints = cell2mat(session(ses).trial_order_timing(newRun_idx(ii): newRun_idx(ii+1),5));
-        conditions = cell2mat(session(ses).trial_order_timing(newRun_idx(ii): newRun_idx(ii+1),1));
-        
-%         subplot(size(session(ses).run,1),1,ii)
-        stem(timepoints,conditions); hold on;
-        xlabel('time (s)')
-        ylabel('stim-task crossing')
-        set(gca,'YTick',[0:length(p.exp.stimTaskLabels)+1],'YTickLabel',[{'blank'};p.exp.stimTaskLabels;{'taskcue'}])
-        set(gca,'TickDir', 'out')
-        title(sprintf('run %d',ii))
+for ses = 1:length(session_master)
+    
+    figure(ses); clf; set(gcf,'Position',[1,1,1920,1080])
+    for rr = 1:length(session_master(ses).run)
+        timepoints =[]; conditions=[]; imID = [];
+        for ii = 1:length(session_master(ses).run(rr).block)
+            timepoints = [timepoints;session_master(ses).run(rr).block(ii).timing.run_time];
+            conditions = [conditions;session_master(ses).run(rr).block(ii).timing.stimtaskID];
+            
+            if iscell(session_master(ses).run(rr).block(ii).timing.unique_im(1))
+                yy = session_master(ses).run(rr).block(ii).timing.unique_im{1};
+            else
+                yy = session_master(ses).run(rr).block(ii).timing.unique_im(1);
+            end
+            xx = session_master(ses).run(rr).block(ii).timing.run_time(1);
+            imID = cat(1, imID, [xx,yy]);
+        end
+    imID(2:end-1,2) = 40;
+    subplot(ceil(size(session_master(ses).run,2)/2),2,rr)
+    stem(timepoints,conditions); hold all;
+    stem(imID(:,1),imID(:,2),'r');
+    xlabel('time (s)')
+    ylabel('stim-task crossing')
+    set(gca,'YTick',[0:length(p.exp.stimTaskLabels)+2],'YTickLabel',[{'blank'}; p.exp.stimTaskLabels;{'taskcue'};{'IBI'}])
+    set(gca,'TickDir', 'out')
+    title(sprintf('run %d',ii))
     end
 end
+
 
 
 %% For each subject, we randomize miniblock order within a run,
 subject_sessions = [];
 
-for ses = 1:size(session,2)
+for ses = 1:size(session_master,2)
     for sj = 1:p.exp.total_subjects
         
-        for rr = 1:size(session(ses).run,1)
-            num_blocks_per_run = length(session(ses).run(rr,:));
-            new_block_order    = randperm(num_blocks_per_run,num_blocks_per_run);
+        for rr = 1:size(session_master(ses).run,2)
+            num_blocks_per_run = length(session_master(ses).run(rr).block)-2;
+            new_block_order    = [1, shuffle_concat(2:(1+num_blocks_per_run),1), length(session_master(ses).run(rr).block)];
             
-            subject_sessions(ses,sj).run(rr,1:num_blocks_per_run) = session(ses).run(rr,new_block_order);
+%             blockstart_idx = find(session_master(ses).trial_order_timing.stimtaskID == p.exp.miniblock.task_cue_ID);
+%             IBIstart_idx   = find(session_master(ses).trial_order_timing.stimtaskID == p.exp.miniblock.IBI_ID);
+%             runstart_idx = [2, find(diff(session_master(ses).trial_order_timing.run)==1)', size(session_master(ses).trial_order_timing.run,1)-1];
+
+            % isolate final IBI
+            newidx_lastblack = find(new_block_order==(1+num_blocks_per_run));
+            final_IBI_dur = session_master(ses).run(rr).block(end-1).timing.event_dur(end);
+            
+            if newidx_lastblack ~= (1+num_blocks_per_run)
+                replace_IBI_dur = session_master(ses).run(rr).block(newidx_lastblack).timing.event_dur(end);
+            else
+                replace_IBI_dur = final_IBI_dur;
+            end
+            
+            % Block "1" stays the same (pre-blank)
+            subject_sessions(ses,sj).run(rr).block(1) = session_master(ses).run(rr).block(new_block_order(1));
+
+            % Block "2:7" are corrected (actual experimental trials)
+            for nn = 2:(1+num_blocks_per_run)
+                subject_sessions(ses,sj).run(rr).block(nn) = session_master(ses).run(rr).block(new_block_order(nn));
+                
+                % update block nr
+                subject_sessions(ses,sj).run(rr).block(nn).timing.block = (nn-1).*ones(size(subject_sessions(ses,sj).run(rr).block(nn).timing.block));
+                
+                % swap IBI
+                if nn == newidx_lastblack
+                    subject_sessions(ses,sj).run(rr).block(nn).timing.event_dur(end) = replace_IBI_dur;
+                elseif nn == (1+num_blocks_per_run)
+                    subject_sessions(ses,sj).run(rr).block(nn).timing.event_dur(end) = final_IBI_dur;
+                end
+                
+                % update onset time
+                subject_sessions(ses,sj).run(rr).block(nn).timing.onset_time = [subject_sessions(ses,sj).run(rr).block(nn-1).timing.run_time(end);
+                                                                                subject_sessions(ses,sj).run(rr).block(nn-1).timing.run_time(end) + ...
+                                                                                cumsum(subject_sessions(ses,sj).run(rr).block(nn).timing.event_dur(1:end-1))];
+                % update total time
+                subject_sessions(ses,sj).run(rr).block(nn).timing.run_time = subject_sessions(ses,sj).run(rr).block(nn).timing.onset_time + ...
+                                                                            subject_sessions(ses,sj).run(rr).block(nn).timing.event_dur;
+               
+            end
+            
+            % Last Block stays the same (post-blank period)
+            subject_sessions(ses,sj).run(rr).block(new_block_order(end)) = session_master(ses).run(rr).block(new_block_order(end));
+
         end
     end
 end
