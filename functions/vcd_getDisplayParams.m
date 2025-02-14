@@ -11,7 +11,8 @@ switch dispname
     case '7TASBOLDSCREEN32'
         disp.w_cm        = 69.84;             % cm wide; beyond what subject can actaully see.
         disp.h_cm        = 39.29;             % cm high;
-        disp.dist_cm     = 176.5+2+5.5;       % 176.5 cm from the mirror to glass of BOLDScreen, 
+        disp.dist_cm     = 176+2+5.5;       % 176.5 cm from the mirror to glass of BOLDScreen,
+%         disp.dist_cm     = 176.5+2+5.5;       % 176.5 cm from the mirror to glass of BOLDScreen, 
                                               % 2 cm from glass to display, 5.5 from eye to mirror (check!).
         disp.h_pix       = 1080;              % in pixels (BOLDscreen vertical, Nova1x32), 800 pixel x 800 pixel square is what people can see.
         disp.w_pix       = 1920;              % in pixels (BOLDscreen horizontal, Nova1x32), 1800 pixels is max extend
