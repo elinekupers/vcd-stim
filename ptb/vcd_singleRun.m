@@ -202,11 +202,11 @@ if params.loadparams
     d = dir(fullfile(params.infofolder,'subject_sessions_*.mat'));
     load(fullfile(params.infofolder,d(end).name),'subject_sessions'); % pick the last one we saved
     
-    subj_session = subject_sessions(params.sesID,params.subjID).run(params.runnum,:);
+    subj_session = subject_sessions(params.sesID,params.subjID).run(params.runnum);
     
 else
     subject_sessions = vcd_getStimParams('all',dispName,true);
-    subj_session = subject_sessions(params.sesID,params.subjID).run(params.runnum,:); 
+    subj_session = subject_sessions(params.sesID,params.subjID).run(params.runnum); 
 end
 
 % INDEX IMAGES THAT NEED TO BE LOADED
