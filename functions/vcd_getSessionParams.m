@@ -43,10 +43,20 @@ p.session.task_start       = [1,1,1,1,1,7,7,1,1,1]; % When do we start sampling 
 % general
 p.miniblock.n_trials_single_epoch = 8;
 p.miniblock.n_trials_double_epoch = 4;
+p.miniblock.task_cue_ID = 97; % pick a random high nr
+p.miniblock.ITI_ID      = 98; % 
+p.miniblock.IBI_ID      = 99; % 
+
+% check if these ITI/IBI IDs do not already exist
+assert(isempty(intersect([1:length(p.stimTaskLabels)],p.miniblock.task_cue_ID)));
+assert(isempty(intersect([1:length(p.stimTaskLabels)],p.miniblock.ITI_ID)));
+assert(isempty(intersect([1:length(p.stimTaskLabels)],p.miniblock.IBI_ID)));
+
+
 
 % timing
 p.miniblock.task_cue_dur          = 2.0; % seconds
-
+p.miniblock.IBI                 = [5,9]; % seconds Inter-block interval -- uniformly sample between [min,max]
 
 
 % %%%% RUN %%%%
@@ -56,8 +66,8 @@ p.run.n_double_epoch_miniblocks = 3;
 p.run.miniblocks_per_run = p.run.n_single_epoch_miniblocks + p.run.n_double_epoch_miniblocks;
 
 % timing
-p.run.pre_blank_dur     = 11.2; % s
-p.run.post_blank_dur    = 11.2; % s
+p.run.pre_blank_dur     = 11; % s
+p.run.post_blank_dur    = 11; % s
 p.run.total_run_dur     = 60*5.5; % s
 p.run.actual_task_dur = p.run.total_run_dur - p.run.pre_blank_dur - p.run.post_blank_dur; %s
 
@@ -74,23 +84,23 @@ p.trial.start_cue_dur       = 0.4; % seconds (thickening of dot rim)
 p.trial.spatial_cue_dur     = 0.8; % seconds
 p.trial.stim_array_dur      = 2.0; % seconds
 p.trial.response_win_dur    = 1.0; % seconds
-p.trial.end_cue_dur         = 0.4; % seconds  (thinning of dot rim)
-p.trial.ITI                 = [0.2:0.2:1.6]; % seconds
+% p.trial.end_cue_dur         = 0.4; % seconds  (thinning of dot rim)
+p.trial.ITI                 = [0.2:0.2:1.6]; % seconds (thinning of dot rim)
 p.trial.delay_dur           = 8.0; % seconds
 
-p.trial.single_epoch_dur   = sum([p.trial.start_cue_dur,... % seconds
-    p.trial.spatial_cue_dur, ...
-    p.trial.stim_array_dur, ...
-    p.trial.response_win_dur, ...
-    p.trial.end_cue_dur]);
+p.trial.single_epoch_dur   = ...
+    sum([p.trial.start_cue_dur,... % seconds
+        p.trial.spatial_cue_dur, ...
+        p.trial.stim_array_dur, ...
+        p.trial.response_win_dur]);
 
-p.trial.double_epoch_dur   = sum([p.trial.start_cue_dur,... % seconds
-    p.trial.spatial_cue_dur, ...
-    p.trial.stim_array_dur, ...
-    p.trial.delay_dur, ...
-    p.trial.stim_array_dur, ...
-    p.trial.response_win_dur, ...
-    p.trial.end_cue_dur]);
+p.trial.double_epoch_dur   = ...
+    sum([p.trial.start_cue_dur,... % seconds
+        p.trial.spatial_cue_dur, ...
+        p.trial.stim_array_dur, ...
+        p.trial.delay_dur, ...
+        p.trial.stim_array_dur, ...
+        p.trial.response_win_dur]);
 
 
 
