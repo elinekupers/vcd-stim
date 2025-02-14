@@ -3,10 +3,15 @@ function img = vcd_create_gabor(img_sz_pix,gauss_std_pix,sf,ori_deg, ph_deg, con
 %  img = vcd_create_gabor(img_sz_pix,gauss_std_pix,sf,ori_deg, ph_deg, contrast)
 %
 % INPUTS:
-%
+%   img_sz_pix      : (int) width (or height) of square support (pixels)
+%   gauss_std_pix   : (int) std of gaussian window (pixels)
+%   sf              : (int) sf of grating (cycles per pixels)
+%   ori_deg         : (int) orientation of grating, 0 = east (degrees)
+%   ph_deg          : (int) phase of grating (degrees)
+%   contrast        : (int) Michelson contrast of gabor (fraction 0-1)
 %
 % OUTPUT:
-%
+%   img             : (matrix) [x,y] gabor image
 %
 % Written by Eline Kupers @ UMN 2025/02/04
 
