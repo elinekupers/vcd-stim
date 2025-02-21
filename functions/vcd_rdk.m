@@ -1,6 +1,6 @@
-function [rdk,info,p] = vcd_rdk(p, disp)
+function [rdk,info,p] = vcd_rdk(p)
 % VCD function:
-%  [rdk,info,p] = vcd_rdk(p, disp)
+%  [rdk,info,p] = vcd_rdk(p)
 %
 % Purpose:
 %   Create a random dot motion kinetograms for  experimental display. 
@@ -8,7 +8,7 @@ function [rdk,info,p] = vcd_rdk(p, disp)
 % 
 % INPUTS:
 %  p            : rdk params
-%  disp         : monitor display params (struct) pixels per degree in field of view (pix)
+%   p.disp         : monitor display params (struct) pixels per degree in field of view (pix)
 %
 % OUTPUTS:
 %   rdk     : RDK images, 8x3 cell for each motion direction and coherence
@@ -19,10 +19,36 @@ function [rdk,info,p] = vcd_rdk(p, disp)
 %%
 % Written by Eline Kupers 2024/12
 %
+% For reference: unique rdks images
+%   uniqe_im   stim_loc   mot_dir    coh
+%     1.0000    1.0000   18.0000    0.0640
+%     2.0000    2.0000   62.0000    0.0640
+%     3.0000    1.0000   98.0000    0.0640
+%     4.0000    2.0000  152.0000    0.0640
+%     5.0000    1.0000  192.0000    0.0640
+%     6.0000    2.0000  236.0000    0.0640
+%     7.0000    1.0000  282.0000    0.0640
+%     8.0000    2.0000  326.0000    0.0640
+%     9.0000    1.0000   18.0000    0.1280
+%    10.0000    2.0000   62.0000    0.1280
+%    11.0000    1.0000   98.0000    0.1280
+%    12.0000    2.0000  152.0000    0.1280
+%    13.0000    1.0000  192.0000    0.1280
+%    14.0000    2.0000  236.0000    0.1280
+%    15.0000    1.0000  282.0000    0.1280
+%    16.0000    2.0000  326.0000    0.1280
+%    17.0000    1.0000   18.0000    0.5120
+%    18.0000    2.0000   62.0000    0.5120
+%    19.0000    1.0000   98.0000    0.5120
+%    20.0000    2.0000  152.0000    0.5120
+%    21.0000    1.0000  192.0000    0.5120
+%    22.0000    2.0000  236.0000    0.5120
+%    23.0000    1.0000  282.0000    0.5120
+%    24.0000    2.0000  326.0000    0.5120
 
 %% Set Display & RDK parameters
 
-p.stim.rdk.dots_aperture = floor([0 0 p.stim.rdk.img_sz_deg./2 p.stim.rdk.img_sz_deg./2].*disp.ppd); % [x y w h] in pixels
+p.stim.rdk.dots_aperture = floor([0 0 p.stim.rdk.img_sz_deg./2 p.stim.rdk.img_sz_deg./2].*p.disp.ppd); % [x y w h] in pixels
 p.stim.rdk.dots_angle = pi*p.stim.rdk.dots_direction/180;             % convert deg 2 rad
 
 %define an elliptic aperture in screen
@@ -30,7 +56,7 @@ ap_center = p.stim.rdk.dots_aperture(1:2);
 ap_radius = p.stim.rdk.dots_aperture(3:4);
 
 ndots = min(p.stim.rdk.max_dots_per_frame, ...
-    round(p.stim.rdk.dots_density .* (p.stim.rdk.dots_aperture(:,3).*p.stim.rdk.dots_aperture(:,4)) / disp.refresh_hz));
+    round(p.stim.rdk.dots_density .* (p.stim.rdk.dots_aperture(:,3).*p.stim.rdk.dots_aperture(:,4)) / p.disp.refresh_hz));
 
 if ~isempty(p.stim.rdk.delta_from_ref)
     rdk_motdir_ref = [0:length(p.stim.rdk.delta_from_ref)];
@@ -40,20 +66,21 @@ end
 
 % Preallocate space
 rdk = cell(length(p.stim.rdk.dots_direction),length(p.stim.rdk.dots_coherence),length(rdk_motdir_ref));
-n_unique_conds = size(rdk,1)*size(rdk,2);
+n_unique_conds = size(rdk,1)*size(rdk,2)*size(rdk,3);
 
 % Preallocate info table
-info = table(NaN(n_unique_conds,1), NaN(n_unique_conds,1), cell(n_unique_conds,1));
-info.Properties.VariableNames = {'dot_dir','dot_coh','dot_pos','motdir_deg_ref'};
-
-
+info = table(NaN(n_unique_conds,1), NaN(n_unique_conds,1), cell(n_unique_conds,1),NaN(n_unique_conds,1),NaN(n_unique_conds,1));
+info.Properties.VariableNames = {'dot_dir','dot_coh','dot_pos','motdir_deg_ref','unique_im'};
 
 % RNG seed
 rseed = [1000 2010];
 num_col = size(p.stim.rdk.dots_color,1);
 counter = 1;
 
-fH = figure(1); 
+tmpDir = fullfile(vcd_rootPath, 'workspaces','stimuli',['rdk_' datestr(now,'yyyymmdd')]);
+if ~exist('tmpDir','dir'), mkdir(tmpDir); end
+
+fH = figure(1); set(gcf,'Position',[1,1,1680,880]); 
 for cc = 1:length(p.stim.rdk.dots_coherence)
     
     for bb = 1:length(p.stim.rdk.dots_direction)
@@ -65,8 +92,8 @@ for cc = 1:length(p.stim.rdk.dots_coherence)
                 fprintf('\nMotion direction: %d deg', curr_motdir_deg)
             else
                 curr_motdir_deg = p.stim.rdk.dots_direction(bb)+p.stim.rdk.delta_from_ref(dd);
-                fprintf('\nMotion direction: %d + %d delta deg', ...
-                    curr_motdir_deg, p.stim.gabor.delta_from_ref(dd))
+                fprintf('\nMotion direction: %d: %d with %d delta deg', ...
+                    curr_motdir_deg, p.stim.rdk.dots_direction(bb), p.stim.gabor.delta_from_ref(dd))
             end
         
             if curr_motdir_deg < 0
@@ -74,8 +101,8 @@ for cc = 1:length(p.stim.rdk.dots_coherence)
             end
         
             %find the xy displacement of coherent
-            dxdy = repmat(p.stim.rdk.dots_speed * p.stim.rdk.dots_interval/ disp.refresh_hz *...
-                [cos(curr_motdir_deg) -sin(curr_motdir_deg)], ndots, 1) * disp.ppd;
+            dxdy = repmat(p.stim.rdk.dots_speed * p.stim.rdk.dots_interval/ p.disp.refresh_hz *... %% 
+                [cos(curr_motdir_deg) -sin(curr_motdir_deg)], ndots, 1) * p.disp.ppd;
             d_ppd = repmat(ap_radius, ndots, 1);
             dot_pos = (rand(ndots,2,p.stim.rdk.dots_interval)-0.5)*2;
             
@@ -94,7 +121,7 @@ for cc = 1:length(p.stim.rdk.dots_coherence)
             all_pos = zeros(size(dot_pos,1),size(dot_pos,2),p.stim.rdk.duration*p.stim.rdk.dots_interval);
             
             % Draw dots
-            max_t = p.stim.rdk.duration; %p.duration/disp.refresh_hz; % start_t = GetSecs;
+            max_t = p.stim.rdk.duration; %p.duration/p.disp.refresh_hz; % start_t = GetSecs;
             t = 0;
             
             while 1
@@ -182,27 +209,44 @@ for cc = 1:length(p.stim.rdk.dots_coherence)
                     end
                 end
             end
-            rdk{bb,cc,dd+1} = frames;
+%             rdk{bb,cc,dd+1} = frames;
             
             info.dot_dir(counter) = curr_motdir_deg;
             info.dot_coh(counter) = p.stim.rdk.dots_coherence(cc);
+            info.dot_dir_i(counter) = bb;
+            info.dot_coh_i(counter) = cc;
             info.dot_pos{counter} = {all_pos};
+            
             if dd == 0,
-                info.motdir_deg_ref{counter} = 0;
+                info.motdir_deg_ref(counter) = 0;
+                info.motdir_deg_ref_i(counter) = 0;
+                info.unique_im(counter) = bb + ((cc-1)*length(p.stim.rdk.dots_direction));
             else
-                info.motdir_deg_ref{counter} = p.stim.gabor.delta_from_ref(dd);
+                info.motdir_deg_ref(counter) = p.stim.gabor.delta_from_ref(dd);
+                info.motdir_deg_ref_i(counter) = dd;
+                info.unique_im(counter) = NaN;
             end
+            
+            % save intermediate stage in case matlab crashes 
+            rdk_info = info(counter,:);
+            save(fullfile(tmpDir, sprintf('%d_rdk_ori%d_coh%d_delta%d.mat', info.unique_im(counter), bb,cc,dd)),'frames','rdk_info','-v7.3');
+
             clear frames all_pos
             counter = counter +1;
+
         end
     end
 end
 
 
+
+
+
 if p.store_imgs
-    saveDir = fileparts(fullfile(p.stim.rdk.stimfile));
-    if ~exist(saveDir,'dir'), mkdir(saveDir); end
-    save(fullfile(sprintf('%s_%s.mat',p.stim.rdk.stimfile,datestr(now,30))),'rdk','info','-v7.3');
+    % we store separate conditions, otherwise the file gets ginormous
+%     saveDir = fileparts(fullfile(p.stim.rdk.stimfile));
+%     if ~exist(saveDir,'dir'), mkdir(saveDir); end
+%     save(fullfile(sprintf('%s_%s.mat',p.stim.rdk.stimfile,datestr(now,30))),'rdk','info','-v7.3');
     
     saveDir = fileparts(fullfile(p.stim.rdk.infofile));
     if ~exist(saveDir,'dir'), mkdir(saveDir); end
