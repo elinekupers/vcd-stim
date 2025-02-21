@@ -1,4 +1,4 @@
-function bckgrnd_im = vcd_pinknoisebackground(p, type, borderwidth, num)
+function bckgrnd_im = vcd_pinknoisebackground(p, type, borderwidth, num, pixoffset)
 
 if ~exist('type','var') || isempty(type)
     type = 'puzzle'; % can dotring or comb (puzzle+dotring)
@@ -12,12 +12,19 @@ if ~exist('num','var') || isempty(num)
     num = 1; % number of generated noise images
 end
 
+if ~exist('pixoffset','var') || isempty(pixoffset)
+    pixoffset = [0,0]; % offset of center in pixels
+end
+
 % generate pink noise image
 pixelrange = [1 255]; % pixel range
 scale_images_fixedrng = @(x,b) uint8((x - min(b)) / (max(b) - min(b)) * diff(pixelrange) + min(pixelrange));
-im0 = generatepinknoise(p.disp.w_pix,1,num,0);
+
+im0 = generatepinknoise(p.disp.w_pix ,1,num,0);
 
 % trim edges (pinknoise image is square)
+
+
 screen_edge_pix = (p.disp.w_pix - p.disp.h_pix)/2;
 trimMe          = [1:screen_edge_pix; (p.disp.w_pix-screen_edge_pix+1):p.disp.w_pix];
 std_norm        = p.stim.bckground.std_clip_range*std(im0(:));
@@ -29,10 +36,19 @@ for ii = 1:num
     im1(:,:,ii) = scale_images_fixedrng(tmp,std_norm.*[-1 1]);
 end
 
+% deal with center offset
+if ~iszero(pixoffset) || ~isempty(pixoffset)
+    xc = p.disp.xc + pixoffset(1);
+    yc = p.disp.yc + pixoffset(2);
+else
+    xc = p.disp.xc;
+    yc = p.disp.yc;
+end
+
 % create support for addition stim masks
 bckground_mask = true(size(im1,1),size(im1,2));
-x = (1:p.disp.w_pix)-p.disp.xc;
-y = (1:p.disp.h_pix)-p.disp.yc;
+x = (1:p.disp.w_pix)-xc;
+y = (1:p.disp.h_pix)-yc;
 [XX,YY] = meshgrid(x,y);
 
 % Do we want a skinny or fat border around the mask?
@@ -42,7 +58,6 @@ elseif strcmp(borderwidth,'skinny')
     rim = 0;
 end
 
-% 
 switch type
     
     case 'puzzle'
@@ -122,6 +137,14 @@ end
 % bckgrnd_im = bsxfun(@(x,y) x.*y, im1, bckground_mask);
 tmp = reshape(im1,size(im1,1)*size(im1,2),[]);
 tmp(bckground_mask(:),:) = p.stim.bckgrnd_grayval;
+
+% square values if using BOLDscreen
+if strcmp(p.disp.name,'7TAS_BOLDSCREEN32')
+    tmp0 = double(tmp);
+    tmp0 = tmp0.^2;
+    tmp = uint8(tmp0);
+end
+
 bckgrnd_im = reshape(tmp, size(bckground_mask,1),size(bckground_mask,2),num);
 
 % if p.verbose
@@ -135,9 +158,9 @@ bckgrnd_im = reshape(tmp, size(bckground_mask,1),size(bckground_mask,2),num);
 
 if p.stim.store_imgs
     fprintf('\nStoring images..')
-    saveDir = fileparts(fullfile(p.stim.gabor.stimfile));
+    saveDir = fileparts(fullfile(p.stim.bckground.stimfile));
     if ~exist(saveDir,'dir'), mkdir(saveDir); end
-    save(fullfile(saveDir,sprintf('background_%s_%s_%s_%s.mat',type,borderwidth,p.disp.name,datestr(now,30))),'bckgrnd_im','-v7.3');
+    save(fullfile(sprintf('%s_%s_%s_%s.mat',p.stim.bckground.stimfile,type,borderwidth,datestr(now,30))),'bckgrnd_im','-v7.3');
 end
 
 
