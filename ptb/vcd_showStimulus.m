@@ -1,159 +1,264 @@
 function [timeframes, timekeys, digitrecord, trialoffsets] = ...
-    vcd_showStimulus(p, images, subj_session, setupscript, soafun)
+    vcd_showStimulus(params,exp_im, bckground_im, fix_im, ...
+                     run_image_order, introscript, taskscript, fixsoafun, movieflip, tfunEYE)
 
 
-
-
-% Get [x,y]-center in pixels of peripheral stimuli given display size, stim size and offest 
-scan.centers = [disp.xc + p.stim.x0_pix + p.offset_pix(1), ...
-                disp.yc + p.stim.y0_pix + p.offset_pix(2)];
-
-            
-% get information about the PT setup
-win = firstel(Screen('Windows'));
-rect = Screen('Rect',win);
-
+%% preallocate space
+data.timeKeys = {};
+                 
 %% PREPARE IMAGES
 
+% Get [x,y]-center in pixels of peripheral stimuli given display size, stim size and offest 
+scan.centers = [params.stim.xc + params.stim.x0_pix, ...
+                params.stim.yc + params.stim.y0_pix];
+
 %%%%%%% FLIP UP/DOWN, LEFT/RIGHT
-% if p.movieflip(1)  % flip up-down
-%     scan.centers = repmat([disp.w_pix disp.h_pix],length(scan.centers),1)-scan.centers;
-% end
+if params.movieflip(1)  % flip up-down
+    scan.centers = repmat([params.disp.w_pix params.disp.h_pix],length(scan.centers),1)-scan.centers;
+end
 
 %%%%%%% CENTER RECT
-% scan.rects = CenterRectOnPoint([0 0 scan.squareSize scan.squareSize],scan.centers(:,1), scan.centers(:,2));
+scan.rects = CenterRectOnPoint([0 0 scan.squareSize scan.squareSize],scan.centers(:,1), scan.centers(:,2));
 
-%%%%%%% MAKE TEXTURES
-
-% bckgrnd_im = vcd_pinknoisebackground(p, type, borderwidth, num)
+%% %%%%%%% MAKE TEXTURES
 
 % ptb stuff
+win = firstel(Screen('Windows'));
+rect = Screen('Rect',win); % what is the total rect
+% rect = CenterRect(round([0 0 rect(3)*winsize rect(4)*winsize]),rect);
+[win, rect] = Screen('OpenWindow',max(Screen('Screens')),127,rect);
+scan.ifi = Screen('GetFlipInterval',win);
+Screen('Preference', 'SyncTestSettings', .0004);
+Screen('BlendFunction', win, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+Screen('Preference','TextRenderer',1);
 HideCursor;
 Priority(9);
 
 Screen('FillRect',win,grayval,rect);
 
-% Make textures for each stimulus class
-stimclass = {'gabor','dot','rdk','cobj','ns'};
-num_stimclass = length(stimclass);
+% Make textures
+bckrgound_texture = Screen('MakeTexture', win, bckground_im);
 
-for cc = 1:length(stimclass)
+for nn = 1:length(run_fix_order)
+    fix_texture{nn,1} = Screen('MakeTexture', win, fix_im(:,:,:,nn,1)); % thin
+    fix_texture{nn,2} = Screen('MakeTexture', win, fix_im(:,:,:,nn,2)); % thick
+end
+
+stim_texture = {};
+for nn = 1:length(run_image_order)
+    for mm = 1:length(exp_im{nn})
+        stim_texture{nn,mm} = Screen('MakeTexture',win, exp_im{nn});
+    end
+end
+
+
+
+
+
+% display instruction screen
+WaitSecs(1);
+Screen('FillRect',win,params.stim.bckgrnd_grayval);
+Screen('Flip',win);
+DrawFormattedText(windowPtr,introscript,'center','center',textColor);
+Screen('Flip',win);
+fprintf('Instructions are on screen, waiting for trgger...\n');
+
+
+data.timeKeys = [data.timeKeys; {ts 'trigger'}];
+
+
+%%% PTONMOVIE
+% wait for a key press to start
+fprintf('press trigger key to begin the movie. (consider turning off network, energy saver, software updates.)\n');
+safemode = 0;
+while 1
+  [secs,keyCode,deltaSecs] = KbWait(-3,2);
+  temp = KbName(keyCode);
+  if isequal(temp(1),'=')
+    if safemode
+      safemode = 0;
+      fprintf('SAFE MODE OFF (the scan can start now).\n');
+    else
+      safemode = 1;
+      fprintf('SAFE MODE ON (the scan will not start).\n');
+    end
+  else
+    if safemode
+    else
+      if isempty(triggerkey) || isequal(temp(1),triggerkey)
+        break;
+      end
+    end
+  end
+end
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%% log the start!
+
+fprintf('STIMULUS STARTED.\n');
+eval(tfunEYE) %Eyelink('Message','SYNCTIME'));
+data.timekeys = [data.timekeys; {GetSecs 'trigger'}];
+
+%%%%%%%%%%%%%%%%%%%%%%%% miscellaneous PT stimulus drawing stuff
+
+Screen('FillRect',win,grayval);  % REMOVED! this means do whole screen.    % ,movierect);
+
+txttemp = feval(flipfun,images(:,:,:,frameorder(1,frame0)));
+stim_texture = Screen('MakeTexture',win,txttemp);
+Screen('DrawTexture',win,stim_texture,[],movierect,0,filtermode,1,framecolor(frame0,:));
+Screen('Close',stim_texture);
+
+stim_texture = Screen('MakeTexture',win,cat(3,fixationimage(:,:,:,-fixationorder(1+frame0)),uint8(fixationorder(end)*fixationalpha)));
+Screen('DrawTexture',win,stim_texture{p},[],fixationrect{p},0,0);
+Screen('Close',stim_texture{p});
+
+% give hint to PT that we're done drawing
+Screen('DrawingFinished',win);
+
+%%%%%%%%%%%%%%%%%%%%%%%% the main while loop that actually puts up stimuli and records button presses
+
+when = 0;
+
+% here, deal with making the stimulus frame / texture / stuff
+% read input until we have to do the flip
+while 1
+
+  % if we are in the initial case OR if we have hit the when time, then display the frame
+  if when == 0 | GetSecs >= when
+  
+    % issue the flip command and record the empirical time
+    [VBLTimestamp,StimulusOnsetTime,FlipTimestamp,Missed,Beampos] = Screen('Flip',win,  0);
+    timeframes(framecnt) = VBLTimestamp;
     
-    texture.(stimclass(cc)) = {};
-
-    for p=1:size(images.gabor(),4)
-        texture{p} = Screen('MakeTexture',win, images{:,:,:,p});
+    % get matlab's now for the very first stimulus frame
+    if framecnt==1
+      absnowtime = now;
     end
     
+%     % report text to command window?
+%     if ~isempty(reporttext)
+%       fprintf(reporttext);
+%     end
+
+    % if we missed, report it
+    if when ~= 0 && (VBLTimestamp - whendesired) > (mfi * (1/2))
+      glitchcnt = glitchcnt + 1;
+      didglitch = 1;
+    else
+      didglitch = 0;
+    end
     
+    % get out of this loop
+    break;
+  
+  % otherwise, try to read input
+  else
+    [keyIsDown,secs,keyCode,deltaSecs] = KbCheck(-3);  % all devices
+    if keyIsDown
+
+      % get the name of the key and record it
+      kn = KbName(keyCode);
+      data.timekeys = [data.timekeys; {secs kn}];
+
+      % check if ESCAPE was pressed
+      if isequal(kn,'ESCAPE')
+        fprintf('Escape key detected.  Exiting prematurely.\n');
+        getoutearly = 1;
+        break;
+      end
+
+    end
+  end
+
 end
 
 
-
-fTex = cell(1,length(scan.allFlips)-1);
-
-%%%%%%% Load textures
-% for n = 1:(length(scan.allFlips)-1)
-% 
-%     if any(flip.IDs{n} > 0) % draw 1 or 4 squares
-%         trialImages = flip.IDs{n};
-% 
-%         for ii = 1:length(trialImages)
-%             f = squares{trialImages(ii)};
-%             fTex{n}(ii) = Screen('MakeTexture',win,f);
-%             ok = Screen('PreloadTextures', win, fTex{n}(ii)); %#ok<NASGU>
-%             
+% collect response and measure timing
+%     if t > 1 %ignore the first cell
+%         previous = t-1;
+%         if dot_cond(t) ~= dot_cond(previous)
+%             ts = GetSecs;
+%             Eyelink('message', sprintf('STIM_ONSET %d %d',dot_cond(t),ts));
+%             data.timeKeys = [data.timeKeys; {ts 'stim'}];
+%             trialEnd = ts-startTime;
+%             data.timePerTrial(t) = trialEnd; % recorded trial duration
 %         end
 %     end
-% end  
+%     
+%     %record keys
+%     [keys RT] = recordKeys(startTime+(t-1)*viewTime,viewTime,k,params.ignorekeys); %KJ lag fix
+%     data.keys{t} = keys;
+%     data.rt(t) = min(RT);
+%     if isequal(data.keys{t}, 'ESCAPE')
+%         fprintf('Escape key detected. Exiting prematurely. \n');
+%         getoutearly = 1;
+%         return;
+%     end 
 
+% PUT THE STIMULUS ON THE SCREEN USING A FLIP
+Screen('FillRect',win,grayval,rect);
+Screen('Flip',win);
 
-
-
-
-%%%% PTONMOVIE
-% % wait for a key press to start
-% fprintf('press trigger key to begin the movie. (consider turning off network, energy saver, software updates.)\n');
-% safemode = 0;
-% while 1
-%   [secs,keyCode,deltaSecs] = KbWait(-3,2);
-%   temp = KbName(keyCode);
-%   if isequal(temp(1),'=')
-%     if safemode
-%       safemode = 0;
-%       fprintf('SAFE MODE OFF (the scan can start now).\n');
-%     else
-%       safemode = 1;
-%       fprintf('SAFE MODE ON (the scan will not start).\n');
-%     end
-%   else
-%     if safemode
-%     else
-%       if isempty(triggerkey) || isequal(temp(1),triggerkey)
-%         break;
-%       end
-%     end
-%   end
-% end
-
-
-% %% NEWER SETUP SCREEN???
-% Screen('FillRect',win,grayval,rect);
-% 
-% %%% initial window - wait for backtick
-% startText = 'Waiting for trigger, get ready!';
-% Screen('DrawText',win, startText, 10,10,params.textColor);
-% 
-% % display instruction screen
-% WaitSecs(1);
-% Screen('FillRect',windowPtr,blankColor);
-% Screen('Flip',windowPtr);
-% DrawFormattedText(windowPtr,instruction_str,'center','center',textColor);
-% Screen('Flip',windowPtr);
-% fprintf('waiting for trgger...\n');
-% 
-% % TR trigger to start experiment
-% getKey(params.triggerkey,k);
-% fprintf('*** TRIGGER DETECTING. NOW STARTING. ***\n');
-% ts = GetSecs; %record when trigger happened
-% Eyelink('message', sprintf('TRIGGER %d',ts)); % USE tfunEYE
-% subject.timeKeys = [subject.timeKeys; {ts 'trigger'}];
-
-%% MAIN EXPERIMENT
-
-% target= struct('target_color',[],'xy_pixels',[],'background_color',[]);
-
-if scan.trigger
-    Screen(win, 'TextSize', 24);
+% update when
+if didglitch
+  % if there were glitches, proceed from our earlier when time.
+  % set the when time to 9/10 a frame before the desired frame.
+  % notice that the accuracy of the mfi is strongly assumed here.
+  whendesired = whendesired + mfi * frameduration;
+  when = whendesired - mfi * (9/10);
 else
-    Screen(win, 'TextSize', 18);
+  % if there were no glitches, just proceed from the last recorded time
+  % and set the when time to 9/10 a frame before the desired time.
+  % notice that the accuracy of the mfi is only weakly assumed here,
+  % since we keep resetting to the empirical VBLTimestamp.
+  whendesired = VBLTimestamp + mfi * frameduration;
+  when = whendesired - mfi * (9/10);  % should we be less aggressive??
 end
 
-Screen('BlendFunction', win, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% we have to wait until the last frame is done.  so this is how we hack that in.
+if DONE WITH EXPERIMENT
+  while 1
+    if GetSecs >= whendesired
+      eval(tfunEYE); %Eyelink('Message','SYNCTIME');
+      timekeys = [timekeys; {GetSecs 'DONE'}];
+      break;
+    end
+  end
+end
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% PT CLEANUP STUFF
+
+% restore priority and cursor
+Priority(oldPriority);
+ShowCursor;
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% BUTTON LOGGING CLEAN UP STUFF
+
+% adjust the times in timeframes and timekeys to be relative to the first time recorded.
+% thus, time==0 corresponds to the showing of the first frame.
+starttime = timeframes(1);
+timeframes = timeframes - starttime;
+if size(timekeys,1) > 0
+  timekeys(:,1) = cellfun(@(x) x - starttime,timekeys(:,1),'UniformOutput',0);
+end
+timekeys = [{absnowtime 'absolutetimefor0'}; timekeys];
 
 
 
-
-
-[w,h] = RectSize(Screen('TextBounds',win,p.task.));
-DrawFormattedText(win, p.task, xc-(w/2),yc-(h/2), p.taskColor(1,:),[], flipLR, flipUD);
-Screen(win, 'Flip', 0);
-
-
-
-
-
-
-
-% main for loop drawing stimuli   
-for t = 1:numTrials
+% % main for loop drawing stimuli   
+% for t = 1:numTrials
+%     
+%     
+%     currTrial = [];
+%     
+%     Screen('FillRect', windowPtr, target(this_trial).color); 
+%     Screen('DrawTextures', windowPtr, target(this_trial).Tex, [], target(this_trial).Rects);
+%     Screen('Flip',windowPtr); 
     
     
-    this_trial = dot_cond(t);
     
-    Screen('FillRect', windowPtr, target(this_trial).color); 
-    Screen('DrawTextures', windowPtr, target(this_trial).Tex, [], target(this_trial).Rects);
-    Screen('Flip',windowPtr); 
     
     
     %% RDK screen stuff
@@ -181,25 +286,63 @@ for t = 1:numTrials
     
     
 
-    % collect response and measure timing
-    if t > 1 %ignore the first cell
-        previous = t-1;
-        if dot_cond(t) ~= dot_cond(previous)
-            ts = GetSecs;
-            Eyelink('message', sprintf('STIM_ONSET %d %d',dot_cond(t),ts));
-            subject.timeKeys = [subject.timeKeys; {ts 'stim'}];
-            trialEnd = ts-startTime;
-            subject.timePerTrial(t) = trialEnd; % recorded trial duration
-        end
-    end
     
-    %record keys
-    [keys RT] = recordKeys(startTime+(t-1)*viewTime,viewTime,k,p.ignorekeys); %KJ lag fix
-    subject.keys{t} = keys;
-    subject.rt(t) = min(RT);
-    if isequal(subject.keys{t}, 'ESCAPE')
-        fprintf('Escape key detected. Exiting prematurely. \n');
-        getoutearly = 1;
-        return;
-    end 
 end
+
+
+
+%% OLD STUFF MAIN EXPERIMENT
+
+
+% OLD STUFF TR trigger to start experiment
+% getKey(params.triggerkey,k);
+% fprintf('*** TRIGGER DETECTING. NOW STARTING. ***\n');
+% ts = GetSecs; %record when trigger happened
+% Eyelink('message', sprintf('TRIGGER %d',ts)); % USE 
+
+
+% target= struct('target_color',[],'xy_pixels',[],'background_color',[]);
+
+% if scan.trigger
+%     Screen(win, 'TextSize', 24);
+% else
+%     Screen(win, 'TextSize', 18);
+% end
+% 
+% Screen('BlendFunction', win, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+% rect = Screen('Rect',screennum);  % what is the total rect
+% rect = CenterRect(round([0 0 rect(3)*winsize rect(4)*winsize]),rect);
+% [win, rect] = Screen('OpenWindow',max(Screen('Screens')),127,rect);
+% 
+% params.ifi = Screen('GetFlipInterval',win);
+% Screen('Preference', 'SyncTestSettings', .0004);
+% Screen('BlendFunction', w, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+% Screen('Preference','TextRenderer',1);
+% HideCursor;
+
+
+%%%%%%% Load textures
+% fTex = cell(1,length(scan.allFlips)-1);
+% for n = 1:(length(scan.allFlips)-1)
+% 
+%     if any(flip.IDs{n} > 0) % draw 1 or 4 squares
+%         trialImages = flip.IDs{n};
+% 
+%         for ii = 1:length(trialImages)
+%             f = squares{trialImages(ii)};
+%             fTex{n}(ii) = Screen('MakeTexture',win,f);
+%             ok = Screen('PreloadTextures', win, fTex{n}(ii)); %#ok<NASGU>
+%             
+%         end
+%     end
+% end  
+
+%% DISPLAY TASK INSTRUCTIONS PRE-BACKTICK
+% [w,h] = RectSize(Screen('TextBounds',win,p.task));
+% DrawFormattedText(win, params.task, xc-(w/2),yc-(h/2), params.taskColor(1,:),[], flipLR, flipUD);
+% Screen(win, 'Flip', 0);
+% Screen('FillRect',win,grayval,rect);
+%%% initial window - wait for backtick
+% startText = 'Waiting for trigger, get ready!';
+% Screen('DrawText',win, startText, 10,10,params.textColor);
