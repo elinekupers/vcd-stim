@@ -16,7 +16,7 @@ el.drift_correction_success_beep    = [0 0 0]; % no beep
 el.backgroundcolour                 = [127 127 127]; %same background as experiment
 el.msgfontcolour                    = [0 0 0]; %same text as experimentel
 el.calibrationtargetsize            = 1.5; % pixels ??
-el.calibrationtargetwidth           = .6; % pixels???
-el.calibrationtargetcolor           = [255 0 0]; % black?
+el.calibrationtargetwidth           = .6; % inner area pixels???
+el.calibrationtargetcolor           = [0 0 0]; % black?
 
 end
