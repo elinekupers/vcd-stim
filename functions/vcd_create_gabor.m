@@ -1,4 +1,4 @@
-function img = vcd_create_gabor(img_sz_pix,gauss_std_pix,sf,ori_deg, ph_deg, contrast)
+function img = vcd_create_gabor(img_sz_pix,gauss_std_pix,sf,ori_deg, ph_deg, contrast, grayval)
 % 
 %  img = vcd_create_gabor(img_sz_pix,gauss_std_pix,sf,ori_deg, ph_deg, contrast)
 %
@@ -62,7 +62,7 @@ img0 = img0./max(maxval,minval);
 img = contrast * img0;
 
 % Convert to image range [0 255]
-img  = floor((img*255)+127);
+img  = floor((img*255)+grayval);
 
 % % alternative normalization
 % maxval_c = abs(max(max(img_c)));
