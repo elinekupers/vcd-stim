@@ -7,7 +7,7 @@ function [data, timeframes, digitrecord, trialoffsets] = ...
                         tfunEYE)
 
 
-%% preallocate space
+%% Preallocate space for key presses and timestamps
 data.timeKeys = {};
                  
 %% PREPARE IMAGES
@@ -23,7 +23,45 @@ else
   flipfun = @(x) x;
 end
 
+% ptviewmovie params
+% <framecolor> (optional) is size(<frameorder>,2) x 3 with values in [0,255].
+%   each row indicates a multiplication on color channels to apply for a 
+%   given frame.  default is 255*ones(size(<frameorder>,2),3) which means 
+%   to multiply each channel by 1 (i.e. do nothing special).  note that
+%   when an entry in <frameorder> is 0, <framecolor> has no effect for that entry.
+%   <framecolor> can also be size(<frameorder>,2) x 1 with values in [0,1]
+%   indicating an alpha change.
+% <scfactor> (optional) is a positive number with the scaling to apply
+%   to the images in <images>.  if supplied, we multiply the number
+%   of pixels in each dimension by <scfactor> and then round.  we use
+%   bilinear filtering when rendering the images.  default is 1, and in
+%   this case, we use nearest neighbor filtering (which is presumably
+%   faster than bilinear filtering).
+% <allowforceglitch> (optional) is
+%   0 means do nothing special
+%   [1 D] means allow keyboard input 'p' to force a glitch of duration D secs.
+%     note that this has an effect only if <detectinput> is on.
+%     forcing glitches is useful for testing purposes.
+%   default: 0.
+filtermode = choose(params.stim.scfactor==1,0,1);
+framecolor = 255*ones(1,3); 
+allowforceglitch = 0;
+frameorder = size(timing.trig_stim,2);
 
+%% Create background and fixation textures prior to exp onset (as we need them throughout the experiment)
+bckground_rect = CenterRect([0 0 round(size(scan.bckground_im,1)) round(size(scan.bckground_im,2))],rect);
+bckrgound_texture = Screen('MakeTexture', win, scan.bckground_im);
+
+% make fixation dot texture
+fix_texture_thin = {};
+fix_texture_thick = {};
+fix_rect_thin = CenterRect([0 0 round(size(scan.fix_im,1)) round(size(scan.bckground_im,2))],rect);
+fix_rect_thick = CenterRect([0 0 round(size(scan.fix_im,1)) round(size(scan.bckground_im,2))],rect);
+
+for ll = 1:length(fixationimage,3) % loop over luminance values
+    fix_texture_thin{ll} = Screen('MakeTexture',win,cat(3,fixationimage(:,:,ll,1),params.stim.fix.dotopacity));
+    fix_texture_thick{ll} = Screen('MakeTexture',win,cat(3,fixationimage(:,:,ll,2),params.stim.fix.dotopacity));
+end
 
 
 %% ptb stuff
@@ -38,12 +76,10 @@ Screen('Preference','TextRenderer',1);
 HideCursor;
 Priority(9);
 
-Screen('FillRect',win,params.stim.bckgrnd_grayval,rect);
 
 % display instruction screen
+Screen('FillRect',win,params.stim.bckgrnd_grayval,rect);
 
-% do setup if necessary
-% showinstructionscreen(fileIn,txtOffset,instTextWrap,textsize,background,offset)
 if ~isempty(introscript)
   if ischar(introscript)
     evalin('caller',setupscript);
@@ -52,15 +88,12 @@ if ~isempty(introscript)
   end
 end
 
-% WaitSecs(1);
-% Screen('FillRect',win,params.stim.bckgrnd_grayval);
-% Screen('Flip',win);
-% DrawFormattedText(windowPtr,introscript,'center','center',textColor);
-% Screen('Flip',win);
-% fprintf('Instructions are on screen, waiting for trgger...\n');
+WaitSecs(1);
+Screen('Flip',win);
+fprintf('Instructions are on screen, waiting for trgger...\n');
 
-%%% PTONMOVIE
-% wait for a key press to start
+
+%% SAFEMODE: Wait for a key press to start
 fprintf('press trigger key to begin the movie. (consider turning off network, energy saver, software updates.)\n');
 safemode = 0;
 while 1
@@ -93,53 +126,54 @@ data.timekeys = [data.timekeys; {GetSecs 'trigger'}];
 
 %% %%%%%%% MAKE TEXTURES
 
-filtermode = choose(params.stim.scfactor==1,0,1);
-framecolor = 255*ones(1,3); 
-% <framecolor> (optional) is size(<frameorder>,2) x 3 with values in [0,255].
-%   each row indicates a multiplication on color channels to apply for a 
-%   given frame.  default is 255*ones(size(<frameorder>,2),3) which means 
-%   to multiply each channel by 1 (i.e. do nothing special).  note that
-%   when an entry in <frameorder> is 0, <framecolor> has no effect for that entry.
-%   <framecolor> can also be size(<frameorder>,2) x 1 with values in [0,1]
-%   indicating an alpha change.
-% <scfactor> (optional) is a positive number with the scaling to apply
-%   to the images in <images>.  if supplied, we multiply the number
-%   of pixels in each dimension by <scfactor> and then round.  we use
-%   bilinear filtering when rendering the images.  default is 1, and in
-%   this case, we use nearest neighbor filtering (which is presumably
-%   faster than bilinear filtering).
-% <allowforceglitch> (optional) is
-%   0 means do nothing special
-%   [1 D] means allow keyboard input 'p' to force a glitch of duration D secs.
-%     note that this has an effect only if <detectinput> is on.
-%     forcing glitches is useful for testing purposes.
-%   default: 0.
-% Make background texture
-bckground_rect = CenterRect([0 0 round(size(scan.bckground_im,1)) round(size(scan.bckground_im,2))],rect);
-bckrgound_texture = Screen('MakeTexture', win, scan.bckground_im);
+% show the movie
+framecnt = 0;
+for frame = 1:(frameorder+1)
+  
+    framecnt = framecnt + 1;
+    frame0 = floor(frame);
+    reporttext = '';
+
+      % we have to wait until the last frame is done.  so this is how we hack that in.
+      if frame0 == size(frameorder,2)+1
+        while 1
+          if GetSecs >= whendesired
+            getoutearly = 1;
+            if ~isempty(triggerfun)
+              feval(triggerfun);
+              timekeys = [timekeys; {GetSecs 'trigger'}];
+            end
+            break;
+          end
+        end
+      end
+
+      % get out early?
+      if getoutearly
+        break;
+      end
+
+
+% Draw background and thin rim fix dot texture
 Screen('DrawTexture',win,bckrgound_texture,[],bckground_rect,0,filtermode,1,framecolor);
-Screen('Close',bckrgound_texture);
+Screen('DrawTexture',win,fix_texture,[],fix_rect_thin,0,filtermode,1, params.stim.fix.dotopacity);
 
-% for nn = 1:length(fix_im)
-%     fix_texture{nn,1} = Screen('MakeTexture', win, fix_im(:,:,:,nn,1)); % thin
-%     fix_texture{nn,2} = Screen('MakeTexture', win, fix_im(:,:,:,nn,2)); % thick
-% end
-% 
-% stim_texture = {};
-% for nn = 1:length(exp_im)
-%     for mm = 1:length(exp_im{nn})
-%         stim_texture{nn,mm} = Screen('MakeTexture',win, exp_im{nn});
-%     end
-% end
+% Draw stim texture
+stim_texture = {};
+for nn = 1:length(scan.exp_im)
+    for mm = 1:length(scan.exp_im{nn})
+        stim_texture{nn,mm} = Screen('MakeTexture',win, scan.exp_im{nn});
+    end
+end
 
-txttemp = feval(flipfun,images(:,:,:,frameorder(1,frame0)));
-stim_texture = Screen('MakeTexture',win,txttemp);
-Screen('DrawTexture',win,stim_texture,[],bckground_rect,0,filtermode,1,framecolor(frame0,:));
-Screen('Close',stim_texture);
+% txttemp = feval(flipfun,images(:,:,:,frameorder(1,frame0)));
+% stim_texture = Screen('MakeTexture',win,txttemp);
+% Screen('DrawTexture',win,stim_texture,[],bckground_rect,0,filtermode,1,framecolor(frame0,:));
+% Screen('Close',stim_texture);
 
-stim_texture = Screen('MakeTexture',win,cat(3,fixationimage(:,:,:,-fixationorder(1+frame0)),uint8(fixationorder(end)*fixationalpha)));
-Screen('DrawTexture',win,stim_texture{p},[],fixationrect{p},0,0);
-Screen('Close',stim_texture{p});
+% stim_texture = Screen('MakeTexture',win,cat(3,fixationimage(:,:,:,-fixationorder(1+frame0)),uint8(fixationorder(end)*fixationalpha)));
+% Screen('DrawTexture',win,stim_texture{p},[],fixationrect{p},0,0);
+% Screen('Close',stim_texture{p});
 
 % give hint to PT that we're done drawing
 Screen('DrawingFinished',win);
@@ -257,7 +291,14 @@ if DONE WITH EXPERIMENT
   end
 end
 
+
+
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% PT CLEANUP STUFF
+
+Screen('Close',bckrgound_texture);
+Screen('Close',bckrgound_texture);
+
 
 % restore priority and cursor
 Priority(oldPriority);
