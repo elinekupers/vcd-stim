@@ -27,8 +27,7 @@ if load_params
     end
 else
     
-    tolerance = 10.^-10;
-    nearZero = @(x,tol) abs(x) < tol;
+
     
     % Preallocate space
     exp_session = struct('session',[],'run',[],'miniblock',[],'trial', []);
@@ -81,8 +80,6 @@ else
     assert(isempty(intersect([1:length(exp_session.stimTaskLabels)],exp_session.miniblock.task_cue_ID)));
     assert(isempty(intersect([1:length(exp_session.stimTaskLabels)],exp_session.miniblock.ITI_ID)));
     assert(isempty(intersect([1:length(exp_session.stimTaskLabels)],exp_session.miniblock.IBI_ID)));
-    
-    
     
     % timing
     exp_session.miniblock.task_cue_dur        = p.stim.fps*60; % 2.0 seconds
