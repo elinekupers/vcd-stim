@@ -1,6 +1,11 @@
-function [timeframes, timekeys, digitrecord, trialoffsets] = ...
-    vcd_showStimulus(params,exp_im, bckground_im, fix_im, ...
-                     run_image_order, introscript, taskscript, fixsoafun, movieflip, tfunEYE)
+function [data, timeframes, digitrecord, trialoffsets] = ...
+    vcd_showStimulus(params, ...
+                        scan, ...
+                        timing, ...
+                        introscript, ...
+                        taskscript, ...
+                        movieflip, ...
+                        tfunEYE)
 
 
 %% preallocate space
@@ -8,22 +13,22 @@ data.timeKeys = {};
                  
 %% PREPARE IMAGES
 
-% Get [x,y]-center in pixels of peripheral stimuli given display size, stim size and offest 
-scan.centers = [params.stim.xc + params.stim.x0_pix, ...
-                params.stim.yc + params.stim.y0_pix];
-
-%%%%%%% FLIP UP/DOWN, LEFT/RIGHT
-if params.movieflip(1)  % flip up-down
-    scan.centers = repmat([params.disp.w_pix params.disp.h_pix],length(scan.centers),1)-scan.centers;
+% deal with movieflip
+if movieflip(1) && movieflip(2)
+  flipfun = @(x) flipdim(flipdim(x,1),2);
+elseif movieflip(1)
+  flipfun = @(x) flipdim(x,1);
+elseif movieflip(2)
+  flipfun = @(x) flipdim(x,2);
+else
+  flipfun = @(x) x;
 end
 
-%%%%%%% CENTER RECT
-scan.rects = CenterRectOnPoint([0 0 scan.squareSize scan.squareSize],scan.centers(:,1), scan.centers(:,2));
 
-%% %%%%%%% MAKE TEXTURES
 
-% ptb stuff
-win = firstel(Screen('Windows'));
+
+%% ptb stuff
+win  = firstel(Screen('Windows'));
 rect = Screen('Rect',win); % what is the total rect
 % rect = CenterRect(round([0 0 rect(3)*winsize rect(4)*winsize]),rect);
 [win, rect] = Screen('OpenWindow',max(Screen('Screens')),127,rect);
@@ -36,25 +41,6 @@ Priority(9);
 
 Screen('FillRect',win,grayval,rect);
 
-% Make textures
-bckrgound_texture = Screen('MakeTexture', win, bckground_im);
-
-for nn = 1:length(run_fix_order)
-    fix_texture{nn,1} = Screen('MakeTexture', win, fix_im(:,:,:,nn,1)); % thin
-    fix_texture{nn,2} = Screen('MakeTexture', win, fix_im(:,:,:,nn,2)); % thick
-end
-
-stim_texture = {};
-for nn = 1:length(run_image_order)
-    for mm = 1:length(exp_im{nn})
-        stim_texture{nn,mm} = Screen('MakeTexture',win, exp_im{nn});
-    end
-end
-
-
-
-
-
 % display instruction screen
 WaitSecs(1);
 Screen('FillRect',win,params.stim.bckgrnd_grayval);
@@ -62,10 +48,6 @@ Screen('Flip',win);
 DrawFormattedText(windowPtr,introscript,'center','center',textColor);
 Screen('Flip',win);
 fprintf('Instructions are on screen, waiting for trgger...\n');
-
-
-data.timeKeys = [data.timeKeys; {ts 'trigger'}];
-
 
 %%% PTONMOVIE
 % wait for a key press to start
@@ -85,13 +67,12 @@ while 1
   else
     if safemode
     else
-      if isempty(triggerkey) || isequal(temp(1),triggerkey)
+      if isempty(params.triggerkey) || isequal(temp(1),params.triggerkey)
         break;
       end
     end
   end
 end
-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%% log the start!
 
@@ -99,9 +80,28 @@ fprintf('STIMULUS STARTED.\n');
 eval(tfunEYE) %Eyelink('Message','SYNCTIME'));
 data.timekeys = [data.timekeys; {GetSecs 'trigger'}];
 
-%%%%%%%%%%%%%%%%%%%%%%%% miscellaneous PT stimulus drawing stuff
 
-Screen('FillRect',win,grayval);  % REMOVED! this means do whole screen.    % ,movierect);
+%% %%%%%%% MAKE TEXTURES
+
+% Make background texture
+bckrgound_texture = Screen('MakeTexture', win, scan.bckground_im);
+Screen('DrawTexture',win,bckrgound_texture,[],movierect,0,filtermode,1,framecolor(frame0,:));
+Screen('Close',bckrgound_texture);
+
+% Screen('FillRect',win,params.stim.bckgrnd_grayval);  % REMOVED! this means do whole screen.    % ,movierect);
+
+
+% for nn = 1:length(fix_im)
+%     fix_texture{nn,1} = Screen('MakeTexture', win, fix_im(:,:,:,nn,1)); % thin
+%     fix_texture{nn,2} = Screen('MakeTexture', win, fix_im(:,:,:,nn,2)); % thick
+% end
+% 
+% stim_texture = {};
+% for nn = 1:length(exp_im)
+%     for mm = 1:length(exp_im{nn})
+%         stim_texture{nn,mm} = Screen('MakeTexture',win, exp_im{nn});
+%     end
+% end
 
 txttemp = feval(flipfun,images(:,:,:,frameorder(1,frame0)));
 stim_texture = Screen('MakeTexture',win,txttemp);
