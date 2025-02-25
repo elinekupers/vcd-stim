@@ -37,7 +37,7 @@ for ii = 1:num
 end
 
 % deal with center offset
-if ~iszero(pixoffset) || ~isempty(pixoffset)
+if isequal(pixoffset,[0 0]) || ~isempty(pixoffset)
     xc = p.disp.xc + pixoffset(1);
     yc = p.disp.yc + pixoffset(2);
 else
@@ -75,7 +75,7 @@ switch type
         circle_left = (YY - p.stim.gabor.y0_pix(1)).^2 ...
             + (XX - p.stim.gabor.x0_pix(1)).^2 <= radius.^2;
 
-        circle_right = (YY - p.stim.gabor.y0_pix(3)).^2 ...
+        circle_right = (YY - p.stim.gabor.y0_pix(2)).^2 ...
             + (XX - p.stim.gabor.x0_pix(3)).^2 <= radius.^2;
         
         bckground_mask = bckground_mask + circle_left;
@@ -113,8 +113,8 @@ switch type
         circle_left = (YY - p.stim.gabor.y0_pix(1)).^2 ...
             + (XX - p.stim.gabor.x0_pix(1)).^2 <= radius.^2;
 
-        circle_right = (YY - p.stim.gabor.y0_pix(3)).^2 ...
-            + (XX - p.stim.gabor.x0_pix(3)).^2 <= radius.^2;
+        circle_right = (YY - p.stim.gabor.y0_pix(2)).^2 ...
+            + (XX - p.stim.gabor.x0_pix(2)).^2 <= radius.^2;
 
         % Dot circle image.
         radius_inner  = ((p.stim.dot.iso_eccen - p.stim.dot.radius_deg)*p.disp.ppd) - rim;
