@@ -2,8 +2,9 @@
 
 verbose = true; % plot stimuli or not
 
-dispname = '7TASBOLDSCREEN32'; % or 'KKOFFICEQ3277'
-display = vcd_getDisplayParams(dispname);
+% Get display params
+dispname = '7TAS_BOLDSCREEN32'; % or 'KKOFFICEQ3277' or psychophys room??
+p.disp = vcd_getDisplayParams(dispname);
 
 %% Get stimulus parameters
 p.load_params  = true;
@@ -11,24 +12,32 @@ p.store_params = true;
 p.store_imgs   = true;
 saveFigsFolder = fullfile(vcd_rootPath,'figs');
 
-p.stim   = vcd_getStimParams('all',dispname,p.store_params); % Choose from <'gabor'> <'rdk'> <'dot'> <'cobj'> <'ns'> <'all'>
+p.stim   = vcd_getStimParams('all',p.disp,p.load_params,p.store_params); % Choose from <'gabor'> <'rdk'> <'dot'> <'cobj'> <'ns'> <'all'>
+p.exp    = vcd_getSessionParams(p,p.load_params,p.store_params);
+%%
+p.trials = vcd_makeTrials(p,p.load_params,p.store_params);
+subject_sessions = vcd_createSessions(p,p.load_params,p.store_params);
 
 
-p.exp    = vcd_getSessionParams;
-p.trials = vcd_makeTrials(p);
-subject_sessions = vcd_createSessions(p);
+%% background
+
+bckgrnd_im = vcd_pinknoisebackground(p, 'comb', 'fat', 80); % 'skinny' or 'fat', type: 'puzzle', 'dotring', or 'comb'
+
+%% fixation dot
+fix_im = vcd_fixationDot(p);
 
 %% Gabor
 gbr_im = vcd_gabor(p);
 
 %% RDK
-rdk_im = vcd_rdk(p, display);
+rdk_im = vcd_rdk(p);
 
 %% Simple dot
 img_dot  = vcd_simpledot(p);
 
 %% Complex object
-img_obj  = vcd_complexobjects(p);
+img_cobj = vcd_complexobjects(p);
+
 
 %% Natural scenes
 img_ns  = vcd_naturalscenes(p);
