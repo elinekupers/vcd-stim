@@ -30,7 +30,7 @@ end
 win  = firstel(Screen('Windows'));
 rect = Screen('Rect',win); % what is the total rect
 % rect = CenterRect(round([0 0 rect(3)*winsize rect(4)*winsize]),rect);
-[win, rect] = Screen('OpenWindow',max(Screen('Screens')),127,rect);
+[win, rect] = Screen('OpenWindow',max(Screen('Screens')),params.stim.bckgrnd_grayval,rect);
 scan.ifi = Screen('GetFlipInterval',win);
 Screen('Preference', 'SyncTestSettings', .0004);
 Screen('BlendFunction', win, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -38,7 +38,7 @@ Screen('Preference','TextRenderer',1);
 HideCursor;
 Priority(9);
 
-Screen('FillRect',win,grayval,rect);
+Screen('FillRect',win,params.stim.bckgrnd_grayval,rect);
 
 % display instruction screen
 
@@ -93,13 +93,32 @@ data.timekeys = [data.timekeys; {GetSecs 'trigger'}];
 
 %% %%%%%%% MAKE TEXTURES
 
+filtermode = choose(params.stim.scfactor==1,0,1);
+framecolor = 255*ones(1,3); 
+% <framecolor> (optional) is size(<frameorder>,2) x 3 with values in [0,255].
+%   each row indicates a multiplication on color channels to apply for a 
+%   given frame.  default is 255*ones(size(<frameorder>,2),3) which means 
+%   to multiply each channel by 1 (i.e. do nothing special).  note that
+%   when an entry in <frameorder> is 0, <framecolor> has no effect for that entry.
+%   <framecolor> can also be size(<frameorder>,2) x 1 with values in [0,1]
+%   indicating an alpha change.
+% <scfactor> (optional) is a positive number with the scaling to apply
+%   to the images in <images>.  if supplied, we multiply the number
+%   of pixels in each dimension by <scfactor> and then round.  we use
+%   bilinear filtering when rendering the images.  default is 1, and in
+%   this case, we use nearest neighbor filtering (which is presumably
+%   faster than bilinear filtering).
+% <allowforceglitch> (optional) is
+%   0 means do nothing special
+%   [1 D] means allow keyboard input 'p' to force a glitch of duration D secs.
+%     note that this has an effect only if <detectinput> is on.
+%     forcing glitches is useful for testing purposes.
+%   default: 0.
 % Make background texture
+bckground_rect = CenterRect([0 0 round(size(scan.bckground_im,1)) round(size(scan.bckground_im,2))],rect);
 bckrgound_texture = Screen('MakeTexture', win, scan.bckground_im);
-Screen('DrawTexture',win,bckrgound_texture,[],movierect,0,filtermode,1,framecolor(frame0,:));
+Screen('DrawTexture',win,bckrgound_texture,[],bckground_rect,0,filtermode,1,framecolor);
 Screen('Close',bckrgound_texture);
-
-% Screen('FillRect',win,params.stim.bckgrnd_grayval);  % REMOVED! this means do whole screen.    % ,movierect);
-
 
 % for nn = 1:length(fix_im)
 %     fix_texture{nn,1} = Screen('MakeTexture', win, fix_im(:,:,:,nn,1)); % thin
@@ -115,7 +134,7 @@ Screen('Close',bckrgound_texture);
 
 txttemp = feval(flipfun,images(:,:,:,frameorder(1,frame0)));
 stim_texture = Screen('MakeTexture',win,txttemp);
-Screen('DrawTexture',win,stim_texture,[],movierect,0,filtermode,1,framecolor(frame0,:));
+Screen('DrawTexture',win,stim_texture,[],bckground_rect,0,filtermode,1,framecolor(frame0,:));
 Screen('Close',stim_texture);
 
 stim_texture = Screen('MakeTexture',win,cat(3,fixationimage(:,:,:,-fixationorder(1+frame0)),uint8(fixationorder(end)*fixationalpha)));

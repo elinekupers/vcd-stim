@@ -47,7 +47,7 @@ else
     stim.frame_bin                  = 4;                                            % we update disp every 4 VBL monitor refreshes to match PP monitor limit (30 Hz)
     stim.fps                        = stim.frame_bin * (1/disp_params.refresh_hz);  % duration of frame bin (seconds)
     stim.bckgrnd_grayval            = uint8(round(diff([0,255])/2));                % background color (middle of 0-255 pixel lum)
-    
+    stim.scfactor                   = 1;                                            % no scaling
     % Default params to inherit (or overwrite)
     dur_fps                         = 60;                                       % nr of frame bins (2 sec)
     x0_deg                          = [-4 4];                                 % [Left Center Right] (degrees)
