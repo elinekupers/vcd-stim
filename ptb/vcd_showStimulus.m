@@ -42,12 +42,23 @@ Priority(9);
 Screen('FillRect',win,grayval,rect);
 
 % display instruction screen
-WaitSecs(1);
-Screen('FillRect',win,params.stim.bckgrnd_grayval);
-Screen('Flip',win);
-DrawFormattedText(windowPtr,introscript,'center','center',textColor);
-Screen('Flip',win);
-fprintf('Instructions are on screen, waiting for trgger...\n');
+
+% do setup if necessary
+% showinstructionscreen(fileIn,txtOffset,instTextWrap,textsize,background,offset)
+if ~isempty(introscript)
+  if ischar(introscript)
+    evalin('caller',setupscript);
+  else
+    feval(introscript);
+  end
+end
+
+% WaitSecs(1);
+% Screen('FillRect',win,params.stim.bckgrnd_grayval);
+% Screen('Flip',win);
+% DrawFormattedText(windowPtr,introscript,'center','center',textColor);
+% Screen('Flip',win);
+% fprintf('Instructions are on screen, waiting for trgger...\n');
 
 %%% PTONMOVIE
 % wait for a key press to start

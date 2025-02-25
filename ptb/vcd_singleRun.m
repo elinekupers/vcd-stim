@@ -337,8 +337,8 @@ end
 
 %% %%%%%%%%%%%%% TASK INSTRUCTIONS %%%%%%%%%%%%%
 
-%%%%%%%%%%%%% Q: add folder ?? --> instrtextfolder
-introscript  = 'showinstructionscreen(''runvcdcore_presubjectinstructions.txt'',250,75,25,78)';  % inputs are (fileIn,txtOffset,instTextWrap,textsize,background)
+% inputs for showinstructionscreen: (fileIn,txtOffset=250,instTextWrap=75,textsize=25,background=128,offset=[0,0])
+introscript  = sprintf('showinstructionscreen(''runvcdcore_presubjectinstructions.txt'',250,75,25,%d,[%d %d])',params.stim.bckgrnd_grayval,params.offsetpix(1),params.offsetpix(2));
 
 tasks_to_run = squeeze(struct2cell(subj_run.block));
 
@@ -347,8 +347,7 @@ tasksIDs = cell2mat(tasks_to_run(2,:));
 
 for nn = find(cellfun(@isempty, regexp(taskNames,'blank')))
     d = dir(fullfile(params.instrtextdir,sprintf('%02d_runvcdcore*.txt', tasksIDs(nn))));
-    
-    taskscript{nn} = sprintf('showinstructionscreen(''%s'',250,75,25,78)',fullfile(d.folder,d.name));
+    taskscript{nn} = sprintf('showinstructionscreen(''%s'',250,75,25,%d,[%d %d])',fullfile(d.folder,d.name),params.stim.bckgrnd_grayval,params.offsetpixparams.offsetpix(1),params.offsetpix(2));
 end
 
 
