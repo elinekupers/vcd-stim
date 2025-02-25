@@ -42,10 +42,10 @@ if ~isfield(params, 'disp') || isempty(params.disp)
      params.disp = vcd_getDisplayParams(params.dispName); % BOLDSCREEN is default
 end
 
-if params.debugmode % skip syntest
-    skipsync = true;
+if params.debugmode % skip synctest
+    skipsync = 1;
 else
-    skipsync = false;
+    skipsync = 0;
 end
 
 % Nova1x32 with BOLDscreen and big eye mirrors
@@ -139,9 +139,9 @@ run_image_order = vcd_getImageOrder(subj_run.block, image_info, params);
 % blocks x trials x locations (1:l, 2:r) x stim epoch (first or second)
 [exp_im, images] = vcd_loadRunImages(run_image_order, subj_run.block, params);
 
+scan.exp_im = exp_im; clear exp_im
+
 %% %%%%%%%%%%%%% FIXATION IM/PARAMS %%%%%%%%%%%%%
-% Fixation order and fixation
-fixsoafun = @() round(params.stim.fix.dotmeanchange*params.stim.fps + params.stim.fix.dotchangeplusminus*(2*(rand-.5))*params.stim.fps);
 
 % Load stored fixation dot images
 if isempty(images.fix)
@@ -190,77 +190,28 @@ if ~isempty(params.stim.fix.dres) && ...
 
     images.fix = reshape(im_rz,old_fix_sz(1),old_fix_sz(2),old_fix_sz(3),old_fix_sz(4),old_fix_sz(5));
 end
-fix_im = images.fix;
 
+scan.fix_im = images.fix;
 
 %% TIMING
-seq = {}; % task_cue_ID = 97; ITI_ID = 98; % IBI_ID = 99;
-seq_timing = []; 
-spatial_cue = []; 
+timing = vcd_getImageTiming(params, subj_run); 
 
-% 6 fields (name, ID, within_session_repeat, trial, trial_type, timing)
-% 8 blocks: 1:run, 2:block, 3:stimtaskID, 4:unique_im, 5:spatial_cue, 6:onset_time, 7:event_dur, 8:run_time
-cellblock = squeeze(struct2cell(subj_run.block));
+cellblock = struct2cell(subj_run.block);
+cellblock = squeeze(cellblock);
 
-for bb = 1:size(cellblock,2)
-    tmp_timing = cellblock{6,bb};
-    im_nr = tmp_timing.unique_im;
-    
-    if ~iscell(im_nr)
-        % convert to cell
-        im_nr = num2cell(im_nr);
-    end
-    
-    
-    % check for nans
-    for xi = 1:length(im_nr)
-        tmp_im = im_nr{xi};
-        if isnan(tmp_im)
-            tmp_im(isnan(tmp_im))=0;
-            im_nr{xi} = tmp_im;
-        end
-        clear tmp_im
-    end  
-    seq = cat(1, seq, im_nr);
-
-    seq_timing = cat(1,seq_timing, tmp_timing.run_time);
-    spatial_cue = cat(1,spatial_cue, tmp_timing.spatial_cue);
+st_ID = cell2mat(cellblock(2,:));  
+st_start = []; st_end = [];
+for ii = 1:length(st_ID)
+    st_start = cat(1,st_start, cellblock{6,ii}.onset_time(1));
+    st_end = cat(1,st_end, cellblock{6,ii}.run_time(end));
 end
 
-
-%% START HERE (decide on fps)
-
-trig_timing = [0:params.stim.fps:(seq_timing(end)/params.stim.fps)-(params.stim.fps)]'; % seconds
-trig = zeros(size(trig_timing,1),2);
-for tt = 1:length(seq_timing)
-    event_time = seq_timing(tt);
-    t_idx = find(trig_timing == event_time);
-    if isempty(t_idx)
-        error('[%s]: Event_time doesn''t match monitor refresh rate', mfilename)
-    end
-    if length(seq{tt})==2
-        trig(t_idx,:) = seq{tt};
-    else
-        trig(t_idx,:) = repmat(seq{tt},1,2);
-    end
-end
-
-
-for tt = 1:length(trig)
-    fix_seq(tt) = fixsoafun;
-end
-
-
-% contrast change seq
-cd_seq = [];
-
-% repmat(Expand(params.taskColor,1,2), length(params.seq)/4,1);
-
-
+timing.block = [st_ID', st_start,st_end];
 
 %% IMAGE XY CENTER OFFSET
+
 % recenter x,y-center coordinates if needed
-if ~iszero(params.offsetpix) || isempty(params.offsetpix)
+if any(params.offsetpix~=0) || isempty(params.offsetpix)
     xc = (ptonparams{1}(1)/2) + params.offsetpix(1);
     yc = (ptonparams{1}(2)/2) + params.offsetpix(2);
     
@@ -273,6 +224,90 @@ else
     params.stim.yc = (ptonparams{1}(2)/2);
 end
 
+% 1-30 = all non-NS stim-task crossings
+% 31-39 = NS stim-task crossings
+gb_IDs = find(~cellfun(@isempty, (regexp(params.exp.stimTaskLabels,'-gabor','ONCE'))))';
+rdk_IDs = find(~cellfun(@isempty, (regexp(params.exp.stimTaskLabels,'-rdk','ONCE'))))';
+dot_IDs = find(~cellfun(@isempty, (regexp(params.exp.stimTaskLabels,'-dot','ONCE'))))';
+cobj_IDs = find(~cellfun(@isempty, (regexp(params.exp.stimTaskLabels,'-cobj','ONCE'))))';
+ns_IDs = find(~cellfun(@isempty, (regexp(params.exp.stimTaskLabels,'-ns','ONCE'))))';
+
+block_counter = 2; % assume first block is pre-blank
+trial_counter = 1;
+im_i = find((timing.trig_stim(:,1) > 0) & (timing.trig_stim(:,1) < 97)); % task_cue_ID = 97; ITI_ID = 98; % IBI_ID = 99;
+
+% Get [x,y]-center in pixels of peripheral stimuli given display size, and
+% offset. Get stimulus aperture size..
+centers = cell(size(timing.trig_stim));
+apsize  = cell(size(timing.trig_stim));
+while block_counter < length(st_ID)
+    for nn = 1:length(im_i)
+
+        sz = size(cellblock{4,block_counter});
+        if sz(1)>sz(2) && any(sz~=1)
+            numTrials = sz(1);
+            numSides = sz(2);
+        elseif sz(1)<sz(2) && any(sz~=1)
+            numTrials = sz(2);
+            numSides = sz(1);
+        elseif sz(1)<sz(2) && any(sz==1)
+            numTrials = sz(2);
+            numSides = sz(1);
+        end
+        
+        for side = 1:numSides
+            curr_ID = st_ID(block_counter);
+            
+            if numSides == 1 && curr_ID > 0
+                assert(isequal(cellblock{4,block_counter}(side,trial_counter).stim_loc,side))
+            elseif  numSides == 2 && curr_ID > 0
+                assert(isequal(cellblock{4,block_counter}(trial_counter,side).stim_loc,side))
+            end
+            
+            if ~isempty(intersect(curr_ID,gb_IDs))
+                centers{im_i(nn),side}(1) = params.stim.gabor.x0_pix(side) + params.stim.xc; % x-coord (pixels)
+                centers{im_i(nn),side}(2) = params.stim.gabor.y0_pix(side) + params.stim.yc; % y-coord (pixels)
+            elseif ~isempty(intersect(curr_ID,rdk_IDs))
+                centers{im_i(nn),side}(1) = params.stim.rdk.x0_pix(side) + params.stim.xc;
+                centers{im_i(nn),side}(2) = params.stim.rdk.y0_pix(side) + params.stim.yc;
+            elseif ~isempty(intersect(curr_ID,dot_IDs))
+                xy_idx = find(cellblock{4,block_counter}(trial_counter,side).loc_deg == params.stim.dot.loc_deg);
+                centers{im_i(nn),side}(1) = params.stim.dot.x0_pix(xy_idx) + params.stim.xc;
+                centers{im_i(nn),side}(2) = params.stim.dot.y0_pix(xy_idx) + params.stim.yc;
+            elseif ~isempty(intersect(curr_ID,cobj_IDs))
+                centers{im_i(nn),side}(1) = params.stim.cobj.x0_pix(side) + params.stim.xc;
+                centers{im_i(nn),side}(2) = params.stim.cobj.y0_pix(side) + params.stim.yc;
+            elseif ~isempty(intersect(curr_ID,ns_IDs))
+                centers{im_i(nn),side}(1) = params.stim.ns.x0_pix(side) + params.stim.xc;
+                centers{im_i(nn),side}(2) = params.stim.ns.y0_pix(side) + params.stim.yc;
+            end
+            apsize{im_i(nn),side}(2)  = size(scan.exp_im{block_counter,trial_counter,side,1},1); % height (pixels)
+            apsize{im_i(nn),side}(1)  = size(scan.exp_im{block_counter,trial_counter,side,1},2); % width (pixels)
+        end
+        trial_counter = trial_counter+1;
+        
+        if trial_counter >= numTrials
+            block_counter = block_counter+1;
+            trial_counter = 1;
+        end
+    end
+end
+
+scan.centers = centers; clear centers trial_counter block_counter;
+scan.apsize  = apsize; clear apsize;
+
+%%%%%%% CENTER RECT
+scan.centers_shortlist = scan.centers(~cellfun(@isempty, scan.centers(:,1)),:);
+scan.apsize_shortlist = scan.apsize(~cellfun(@isempty, scan.apsize(:,1)),:);
+
+% insert NaNs for second column when using single square stimulus (nat scene)
+scan.centers_shortlist(cellfun(@isempty,scan.centers_shortlist(:,2)),2) = repmat({[NaN,NaN]},size(find(cellfun(@isempty,scan.centers_shortlist(:,2))),1),1);
+scan.apsize_shortlist(cellfun(@isempty,scan.apsize_shortlist(:,2)),2) = repmat({[NaN,NaN]},size(find(cellfun(@isempty,scan.apsize_shortlist(:,2))),1),1);
+
+for side = [1,2]
+    scan.rects(:,side) = cellfun(@(stimsize,stimcenter) CenterRectOnPoint([0 0 stimsize(1) stimsize(2)], stimcenter(1), stimcenter(2)), ...
+                        scan.apsize_shortlist(:,side),scan.centers_shortlist(:,side), 'UniformOutput', false);
+end
 
 %% %%%%%%%%%%%%% BACKGROUND IM %%%%%%%%%%%%%
 %  BACKGROUND: 3D array: [x,y, num images]
@@ -284,25 +319,12 @@ end
 % input 4: number of unique noise background images
 % input 5: offset of center in pixels [x,y]
 % create background image that adjusts for shifted background if needed
-images.bckground = vcd_pinknoisebackground(p, 'comb', 'fat', 1, params.offsetpix); 
-
-
-%% EK: Do we still want this??
-% Get a vector with number of images in each class
-% for fn = 1:length(params.exp.stimClassLabels)
-%     sz = size(images.(params.exp.stimClassLabels{fn}));
-%     if params.stim.(params.exp.stimClassLabels{fn}).iscolor
-%         numinclass(fn) = prod(sz(4:end));
-%     else
-%         numinclass(fn) = prod(sz(3:end));
-%     end
-% end
-
+scan.bckground = vcd_pinknoisebackground(params, 'comb', 'fat', 1, params.offsetpix); 
 
 %% %%%%%%%%%%%%% EYELINK PARAMS %%%%%%%%%%%%%
 
 % EYE FUN for SYNC TIME
-if wanteyetracking
+if params.wanteyetracking
     tfunEYE     = @() cat(2,fprintf('EXP STARTS.\n'),Eyelink('Message','SYNCTIME'));
 
     if ~isfield(params,'eyelinkfile') || isempty(params.eyelinkfile) 
@@ -313,37 +335,31 @@ else
 end
 
 
-
-
-
 %% %%%%%%%%%%%%% TASK INSTRUCTIONS %%%%%%%%%%%%%
 
 %%%%%%%%%%%%% Q: add folder ?? --> instrtextfolder
 introscript  = 'showinstructionscreen(''runvcdcore_presubjectinstructions.txt'',250,75,25,78)';  % inputs are (fileIn,txtOffset,instTextWrap,textsize,background)
 
-tasks_to_run = struct2cell(subj_run.run);
+tasks_to_run = squeeze(struct2cell(subj_run.block));
 
-tasksIDs = cell2mat(tasks_to_run(:,:,2));
+taskNames = tasks_to_run(1,:);
+tasksIDs = cell2mat(tasks_to_run(2,:));
 
-for nn = 1:length(tasksIDs)
-    d = dir(fullfile(instrtextdir,sprintf('%02d_runvcdcore*.txt', tasksIDs(nn))));
+for nn = find(cellfun(@isempty, regexp(taskNames,'blank')))
+    d = dir(fullfile(params.instrtextdir,sprintf('%02d_runvcdcore*.txt', tasksIDs(nn))));
     
     taskscript{nn} = sprintf('showinstructionscreen(''%s'',250,75,25,78)',fullfile(d.folder,d.name));
 end
 
 
-
-
-
 %% %%%%%%%%%%%%% INIT SCREEN %%%%%%%%%%%%%
 oldclut = pton(ptonparams{:});
-
 
 % Flag incase we want to quit early
 getoutearly = 0; 
 
 %% %%%%%%%%%%%%% EYELINK: initialize, setup, calibrate, and start %%%%%%%%%%%%%
-if wanteyetracking && ~isempty(params.eyelinkfile)
+if params.wanteyetracking && ~isempty(params.eyelinkfile)
     
     assert(EyelinkInit()==1);
     win = firstel(Screen('Windows'));
@@ -449,16 +465,10 @@ timeofshowstimcall = datestr(now);
 [timeframes, timekeys, digitrecord, trialoffsets] = ...
     vcd_showStimulus(...
         params, ...
-        exp_im, ...
-        bckground_im, ...
-        fix_im, ...
-        seq, ...
-        seq_timing, ...
-        fix_seq, ...
-        trig, ...
+        scan, ...
+        timing, ...
         introscript, ...
         taskscript, ...
-        fixsoafun, ...
         movieflip, ...
         tfunEYE);
 
