@@ -4,7 +4,6 @@ function [data, timeframes, digitrecord, trialoffsets] = ...
                         timing, ...
                         introscript, ...
                         taskscript, ...
-                        movieflip, ...
                         tfunEYE)
 
 
@@ -14,11 +13,11 @@ data.timeKeys = {};
 %% PREPARE IMAGES
 
 % deal with movieflip
-if movieflip(1) && movieflip(2)
+if params.movieflip(1) && params.movieflip(2)
   flipfun = @(x) flipdim(flipdim(x,1),2);
-elseif movieflip(1)
+elseif params.movieflip(1)
   flipfun = @(x) flipdim(x,1);
-elseif movieflip(2)
+elseif params.movieflip(2)
   flipfun = @(x) flipdim(x,2);
 else
   flipfun = @(x) x;

@@ -45,6 +45,7 @@ function runme_vcdcore(subjID,sesID,runnum, varargin)
 %
 % __EXAMPLE__
 %  vcd_singleRun(1, 1, 1, 'debugmode', true)
+%  vcd_singleRun(1, 1, 1, 'debugmode', true, 'dispName','KKOFFICE_AOSQ3277')
 %
 % __DEPENDENCIES__
 %  * Psychtoolbox-3 (v. 3.0.16?? or lower).
