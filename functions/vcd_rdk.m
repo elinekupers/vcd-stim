@@ -80,7 +80,9 @@ counter = 1;
 tmpDir = fullfile(vcd_rootPath, 'workspaces','stimuli',['rdk_' datestr(now,'yyyymmdd')]);
 if ~exist('tmpDir','dir'), mkdir(tmpDir); end
 
-fH = figure(1); set(gcf,'Position',[1,1,1680,880]); 
+fH = figure(1); clf; 
+set(gcf,'Position',[0,0,p.stim.rdk.img_sz_pix,p.stim.rdk.img_sz_pix], 'Units','Pixels','Renderer','zbuffer')
+
 for cc = 1:length(p.stim.rdk.dots_coherence)
     
     for bb = 1:length(p.stim.rdk.dots_direction)
@@ -164,12 +166,16 @@ for cc = 1:length(p.stim.rdk.dots_coherence)
                         pos_idx = find(L);
                         
                         clf; hold all;
-                        r = rectangle('Position',  [(ap_center -1.*ap_radius), ...
+                        ax = gca;
+                        ax.Units = 'pixels';
+                        r = rectangle(ax,'Position', [(ap_center -1.*ap_radius), ...
                             2.*ap_radius], ...
-                            'FaceColor', [127 127 127]./255, 'EdgeColor', 'none');
-                        %                     xlim(ap_center(1) + [-1,1].*ap_radius)
-                        %                     ylim(ap_center(2) + [-1,1].*ap_radius)
-                        colormap gray; axis square; axis off;
+                            'FaceColor', [repmat(p.stim.bckgrnd_grayval,1,3)]./255, 'EdgeColor', 'none');
+%                         xl = ap_center(1) + [-1,1].*ap_radius + [-1 1];
+%                         yl = ap_center(2) + [-1,1].*ap_radius + [-1 1];
+%                         xlim(xl)
+%                         ylim(yl)
+                        colormap gray; axis square; axis off; axis tight; axis manual; axis image
                         
                         %round dot_pos and transpose it because Screen wants positions in row
                         pos = round(dot_pos(L,:,loopi));
@@ -178,15 +184,26 @@ for cc = 1:length(p.stim.rdk.dots_coherence)
                         % Create a blank image for each frame
                         %             img = zeros(size(dot_pos,1),size(dot_pos,2));
                         
+                        
+%                         rect = [-axti(1), -axti(2), axpos(3)+axti(1)+axti(3), axpos(4)+axti(2)+axti(4)];
+
+                        
                         for ii = 1:size(pos,1)
-                            h(ii) = drawcircle('Center',pos(ii,:),'Radius',p.stim.rdk.dots_size,...
+                            drawcircle('Parent',ax,'Center',pos(ii,:),'Radius',p.stim.rdk.dots_size,...
                                 'Color',col(ii,:), 'InteractionsAllowed', 'none', 'FaceAlpha', 1, 'LineWidth', 1);
                             all_pos(pos_idx(ii),:,t) = pos(ii,:);
                         end
-                        g = gca;
-                        f = getframe(g);
-                        frames = cat(4,frames,f.cdata);
-                        clear f
+                        
+%                         f2 = hardcopy(fH,'-dzbuffer','-r0');
+                        
+                        f = getframe(ax);
+                        im = frame2im(f);
+                        f_bw = rgb2gray(im);
+%                         scale_factor = (2*ap_radius)./size(f_bw);
+%                         f_bw_rz = imresize(f_bw,scale_factor(1));
+                        
+                        frames = cat(3,frames,f_bw);
+                        clear f im f_bw scale_factor f_bw_rz
                         %             %draw on the
                         %             if any(isnan(prod(pos,1))==0)
                         %                 Screen('DrawDots', screen_struct.cur_window, pos, dots_struct.dot_size, dots_struct.dot_color', AP.spec.center);
@@ -227,9 +244,10 @@ for cc = 1:length(p.stim.rdk.dots_coherence)
                 info.unique_im(counter) = NaN;
             end
             
+            im_name = bb + ((cc-1)*length(p.stim.rdk.dots_direction));
             % save intermediate stage in case matlab crashes 
             rdk_info = info(counter,:);
-            save(fullfile(tmpDir, sprintf('%d_rdk_ori%d_coh%d_delta%d.mat', info.unique_im(counter), bb,cc,dd)),'frames','rdk_info','-v7.3');
+            save(fullfile(tmpDir, sprintf('%d_rdk_ori%d_coh%d_delta%d.mat', im_name, bb,cc,dd)),'frames','rdk_info','-v7.3');
 
             clear frames all_pos
             counter = counter +1;
