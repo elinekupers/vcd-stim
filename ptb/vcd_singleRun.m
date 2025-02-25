@@ -347,7 +347,7 @@ tasksIDs = cell2mat(tasks_to_run(2,:));
 
 for nn = find(cellfun(@isempty, regexp(taskNames,'blank')))
     d = dir(fullfile(params.instrtextdir,sprintf('%02d_runvcdcore*.txt', tasksIDs(nn))));
-    taskscript{nn} = sprintf('showinstructionscreen(''%s'',250,75,25,%d,[%d %d])',fullfile(d.folder,d.name),params.stim.bckgrnd_grayval,params.offsetpixparams.offsetpix(1),params.offsetpix(2));
+    taskscript{nn} = sprintf('showinstructionscreen(''%s'',250,75,25,%d,[%d %d])',fullfile(d.folder,d.name),params.stim.bckgrnd_grayval,params.offsetpix(1),params.offsetpix(2));
 end
 
 
