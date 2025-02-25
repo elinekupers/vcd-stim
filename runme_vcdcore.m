@@ -20,7 +20,7 @@ function runme_vcdcore(subjID,sesID,runnum, varargin)
 %                               'PPROOM_EIZOFLEXSCAN' - CMRR's Psychophysics room monitor 
 %                       Default: '7TAS_BOLDSCREEN32'                      
 %   [debugmode]       : if true, there is no eyetracking, no waiting for external
-%                       trigger from scanner. 
+%                       trigger from scanner, no monitor synctest. 
 %                       Default: false
 %   [loadparams]      : if true, load stored parameter values. 
 %                       Default: true
@@ -85,6 +85,8 @@ for ff = 1:length(rename_me)
 end
 clear rename_me ff p
 
+cd(vcd_rootPath);
+addpath(genpath(pwd));
 
 %% Setup display resolution:
 % Conservative estimate of what subject can see is h: 800 px, w: 1024 pix.
