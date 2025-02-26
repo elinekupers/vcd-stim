@@ -1,4 +1,10 @@
-function el = vcd_setEyelinkParams(el)
+function el = vcd_setEyelinkParams(el,backgroundcolour)
+
+if ~exist('backgroundcolour','var') || isempty(backgroundcolour)
+    backgroundcolour = [128 128 128];
+else
+    assert(numel(backgroundcolour)==3)
+end
 
 % define Eyelink defaults (frequency, volume, duration);
 % Optional: shrink the spread of the calibration/validation targets <x, y display proportion>
@@ -13,7 +19,7 @@ el.calibration_failed_beep          = [0 0 0]; % no beep
 el.calibration_success_beep         = [0 0 0]; % no beep
 el.drift_correction_failed_beep     = [0 0 0]; % no beep
 el.drift_correction_success_beep    = [0 0 0]; % no beep
-el.backgroundcolour                 = [127 127 127]; %same background as experiment
+el.backgroundcolour                 = backgroundcolour; %same background as experiment
 el.msgfontcolour                    = [0 0 0]; %same text as experimentel
 el.calibrationtargetsize            = 1.5; % pixels ??
 el.calibrationtargetwidth           = .6; % inner area pixels???
