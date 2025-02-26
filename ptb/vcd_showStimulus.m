@@ -179,16 +179,16 @@ for frame = 1:(frameorder+1)
 
       opacity_idx = timing.fix_seq(frame);
       if timing.spatial_cue_seq==1
-          fix_tex0 = fix_texture_thin_left{opacity_idx};
+          fix_tex0 = fix_texture_thick_left{opacity_idx};
           fix_rect = fix_rect_thin;
       elseif timing.spatial_cue_seq==2
-          fix_tex0 = fix_texture_thin_right{opacity_idx};
+          fix_tex0 = fix_texture_thick_right{opacity_idx};
           fix_rect = fix_rect_thin;
       elseif timing.spatial_cue_seq==0
-          fix_tex0 = fix_texture_thin_full{opacity_idx};
+          fix_tex0 = fix_texture_thick_full{opacity_idx};
           fix_rect = fix_rect_thin;
       elseif isnan(timing.spatial_cue_seq)
-          fix_tex0 = fix_texture_thick_full{opacity_idx};
+          fix_tex0 = fix_texture_thin_full{opacity_idx};
           fix_rect = fix_rect_thick;
       end
       
