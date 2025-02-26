@@ -26,6 +26,10 @@ function runme_vcdcore(subjID,sesID,runnum, varargin)
 %                       Default: true
 %   [storeparams]     : if true, store created parameter values. 
 %                       Default: true
+%   [loadtempstimuli] : if true, load temporary stimulus file that was store right before ptb flipping (to save time and rerun the same run) 
+%                       Default: true
+%   [savetempstimuli] : if true, store temporary stimulus file prior to ptb flipping (to save time and rerun the same run) 
+%                       Default: true
 %   [offsetpix]       : offset of center [x,y]-coordinate in pixels. 
 %                       Default: No offset [0,0]
 %   [movieflip]       : flip presented stimulus display left-right (first argument) 
@@ -46,6 +50,7 @@ function runme_vcdcore(subjID,sesID,runnum, varargin)
 % __EXAMPLE__
 %  vcd_singleRun(1, 1, 1, 'debugmode', true)
 %  vcd_singleRun(1, 1, 1, 'debugmode', true, 'dispName','KKOFFICE_AOSQ3277')
+%  vcd_singleRun(1, 1, 1, 'debugmode', true, 'dispName','KKOFFICE_AOSQ3277', 'savetempstimuli', true)
 %
 % __DEPENDENCIES__
 %  * Psychtoolbox-3 (v. 3.0.16?? or lower).
@@ -69,6 +74,8 @@ p.addParameter('dispName'       , '7TAS_BOLDSCREEN32' , @(x) any(strcmp(x, {'7TA
 p.addParameter('debugmode'      , false, @islogical);
 p.addParameter('loadparams'     , true, @islogical);
 p.addParameter('storeparams'    , true, @islogical);
+p.addParameter('loadtempstimuli', false, @islogical);
+p.addParameter('savetempstimuli', false, @islogical);
 p.addParameter('offsetpix'      , [0 0], @isnumerical); % [x,y]
 p.addParameter('movieflip'      , [0 0], @isnumerical); % up/down, left/right
 p.addParameter('stimDir'        , fullfile(vcd_rootPath,'workspaces','info'), @ischar);
@@ -209,6 +216,18 @@ if debugmode
 end
 
 
+if loadtempstimuli
+    d = dir(fullfile(params.savedatadir,'tmp_expim_*.mat'));
+    if ~exist('tmpfilename','file')
+        error('[%s]: Cannot find temporarily stored run stimulus file\n')
+    elseif length(d)>1
+        warning('[%s]: Found more than one temporarily stored run stimulus file, will use most recent one.\n')
+        load(fullfile(d(end).folder,d(end).name),'scan','timing');
+    end
+else
+    scan = struct();
+    timing = struct();
+end
 
 %% run experiment
 vcd_singleRun(subjID, sesID, runnum, ... % mandatory inputs
@@ -221,7 +240,9 @@ vcd_singleRun(subjID, sesID, runnum, ... % mandatory inputs
     'dispName', dispName, ... 
     'offsetpix', offsetpix, ...
     'movieflip', movieflip, ...
-    'instrtextdir',instructionsDir); 
+    'instrtextdir',instructionsDir, ...
+    'scan', scan, ...
+    'timing',timing); 
 
 
 % single_vcd_run (filename,offset,movieflip,frameduration,fixdotcol,dotdiam_pix,tfun, ...
