@@ -72,9 +72,13 @@ else
     % general
     exp_session.miniblock.n_trials_single_epoch = 8;
     exp_session.miniblock.n_trials_double_epoch = 4;
-    exp_session.miniblock.task_cue_ID = 97; % pick a random high nr
-    exp_session.miniblock.ITI_ID      = 98; %
-    exp_session.miniblock.IBI_ID      = 99; %
+    exp_session.miniblock.response_ID    = 93; % 
+    exp_session.miniblock.trial_start_ID = 94; % 
+    exp_session.miniblock.spatial_cue_ID = 95; % 
+    exp_session.miniblock.delay_ID       = 96; % 
+    exp_session.miniblock.task_cue_ID    = 97; % 
+    exp_session.miniblock.ITI_ID         = 98; %
+    exp_session.miniblock.IBI_ID         = 99; %
     
     % check if these ITI/IBI IDs do not already exist
     assert(isempty(intersect([1:length(exp_session.stimTaskLabels)],exp_session.miniblock.task_cue_ID)));
