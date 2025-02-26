@@ -6,9 +6,16 @@ function [data, timeframes, digitrecord, trialoffsets] = ...
                         taskscript, ...
                         tfunEYE)
 
+getoutearly = 0;
+glitchcnt   = 0;
+when        = 0;
 
 %% Preallocate space for key presses and timestamps
-data.timeKeys = {};
+data.timeKeys       = {};
+data.digitrecord    = [];
+data.trialoffsets   = [];
+data.digitframe     = [];
+data.digitpolarity  = [];
                  
 %% PREPARE IMAGES
 
@@ -48,24 +55,34 @@ framecolor = 255*ones(1,3);
 allowforceglitch = 0;
 frameorder = size(timing.trig_stim,2);
 
+% init variables, routines, constants
+timeframes = repmat(NaN,[1 floor(size(frameorder,2)-1)+1]);
+
+
 %% Create background and fixation textures prior to exp onset (as we need them throughout the experiment)
 bckground_rect = CenterRect([0 0 round(size(scan.bckground_im,1)) round(size(scan.bckground_im,2))],rect);
 bckrgound_texture = Screen('MakeTexture', win, scan.bckground_im);
 
 % make fixation dot texture
-fix_texture_thin = {};
-fix_texture_thick = {};
+fix_texture_thin_full = {};
+fix_texture_thick_full = {};
+fix_texture_thin_left = {};
+fix_texture_thin_right = {};
 fix_rect_thin = CenterRect([0 0 round(size(scan.fix_im,1)) round(size(scan.bckground_im,2))],rect);
 fix_rect_thick = CenterRect([0 0 round(size(scan.fix_im,1)) round(size(scan.bckground_im,2))],rect);
 
-for ll = 1:length(fixationimage,3) % loop over luminance values
-    fix_texture_thin{ll} = Screen('MakeTexture',win,cat(3,fixationimage(:,:,ll,1),params.stim.fix.dotopacity));
-    fix_texture_thick{ll} = Screen('MakeTexture',win,cat(3,fixationimage(:,:,ll,2),params.stim.fix.dotopacity));
+for ll = 1:length(scan.fix_im,4) % loop over luminance values
+    fix_texture_thin_full{ll} = Screen('MakeTexture',win,cat(3,fixationimage(:,:,:,ll,1),params.stim.fix.dotopacity));
+    fix_texture_thick_full{ll} = Screen('MakeTexture',win,cat(3,fixationimage(:,:,:,ll,2),params.stim.fix.dotopacity));
+    fix_texture_thin_left{ll} = Screen('MakeTexture',win,cat(3,fixationimage(:,:,:,ll,3),params.stim.fix.dotopacity));
+    fix_texture_thin_right{ll} = Screen('MakeTexture',win,cat(3,fixationimage(:,:,:,ll,4),params.stim.fix.dotopacity));
 end
 
 
 %% ptb stuff
 win  = firstel(Screen('Windows'));
+oldPriority = Priority(MaxPriority(win));
+
 rect = Screen('Rect',win); % what is the total rect
 % rect = CenterRect(round([0 0 rect(3)*winsize rect(4)*winsize]),rect);
 [win, rect] = Screen('OpenWindow',max(Screen('Screens')),params.stim.bckgrnd_grayval,rect);
@@ -75,7 +92,13 @@ Screen('BlendFunction', win, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 Screen('Preference','TextRenderer',1);
 HideCursor;
 Priority(9);
+mfi = Screen('GetFlipInterval',win);  % re-use what was found upon initialization!
+mfi = 1/round(1/mfi);
 
+GetSecs;
+now;
+ceil(1);
+fprintf('');
 
 % display instruction screen
 Screen('FillRect',win,params.stim.bckgrnd_grayval,rect);
@@ -134,14 +157,15 @@ for frame = 1:(frameorder+1)
     frame0 = floor(frame);
     reporttext = '';
 
-      % we have to wait until the last frame is done.  so this is how we hack that in.
+      % we have to wait until the last frame of the run sequence is done.  
       if frame0 == size(frameorder,2)+1
         while 1
           if GetSecs >= whendesired
             getoutearly = 1;
-            if ~isempty(triggerfun)
-              feval(triggerfun);
-              timekeys = [timekeys; {GetSecs 'trigger'}];
+            % Log the end
+            if ~isempty(tfunEYE)
+              feval(tfunEYE);
+              data.timekeys = [data.timekeys; {GetSecs 'trigger'}];
             end
             break;
           end
@@ -153,87 +177,156 @@ for frame = 1:(frameorder+1)
         break;
       end
 
-
-% Draw background and thin rim fix dot texture
-Screen('DrawTexture',win,bckrgound_texture,[],bckground_rect,0,filtermode,1,framecolor);
-Screen('DrawTexture',win,fix_texture,[],fix_rect_thin,0,filtermode,1, params.stim.fix.dotopacity);
-
-% Draw stim texture
-stim_texture = {};
-for nn = 1:length(scan.exp_im)
-    for mm = 1:length(scan.exp_im{nn})
-        stim_texture{nn,mm} = Screen('MakeTexture',win, scan.exp_im{nn});
-    end
-end
-
-% txttemp = feval(flipfun,images(:,:,:,frameorder(1,frame0)));
-% stim_texture = Screen('MakeTexture',win,txttemp);
-% Screen('DrawTexture',win,stim_texture,[],bckground_rect,0,filtermode,1,framecolor(frame0,:));
-% Screen('Close',stim_texture);
-
-% stim_texture = Screen('MakeTexture',win,cat(3,fixationimage(:,:,:,-fixationorder(1+frame0)),uint8(fixationorder(end)*fixationalpha)));
-% Screen('DrawTexture',win,stim_texture{p},[],fixationrect{p},0,0);
-% Screen('Close',stim_texture{p});
-
-% give hint to PT that we're done drawing
-Screen('DrawingFinished',win);
-
-%%%%%%%%%%%%%%%%%%%%%%%% the main while loop that actually puts up stimuli and records button presses
-
-when = 0;
-
-% here, deal with making the stimulus frame / texture / stuff
-% read input until we have to do the flip
-while 1
-
-  % if we are in the initial case OR if we have hit the when time, then display the frame
-  if when == 0 | GetSecs >= when
-  
-    % issue the flip command and record the empirical time
-    [VBLTimestamp,StimulusOnsetTime,FlipTimestamp,Missed,Beampos] = Screen('Flip',win,  0);
-    timeframes(framecnt) = VBLTimestamp;
-    
-    % get matlab's now for the very first stimulus frame
-    if framecnt==1
-      absnowtime = now;
-    end
-    
-%     % report text to command window?
-%     if ~isempty(reporttext)
-%       fprintf(reporttext);
-%     end
-
-    % if we missed, report it
-    if when ~= 0 && (VBLTimestamp - whendesired) > (mfi * (1/2))
-      glitchcnt = glitchcnt + 1;
-      didglitch = 1;
-    else
-      didglitch = 0;
-    end
-    
-    % get out of this loop
-    break;
-  
-  % otherwise, try to read input
-  else
-    [keyIsDown,secs,keyCode,deltaSecs] = KbCheck(-3);  % all devices
-    if keyIsDown
-
-      % get the name of the key and record it
-      kn = KbName(keyCode);
-      data.timekeys = [data.timekeys; {secs kn}];
-
-      % check if ESCAPE was pressed
-      if isequal(kn,'ESCAPE')
-        fprintf('Escape key detected.  Exiting prematurely.\n');
-        getoutearly = 1;
-        break;
+      opacity_idx = timing.fix_seq(frame);
+      if timing.spatial_cue_seq==1
+          fix_tex0 = fix_texture_thin_left{opacity_idx};
+          fix_rect = fix_rect_thin;
+      elseif timing.spatial_cue_seq==2
+          fix_tex0 = fix_texture_thin_right{opacity_idx};
+          fix_rect = fix_rect_thin;
+      elseif timing.spatial_cue_seq==0
+          fix_tex0 = fix_texture_thin_full{opacity_idx};
+          fix_rect = fix_rect_thin;
+      elseif isnan(timing.spatial_cue_seq)
+          fix_tex0 = fix_texture_thick_full{opacity_idx};
+          fix_rect = fix_rect_thick;
       end
+      
+      for side = 1:length(frameorder)
+          
 
-    end
-  end
+          
+          switch frameorder{frame,side}
+              
+                
+              case 0
+                  % Draw background and thin rim fix dot texture
+                  Screen('DrawTexture',win,bckrgound_texture,[],bckground_rect,0,filtermode,1,framecolor);
+                  Screen('DrawTexture',win,fix_tex0,[],fix_rect,0,filtermode,1, params.stim.fix.dotopacity);
+                  
+              case 93 % task_cue_ID
+                  task_ID = timing.seq;
+                  
+                  showinstructionscreen_pinknoisebackground(taskscript{task_ID},250,75,25,...
+                      params.offsetpix,bckrgound_texture,fix_tex0,bckground_rect,fix_rect,filtermode,framecolor,params.stim.fix.dotopacity)
+                  
+%                   % Draw background and thin rim fix dot texture
+%                   Screen('DrawTexture',win,bckrgound_texture,[],bckground_rect,0,filtermode,1,framecolor);
+%                   Screen('DrawTexture',win,fix_texture_thick{frame},[],fix_rect_thin,0,filtermode,1, params.stim.fix.dotopacity);
+
+                
+              case 94 % trial_start_ID
+                  % Draw background and thick rim fix dot texture
+                  Screen('DrawTexture',win,bckrgound_texture,[],bckground_rect,0,filtermode,1,framecolor);
+                  Screen('DrawTexture',win,fix_tex0,[],fix_rect,0,filtermode,1, params.stim.fix.dotopacity);
+
+              case 95 % spatial_cue_ID
+                  % Draw background and thick rim fix dot texture
+                  Screen('DrawTexture',win,bckrgound_texture,[],bckground_rect,0,filtermode,1,framecolor);
+                  Screen('DrawTexture',win,fix_tex0,[],fix_rect,0,filtermode,1, params.stim.fix.dotopacity);
+                  
+              case 96 % delay_ID
+                  
+              case 97 % response_ID 
+                  
+              case 98 % ITI_ID
+                  % Draw background and thin rim fix dot texture
+                  Screen('DrawTexture',win,bckrgound_texture,[],bckground_rect,0,filtermode,1,framecolor);
+                  Screen('DrawTexture',win,fix_tex0,[],fix_rect,0,filtermode,1, params.stim.fix.dotopacity);
+                  
+              case 99 % IBI_ID
+                  % Draw background and thin rim fix dot texture
+                  Screen('DrawTexture',win,bckrgound_texture,[],bckground_rect,0,filtermode,1,framecolor);
+                  Screen('DrawTexture',win,fix_tex0,[],fix_rect,0,filtermode,1, params.stim.fix.dotopacity);
+                 
+              case {5} % WM trials    
+                  
+              case {1:39} % stimuli
+                  
+                  % Draw background and thin rim fix dot texture
+                  Screen('DrawTexture',win,bckrgound_texture,[],bckground_rect,0,filtermode,1,framecolor);
+                  Screen('DrawTexture',win,fix_tex0,[],fix_rect,0,filtermode,1, params.stim.fix.dotopacity);
+                  
+                  % Draw stim texture
+                  % exp_im is a cell with dims: blocks x trials x locations (1:l, 2:r) x stim epoch (first or second)
+                  stim_texture = {};
+                  for nn = 1:length(scan.exp_im)
+                      for mm = 1:length(scan.exp_im{nn})
+                          txttemp = feval(flipfun,scan.exp_im{frame,side,1});
+                          
+                          stim_texture{nn,mm} = Screen('MakeTexture',win, scan.exp_im{nn});
+                          % Screen('DrawTexture',win,stim_texture,[],bckground_rect,0,filtermode,1,framecolor(frame0,:));
+                          Screen('Close',stim_texture);
+                      end
+                  end
+                  
+                  
+                  
+          end
+      end
+     
+      % give hint to PT that we're done drawing
+      Screen('DrawingFinished',win);
+
+
+
+      %%%%%%%%%%%%%%%%%%%%%%%% the main while loop that actually puts up stimuli and records button presses
+      
+      when = 0;
+      
+      % here, deal with making the stimulus frame / texture / stuff
+      % read input until we have to do the flip
+      while 1
+          
+          % if we are in the initial case OR if we have hit the when time, then display the frame
+          if when == 0 | GetSecs >= when
+              
+              % issue the flip command and record the empirical time
+              [VBLTimestamp,StimulusOnsetTime,FlipTimestamp,Missed,Beampos] = Screen('Flip',win,  0);
+              timeframes(framecnt) = VBLTimestamp;
+              
+              % get matlab's now for the very first stimulus frame
+              if framecnt==1
+                  absnowtime = now;
+              end
+              
+              %     % report text to command window?
+              %     if ~isempty(reporttext)
+              %       fprintf(reporttext);
+              %     end
+              
+              % if we missed, report it
+              if when ~= 0 && (VBLTimestamp - whendesired) > (mfi * (1/2))
+                  glitchcnt = glitchcnt + 1;
+                  didglitch = 1;
+              else
+                  didglitch = 0;
+              end
+              
+              % get out of this loop
+              break;
+              
+              % otherwise, try to read input
+          else
+              [keyIsDown,secs,keyCode,deltaSecs] = KbCheck(-3);  % all devices
+              if keyIsDown
+                  
+                  % get the name of the key and record it
+                  kn = KbName(keyCode);
+                  data.timekeys = [data.timekeys; {secs kn}];
+                  
+                  % check if ESCAPE was pressed
+                  if isequal(kn,'ESCAPE')
+                      fprintf('Escape key detected.  Exiting prematurely.\n');
+                      getoutearly = 1;
+                      break;
+                  end
+                  
+              end
+          end
 
 end
+
 
 
 % collect response and measure timing
@@ -259,7 +352,7 @@ end
 %     end 
 
 % PUT THE STIMULUS ON THE SCREEN USING A FLIP
-Screen('FillRect',win,grayval,rect);
+Screen('FillRect',win,params.stim.bckrgnd_grayval,rect);
 Screen('Flip',win);
 
 % update when
@@ -276,6 +369,8 @@ else
   % since we keep resetting to the empirical VBLTimestamp.
   whendesired = VBLTimestamp + mfi * frameduration;
   when = whendesired - mfi * (9/10);  % should we be less aggressive??
+end
+
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
