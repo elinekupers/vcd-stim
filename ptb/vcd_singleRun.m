@@ -6,11 +6,14 @@ p = inputParser;
 p.addRequired('subjID'          , @isnumeric); % subject number 
 p.addRequired('sesID'           , @isnumeric); % session number 
 p.addRequired('runnum'          , @isnumeric); % nun number
-p.addParameter('images'         , struct()  , @isstruct);  % struct with images (we preload before calling vcd_singleRun to avoid delays).
-p.addParameter('savedatadir'    , []        , @ischar);       % place to store data with today's date
-p.addParameter('behaviorfile'   , []        , @ischar);       % filename to store behavioral data with today's date
-p.addParameter('eyelinkfile'    , []        , @ischar);       % where the eyelink edf file can be obtained
-p.addParameter('loadparams'     , true      , @islogical)       % whether load stim/condition params or regenerate
+p.addParameter('scan'           , struct()  , @isstruct);                   % struct with optimized images for ptb 
+p.addParameter('timing'         , struct()  , @isstruct);                   % struct with frame timing for ptb 
+p.addParameter('images'         , struct()  , @isstruct);                   % struct with images (we preload before calling vcd_singleRun to avoid delays).
+p.addParameter('savedatadir'    , []        , @ischar);                     % place to store data with today's date
+p.addParameter('behaviorfile'   , []        , @ischar);                     % filename to store behavioral data with today's date
+p.addParameter('eyelinkfile'    , []        , @ischar);                     % where the eyelink edf file can be obtained
+p.addParameter('loadparams'     , true      , @islogical)                   % whether load stim/condition params or regenerate
+p.addParameter('storeparams'    , true      , @islogical)       % whether to store stimulus params
 p.addParameter('infofolder'     , fullfile(vcd_rootPath,'workspaces','info'), @ischar); % where the *_info.csv file is
 p.addParameter('stimfolder'     , fullfile(vcd_rootPath,'workspaces','stimuli'), @ischar); % where the images can be obtained
 p.addParameter('instrtextdir'   , fullfile(vcd_rootPath,'workspaces','instructions'), @ischar); % where the task instructions can be obtained
@@ -21,7 +24,6 @@ p.addParameter('triggerkeyname' , '''5'' or ''t''', @isstring)  % for display on
 p.addParameter('offsetpix'      , [0 0]     , @isnumeric);      % offset of screen in pixels [10 20] means move 10-px right, 20-px down
 p.addParameter('movieflip'      , [0 0]     , @isnumeric)       % whether to flip up-down, whether to flip left-right
 p.addParameter('debugmode'      , false     , @islogical)       % whether to use debug mode (no BOLDscreen, no eyelink)
-p.addParameter('storeparams'    , true      , @islogical)       % whether to store stimulus params
 p.addParameter('dispName'       , '7TAS_BOLDSCREEN32' , @ischar) % display params: 7TAS_BOLDSCREEN32, KKOFFICE_AOSQ3277, PPROOM_EIZOFLEXSCAN
 
 % Parse inputs
@@ -131,16 +133,20 @@ for jj = 1:length(params.exp.stimClassLabels)
     image_info.(params.exp.stimClassLabels{jj}) = readtable(fullfile(d(end).folder,d(end).name));
 end
 
-%% INDEX IMAGES THAT NEED TO BE LOADED
-run_image_order = vcd_getImageOrder(subj_run.block, image_info, params);
 
-%% LOAD AND RESIZE IMAGES etc
-% exp_im is a cell with dims:
-% blocks x trials x locations (1:l, 2:r) x stim epoch (first or second)
-[exp_im, images] = vcd_loadRunImages(run_image_order, subj_run.block, params);
 
-scan.exp_im = exp_im; clear exp_im
+% INDEX IMAGES THAT NEED TO BE LOADED
+[run_image_order,im_seq_order] = vcd_getImageOrder(subj_run.block, image_info, params);
 
+if ~exist('scan','var') || ~isfield(scan,'exp_im') || ~isempty(scan.exp_im)
+    % LOAD AND RESIZE IMAGES etc
+    
+    % exp_im is a cell with dims:
+    % blocks x trials x locations (1:l, 2:r) x stim epoch (first or second)
+    [exp_im, images] = vcd_loadRunImages(run_image_order, subj_run.block, params);
+    
+    scan.exp_im = exp_im; clear exp_im
+end
 %% %%%%%%%%%%%%% FIXATION IM/PARAMS %%%%%%%%%%%%%
 
 % Load stored fixation dot images
@@ -191,122 +197,135 @@ if ~isempty(params.stim.fix.dres) && ...
     images.fix = reshape(im_rz,old_fix_sz(1),old_fix_sz(2),old_fix_sz(3),old_fix_sz(4),old_fix_sz(5));
 end
 
-scan.fix_im = images.fix;
-
-%% TIMING
-timing = vcd_getImageTiming(params, subj_run); 
-
-cellblock = struct2cell(subj_run.block);
-cellblock = squeeze(cellblock);
-
-st_ID = cell2mat(cellblock(2,:));  
-st_start = []; st_end = [];
-for ii = 1:length(st_ID)
-    st_start = cat(1,st_start, cellblock{6,ii}.onset_time(1));
-    st_end = cat(1,st_end, cellblock{6,ii}.run_time(end));
+if ~isfield(scan,'fix_im') || ~isempty(scan.fix_im)
+    scan.fix_im = images.fix;
 end
 
-timing.block = [st_ID', st_start,st_end];
+%% TIMING
+
+if ~exist('timing','var') || ~isfield(timing,'block') || ~isempty(timing.block)
+    
+    timing = vcd_getImageTiming(params, subj_run, run_image_order, im_seq_order);
+    
+    cellblock = struct2cell(subj_run.block);
+    cellblock = squeeze(cellblock);
+    
+    st_ID = cell2mat(cellblock(2,:));
+    st_start = []; st_end = [];
+    for ii = 1:length(st_ID)
+        st_start = cat(1,st_start, cellblock{6,ii}.onset_time(1));
+        st_end = cat(1,st_end, cellblock{6,ii}.run_time(end));
+    end
+    
+    timing.block = [st_ID', st_start,st_end];
+    
+end
+
 
 %% IMAGE XY CENTER OFFSET
 
-% recenter x,y-center coordinates if needed
-if any(params.offsetpix~=0) || isempty(params.offsetpix)
-    xc = (ptonparams{1}(1)/2) + params.offsetpix(1);
-    yc = (ptonparams{1}(2)/2) + params.offsetpix(2);
+if ~isfield(scan,'rect') || ~isempty(scan.rect)
     
-    % store offset
-    params.stim.xc = xc;
-    params.stim.yc = yc;
-
-else
-    params.stim.xc = (ptonparams{1}(1)/2);
-    params.stim.yc = (ptonparams{1}(2)/2);
-end
-
-% 1-30 = all non-NS stim-task crossings
-% 31-39 = NS stim-task crossings
-gb_IDs = find(~cellfun(@isempty, (regexp(params.exp.stimTaskLabels,'-gabor','ONCE'))))';
-rdk_IDs = find(~cellfun(@isempty, (regexp(params.exp.stimTaskLabels,'-rdk','ONCE'))))';
-dot_IDs = find(~cellfun(@isempty, (regexp(params.exp.stimTaskLabels,'-dot','ONCE'))))';
-cobj_IDs = find(~cellfun(@isempty, (regexp(params.exp.stimTaskLabels,'-cobj','ONCE'))))';
-ns_IDs = find(~cellfun(@isempty, (regexp(params.exp.stimTaskLabels,'-ns','ONCE'))))';
-
-block_counter = 2; % assume first block is pre-blank
-trial_counter = 1;
-im_i = find((timing.trig_stim(:,1) > 0) & (timing.trig_stim(:,1) < 97)); % task_cue_ID = 97; ITI_ID = 98; % IBI_ID = 99;
-
-% Get [x,y]-center in pixels of peripheral stimuli given display size, and
-% offset. Get stimulus aperture size..
-centers = cell(size(timing.trig_stim));
-apsize  = cell(size(timing.trig_stim));
-while block_counter < length(st_ID)
-    for nn = 1:length(im_i)
-
-        sz = size(cellblock{4,block_counter});
-        if sz(1)>sz(2) && any(sz~=1)
-            numTrials = sz(1);
-            numSides = sz(2);
-        elseif sz(1)<sz(2) && any(sz~=1)
-            numTrials = sz(2);
-            numSides = sz(1);
-        elseif sz(1)<sz(2) && any(sz==1)
-            numTrials = sz(2);
-            numSides = sz(1);
-        end
+    % recenter x,y-center coordinates if needed
+    if any(params.offsetpix~=0) || isempty(params.offsetpix)
+        xc = (ptonparams{1}(1)/2) + params.offsetpix(1);
+        yc = (ptonparams{1}(2)/2) + params.offsetpix(2);
         
-        for side = 1:numSides
-            curr_ID = st_ID(block_counter);
+        % store offset
+        params.stim.xc = xc;
+        params.stim.yc = yc;
+        
+    else
+        params.stim.xc = (ptonparams{1}(1)/2);
+        params.stim.yc = (ptonparams{1}(2)/2);
+    end
+    
+    % 1-30 = all non-NS stim-task crossings
+    % 31-39 = NS stim-task crossings
+    gb_IDs = find(~cellfun(@isempty, (regexp(params.exp.stimTaskLabels,'-gabor','ONCE'))))';
+    rdk_IDs = find(~cellfun(@isempty, (regexp(params.exp.stimTaskLabels,'-rdk','ONCE'))))';
+    dot_IDs = find(~cellfun(@isempty, (regexp(params.exp.stimTaskLabels,'-dot','ONCE'))))';
+    cobj_IDs = find(~cellfun(@isempty, (regexp(params.exp.stimTaskLabels,'-cobj','ONCE'))))';
+    ns_IDs = find(~cellfun(@isempty, (regexp(params.exp.stimTaskLabels,'-ns','ONCE'))))';
+    
+    block_counter = 2; % assume first block is pre-blank
+    trial_counter = 1;
+    im_i = find((timing.trig_stim(:,1) > 0) & (timing.trig_stim(:,1) < 97)); % task_cue_ID = 97; ITI_ID = 98; % IBI_ID = 99;
+    
+    % Get [x,y]-center in pixels of peripheral stimuli given display size, and
+    % offset. Get stimulus aperture size..
+    centers = cell(size(timing.trig_stim));
+    apsize  = cell(size(timing.trig_stim));
+    while block_counter < length(st_ID)
+        for nn = 1:length(im_i)
             
-            if numSides == 1 && curr_ID > 0
-                assert(isequal(cellblock{4,block_counter}(side,trial_counter).stim_loc,side))
-            elseif  numSides == 2 && curr_ID > 0
-                assert(isequal(cellblock{4,block_counter}(trial_counter,side).stim_loc,side))
+            sz = size(cellblock{4,block_counter});
+            if sz(1)>sz(2) && any(sz~=1)
+                numTrials = sz(1);
+                numSides = sz(2);
+            elseif sz(1)<sz(2) && any(sz~=1)
+                numTrials = sz(2);
+                numSides = sz(1);
+            elseif sz(1)<sz(2) && any(sz==1)
+                numTrials = sz(2);
+                numSides = sz(1);
             end
             
-            if ~isempty(intersect(curr_ID,gb_IDs))
-                centers{im_i(nn),side}(1) = params.stim.gabor.x0_pix(side) + params.stim.xc; % x-coord (pixels)
-                centers{im_i(nn),side}(2) = params.stim.gabor.y0_pix(side) + params.stim.yc; % y-coord (pixels)
-            elseif ~isempty(intersect(curr_ID,rdk_IDs))
-                centers{im_i(nn),side}(1) = params.stim.rdk.x0_pix(side) + params.stim.xc;
-                centers{im_i(nn),side}(2) = params.stim.rdk.y0_pix(side) + params.stim.yc;
-            elseif ~isempty(intersect(curr_ID,dot_IDs))
-                xy_idx = find(cellblock{4,block_counter}(trial_counter,side).loc_deg == params.stim.dot.loc_deg);
-                centers{im_i(nn),side}(1) = params.stim.dot.x0_pix(xy_idx) + params.stim.xc;
-                centers{im_i(nn),side}(2) = params.stim.dot.y0_pix(xy_idx) + params.stim.yc;
-            elseif ~isempty(intersect(curr_ID,cobj_IDs))
-                centers{im_i(nn),side}(1) = params.stim.cobj.x0_pix(side) + params.stim.xc;
-                centers{im_i(nn),side}(2) = params.stim.cobj.y0_pix(side) + params.stim.yc;
-            elseif ~isempty(intersect(curr_ID,ns_IDs))
-                centers{im_i(nn),side}(1) = params.stim.ns.x0_pix(side) + params.stim.xc;
-                centers{im_i(nn),side}(2) = params.stim.ns.y0_pix(side) + params.stim.yc;
+            for side = 1:numSides
+                curr_ID = st_ID(block_counter);
+                
+                if numSides == 1 && curr_ID > 0
+                    assert(isequal(cellblock{4,block_counter}(side,trial_counter).stim_loc,side))
+                elseif  numSides == 2 && curr_ID > 0
+                    assert(isequal(cellblock{4,block_counter}(trial_counter,side).stim_loc,side))
+                end
+                
+                if ~isempty(intersect(curr_ID,gb_IDs))
+                    centers{im_i(nn),side}(1) = params.stim.gabor.x0_pix(side) + params.stim.xc; % x-coord (pixels)
+                    centers{im_i(nn),side}(2) = params.stim.gabor.y0_pix(side) + params.stim.yc; % y-coord (pixels)
+                elseif ~isempty(intersect(curr_ID,rdk_IDs))
+                    centers{im_i(nn),side}(1) = params.stim.rdk.x0_pix(side) + params.stim.xc;
+                    centers{im_i(nn),side}(2) = params.stim.rdk.y0_pix(side) + params.stim.yc;
+                elseif ~isempty(intersect(curr_ID,dot_IDs))
+                    xy_idx = find(cellblock{4,block_counter}(trial_counter,side).loc_deg == params.stim.dot.loc_deg);
+                    centers{im_i(nn),side}(1) = params.stim.dot.x0_pix(xy_idx) + params.stim.xc;
+                    centers{im_i(nn),side}(2) = params.stim.dot.y0_pix(xy_idx) + params.stim.yc;
+                elseif ~isempty(intersect(curr_ID,cobj_IDs))
+                    centers{im_i(nn),side}(1) = params.stim.cobj.x0_pix(side) + params.stim.xc;
+                    centers{im_i(nn),side}(2) = params.stim.cobj.y0_pix(side) + params.stim.yc;
+                elseif ~isempty(intersect(curr_ID,ns_IDs))
+                    centers{im_i(nn),side}(1) = params.stim.ns.x0_pix(side) + params.stim.xc;
+                    centers{im_i(nn),side}(2) = params.stim.ns.y0_pix(side) + params.stim.yc;
+                end
+                apsize{im_i(nn),side}(2)  = size(scan.exp_im{block_counter,trial_counter,side,1},1); % height (pixels)
+                apsize{im_i(nn),side}(1)  = size(scan.exp_im{block_counter,trial_counter,side,1},2); % width (pixels)
             end
-            apsize{im_i(nn),side}(2)  = size(scan.exp_im{block_counter,trial_counter,side,1},1); % height (pixels)
-            apsize{im_i(nn),side}(1)  = size(scan.exp_im{block_counter,trial_counter,side,1},2); % width (pixels)
-        end
-        trial_counter = trial_counter+1;
-        
-        if trial_counter >= numTrials
-            block_counter = block_counter+1;
-            trial_counter = 1;
+            trial_counter = trial_counter+1;
+            
+            if trial_counter >= numTrials
+                block_counter = block_counter+1;
+                trial_counter = 1;
+            end
         end
     end
-end
-
-scan.centers = centers; clear centers trial_counter block_counter;
-scan.apsize  = apsize; clear apsize;
-
-%%%%%%% CENTER RECT
-scan.centers_shortlist = scan.centers(~cellfun(@isempty, scan.centers(:,1)),:);
-scan.apsize_shortlist = scan.apsize(~cellfun(@isempty, scan.apsize(:,1)),:);
-
-% insert NaNs for second column when using single square stimulus (nat scene)
-scan.centers_shortlist(cellfun(@isempty,scan.centers_shortlist(:,2)),2) = repmat({[NaN,NaN]},size(find(cellfun(@isempty,scan.centers_shortlist(:,2))),1),1);
-scan.apsize_shortlist(cellfun(@isempty,scan.apsize_shortlist(:,2)),2) = repmat({[NaN,NaN]},size(find(cellfun(@isempty,scan.apsize_shortlist(:,2))),1),1);
-
-for side = [1,2]
-    scan.rects(:,side) = cellfun(@(stimsize,stimcenter) CenterRectOnPoint([0 0 stimsize(1) stimsize(2)], stimcenter(1), stimcenter(2)), ...
-                        scan.apsize_shortlist(:,side),scan.centers_shortlist(:,side), 'UniformOutput', false);
+    
+    scan.centers = centers; clear centers trial_counter block_counter;
+    scan.apsize  = apsize; clear apsize;
+    
+    %%%%%%% CENTER RECT
+    scan.centers_shortlist = scan.centers(~cellfun(@isempty, scan.centers(:,1)),:);
+    scan.apsize_shortlist = scan.apsize(~cellfun(@isempty, scan.apsize(:,1)),:);
+    
+    % insert NaNs for second column when using single square stimulus (nat scene)
+    scan.centers_shortlist(cellfun(@isempty,scan.centers_shortlist(:,2)),2) = repmat({[NaN,NaN]},size(find(cellfun(@isempty,scan.centers_shortlist(:,2))),1),1);
+    scan.apsize_shortlist(cellfun(@isempty,scan.apsize_shortlist(:,2)),2) = repmat({[NaN,NaN]},size(find(cellfun(@isempty,scan.apsize_shortlist(:,2))),1),1);
+    
+    for side = [1,2]
+        scan.rects(:,side) = cellfun(@(stimsize,stimcenter) CenterRectOnPoint([0 0 stimsize(1) stimsize(2)], stimcenter(1), stimcenter(2)), ...
+            scan.apsize_shortlist(:,side),scan.centers_shortlist(:,side), 'UniformOutput', false);
+    end
+    
+    
 end
 
 %% %%%%%%%%%%%%% BACKGROUND IM %%%%%%%%%%%%%
@@ -320,6 +339,13 @@ end
 % input 5: offset of center in pixels [x,y]
 % create background image that adjusts for shifted background if needed
 scan.bckground = vcd_pinknoisebackground(params, 'comb', 'fat', 1, params.offsetpix); 
+
+
+%% save images and timing just in case we break out
+if params.savetempstimuli
+    save(fullfile(params.savedatadir,sprintf('tmp_expim_%s.mat',datastr(now,30))),'scan','timing','run_image_order','params','-v7.3')
+end
+
 
 %% %%%%%%%%%%%%% EYELINK PARAMS %%%%%%%%%%%%%
 
@@ -347,7 +373,7 @@ tasksIDs = cell2mat(tasks_to_run(2,:));
 
 for nn = find(cellfun(@isempty, regexp(taskNames,'blank')))
     d = dir(fullfile(params.instrtextdir,sprintf('%02d_runvcdcore*.txt', tasksIDs(nn))));
-    taskscript{nn} = sprintf('showinstructionscreen(''%s'',250,75,25,%d,[%d %d])',fullfile(d.folder,d.name),params.stim.bckgrnd_grayval,params.offsetpix(1),params.offsetpix(2));
+    taskscript{nn} = fullfile(d.folder,d.name);
 end
 
 
@@ -479,7 +505,7 @@ end
 
 if ~exist('params.savedatadir','dir'), mkdir(params.savedatadir); end
 
-tENDfun   = @() fprintf('RUN ENDED.\n');
+tENDfun   = @() fprintf('RUN ENDED: %4.4f.\n',GetSecs);
 
 % Close out eyelink
 if ~isempty(eyetempfile)
