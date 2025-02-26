@@ -1,10 +1,9 @@
-function [image_unique_nr,image_filename] = vcd_getImageOrder(block, image_info, p)
+function [image_unique_idx, im_seq_order] = vcd_getImageOrder(block, image_info, p)
 
 
 %% Get the trial order for this run
-image_unique_nr = cell(1,length(block));
-image_filename = cell(1,length(block));
-
+image_unique_idx = cell(1,length(block));
+im_seq_order    = {};
 fprintf('[%s]: Get image order..',mfilename); tic;
 for ii = 1:length(block)
     
@@ -49,11 +48,8 @@ for ii = 1:length(block)
                         % use shortened gabor image array
                         idx1 = find(unique_im_order==block(ii).trial(jj,nn).unique_im_nr); 
                         
-                        image_unique_nr{ii}{jj,1}(nn) = idx1;
-%                         image_filename{ii}{jj,1}(nn,:) = [find(gbr_ori == p.stim.gabor.ori_deg), ...  
-%                                                           find(gbr_contrast == p.stim.gabor.contrast), ...
-%                                                           find(gbr_phase == p.stim.gabor.ph_deg), ...
-%                                                           1]; % 1: delta = 0
+                        image_unique_idx{ii}{jj,1}(nn) = idx1;
+                        im_seq_order{ii,jj,nn,1} = block(ii).trial(jj,nn).unique_im_nr;
 
                         if strcmp(taskClass, 'wm')
                             
@@ -66,17 +62,12 @@ for ii = 1:length(block)
                             assert(isequal(delta, image_info.gabor.delta_deg(idx0_delta)));
                             
                             idx1_delta = find(delta==p.stim.gabor.delta_from_ref);
-                            image_unique_nr{ii}{jj,2}(nn) = idx1_delta;
-                            
-%                             image_filename{ii}{jj,2}(nn,:) = [find(gbr_ori == p.stim.gabor.ori_deg), ...  
-%                                                           find(gbr_contrast == p.stim.gabor.contrast), ...
-%                                                           find(gbr_phase == p.stim.gabor.ph_deg), ...
-%                                                           find(delta == p.stim.gabor.delta_from_ref)];
+                            image_unique_idx{ii}{jj,2}(nn) = idx1_delta;
 
+                            im_seq_order{ii,jj,nn,2} = idx1_delta;
                         end
                     end
                     
-                    %% FIX THIS
                 case 'rdk'
                     sz = size(block(ii).trial);
                     if sz(1)>sz(2) && any(sz~=1)
@@ -95,8 +86,9 @@ for ii = 1:length(block)
                         assert(isequal(block(ii).trial(jj,nn).motdir,dot_motdir));
                         
                         % store index
-                        image_unique_nr{ii}{jj,1}(nn) = idx0;
-                        
+                        image_unique_idx{ii}{jj,1}(nn) = idx0;
+                        im_seq_order{ii,jj,nn,1} = block(ii).trial(jj,nn).unique_im_nr;
+
                         if strcmp(taskClass, 'wm')
                             delta = (dot_motdir - block(ii).trial(jj,nn).ref_delta);
                             idx0_delta = find(image_info.rdk.motdir_deg_ref==delta);
@@ -105,7 +97,8 @@ for ii = 1:length(block)
                             idx1_delta = tmp1(1);
                             assert(isequal(delta,image_info.rdk.motdir_deg_ref(idx1_delta)));
                             
-                            image_unique_nr{ii}{jj,2}(nn) = idx1_delta;
+                            image_unique_idx{ii}{jj,2}(nn) = idx1_delta;
+                            im_seq_order{ii,jj,nn,2} = idx1_delta;
                         end
                     end
                     
@@ -123,15 +116,17 @@ for ii = 1:length(block)
                         % check if stimparams match
                         assert(isequal(dot_loc(idx0),block(ii).trial(jj,nn).loc_deg))
                         
-                        image_unique_nr{ii}{jj,1}(nn) = idx0;
-                        
+                        image_unique_idx{ii}{jj,1}(nn) = idx0;
+                        im_seq_order{ii,jj,nn,1} = block(ii).trial(jj,nn).unique_im_nr;
+
                         if strcmp(taskClass, 'wm')
                             delta = (dot_loc(idx0) - block(ii).trial(jj,nn).ref_delta);
                             idx0_delta = find(image_info.dot.delta_deg_ref==delta);
                             idx0_delta_follow = idx0_delta(idx0);
                             assert(isequal(delta,image_info.dot.delta_deg_ref(idx0_delta_follow)));
 
-                            image_unique_nr{ii}{jj,2}(nn) = idx0_delta_follow;
+                            image_unique_idx{ii}{jj,2}(nn) = idx0_delta_follow;
+                            im_seq_order{ii,jj,nn,2} = idx0_delta_follow;
                         end
                     end
                     
@@ -162,7 +157,8 @@ for ii = 1:length(block)
                         assert(isequal(obj_rotation,block(ii).trial(jj,nn).facing_dir));
                         
                         % objects: x by y by sub cat by rotation
-                        image_unique_nr{ii}{jj,1}(nn) = idx;
+                        image_unique_idx{ii}{jj,1}(nn) = idx;
+                        im_seq_order{ii,jj,nn,1} = block(ii).trial(jj,nn).unique_im_nr;
                         
                         if strcmp(taskClass, 'wm') 
                             delta = (obj_rotation - block(ii).trial(jj,nn).ref_delta);
@@ -170,14 +166,11 @@ for ii = 1:length(block)
                             delta_idx1 = find(delta, [-10:2:10]);
                             assert(isequal(delta, image_info.cobj(idx,delta_idx0)));
                             
-                            image_unique_nr{ii}{jj,2}(nn) = delta_idx1-1;
-%                             image_filename{ii}{jj,2}(nn,:) = [find(obj_super == p.stim.cobj.super_cat), ...
-%                                                               find(obj_basic == p.stim.cobj.super_cat), ...
-%                                                               find(obj_sub == p.stim.cobj.super_cat), ...
-%                                                               find(obj_rotation == stim.cobj.facing_dir_deg),...
-%                                                               find(delta == p.stim.cobj.delta_from_ref)];
+                            image_unique_idx{ii}{jj,2}(nn) = delta_idx1-1;
+                            im_seq_order{ii,jj,nn,2} = delta_idx1;
                         end
                     end
+                    
                 case 'ns'
                     
                     idx = (image_info.ns.superordinate_i == block(ii).trial(jj).super_cat) & ...
@@ -195,9 +188,9 @@ for ii = 1:length(block)
                     assert(isequal(obj_sub,block(ii).trial(jj).sub_cat_name));
                     
                     % scenes: (x,y,3, 5 superordinate categories, 2 in/outdoor, 3 object location)
-                    image_unique_nr{ii}{jj,1} = find(idx);
-%                     image_filename{ii}{jj,1} = [obj_super, obj_basic, obj_sub];
-                    
+                    image_unique_idx{ii}{jj,1} = find(idx);
+                    im_seq_order{ii,jj,1,1} = block(ii).trial(jj).unique_im_nr;
+
                     if strcmp(taskClass, 'wm')
                         change_im = block(ii).trial(jj).change_blindness_name;
 
@@ -205,18 +198,21 @@ for ii = 1:length(block)
                         info_name = image_info.ns.(sprintf('change_img%d',delta0_idx));
                         assert(isequal(sprintf('%s.png',change_im),info_name{delta0_idx}));
 
-                        image_unique_nr{ii}{jj,2} = delta0_idx;
+                        image_unique_idx{ii}{jj,2} = delta0_idx;
+                        im_seq_order{ii,jj,1,2} = delta0_idx;
+
                     end
                     
                     if strcmp(taskClass, 'ltm')
                         lure_im = block(ii).trial(jj).lure_num;
                         
                         delta0_idx = find(strcmp(lure_im,p.stim.ns.lure_im)); % {'lure1',  'lure2', 'lure3', 'lure4'};
-                        image_unique_nr{ii}{jj,2} = delta0_idx;
+                        image_unique_idx{ii}{jj,2} = delta0_idx;
                         info_name = image_info.ns.(sprintf('change_img%d',delta0_idx));
                         assert(isequal(sprintf('%s.png',lure_im),info_name{delta0_idx}));
                         
-                        image_unique_nr{ii}{jj,2} = delta0_idx;
+                        image_unique_idx{ii}{jj,2} = delta0_idx;
+                        im_seq_order{ii,jj,1,2} = delta0_idx;
                     end
                     
             end
