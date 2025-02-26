@@ -83,8 +83,8 @@ else
     stim.fix.dres                   = [];                                % rescale factor (fraction)
     
     % SPATIAL
-    stim.fix.dotcenterdiam_deg            = 0.2;                              % dot diameter in deg
-    stim.fix.dotcenterdiam_pix            = round(0.2 * disp_params.ppd);     % dot diameter in pixels
+    stim.fix.dotcenterdiam_deg            = 0.215;                           % dot diameter in deg
+    stim.fix.dotcenterdiam_pix            = round(stim.fix.dotcenterdiam_deg * disp_params.ppd);     % dot diameter in pixels
     stim.fix.dotthinborderdiam_pix        = stim.fix.dotcenterdiam_pix+3;     % pixel-width for dot thin border (during ITI/IBI)
     stim.fix.dotthickborderdiam_pix       = stim.fix.dotcenterdiam_pix+6;     % pixel-width for dot border (during trial)
     
