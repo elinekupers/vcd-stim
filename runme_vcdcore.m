@@ -48,9 +48,9 @@ function runme_vcdcore(subjID,sesID,runnum, varargin)
 %  None
 %
 % __EXAMPLE__
-%  vcd_singleRun(1, 1, 1, 'debugmode', true)
-%  vcd_singleRun(1, 1, 1, 'debugmode', true, 'dispName','KKOFFICE_AOSQ3277')
-%  vcd_singleRun(1, 1, 1, 'debugmode', true, 'dispName','KKOFFICE_AOSQ3277', 'savetempstimuli', true)
+%  runme_vcdcore(1, 1, 1, 'debugmode', true)
+%  runme_vcdcore(1, 1, 1, 'debugmode', true, 'dispName','KKOFFICE_AOSQ3277')
+%  runme_vcdcore(1, 1, 1, 'debugmode', true, 'dispName','KKOFFICE_AOSQ3277', 'savetempstimuli', true)
 %
 % __DEPENDENCIES__
 %  * Psychtoolbox-3 (v. 3.0.16?? or lower).
@@ -70,7 +70,7 @@ p = inputParser;
 p.addRequired ('subjID'         , @isnumeric); % subject number 
 p.addRequired ('sesID'          , @isnumeric); % session number 
 p.addRequired ('runnum'         , @isnumeric); % nun number
-p.addParameter('dispName'       , '7TAS_BOLDSCREEN32' , @(x) any(strcmp(x, {'7TAS_BOLDSCREEN32'}, {'KKOFFICE_AOSQ3277'}, {'PPROOM_EIZOFLEXSCAN'})))
+p.addParameter('dispName'       , '7TAS_BOLDSCREEN32' , @(x) any(strcmp(x, {'7TAS_BOLDSCREEN32','KKOFFICE_AOSQ3277','PPROOM_EIZOFLEXSCAN'})))
 p.addParameter('debugmode'      , false, @islogical);
 p.addParameter('loadparams'     , true, @islogical);
 p.addParameter('storeparams'    , true, @islogical);
