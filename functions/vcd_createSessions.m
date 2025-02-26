@@ -436,6 +436,16 @@ else
                 % Last Block stays the same (post-blank period)
                 subject_sessions(ses,sj).run(rr).block(new_block_order(end)) = session_master(ses).run(rr).block(new_block_order(end));
                 
+                subject_sessions(ses,sj).run(rr).block(new_block_order(end)).timing.onset_time = ...
+                        subject_sessions(ses,sj).run(rr).block(nn).timing.run_time(end); 
+                    
+                    % update total time
+                    tmptime = [subject_sessions(ses,sj).run(rr).block(end).timing.onset_time + p.exp.run.post_blank_dur];
+                    round_me_out = (ceil(tmptime/p.exp.TR) - (tmptime/p.exp.TR)).*p.exp.TR;
+            
+                    tmptime2 = tmptime + round_me_out;
+                    subject_sessions(ses,sj).run(rr).block(end).timing.run_time = tmptime2;
+
             end
             
               
@@ -463,7 +473,7 @@ else
                 ylabel('stim-task crossing')
                 set(gca,'YTick',[0:length(p.exp.stimTaskLabels)+2],'YTickLabel',[{'blank'}; p.exp.stimTaskLabels;{'taskcue'};{'IBI'}])
                 set(gca,'TickDir', 'out')
-                title(sprintf('run %d',ii))
+                title(sprintf('run %d',rr))
                 sgtitle(sprintf('Subject %02d, session %02d',sj, ses));
             end
             if p.store_imgs
