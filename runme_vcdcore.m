@@ -51,6 +51,7 @@ function runme_vcdcore(subjID,sesID,runnum, varargin)
 %  runme_vcdcore(1, 1, 1, 'debugmode', true)
 %  runme_vcdcore(1, 1, 1, 'debugmode', true, 'dispName','KKOFFICE_AOSQ3277')
 %  runme_vcdcore(1, 1, 1, 'debugmode', true, 'dispName','KKOFFICE_AOSQ3277', 'savetempstimuli', true)
+%  runme_vcdcore(1, 1, 1, 'debugmode', true, 'dispName','EKHOME_ASUSVE247', 'savetempstimuli', true)
 %
 % __DEPENDENCIES__
 %  * Psychtoolbox-3 (v. 3.0.16?? or lower).
@@ -70,7 +71,7 @@ p = inputParser;
 p.addRequired ('subjID'         , @isnumeric); % subject number 
 p.addRequired ('sesID'          , @isnumeric); % session number 
 p.addRequired ('runnum'         , @isnumeric); % nun number
-p.addParameter('dispName'       , '7TAS_BOLDSCREEN32' , @(x) any(strcmp(x, {'7TAS_BOLDSCREEN32','KKOFFICE_AOSQ3277','PPROOM_EIZOFLEXSCAN'})))
+p.addParameter('dispName'       , '7TAS_BOLDSCREEN32' , @(x) any(strcmp(x, {'7TAS_BOLDSCREEN32','KKOFFICE_AOCQ3277','PPROOM_EIZOFLEXSCAN','EKHOME_ASUSVE247'})))
 p.addParameter('debugmode'      , false, @islogical);
 p.addParameter('loadparams'     , true, @islogical);
 p.addParameter('storeparams'    , true, @islogical);
@@ -242,7 +243,8 @@ vcd_singleRun(subjID, sesID, runnum, ... % mandatory inputs
     'movieflip', movieflip, ...
     'instrtextdir',instructionsDir, ...
     'scan', scan, ...
-    'timing',timing); 
+    'timing',timing, ...
+    'savetempstimuli', savetempstimuli); 
 
 
 % single_vcd_run (filename,offset,movieflip,frameduration,fixdotcol,dotdiam_pix,tfun, ...
