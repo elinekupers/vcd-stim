@@ -50,35 +50,26 @@ else
     skipsync = 0;
 end
 
-% Nova1x32 with BOLDscreen and big eye mirrors
+% Nova1x32 coil with BOLDscreen and big eye mirrors
 % expected to be {[1920 1080 120 24],[], 0, 0} 
 % 1: [width, height, framerate, bitdepth]
 % 2: winsize (fraction: default is full extent)
-% 3: clutfile -- 0 for linear CLUT (choose -2 for squaring CLUT because we need to simulate normal monitors)
+% 3: clutfile -- 0 for linear CLUT (-2 for squaring CLUT for BOLDSCREEN to simulate normal monitors --> NB: we do this manually!)
 % 4: skipsync (bool: 0 is false, 1 is true)
 % 5: wantstereo (bool: default is false)
-ptonparams = {[params.disp.w_pix params.disp.h_pix params.disp.refresh_hz 24],[],0, skipsync}; 
+ptonparams = {[params.disp.w_pix params.disp.h_pix params.disp.refresh_hz 24],[],disp.clut, skipsync}; 
 
 % Buttonbox / keyboard
 params.ignorekeys = KbName({params.triggerkey});  % dont record TR triggers as subject responses
 
 %% %%%%%%%%% SETUP RNG %%%%%%%%%
 
-rand('twister', sum(100*clock));
-params.rand = rand;
+rand('seed', sum(100*clock));
+randn('seed', sum(100*clock));
+params.rng.rand = rand;
+params.rng.randn = randn;
 
 %% %%%%%%%%%%%%% STIM PARAMS %%%%%%%%%%%%%
-% **** Block / trial order ****
-% We need to define all possible combinations 
-% Depending on the session, run, and subject, we need to define the 
-% combinations we want to show, converted into miniblocks, where trials are
-% sampling the manipulations in a pseudo-random way. In each run, 
-% we have manipulations that we prioritize to fully sample, otherwise it is
-% difficult to compare conditions (e.g., we want to sample all contrast
-% levels within the run).
-% 
-% We want a master trial function and a function thats in the trial
-% specifics given the subject and session nr
 
  % Stimulus params
 if ~isfield(params, 'stim') || isempty(params.stim)
@@ -91,7 +82,15 @@ if ~isfield(params, 'stim') || isempty(params.stim)
     end
 end
 
-% Trial params
+% Trial params 
+% **** Block / trial order **** 
+% We need to define all possible combinations. Depending on the session, 
+% run, and subject, we need to define the combinations we want to show, 
+% converted into miniblocks, where trials are sampling the manipulations in
+% a pseudo-random way. In each run, we have manipulations that we prioritize 
+% to fully sample, otherwise it is difficult to compare conditions (e.g., 
+% we want to sample all contrast levels within the run).
+
 if ~isfield(params, 'trials') || isempty(params.trials)
     if params.loadparams
         d = dir(fullfile(params.infofolder,'trials*.mat'));
@@ -114,6 +113,8 @@ if ~isfield(params, 'exp') ||  isempty(params.exp)
 end
 
 %% %%%%%%%%%%%%% GET MINIBLOCK ORDER %%%%%%%%%%%%%
+% We have master trial sequence, and a sequence where blocks are shuffled
+% given the subject.
 
 if params.loadparams
     d = dir(fullfile(params.infofolder,'subject_sessions_*.mat'));
@@ -365,7 +366,7 @@ end
 scan.bckground = vcd_pinknoisebackground(params, 'comb', 'fat', 1, params.offsetpix); 
 
 
-%% save images and timing just in case we break out
+%% Save images and timing just in case we run into an error?
 if params.savetempstimuli
     save(fullfile(params.savedatadir,sprintf('tmp_expim_%s.mat',datestr(now,30))),'scan','timing','params','-v7.3')
 end
@@ -414,12 +415,12 @@ if params.wanteyetracking && ~isempty(params.eyelinkfile)
     assert(EyelinkInit()==1);
     win = firstel(Screen('Windows'));
     
-    % Check TCP/IP address
-    if strcmp(dispName,'7TAS_BOLDSCREEN32')
-        Eyelink('SetAddress','100.1.1.1') %% copied from MGS exp
-    elseif strcmp(dispName,'PPROOM_EIZOFLEXSCAN')
-        Eyelink('SetAddress','100.1.1.1') %% <--- CHECK THIS
-    end
+%     % Check TCP/IP address
+%     if strcmp(dispName,'7TAS_BOLDSCREEN32')
+%         Eyelink('SetAddress','100.1.1.1') %% copied from MGS exp
+%     elseif strcmp(dispName,'PPROOM_EIZOFLEXSCAN')
+%         Eyelink('SetAddress','100.1.1.1') %% <--- CHECK THIS
+%     end
     
     % Get eyelink default params
     el = EyelinkInitDefaults(win);
@@ -490,11 +491,11 @@ if params.wanteyetracking && ~isempty(params.eyelinkfile)
     % what events (columns) are recorded in EDF:
     Eyelink('command','file_event_filter = LEFT,RIGHT,FIXATION,SACCADE,BLINK,MESSAGE,BUTTON');
     % what samples (columns) are recorded in EDF:
-    Eyelink('command','file_sample_data = LEFT,RIGHT,GAZE,HREF,AREA,GAZERES,STATUS');
+    Eyelink('command','file_sample_data = LEFT,RIGHT,GAZE,GAZERES,PUPIL,AREA,STATUS');
     % events available for real time:
     Eyelink('command','link_event_filter = LEFT,RIGHT,FIXATION,SACCADE,BLINK,MESSAGE,BUTTON');
     % samples available for real time:
-    Eyelink('command','link_sample_data = LEFT,RIGHT,GAZE,GAZERES,AREA,STATUS');
+    Eyelink('command','link_sample_data = LEFT,RIGHT,GAZE,GAZERES,PUPIL,AREA,STATUS');
 
     % make temp name and open
     eyetempfile = sprintf('%s.edf', datestr(now, 'HHMMSS')); %less than 8 digits!
