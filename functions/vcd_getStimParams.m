@@ -95,11 +95,11 @@ else
     fprintf('*** FIXATION MARK: fixation center diam = %d, thick rim = %d, thick rim = %d pixels ***\n', ...
         stim.fix.dotcenterdiam_pix,stim.fix.dotthinborderdiam_pix,stim.fix.dotthickborderdiam_pix);
     
-    %% CONTRAST DETECTION
-    stim.cd.t_gausswin_N            = round(dur_fps/2);                     % number of timepoints for gaussian time window (contrast ramp)
+    %% CONTRAST DECREMENT -- INVERTED GAUSSIAN TEMPORAL WINDOW
+    stim.cd.t_gausswin_N            = round(dur_fps/4);                     % 15 number of timepoints for gaussian time window (contrast decrement)
     stim.cd.t_gausswin_std          = 3;                                    % standard devation of gaussian window in time (frames)
-    stim.cd.meanchange              = 1/stim.fps;                           % mean of gaussian window in time (frames)  
-    stim.cd.changeplusminus         = 0.5/stim.fps;                         % plus or minus this amount (frames)  
+    stim.cd.meanchange              = 1/stim.fps;                           % mean of gaussian window in time (30 frames = 1 sec)  
+    stim.cd.changeplusminus         = (0.5/stim.fps)-1;                     % plus or minus this amount (14 frames = 0.46 sec)  
 
     t_support = linspace(-stim.cd.t_gausswin_N / 2, stim.cd.t_gausswin_N / 2, stim.cd.t_gausswin_N);
     t_gauss = exp(-t_support .^ 2 / (2 * stim.cd.t_gausswin_std ^ 2));
@@ -171,10 +171,10 @@ else
                 
                 % TEMPORAL
                 p.duration        = dur_fps;                                   % frames (nr of monitor refreshes)
-                p.dots_coherence  = [0.064, 0.128, 0.512];                      % Kiani lab uses usually one of these [0 0.032 0.064 0.128 0.256 0.512]
-                p.dots_speed      = 5;                                          % pix/ms? Kiani lab uses usually 5 to 10
-                p.dots_interval   = 1;                                          % fps interval by which dots update (so interval x disp.fps = interval in sec) 
-                                                                                % currently set to 1x(4/120) to approx match Kiani 3 x 75 hz frames
+                p.dots_coherence  = [0.064, 0.128, 0.512];                     % Kiani lab uses usually one of these [0 0.032 0.064 0.128 0.256 0.512]
+                p.dots_speed      = 5;                                         % pix/ms? Kiani lab uses usually 5 to 10
+                p.dots_interval   = 1;                                         % fps interval by which dots update (so 30 disp.fps / 1 interval = 30 frames/sec) 
+                                                                               % currently set to 30 frames per second to approx Kiani's 75 hz refresh rate / 3 interval = 25 frames/sec
                 
                 % SPATIAL
                 p.img_sz_deg      = parafov_circle_diam_deg;                    % stimulus aperture diameter (deg)

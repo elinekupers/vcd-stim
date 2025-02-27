@@ -55,8 +55,11 @@ p.stim.rdk.dots_angle = pi*p.stim.rdk.dots_direction/180;             % convert 
 ap_center = p.stim.rdk.dots_aperture(1:2);
 ap_radius = p.stim.rdk.dots_aperture(3:4);
 
+num_frames = p.stim.rdk.duration / (p.stim.fps/p.stim.rdk.dots_interval);
+
+
 ndots = min(p.stim.rdk.max_dots_per_frame, ...
-    round(p.stim.rdk.dots_density .* (p.stim.rdk.dots_aperture(:,3).*p.stim.rdk.dots_aperture(:,4)) / p.disp.refresh_hz));
+    round(p.stim.rdk.dots_density .* (p.stim.rdk.dots_aperture(:,3).*p.stim.rdk.dots_aperture(:,4)) / p.stim.fps));
 
 if ~isempty(p.stim.rdk.delta_from_ref)
     rdk_motdir_ref = [0:length(p.stim.rdk.delta_from_ref)];
@@ -103,142 +106,94 @@ for cc = 1:length(p.stim.rdk.dots_coherence)
             end
         
             %find the xy displacement of coherent
-%             dxdy = repmat(p.stim.rdk.dots_speed * p.stim.rdk.dots_interval/ p.disp.refresh_hz *... %% 
-%                 [cos(curr_motdir_deg) -sin(curr_motdir_deg)], ndots, 1) * p.disp.ppd;
-            dxdy = repmat(p.stim.rdk.dots_speed * p.stim.rdk.duration *... %% 
-                [cos(curr_motdir_deg) -sin(curr_motdir_deg)], ndots, 1) * p.disp.ppd;
+            dxdy = repmat(p.stim.rdk.dots_speed * (p.stim.fps / p.stim.rdk.dots_interval) * ... %% same as dots_speed * disp.fps
+                [cos(curr_motdir_deg) -sin(curr_motdir_deg)], ndots, 1) * p.disp.ppd;  
             
             d_ppd = repmat(ap_radius, ndots, 1);
-%             dot_pos = (rand(ndots,2,p.stim.rdk.dots_interval)-0.5)*2;
-            dot_pos = (rand(ndots,2,p.stim.rdk.duration)-0.5)*2;
+            dot_pos = (rand(ndots,2,num_frames)-0.5)*2;  % prior code said: dot_pos = (rand(ndots,2,p.stim.rdk.dots_interval)-0.5)*2;
 
             % Reset rng
             RandStream.setGlobalStream(RandStream('mt19937ar','seed',prod(rseed)));
             RandStream.setGlobalStream(RandStream('mt19937ar','seed',sum(100*clock)));
             
-            for jj = 1 : p.stim.rdk.duration; %p.stim.rdk.dots_interval
+            for jj = 1:num_frames
                 dot_pos(:,:,jj) = dot_pos(:,:,jj) .* d_ppd;
             end
             
+            %store dot pos
+            stored_coh_dot_pos = NaN(size(dot_pos,1),size(dot_pos,2),num_frames);
+            
             % reset frames
             frames = [];
-            
-            % store dot position
-            all_pos = zeros(size(dot_pos,1),size(dot_pos,2),p.stim.rdk.duration);
-            
-            % Draw dots
-            num_frames = p.stim.rdk.duration; %p.duration/p.disp.refresh_hz; % start_t = GetSecs;
-%             t = 0;
-%             
-%             while 1
-%                 %     cur_t = GetSecs - start_t;
-%                 t = t + 1;
-%                 
-%                 if t >= max_t
-%                     break;
-%                 else
-                    
-                    colori = ([0 randperm(ndots-1)]) < ceil(ndots/num_col);
-                    dot_pos_col = p.stim.rdk.dots_color(colori+1,:);
-                    
-                    for loopi = 1:num_frames % p.stim.rdk.dots_interval % OG code states length(scr_rfsh/ dots_interval)
-                        
-                        % update dots positions and draw them on the
-                        % find the index of coherently moving dots in this
-                        L = rand(ndots,1) < p.stim.rdk.dots_coherence(cc);
-                        
-                        % move the coherent
-                        dot_pos(L,:,loopi) = dot_pos(L,:,loopi) + dxdy(L,:);
-                        
-                        % replace the other
-                        dot_pos(~L,:,loopi) = (rand(sum(~L),2)-0.5)*2 .* d_ppd(~L,:);
-                        
-                        % wrap
-                        L = dot_pos(:,1,loopi) > d_ppd(:,1);
-                        dot_pos(L,1,loopi) = dot_pos(L,1,loopi) - 2*d_ppd(L,1);
-                        L = dot_pos(:,1,loopi) < -d_ppd(:,1);
-                        dot_pos(L,1,loopi) = 2*d_ppd(L,1) - dot_pos(L,1,loopi);
-                        L = dot_pos(:,2,loopi) > d_ppd(:,2);
-                        dot_pos(L,2,loopi) = dot_pos(L,2,loopi) - 2*d_ppd(L,2);
-                        L = dot_pos(:,2,loopi) < -d_ppd(:,2);
-                        dot_pos(L,2,loopi) = 2*d_ppd(L,2) - dot_pos(L,2,loopi);
-                        
-                        % Find the dots that will be shown in the aperture. note that
-                        %is calculated relative to the center of the aperture.
-                        L = isInsideAperture(dot_pos(:,:,loopi), ap_center, ap_radius-1);
-                        
-                        pos_idx = find(L);
-                        
-                        clf; hold all;
-                        ax = gca;
-                        ax.Units = 'pixels';
-                        r = rectangle(ax,'Position', [(ap_center -1.*ap_radius), ...
-                            2.*ap_radius], ...
-                            'FaceColor', [repmat(p.stim.bckgrnd_grayval,1,3)]./255, 'EdgeColor', 'none');
-%                         xl = ap_center(1) + [-1,1].*ap_radius + [-1 1];
-%                         yl = ap_center(2) + [-1,1].*ap_radius + [-1 1];
-%                         xlim(xl)
-%                         ylim(yl)
-                        colormap gray; axis square; axis off; axis tight; axis manual; axis image
-                        
-                        %round dot_pos and transpose it because Screen wants positions in row
-                        pos = round(dot_pos(L,:,loopi));
-                        col = dot_pos_col(L,:);
-                        
-                        % Create a blank image for each frame
-                        %             img = zeros(size(dot_pos,1),size(dot_pos,2));
-                        
-                        
-%                         rect = [-axti(1), -axti(2), axpos(3)+axti(1)+axti(3), axpos(4)+axti(2)+axti(4)];
 
-                        
-                        for ii = 1:size(pos,1)
-                            drawcircle('Parent',ax,'Center',pos(ii,:),'Radius',p.stim.rdk.dots_size,...
-                                'Color',col(ii,:), 'InteractionsAllowed', 'none', 'FaceAlpha', 1, 'LineWidth', 1);
-                            all_pos(pos_idx(ii),:,loopi) = pos(ii,:);
-                        end
-                        
-%                         f2 = hardcopy(fH,'-dzbuffer','-r0');
-                        
-                        f = getframe(ax);
-                        im = frame2im(f);
-                        f_bw = rgb2gray(im);
-%                         scale_factor = (2*ap_radius)./size(f_bw);
-%                         f_bw_rz = imresize(f_bw,scale_factor(1));
-                        
-                        frames = cat(3,frames,f_bw);
-                        clear f im f_bw scale_factor f_bw_rz
-                        %             %draw on the
-                        %             if any(isnan(prod(pos,1))==0)
-                        %                 Screen('DrawDots', screen_struct.cur_window, pos, dots_struct.dot_size, dots_struct.dot_color', AP.spec.center);
-                        %
-                        %                 %update the loop
-                        %                 loopi = loopi + 1;
-                        %                 if loopi > dots_struct.interval
-                        %                     loopi = 1;
-                        %                 end
-                        %
-                        %
-                        %                 %flip the screen to make things
-                        %                 Screen('Flip', screen_struct.cur_window);
-                        %             end
-                        
-                        %             %flip the screen to clean it
-                        %             Screen('Flip', screen_struct.cur_window);
-                        
-                        %         end
-                    end
-%                 end
-%             end
-%             rdk{bb,cc,dd+1} = frames;
+            % Select color (50:50 black:white)
+            colori = ([0 randperm(ndots-1)]) < ceil(ndots/num_col);
+            dot_pos_col = p.stim.rdk.dots_color(colori+1,:);
+            
+            % Draw dots!
+            for loopi = 1:num_frames % OG code states length(scr_rfsh/ dots_interval)
+                
+                % update dots positions and draw them on the
+                % find the index of coherently moving dots in this
+                L = rand(ndots,1) < p.stim.rdk.dots_coherence(cc);
+                
+                % move the coherent
+                dot_pos(L,:,loopi) = dot_pos(L,:,loopi) + dxdy(L,:);
+                
+                % replace the other
+                dot_pos(~L,:,loopi) = (rand(sum(~L),2)-0.5)*2 .* d_ppd(~L,:);
+                
+                % wrap
+                L = dot_pos(:,1,loopi) > d_ppd(:,1);
+                dot_pos(L,1,loopi) = dot_pos(L,1,loopi) - 2*d_ppd(L,1);
+                L = dot_pos(:,1,loopi) < -d_ppd(:,1);
+                dot_pos(L,1,loopi) = 2*d_ppd(L,1) - dot_pos(L,1,loopi);
+                L = dot_pos(:,2,loopi) > d_ppd(:,2);
+                dot_pos(L,2,loopi) = dot_pos(L,2,loopi) - 2*d_ppd(L,2);
+                L = dot_pos(:,2,loopi) < -d_ppd(:,2);
+                dot_pos(L,2,loopi) = 2*d_ppd(L,2) - dot_pos(L,2,loopi);
+                
+                % Find the dots that will be shown in the aperture. note that
+                %is calculated relative to the center of the aperture.
+                L = isInsideAperture(dot_pos(:,:,loopi), ap_center, ap_radius-1);
+                
+                pos_idx = find(L);
+                
+                clf; hold all;
+                ax = gca;
+                ax.Units = 'pixels';
+                r = rectangle(ax,'Position', [(ap_center -1.*ap_radius), ...
+                    2.*ap_radius], ...
+                    'FaceColor', [repmat(p.stim.bckgrnd_grayval,1,3)]./255, 'EdgeColor', 'none');
+                colormap gray; axis square; axis off; axis tight; axis manual; axis image
+                
+                %round dot_pos and transpose it because Screen wants positions in row
+                pos = round(dot_pos(L,:,loopi));
+                col = dot_pos_col(L,:);
+
+                for ii = 1:size(pos,1)
+                    drawcircle('Parent',ax,'Center',pos(ii,:),'Radius',p.stim.rdk.dots_size,...
+                        'Color',col(ii,:), 'InteractionsAllowed', 'none', 'FaceAlpha', 1, 'LineWidth', 1);
+                    stored_coh_dot_pos(pos_idx(ii),:,loopi) = pos(ii,:);
+                end
+                                
+                f = getframe(ax);
+                im = frame2im(f);
+                f_bw = rgb2gray(im);
+                
+                frames = cat(3,frames,f_bw);
+                clear f im f_bw
+            end
+   
+            rdk{bb,cc,dd+1} = frames;
             
             info.dot_dir(counter) = curr_motdir_deg;
             info.dot_coh(counter) = p.stim.rdk.dots_coherence(cc);
             info.dot_dir_i(counter) = bb;
             info.dot_coh_i(counter) = cc;
-            info.dot_pos{counter} = {all_pos};
+            info.dot_pos{counter} = {stored_coh_dot_pos};
             
-            if dd == 0,
+            if dd == 0
                 info.motdir_deg_ref(counter) = 0;
                 info.motdir_deg_ref_i(counter) = 0;
                 info.unique_im(counter) = bb + ((cc-1)*length(p.stim.rdk.dots_direction));
@@ -249,26 +204,23 @@ for cc = 1:length(p.stim.rdk.dots_coherence)
             end
             
             im_name = bb + ((cc-1)*length(p.stim.rdk.dots_direction));
+            
             % save intermediate stage in case matlab crashes 
             rdk_info = info(counter,:);
             save(fullfile(tmpDir, sprintf('%d_rdk_ori%d_coh%d_delta%d.mat', im_name, bb,cc,dd)),'frames','rdk_info','-v7.3');
 
-            clear frames all_pos
+            clear frames
             counter = counter +1;
-
         end
     end
 end
 
 
-
-
-
 if p.store_imgs
-    % we store separate conditions, otherwise the file gets ginormous
-%     saveDir = fileparts(fullfile(p.stim.rdk.stimfile));
-%     if ~exist(saveDir,'dir'), mkdir(saveDir); end
-%     save(fullfile(sprintf('%s_%s.mat',p.stim.rdk.stimfile,datestr(now,30))),'rdk','info','-v7.3');
+    % in addition to storing separate conditions, also store ginormous file 
+    saveDir = fileparts(fullfile(p.stim.rdk.stimfile));
+    if ~exist(saveDir,'dir'), mkdir(saveDir); end
+    save(fullfile(sprintf('%s_%s.mat',p.stim.rdk.stimfile,datestr(now,30))),'rdk','info','-v7.3');
     
     saveDir = fileparts(fullfile(p.stim.rdk.infofile));
     if ~exist(saveDir,'dir'), mkdir(saveDir); end
