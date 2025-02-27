@@ -59,24 +59,6 @@ frameorder = size(timing.trig_stim,2);
 timeframes = repmat(NaN,[1 floor(size(frameorder,2)-1)+1]);
 
 
-%% Create background and fixation textures prior to exp onset (as we need them throughout the experiment)
-bckground_rect = CenterRect([0 0 round(size(scan.bckground_im,1)) round(size(scan.bckground_im,2))],rect);
-bckrgound_texture = Screen('MakeTexture', win, scan.bckground_im);
-
-% make fixation dot texture
-fix_texture_thin_full = {};
-fix_texture_thick_full = {};
-fix_texture_thin_left = {};
-fix_texture_thin_right = {};
-fix_rect_thin = CenterRect([0 0 round(size(scan.fix_im,1)) round(size(scan.bckground_im,2))],rect);
-fix_rect_thick = CenterRect([0 0 round(size(scan.fix_im,1)) round(size(scan.bckground_im,2))],rect);
-
-for ll = 1:length(scan.fix_im,4) % loop over luminance values
-    fix_texture_thin_full{ll} = Screen('MakeTexture',win,cat(3,fixationimage(:,:,:,ll,1),params.stim.fix.dotopacity));
-    fix_texture_thick_full{ll} = Screen('MakeTexture',win,cat(3,fixationimage(:,:,:,ll,2),params.stim.fix.dotopacity));
-    fix_texture_thin_left{ll} = Screen('MakeTexture',win,cat(3,fixationimage(:,:,:,ll,3),params.stim.fix.dotopacity));
-    fix_texture_thin_right{ll} = Screen('MakeTexture',win,cat(3,fixationimage(:,:,:,ll,4),params.stim.fix.dotopacity));
-end
 
 
 %% ptb stuff
@@ -95,6 +77,27 @@ Priority(9);
 mfi = Screen('GetFlipInterval',win);  % re-use what was found upon initialization!
 mfi = 1/round(1/mfi);
 
+
+%% Create background and fixation textures prior to exp onset (as we need them throughout the experiment)
+bckground_rect = CenterRect([0 0 round(size(scan.bckground_im,1)) round(size(scan.bckground_im,2))],rect);
+bckrgound_texture = Screen('MakeTexture', win, scan.bckground_im);
+
+% make fixation dot texture
+fix_texture_thin_full = {};
+fix_texture_thick_full = {};
+fix_texture_thick_left = {};
+fix_texture_thick_right = {};
+fix_rect_thin = CenterRect([0 0 round(size(scan.fix_im,1)) round(size(scan.bckground_im,2))],rect);
+fix_rect_thick = CenterRect([0 0 round(size(scan.fix_im,1)) round(size(scan.bckground_im,2))],rect);
+
+for ll = 1:length(scan.fix_im,4) % loop over luminance values
+    fix_texture_thin_full{ll} = Screen('MakeTexture',win,cat(3,scan.fix_im(:,:,:,ll,1),params.stim.fix.dotopacity));
+    fix_texture_thick_full{ll} = Screen('MakeTexture',win,cat(3,scan.fix_im(:,:,:,ll,2),params.stim.fix.dotopacity));
+    fix_texture_thick_left{ll} = Screen('MakeTexture',win,cat(3,scan.fix_im(:,:,:,ll,3),params.stim.fix.dotopacity));
+    fix_texture_thick_right{ll} = Screen('MakeTexture',win,cat(3,scan.fix_im(:,:,:,ll,4),params.stim.fix.dotopacity));
+end
+
+% run functions as first time running them always takes more time
 GetSecs;
 now;
 ceil(1);
