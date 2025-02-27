@@ -50,35 +50,26 @@ else
     skipsync = 0;
 end
 
-% Nova1x32 with BOLDscreen and big eye mirrors
+% Nova1x32 coil with BOLDscreen and big eye mirrors
 % expected to be {[1920 1080 120 24],[], 0, 0} 
 % 1: [width, height, framerate, bitdepth]
 % 2: winsize (fraction: default is full extent)
-% 3: clutfile -- 0 for linear CLUT (choose -2 for squaring CLUT because we need to simulate normal monitors)
+% 3: clutfile -- 0 for linear CLUT (-2 for squaring CLUT for BOLDSCREEN to simulate normal monitors --> NB: we do this manually!)
 % 4: skipsync (bool: 0 is false, 1 is true)
 % 5: wantstereo (bool: default is false)
-ptonparams = {[params.disp.w_pix params.disp.h_pix params.disp.refresh_hz 24],[],0, skipsync}; 
+ptonparams = {[params.disp.w_pix params.disp.h_pix params.disp.refresh_hz 24],[],disp.clut, skipsync}; 
 
 % Buttonbox / keyboard
 params.ignorekeys = KbName({params.triggerkey});  % dont record TR triggers as subject responses
 
 %% %%%%%%%%% SETUP RNG %%%%%%%%%
 
-rand('twister', sum(100*clock));
-params.rand = rand;
+rand('seed', sum(100*clock));
+randn('seed', sum(100*clock));
+params.rng.rand = rand;
+params.rng.randn = randn;
 
 %% %%%%%%%%%%%%% STIM PARAMS %%%%%%%%%%%%%
-% **** Block / trial order ****
-% We need to define all possible combinations 
-% Depending on the session, run, and subject, we need to define the 
-% combinations we want to show, converted into miniblocks, where trials are
-% sampling the manipulations in a pseudo-random way. In each run, 
-% we have manipulations that we prioritize to fully sample, otherwise it is
-% difficult to compare conditions (e.g., we want to sample all contrast
-% levels within the run).
-% 
-% We want a master trial function and a function thats in the trial
-% specifics given the subject and session nr
 
  % Stimulus params
 if ~isfield(params, 'stim') || isempty(params.stim)
@@ -91,7 +82,15 @@ if ~isfield(params, 'stim') || isempty(params.stim)
     end
 end
 
-% Trial params
+% Trial params 
+% **** Block / trial order **** 
+% We need to define all possible combinations. Depending on the session, 
+% run, and subject, we need to define the combinations we want to show, 
+% converted into miniblocks, where trials are sampling the manipulations in
+% a pseudo-random way. In each run, we have manipulations that we prioritize 
+% to fully sample, otherwise it is difficult to compare conditions (e.g., 
+% we want to sample all contrast levels within the run).
+
 if ~isfield(params, 'trials') || isempty(params.trials)
     if params.loadparams
         d = dir(fullfile(params.infofolder,'trials*.mat'));
@@ -114,6 +113,8 @@ if ~isfield(params, 'exp') ||  isempty(params.exp)
 end
 
 %% %%%%%%%%%%%%% GET MINIBLOCK ORDER %%%%%%%%%%%%%
+% We have master trial sequence, and a sequence where blocks are shuffled
+% given the subject.
 
 if params.loadparams
     d = dir(fullfile(params.infofolder,'subject_sessions_*.mat'));
@@ -365,23 +366,9 @@ end
 scan.bckground = vcd_pinknoisebackground(params, 'comb', 'fat', 1, params.offsetpix); 
 
 
-%% save images and timing just in case we break out
+%% Save images and timing just in case we run into an error?
 if params.savetempstimuli
     save(fullfile(params.savedatadir,sprintf('tmp_expim_%s.mat',datestr(now,30))),'scan','timing','params','-v7.3')
-end
-
-
-%% %%%%%%%%%%%%% EYELINK SYNC FUN %%%%%%%%%%%%%
-
-% EYE FUN for SYNC TIME
-if params.wanteyetracking
-    tfunEYE     = @() cat(2,fprintf('EXP STARTS.\n'),Eyelink('Message','SYNCTIME'));
-
-    if ~isfield(params,'eyelinkfile') || isempty(params.eyelinkfile) 
-        params.eyelinkfile = fullfile(params.savedatadir,sprintf('eye_%s_vcd_subj-%s_run-%d.edf',datestr(now,30),params.subjID,params.runnum));
-    end
-else
-    tfunEYE = @() fprintf('EXP STARTS.\n');
 end
 
 
@@ -409,33 +396,52 @@ oldclut = pton(ptonparams{:});
 getoutearly = 0; 
 
 %% %%%%%%%%%%%%% EYELINK: initialize, setup, calibrate, and start %%%%%%%%%%%%%
+
+% ANON EYE FUN for SYNC TIME
+if params.wanteyetracking
+    tfunEYE     = @() cat(2,fprintf('EXP STARTS.\n'),Eyelink('Message','SYNCTIME'));
+
+    if ~isfield(params,'eyelinkfile') || isempty(params.eyelinkfile) 
+        params.eyelinkfile = fullfile(params.savedatadir,sprintf('eye_%s_vcd_subj-%s_run-%d.edf',datestr(now,30),params.subjID,params.runnum));
+    end
+else
+    tfunEYE = @() fprintf('EXP STARTS.\n');
+end
+
+% INIT/CALIBRATION/VALIDATION
 if params.wanteyetracking && ~isempty(params.eyelinkfile)
     
+    % initialize
     assert(EyelinkInit()==1);
     win = firstel(Screen('Windows'));
     
-    if strcmp(dispName,'7TAS_BOLDSCREEN32')
-        Eyelink('SetAddress','100.1.1.1') %% copied from MGS exp
-    elseif strcmp(dispName,'PPROOM_EIZOFLEXSCAN')
-        Eyelink('SetAddress','100.1.1.1') %% <--- CHECK THIS
-    end
+%     % Check TCP/IP address
+%     if strcmp(dispName,'7TAS_BOLDSCREEN32')
+%         Eyelink('SetAddress','100.1.1.1') %% copied from MGS exp
+%     elseif strcmp(dispName,'PPROOM_EIZOFLEXSCAN')
+%         Eyelink('SetAddress','100.1.1.1') %% <--- CHECK THIS
+%     end
     
-    %eyelink defaults
+    % Get eyelink default params
     el = EyelinkInitDefaults(win);
     if ~isempty(el.callback)
         PsychEyelinkDispatchCallback(el);
     end
     
+    % Update default param struct with VCD needs
     el = vcd_setEyelinkParams(el);
-    
     EyelinkUpdateDefaults(el);
+    
+    % Get window size
     [wwidth,wheight] = Screen('WindowSize',win);  % returns in pixels
     
+    % Ensure window size is what we think it is
     assert(isequal(wwidth,disp.w_pix))
     assert(isequal(wheight,disp.h_pix))
     assert(isequal(round(wwidth/2),disp.xc))
     assert(isequal(round(wheight/2),disp.yc))
     
+    % Tell the experimentor
     fprintf('Pixel size of window is width: %d, height: %d.\n',wwidth,wheight);
     fprintf('Pixel center offset of window is [x,y]=[%d,%d].\n',params.offsetpix(1),params.offsetpix(2));
 
@@ -485,23 +491,25 @@ if params.wanteyetracking && ~isempty(params.eyelinkfile)
     % what events (columns) are recorded in EDF:
     Eyelink('command','file_event_filter = LEFT,RIGHT,FIXATION,SACCADE,BLINK,MESSAGE,BUTTON');
     % what samples (columns) are recorded in EDF:
-    Eyelink('command','file_sample_data = LEFT,RIGHT,GAZE,HREF,AREA,GAZERES,STATUS');
+    Eyelink('command','file_sample_data = LEFT,RIGHT,GAZE,GAZERES,PUPIL,AREA,STATUS');
     % events available for real time:
     Eyelink('command','link_event_filter = LEFT,RIGHT,FIXATION,SACCADE,BLINK,MESSAGE,BUTTON');
     % samples available for real time:
-    Eyelink('command','link_sample_data = LEFT,RIGHT,GAZE,GAZERES,AREA,STATUS');
+    Eyelink('command','link_sample_data = LEFT,RIGHT,GAZE,GAZERES,PUPIL,AREA,STATUS');
 
     % make temp name and open
     eyetempfile = sprintf('%s.edf', datestr(now, 'HHMMSS')); %less than 8 digits!
     fprintf('Saving eyetracking data to %s.\n',eyetempfile);
     Eyelink('Openfile',eyetempfile);  % NOTE THIS TEMPORARY FILENAME. REMEMBER THAT EYELINK REQUIRES SHORT FILENAME!
     
+    % Do calibration & validation!
     checkcalib = input('Do you want to do a calibration (0=no, 1=yes)? ','s');
     if isequal(checkcalib,'1')
         fprintf('Please perform calibration. When done, press the output/record button.\n');
         EyelinkDoTrackerSetup(el);
     end
     
+    % Start recording
     Eyelink('StartRecording');
     
 end
@@ -510,8 +518,6 @@ end
 
 % call ptviewmovie
 timeofshowstimcall = datestr(now);
-
-tfunEND   = @() fprintf('RUN ENDED: %4.4f.\n',GetSecs);
 
 % GO!
 [data,getoutearly] = vcd_showStimulus(...
@@ -524,6 +530,7 @@ tfunEND   = @() fprintf('RUN ENDED: %4.4f.\n',GetSecs);
 
 
 %% CLEAN UP AND SAVE
+
 % Close out eyelink
 if ~isempty(eyetempfile)
     
@@ -532,11 +539,11 @@ if ~isempty(eyetempfile)
     
     % Close eyelink and record end
     Eyelink('StopRecording');
-    ts = GetSecs;
-    Eyelink('message', sprintf('END %d',ts));
+    Eyelink('message', sprintf('END %d',tGetSecs));
     Eyelink('CloseFile');
     status = Eyelink('ReceiveFile',eyetempfile, params.savedatadir, 1);
     fprintf('ReceiveFile status %d\n', status);
+    fprintf('RUN ENDED: %4.4f.\n',GetSecs);
     
     % RENAME DOWNLOADED FILE TO THE FINAL FILENAME
     mycmd=['mv ' params.savedatadir '/' eyetempfile ' ' params.savedatadir '/' params.eyelinkfile]; 
@@ -550,10 +557,10 @@ if ~isempty(eyetempfile)
     data.totalTime = ts-startTime;
     data.timeKeys = [data.timeKeys; {ts 'end'}];
 else
-    eval(tfunEND);
+    fprintf('RUN ENDED: %4.4f.\n',GetSecs);
 end
 
-
+% Create folder where data will be stored
 if isempty(params.savedatadir)
     params.savedatadir = fullefile(vcd_rootPath,'data', ...
         sprintf('%s_vcd_subj%d_ses%02d',...
@@ -561,33 +568,34 @@ if isempty(params.savedatadir)
 end
 if ~exist('params.savedatadir','dir'), mkdir(params.savedatadir); end
 
-% figure out names of all variables except 'images' and 'maskimages' and others   [MAKE THIS INTO A FUNCTION?]
+% figure out names of all variables except 'images'
 vars = whos;
 vars = {vars.name};
 vars = vars(cellfun(@(x) ~isequal(x,'images'),vars));
 
+% Create filename where behavioral and timing data will be stored
 if ~isfield(params,'behaviorfile') || isempty(params.behaviorfile)
     params.behaviorfile = sprintf('%s_vcd_subj%d_ses%02d_run%02d.mat', ...
         timeofshowstimcall,params.subjID,params.sesID,params.runnum);
 end
 
 % Save data (button presses, params, etc)
-save(fullfile(params.savedatadir,params.behaviorfile),'data', vars{:});
+save(fullfile(params.savedatadir,params.behaviorfile),vars{:});
 
+% Clean up
 ShowCursor;
 Screen('CloseAll');
-
-% unsetup PT
 ptoff(oldclut);
 
 % check the timing
 if getoutearly == 0 %if we completed the experiment
-%     fprintf('Experiment duration was %.3f.\n',data.totalTime);
-% %     expectedduration = [-0.2, 0.2] + (length(X)/10); %[67.0 67.4];  % expected duration for 5 point calibration 4 trials
-%     
-%     if data.totalTime > expectedduration(1) && data.totalTime < expectedduration(2)
-%       fprintf('Timing was fine!\n');
-%     else
-%       fprintf('ERROR! Timing was off!!!!');
-%     end
+    fprintf('Experiment duration was %4.3f.\n',data.timing.endtime);
+    slack = [-5 5].*params.stim.fps;
+    expectedduration = (timing.trig_timing(end)+params.stim.fps) + slack;
+    
+    if data.timing.endtime > expectedduration(1) && data.timing.endtime < expectedduration(2)
+      fprintf('Timing was ok and within [%d - %d] sec slack\n',slack(1),slack(2));
+    else
+      fprintf('ERROR !!! Timing was OFF!!! Difference between expected and recorded is %3.2f s\n', expectedduration-data.timing.endtime);
+    end
 end
