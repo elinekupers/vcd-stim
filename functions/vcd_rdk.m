@@ -103,16 +103,20 @@ for cc = 1:length(p.stim.rdk.dots_coherence)
             end
         
             %find the xy displacement of coherent
-            dxdy = repmat(p.stim.rdk.dots_speed * p.stim.rdk.dots_interval/ p.disp.refresh_hz *... %% 
+%             dxdy = repmat(p.stim.rdk.dots_speed * p.stim.rdk.dots_interval/ p.disp.refresh_hz *... %% 
+%                 [cos(curr_motdir_deg) -sin(curr_motdir_deg)], ndots, 1) * p.disp.ppd;
+            dxdy = repmat(p.stim.rdk.dots_speed * p.stim.rdk.duration *... %% 
                 [cos(curr_motdir_deg) -sin(curr_motdir_deg)], ndots, 1) * p.disp.ppd;
-            d_ppd = repmat(ap_radius, ndots, 1);
-            dot_pos = (rand(ndots,2,p.stim.rdk.dots_interval)-0.5)*2;
             
+            d_ppd = repmat(ap_radius, ndots, 1);
+%             dot_pos = (rand(ndots,2,p.stim.rdk.dots_interval)-0.5)*2;
+            dot_pos = (rand(ndots,2,p.stim.rdk.duration)-0.5)*2;
+
             % Reset rng
             RandStream.setGlobalStream(RandStream('mt19937ar','seed',prod(rseed)));
             RandStream.setGlobalStream(RandStream('mt19937ar','seed',sum(100*clock)));
             
-            for jj = 1 : p.stim.rdk.dots_interval
+            for jj = 1 : p.stim.rdk.duration; %p.stim.rdk.dots_interval
                 dot_pos(:,:,jj) = dot_pos(:,:,jj) .* d_ppd;
             end
             
@@ -120,24 +124,24 @@ for cc = 1:length(p.stim.rdk.dots_coherence)
             frames = [];
             
             % store dot position
-            all_pos = zeros(size(dot_pos,1),size(dot_pos,2),p.stim.rdk.duration*p.stim.rdk.dots_interval);
+            all_pos = zeros(size(dot_pos,1),size(dot_pos,2),p.stim.rdk.duration);
             
             % Draw dots
-            max_t = p.stim.rdk.duration; %p.duration/p.disp.refresh_hz; % start_t = GetSecs;
-            t = 0;
-            
-            while 1
-                %     cur_t = GetSecs - start_t;
-                t = t + 1;
-                
-                if t >= max_t
-                    break;
-                else
+            num_frames = p.stim.rdk.duration; %p.duration/p.disp.refresh_hz; % start_t = GetSecs;
+%             t = 0;
+%             
+%             while 1
+%                 %     cur_t = GetSecs - start_t;
+%                 t = t + 1;
+%                 
+%                 if t >= max_t
+%                     break;
+%                 else
                     
                     colori = ([0 randperm(ndots-1)]) < ceil(ndots/num_col);
                     dot_pos_col = p.stim.rdk.dots_color(colori+1,:);
                     
-                    for loopi = 1: p.stim.rdk.dots_interval % OG code states length(scr_rfsh/ dots_interval)
+                    for loopi = 1:num_frames % p.stim.rdk.dots_interval % OG code states length(scr_rfsh/ dots_interval)
                         
                         % update dots positions and draw them on the
                         % find the index of coherently moving dots in this
@@ -191,7 +195,7 @@ for cc = 1:length(p.stim.rdk.dots_coherence)
                         for ii = 1:size(pos,1)
                             drawcircle('Parent',ax,'Center',pos(ii,:),'Radius',p.stim.rdk.dots_size,...
                                 'Color',col(ii,:), 'InteractionsAllowed', 'none', 'FaceAlpha', 1, 'LineWidth', 1);
-                            all_pos(pos_idx(ii),:,t) = pos(ii,:);
+                            all_pos(pos_idx(ii),:,loopi) = pos(ii,:);
                         end
                         
 %                         f2 = hardcopy(fH,'-dzbuffer','-r0');
@@ -224,8 +228,8 @@ for cc = 1:length(p.stim.rdk.dots_coherence)
                         
                         %         end
                     end
-                end
-            end
+%                 end
+%             end
 %             rdk{bb,cc,dd+1} = frames;
             
             info.dot_dir(counter) = curr_motdir_deg;
