@@ -205,10 +205,12 @@ end
 
 if ~exist('timing','var') || ~isfield(timing,'block') || ~isempty(timing.block)
     
-    timing = vcd_getImageTiming(params, subj_run, run_image_order, im_seq_order);
+    timing = vcd_getImageTiming(params, subj_run, im_seq_order, scan.exp_im, scan.fix_im);
     
     cellblock = struct2cell(subj_run.block);
     cellblock = squeeze(cellblock);
+    
+    celltiming = (timing.seq_stim);
     
     st_ID = cell2mat(cellblock(2,:));
     st_start = []; st_end = [];
@@ -217,6 +219,8 @@ if ~exist('timing','var') || ~isfield(timing,'block') || ~isempty(timing.block)
         st_end = cat(1,st_end, cellblock{6,ii}.run_time(end));
     end
     
+%     trig_block_start = find(~cellfun(@isempty, cellfun(@(x) find(x==97), timing.seq_stim,'UniformOutput', false)));
+
     timing.block = [st_ID', st_start,st_end];
     
 end
@@ -242,72 +246,77 @@ if ~isfield(scan,'rect') || ~isempty(scan.rect)
     
     % 1-30 = all non-NS stim-task crossings
     % 31-39 = NS stim-task crossings
-    gb_IDs = find(~cellfun(@isempty, (regexp(params.exp.stimTaskLabels,'-gabor','ONCE'))))';
-    rdk_IDs = find(~cellfun(@isempty, (regexp(params.exp.stimTaskLabels,'-rdk','ONCE'))))';
-    dot_IDs = find(~cellfun(@isempty, (regexp(params.exp.stimTaskLabels,'-dot','ONCE'))))';
+    gb_IDs   = find(~cellfun(@isempty, (regexp(params.exp.stimTaskLabels,'-gabor','ONCE'))))';
+    rdk_IDs  = find(~cellfun(@isempty, (regexp(params.exp.stimTaskLabels,'-rdk','ONCE'))))';
+    dot_IDs  = find(~cellfun(@isempty, (regexp(params.exp.stimTaskLabels,'-dot','ONCE'))))';
     cobj_IDs = find(~cellfun(@isempty, (regexp(params.exp.stimTaskLabels,'-cobj','ONCE'))))';
-    ns_IDs = find(~cellfun(@isempty, (regexp(params.exp.stimTaskLabels,'-ns','ONCE'))))';
+    ns_IDs   = find(~cellfun(@isempty, (regexp(params.exp.stimTaskLabels,'-ns','ONCE'))))';
     
-    block_counter = 2; % assume first block is pre-blank
-    trial_counter = 1;
-    im_i = find((timing.trig_stim(:,1) > 0) & (timing.trig_stim(:,1) < 97)); % task_cue_ID = 97; ITI_ID = 98; % IBI_ID = 99;
+%     block_counter = 1; % assume first block is pre-blank
+%     trial_counter = 1;
+%     im_i = find((timing.trig_stim(:,1) > 0) & (timing.trig_stim(:,1) < 90)); % task_cue_ID = 97; ITI_ID = 98; % IBI_ID = 99;
     
     % Get [x,y]-center in pixels of peripheral stimuli given display size, and
     % offset. Get stimulus aperture size..
     centers = cell(size(timing.trig_stim));
     apsize  = cell(size(timing.trig_stim));
-    while block_counter < length(st_ID)
-        for nn = 1:length(im_i)
+    
+    unique_blocks =  [unique(timing.trig_block,'stable')];  
+
+    wm_blocks = find(~cellfun(@isempty, regexp(params.exp.stimTaskLabels,'wm')));
+    ltm_blocks = find(~cellfun(@isempty, regexp(params.exp.stimTaskLabels,'ltm')));
+    img_blocks = find(~cellfun(@isempty, regexp(params.exp.stimTaskLabels,'img')));
+
+%     while block_counter <= length(st_ID)
+for nn = 1:length(timing.trig_stim)
+    block_nr = timing.trig_block(nn);
+    
+    trial_counter = 1;
+    
+    if block_nr > 0 && timing.trig_stim(nn) > 0 && timing.trig_stim(nn) < 90
+        block_counter = find(unique_blocks==block_nr)-1;
+        
+        numSides = length(unique(timing.trig_stim(nn,:)));
+        
+
+        for side = 1:numSides
+                       
+            if ~isempty(intersect(block_nr,gb_IDs))
+                centers{nn,side}(1) = params.stim.gabor.x0_pix(side) + params.stim.xc; % x-coord (pixels)
+                centers{nn,side}(2) = params.stim.gabor.y0_pix(side) + params.stim.yc; % y-coord (pixels)
             
-            sz = size(cellblock{4,block_counter});
-            if sz(1)>sz(2) && any(sz~=1)
-                numTrials = sz(1);
-                numSides = sz(2);
-            elseif sz(1)<sz(2) && any(sz~=1)
-                numTrials = sz(2);
-                numSides = sz(1);
-            elseif sz(1)<sz(2) && any(sz==1)
-                numTrials = sz(2);
-                numSides = sz(1);
-            end
+            elseif ~isempty(intersect(block_nr,rdk_IDs))
+                centers{nn,side}(1) = params.stim.rdk.x0_pix(side) + params.stim.xc;
+                centers{nn,side}(2) = params.stim.rdk.y0_pix(side) + params.stim.yc;
             
-            for side = 1:numSides
-                curr_ID = st_ID(block_counter);
+            elseif ~isempty(intersect(block_nr,dot_IDs))
                 
-                if numSides == 1 && curr_ID > 0
-                    assert(isequal(cellblock{4,block_counter}(side,trial_counter).stim_loc,side))
-                elseif  numSides == 2 && curr_ID > 0
-                    assert(isequal(cellblock{4,block_counter}(trial_counter,side).stim_loc,side))
-                end
+                xy_idx = find(cellblock{4,block_counter}(trial_counter,side).loc_deg == params.stim.dot.loc_deg);
                 
-                if ~isempty(intersect(curr_ID,gb_IDs))
-                    centers{im_i(nn),side}(1) = params.stim.gabor.x0_pix(side) + params.stim.xc; % x-coord (pixels)
-                    centers{im_i(nn),side}(2) = params.stim.gabor.y0_pix(side) + params.stim.yc; % y-coord (pixels)
-                elseif ~isempty(intersect(curr_ID,rdk_IDs))
-                    centers{im_i(nn),side}(1) = params.stim.rdk.x0_pix(side) + params.stim.xc;
-                    centers{im_i(nn),side}(2) = params.stim.rdk.y0_pix(side) + params.stim.yc;
-                elseif ~isempty(intersect(curr_ID,dot_IDs))
-                    xy_idx = find(cellblock{4,block_counter}(trial_counter,side).loc_deg == params.stim.dot.loc_deg);
-                    centers{im_i(nn),side}(1) = params.stim.dot.x0_pix(xy_idx) + params.stim.xc;
-                    centers{im_i(nn),side}(2) = params.stim.dot.y0_pix(xy_idx) + params.stim.yc;
-                elseif ~isempty(intersect(curr_ID,cobj_IDs))
-                    centers{im_i(nn),side}(1) = params.stim.cobj.x0_pix(side) + params.stim.xc;
-                    centers{im_i(nn),side}(2) = params.stim.cobj.y0_pix(side) + params.stim.yc;
-                elseif ~isempty(intersect(curr_ID,ns_IDs))
-                    centers{im_i(nn),side}(1) = params.stim.ns.x0_pix(side) + params.stim.xc;
-                    centers{im_i(nn),side}(2) = params.stim.ns.y0_pix(side) + params.stim.yc;
-                end
-                apsize{im_i(nn),side}(2)  = size(scan.exp_im{block_counter,trial_counter,side,1},1); % height (pixels)
-                apsize{im_i(nn),side}(1)  = size(scan.exp_im{block_counter,trial_counter,side,1},2); % width (pixels)
+                centers{nn,side}(1) = params.stim.dot.x0_pix(xy_idx) + params.stim.xc;
+                centers{nn,side}(2) = params.stim.dot.y0_pix(xy_idx) + params.stim.yc;
+            elseif ~isempty(intersect(block_nr,cobj_IDs))
+                centers{nn,side}(1) = params.stim.cobj.x0_pix(side) + params.stim.xc;
+                centers{nn,side}(2) = params.stim.cobj.y0_pix(side) + params.stim.yc;
+            elseif ~isempty(intersect(block_nr,ns_IDs))
+                centers{nn,side}(1) = params.stim.ns.x0_pix(side) + params.stim.xc;
+                centers{nn,side}(2) = params.stim.ns.y0_pix(side) + params.stim.yc;
             end
-            trial_counter = trial_counter+1;
+
+            apsize{im_i(nn),side}(1)  = size(timing.trig_seq_exp_im{frame}{1},2); % width (pixels)
+            apsize{im_i(nn),side}(2)  = size(timing.trig_seq_exp_im{frame}{1},1); % height (pixels)
             
-            if trial_counter >= numTrials
-                block_counter = block_counter+1;
-                trial_counter = 1;
+            if ~isempty(scan.exp_im{block_counter,trial_counter,side,2})
+                apsize{im_i(nn),side}(1)  = size(timing.trig_seq_exp_im{frame}{2},1); % height (pixels)
+                apsize{im_i(nn),side}(2)  = size(timing.trig_seq_exp_im{frame}{2},2); % width (pixels)
             end
         end
+        
+        trial_counter = trial_counter+1;
+        
     end
+end
+%     end
     
     scan.centers = centers; clear centers trial_counter block_counter;
     scan.apsize  = apsize; clear apsize;
@@ -401,7 +410,7 @@ if params.wanteyetracking && ~isempty(params.eyelinkfile)
         PsychEyelinkDispatchCallback(el);
     end
     
-    el = vcd_setEyelinkParams;
+    el = vcd_setEyelinkParams(el);
     
     EyelinkUpdateDefaults(el);
     [wwidth,wheight] = Screen('WindowSize',win);  % returns in pixels
