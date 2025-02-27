@@ -1,10 +1,10 @@
-function showinstructionscreen(fileIn,txtOffset,instTextWrap,textsize,background,offset)
+function showinstructionscreen(fileFolder,fileIn,txtOffset,instTextWrap,textsize,background,offset)
 
 if ~exist('offset','var') || isempty(offset)
   offset = [0 0];
 end
 
-fd = fopen(fileIn, 'rt');
+fd = fopen(fullfile(fileFolder,fileIn), 'rt');
 mytext = '';
 tl = fgets(fd);
 lcount = 0;
