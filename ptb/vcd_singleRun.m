@@ -545,7 +545,8 @@ timeofshowstimcall = datestr(now,30);
 %% CLEAN UP AND SAVE
 
 % Close out eyelink
-if ~isempty(eyetempfile)
+if wanteyetracking
+    if ~isempty(eyetempfile)
     
     % before we close out the eyelink, we send one more syntime message
     Eyelink('Message',eval(tfunEND));
@@ -569,6 +570,7 @@ if ~isempty(eyetempfile)
     
     data.totalTime = ts-startTime;
     data.timeKeys = [data.timeKeys; {ts 'end'}];
+    end
 else
     fprintf('RUN ENDED: %4.4f.\n',GetSecs);
 end

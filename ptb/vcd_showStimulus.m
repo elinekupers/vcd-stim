@@ -72,6 +72,7 @@ if ~params.debugmode
     deviceNr = params.deviceNr(1);
 else
     deviceNr = params.deviceNr(2);
+    ShowCursor;
 end
 
 %% Create background and fixation textures prior to exp onset (as we need them throughout the experiment)
@@ -152,7 +153,7 @@ prev_blockID = timing.trig_block(1);
 
 % show the stim
 framecnt = 0;
-for frame = 1:(frameorder+1)
+for frame = 1:size(frameorder,2)+1
     
     framecnt = framecnt + 1;
     frame0 = floor(frame);
@@ -221,9 +222,30 @@ for frame = 1:(frameorder+1)
             Screen('DrawTexture',win,fix_tex0,[], fix_rect, 0, filtermode, params.stim.fix.dotopacity, [framecolor,params.stim.fix.dotopacity]);...
         
         case 93 % task_cue_ID            
-            showinstructionscreen_pinknoisebackground(taskscript{timing.trig_block(frame)},250,75,25,...
-                params.offsetpix,bckrgound_texture,fix_tex0,bckground_rect,fix_rect,filtermode,framecolor,params.stim.fix.dotopacity) 
+%             showinstructionscreen_pinknoisebackground(taskscript{timing.trig_block(frame)},250,75,25,...
+%                 params.offsetpix,bckrgound_texture,fix_tex0,bckground_rect,fix_rect,filtermode,framecolor,params.stim.fix.dotopacity) 
 
+            fd = fopen(taskscript{timing.trig_block(frame)}, 'rt');
+            mytext = '';
+            tl = fgets(fd);
+            lcount = 0;
+            while lcount < 48
+                mytext = [mytext tl]; %#ok<*AGROW>
+                tl = fgets(fd);
+                lcount = lcount + 1;
+            end
+            fclose(fd);
+            instr=mytext;
+
+            rect_text = rect + [offset(1) offset(2) offset(1) offset(2)];
+            
+            % draw background + fix dot
+            Screen('DrawTexture',win,bckrgound_texture,[], bckground_rect, 0, filtermode, 1, framecolor);...
+            Screen('DrawTexture',win,fix_tex0,[], fix_rect, 0, filtermode, params.stim.fix.dotopacity, [framecolor,params.stim.fix.dotopacity]);...                
+            Screen('TextSize', win, 25);
+            Screen('TextStyle', win, 0);
+            DrawFormattedText(win, instr, 'center', (rect_text(4)/2)-250,0,75,[],[],[],[],rect_text);
+            
         case {1:39} % stimuli
             % %             wm_blocks = find(~cellfun(@isempty, regexp(params.exp.stimTaskLabels,'wm')));
             % %             ltm_blocks = find(~cellfun(@isempty, regexp(params.exp.stimTaskLabels,'ltm')));
@@ -250,109 +272,149 @@ for frame = 1:(frameorder+1)
     Screen('DrawingFinished',win);
  
     %%%%%%%%%%%%%%%%%%%%%%%% the main while loop that actually puts up stimuli and records button presses
-    
-    when = 0;
-    
-    % here, deal with making the stimulus frame / texture / stuff
-    % read input until we have to do the flip
-    while 1
+%     if params.debugmode
+%         % get matlab now for the very first stimulus frame
+%         if framecnt==1
+%             absnowtime = now;
+%         end
+%         
+%         VBLTimestamp = Screen(win, 'Flip', win, 0);
+% %         VBLTimestamp = Screen(win, 'Flip', win, absnowtime + timing.trig_timing(frame) - (mfi * (1/2)));
+%         timeframes(framecnt) = VBLTimestamp;
+%         
+%         % report text to command window?
+%         if ~isempty(reporttext)
+%             fprintf(reporttext);
+%         end
+%         
+%         % Send eyelink a message when new block is started
+%         ts = GetSecs;
+%         timekeys = [timekeys; {ts blockID}];
+%         
+%         if detectinput
+%             [keyIsDown,secs,keyCode,~] = KbCheck(-3);  % all devices
+%             if keyIsDown
+%                 
+%                 % get the name of the key and record it
+%                 kn = KbName(keyCode);
+%                 timekeys = [timekeys; {secs kn}];
+%                 
+%                 % check if ESCAPE was pressed
+%                 if isequal(kn,'ESCAPE')
+%                     fprintf('Escape key detected.  Exiting prematurely.\n');
+%                     getoutearly = 1;
+%                     break;
+%                 end
+%             end
+%         end
+%     
+%     else
         
-        % EK: Why would load gamma every frame???
-        %           % load the gamma table (for a future frame)
-        %           if ~isempty(specialcon)
-        %               frameL = frame0 + specialcon{4};
-        %               if frameL <= size(frameorder,2)
-        %                   if frameorder(1,frameL)==0  % if blank frame, who cares, don't change
-        %                   else
-        %                       con = specialcon{2}(frameorder(1,frameL));
-        %                       if lastsc ~= con
-        %                           %            sound(sin(1:100),1);
-        %                           Screen('LoadNormalizedGammaTable',win,specialcluts(:,:,allcons==con));  % don't use loadOnNextFlip!
-        %                           lastsc = con;
-        %                       end
-        %                   end
-        %               end
-        %           end
-        
-        % if we are in the initial case OR if we have hit the when time, then display the frame
-        if when == 0 | GetSecs >= when
-            
-            % EK: we don't need this????
-            % right before we issue the flip command, deal with frameevents.
-            % hopefully the frameevent doesn't slow us down.
-            %                 if ~isempty(frameevents)
-            %                     if frameevents(frame0)==0
-            %                     else
-            %                         temp = framefuncs{frameevents(frame0)};
-            %                         if ischar(temp)
-            %                             evalin('caller',temp);
-            %                         else
-            %                             feval(temp);
-            %                         end
-            %                     end
-            %                 end
-            
-            % issue the flip command and record the empirical time
-%             [VBLTimestamp,StimulusOnsetTime,FlipTimestamp,Missed,Beampos] = Screen('Flip',win,  0);
-            [VBLTimestamp,~,~,~,~] = Screen('Flip',win,  0);
-            timeframes(framecnt) = VBLTimestamp;
-            
-            % get matlab now for the very first stimulus frame
-            if framecnt==1
-                absnowtime = now;
-            end
-            
-            % report text to command window?
-            if ~isempty(reporttext)
-                fprintf(reporttext);
-            end
-            
-            % Send eyelink a message when new block is started
-            ts = GetSecs;
-            timekeys = [timekeys; {ts sprintf('BLOCKID%d',blockID)}];
-            if params.wanteyetracking && sendELmessage 
-                Eyelink('message', sprintf('BLOCKID %d %d',blockID,ts));
-            end
+        when = 0;
 
-            % Detect glitch
-            if when ~= 0 && (VBLTimestamp - whendesired) > (mfi * (1/2))
-                glitchcnt = glitchcnt + 1;
-                didglitch = 1;
+        % here, deal with making the stimulus frame / texture / stuff
+        % read input until we have to do the flip
+        while 1
+
+            % EK: Why would load gamma every frame???
+            %           % load the gamma table (for a future frame)
+            %           if ~isempty(specialcon)
+            %               frameL = frame0 + specialcon{4};
+            %               if frameL <= size(frameorder,2)
+            %                   if frameorder(1,frameL)==0  % if blank frame, who cares, don't change
+            %                   else
+            %                       con = specialcon{2}(frameorder(1,frameL));
+            %                       if lastsc ~= con
+            %                           %            sound(sin(1:100),1);
+            %                           Screen('LoadNormalizedGammaTable',win,specialcluts(:,:,allcons==con));  % don't use loadOnNextFlip!
+            %                           lastsc = con;
+            %                       end
+            %                   end
+            %               end
+            %           end
+
+
+
+
+            % if we are in the initial case OR if we have hit the when time, then display the frame
+            if when == 0 | GetSecs >= when
+
+                % EK: we don't need this????
+                % right before we issue the flip command, deal with frameevents.
+                % hopefully the frameevent doesn't slow us down.
+                %                 if ~isempty(frameevents)
+                %                     if frameevents(frame0)==0
+                %                     else
+                %                         temp = framefuncs{frameevents(frame0)};
+                %                         if ischar(temp)
+                %                             evalin('caller',temp);
+                %                         else
+                %                             feval(temp);
+                %                         end
+                %                     end
+                %                 end
+
+                % issue the flip command and record the empirical time
+                [VBLTimestamp,~,~,~,~] = Screen('Flip',win,  0);
+                timeframes(framecnt) = VBLTimestamp;
+
+                % get matlab now for the very first stimulus frame
+                if framecnt==1
+                    absnowtime = now;
+                end
+
+                % report text to command window?
+                if ~isempty(reporttext)
+                    fprintf(reporttext);
+                end
+
+                % Send eyelink a message when new block is started
+                ts = GetSecs;
+                timekeys = [timekeys; {ts blockID}];
+                if params.wanteyetracking && sendELmessage 
+                    Eyelink('message', sprintf('BLOCKID %d %d',blockID,ts));
+                end
+
+                % Detect glitch
+                if when ~= 0 && (VBLTimestamp - whendesired) > (mfi * (1/2))
+                    glitchcnt = glitchcnt + 1;
+                    didglitch = 1;
+                else
+                    didglitch = 0;
+                end
+
+                % get out of this loop
+                break;
+
+                % otherwise, try to read input
             else
-                didglitch = 0;
-            end
-            
-            % get out of this loop
-            break;
-            
-            % otherwise, try to read input
-        else
-            if detectinput
-                [keyIsDown,secs,keyCode,~] = KbCheck(-3);  % all devices
-                if keyIsDown
-                    
-                    % get the name of the key and record it
-                    kn = KbName(keyCode);
-                    timekeys = [timekeys; {secs kn}];
-                    
-                    % check if ESCAPE was pressed
-                    if isequal(kn,'ESCAPE')
-                        fprintf('Escape key detected.  Exiting prematurely.\n');
-                        getoutearly = 1;
-                        break;
+                if detectinput
+                    [keyIsDown,secs,keyCode,~] = KbCheck(-3);  % all devices
+                    if keyIsDown
+
+                        % get the name of the key and record it
+                        kn = KbName(keyCode);
+                        timekeys = [timekeys; {secs kn}];
+
+                        % check if ESCAPE was pressed
+                        if isequal(kn,'ESCAPE')
+                            fprintf('Escape key detected.  Exiting prematurely.\n');
+                            getoutearly = 1;
+                            break;
+                        end
+
+                        % force a glitch?
+                        if allowforceglitch(1) && isequal(kn,'p')
+                            WaitSecs(allowforceglitch(2));
+                        end
+
                     end
-                    
-                    % force a glitch?
-                    if allowforceglitch(1) && isequal(kn,'p')
-                        WaitSecs(allowforceglitch(2));
-                    end
-                    
                 end
             end
+
         end
-        
-    end
-    
+%     end
+
     % write to file if desired
 %     if wantframefiles
 %         if isempty(framefiles{2})
@@ -421,7 +483,7 @@ ShowCursor;
 starttime = timeframes(1);
 timeframes = timeframes - starttime;
 if size(timekeys,1) > 0
-  timekeys(:,1) = cellfun(@(x) x - starttime,data.timekeys(:,1),'UniformOutput',0);
+  timekeys(:,1) = cellfun(@(x) x - starttime,timekeys(:,1),'UniformOutput',0);
 end
 timekeys = [{absnowtime 'absolutetimefor0'}; timekeys];
 
