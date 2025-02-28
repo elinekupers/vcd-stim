@@ -49,8 +49,8 @@ function runme_vcdcore(subjID,sesID,runnum, varargin)
 %
 % __EXAMPLE__
 %  runme_vcdcore(1, 1, 1, 'debugmode', true)
-%  runme_vcdcore(1, 1, 1, 'debugmode', true, 'dispName','KKOFFICE_AOSQ3277')
-%  runme_vcdcore(1, 1, 1, 'debugmode', true, 'dispName','KKOFFICE_AOSQ3277', 'savetempstimuli', true)
+%  runme_vcdcore(1, 1, 1, 'debugmode', true, 'dispName','KKOFFICE_AOCQ3277')
+%  runme_vcdcore(1, 1, 1, 'debugmode', true, 'dispName','KKOFFICE_AOCQ3277', 'savetempstimuli', true)
 %  runme_vcdcore(1, 1, 1, 'debugmode', true, 'dispName','EKHOME_ASUSVE247', 'savetempstimuli', true)
 %
 % __DEPENDENCIES__
@@ -80,7 +80,7 @@ p.addParameter('savetempstimuli', false, @islogical);
 p.addParameter('offsetpix'      , [0 0], @isnumerical); % [x,y]
 p.addParameter('movieflip'      , [0 0], @isnumerical); % up/down, left/right
 p.addParameter('stimDir'        , fullfile(vcd_rootPath,'workspaces','info'), @ischar);
-p.addParameter('saveDataDir'    , [], @ischar);
+p.addParameter('savedatadir'    , [], @ischar);
 p.addParameter('subjFilename'   , [], @ischar);
 p.addParameter('wanteyetracking', false, @islogical);
 
@@ -127,14 +127,19 @@ close all;
 % kendrickstartup;
 
 %%%%%%%%%%%%%%%% need to get info from user
-
 % ask the user what to run
 if ~exist('subjID','var') || isempty(subjID)
   subjID = input('What is the subj id? ')
 end
 
 % give some hints to the operator
-tempfiles = matchfiles(fullfile(vcd_rootPath,sprintf('*_vcd_subj%d_run*_exp*.mat',subjID)));
+if isempty(savedatadir)
+    savedatadir = fullfile(vcd_rootPath,'data',sprintf('vcd_subj%03d_ses%02d',subjID, sesID));
+end
+if ~exist('saveDataDir', 'dir'); mkdir(savedatadir); end
+
+
+tempfiles = matchfiles(fullfile(savedatadir,sprintf('*_vcd_subj%03d_run*_exp*.mat',subjID)));
 fprintf('\nIt appears you have completed the following runs already:\n');
 tempfiles
 
@@ -155,36 +160,29 @@ if ~exist('dispName','var') || isempty(dispName)
     dispName = input('What monitor are you using? (press 1 for 7TAS, 2 for Psychophysics room, 3 for Office) ')
 end
 
-fprintf('[%s]: Running subjID %02d - session %02d - run %02d \n', mfilename, subjID,sesID,runnum)
+fprintf('[%s]: Running subjID %03d - session %02d - run %02d \n', mfilename, subjID,sesID,runnum)
 fprintf('[%s]: %s eyetracking \n', mfilename, choose(wanteyetracking,'YES','NO'))
 fprintf('[%s]: Running experiment with images optimized for %s\n', mfilename, dispName)
 
 
 % Deal with folders and filenames
-ts0 = gettimestring;
-if isempty(saveDataDir)
-    saveDataDir = fullfile(vcd_rootPath,'data',sprintf('%s_vcd_subj%d_ses%02d',ts0,subjID, sesID));
-end
-
 instructionsDir = fullfile(vcd_rootPath, 'workspaces','instructions');
 
-
-if ~exist('saveDataDir', 'dir'); mkdir(saveDataDir); end
-
+ts0 = gettimestring;
 if isempty(subjFilename)
-    behavioralFilename    = sprintf('%s_vcd_subj%d_ses%02d_run%02d.mat',ts0,subjID,sesID,runnum);
+    behavioralFilename    = sprintf('%s_vcd_subj%03d_ses%02d_run%02d.mat',ts0,subjID,sesID,runnum);
     
     if wanteyetracking
-        eyelinkfilename = fullfile(vcd_rootPath,sprintf('eye_%s_vcd_subj%d_ses%02d_run%02d.edf',ts0,subjID,sesID,runnum));
+        eyelinkfilename = fullfile(vcd_rootPath,sprintf('eye_%s_vcd_subj%03d_ses%02d_run%02d.edf',ts0,subjID,sesID,runnum));
     else
         eyelinkfilename = '';
     end
         
 else
-    behavioralFilename    = fullfile(saveDataDir,sprintf('%s_%s.mat',ts0,subjFilename));
+    behavioralFilename    = fullfile(savedatadir,sprintf('%s_%s.mat',ts0,subjFilename));
     
     if wanteyetracking
-        eyelinkfilename = fullfile(saveDataDir,sprintf('%s_%s.edf',ts0,subjFilename));
+        eyelinkfilename = fullfile(savedatadir,sprintf('%s_%s.edf',ts0,subjFilename));
     else
         eyelinkfilename = '';
     end
@@ -218,11 +216,14 @@ end
 
 
 if loadtempstimuli
-    d = dir(fullfile(params.savedatadir,'tmp_expim_*.mat'));
-    if ~exist('tmpfilename','file')
-        error('[%s]: Cannot find temporarily stored run stimulus file\n')
+    d = dir(fullfile(savedatadir,'tmp_expim_*.mat'));
+    if isempty(d)
+        error('[%s]: Cannot find temporarily stored run stimulus file\n',mfilename)
     elseif length(d)>1
-        warning('[%s]: Found more than one temporarily stored run stimulus file, will use most recent one.\n')
+        warning('[%s]: Found more than one temporarily stored run stimulus file, will use most recent one.\n',mfilename)
+        load(fullfile(d(end).folder,d(end).name),'scan','timing');
+    else
+        fprintf('[%s]: Loading temporarily stored files\n',mfilename)
         load(fullfile(d(end).folder,d(end).name),'scan','timing');
     end
 else
@@ -234,7 +235,7 @@ end
 vcd_singleRun(subjID, sesID, runnum, ... % mandatory inputs
     'behaviorfile',behavioralFilename, ... % optional inputs use: 'var',<val>
     'eyelinkfile',eyelinkfilename, ...
-    'savedatadir', saveDataDir, ...
+    'savedatadir', savedatadir, ...
     'wanteyetracking', wanteyetracking, ...
     'loadparams', loadparams, ...
     'storeparams', storeparams, ...
@@ -246,11 +247,5 @@ vcd_singleRun(subjID, sesID, runnum, ... % mandatory inputs
     'timing',timing, ...
     'savetempstimuli', savetempstimuli); 
 
-
-% single_vcd_run (filename,offset,movieflip,frameduration,fixdotcol,dotdiam_pix,tfun, ...
-%                ptonparams,soafun,0,images,setnum,[],grayval,iscolor,[],[], ...
-%                [],dres,triggerkey,[],trialparams,eyefilename,maskimages,specialoverlay,stimulusdir, ...
-%                [],[],setupscript);
-
-% analyze data
-% runvcdbehavioralanalysis(filename,3000,[299.8 300.2],[stimulusdir filesep 'vcd_expdesign.mat']);
+% analyze dat
+runvcdbehavioralanalysis(filename,3000,[299.8 300.2],[stimulusdir filesep 'vcd_expdesign.mat']);
