@@ -1,4 +1,4 @@
-function [status,images,maskimages] = vcd_singleRun(subjID, sesID, runnum, varargin)
+function [] = vcd_singleRun(subjID, sesID, runnum, varargin)
 
 
 %% %%%%%%%%%%%%% PARSE INPUTS %%%%%%%%%%%%%
@@ -19,7 +19,8 @@ p.addParameter('stimfolder'     , fullfile(vcd_rootPath,'workspaces','stimuli'),
 p.addParameter('instrtextdir'   , fullfile(vcd_rootPath,'workspaces','instructions'), @ischar); % where the task instructions can be obtained
 p.addParameter('laptopkey'      , -3        , @isnumeric);                   % listen to all keyboards/boxes (is this similar to k=-3;?)
 p.addParameter('wanteyetracking', false     , @islogical);                   % whether to try to hook up to the eyetracker
-p.addParameter('triggerkey'     , {'5','t'}, @(x) iscell(x) || isstring(x)) % key that starts the experiment
+p.addParameter('deviceNr'       , []        , @isnumeric);                   % kbWait/Check input device number 
+p.addParameter('triggerkey'     , {'5%','t'}, @(x) iscell(x) || isstring(x)) % key that starts the experiment
 p.addParameter('triggerkeyname' , '''5'' or ''t''', @isstring)               % for display only
 p.addParameter('offsetpix'      , [0 0]     , @isnumeric);                   % offset of screen in pixels [10 20] means move 10-px right, 20-px down
 p.addParameter('movieflip'      , [0 0]     , @isnumeric)                    % whether to flip up-down, whether to flip left-right
@@ -37,7 +38,10 @@ for ff = 1:length(rename_me)
 end
 clear rename_me ff p
 
-
+% release scan and timing var
+scan = params.scan; rmfield(params,'scan');
+timing = params.timing; rmfield(params,'timing');
+ 
 %% %%%%%%%%%%%%% PERIPHERALS %%%%%%%%%%%%%
 
 if ~isfield(params, 'disp') || isempty(params.disp)
@@ -46,8 +50,14 @@ end
 
 if params.debugmode % skip synctest
     skipsync = 1;
+    if isempty(params.deviceNr)
+        params.deviceNr = [1, 3]; % 1: external keyboard, 3: internal keyboard
+    end
 else
     skipsync = 0;
+    if isempty(params.deviceNr)
+        params.deviceNr = [1, 3];
+    end
 end
 
 % Nova1x32 coil with BOLDscreen and big eye mirrors
@@ -57,7 +67,7 @@ end
 % 3: clutfile -- 0 for linear CLUT (-2 for squaring CLUT for BOLDSCREEN to simulate normal monitors --> NB: we do this manually!)
 % 4: skipsync (bool: 0 is false, 1 is true)
 % 5: wantstereo (bool: default is false)
-ptonparams = {[params.disp.w_pix params.disp.h_pix params.disp.refresh_hz 24],[],disp.clut, skipsync}; 
+ptonparams = {[params.disp.w_pix params.disp.h_pix params.disp.refresh_hz 24],[],params.disp.clut, skipsync}; 
 
 % Buttonbox / keyboard
 params.ignorekeys = KbName({params.triggerkey});  % dont record TR triggers as subject responses
@@ -136,7 +146,7 @@ end
 %% %%%%%%%%% INDEX IMAGES THAT NEED TO BE LOADED
 [run_image_order,im_seq_order] = vcd_getImageOrder(subj_run.block, image_info, params);
 
-if ~exist('scan','var') || ~isfield(scan,'exp_im') || ~isempty(scan.exp_im)
+if ~exist('scan','var') || ~isfield(scan,'exp_im') || isempty(scan.exp_im)
     % LOAD AND RESIZE IMAGES etc
     
     % exp_im is a cell with dims:
@@ -147,61 +157,66 @@ if ~exist('scan','var') || ~isfield(scan,'exp_im') || ~isempty(scan.exp_im)
 end
 %% %%%%%%%%%%%%% FIXATION IM/PARAMS %%%%%%%%%%%%%
 
-% Load stored fixation dot images
-if isempty(images.fix)
-    fprintf('[%s]: Loading fixation dot images..\n',mfilename);
-    % FIX: 5D array: [x,y, 3, 5 lum, 2 widths]
-    d = dir(sprintf('%s*.mat', params.stim.fix.stimfile));
-    load(fullfile(d(end).folder,d(end).name), 'fix_im','info');
-    images.fix = fix_im; clear fix_im;
-    images.info.fix = info; clear info;
-end
+if ~exist('scan','var') || ~isfield(scan,'fix_im') || isempty(scan.fix_im)
 
-% rescale fix dot if needed:
-if ~isempty(params.stim.fix.dres) && ...
-        length(params.stim.fix.dres)==2 && ...
-        sum(params.stim.fix.dres)~=0
-    
-    fprintf('[%s]: Resampling fixation dot images..\n',mfilename);
-    old_fix_sz = size(images.fix);
-    p.stim.(stimClass).iscolor
-    tmp_im = reshape(images.fix, ...
-        old_fix_sz(1),... x
-        old_fix_sz(2),... y
-        3, ... % rgb
-        []); % 5 luminance and 2 rim widths
-   
-    numIn = size(tmp_im,4);
-    
-    for kk = 1:numIn
-        tmp0 = imresize(tmp_im(:,:,:,kk),p.stim.fix.dres); %% DEFAULT IS BICUBIC
-        
-        % square for CLUT
-        tmp0 = double(tmp0);
-        pix_range = [min(tmp0),max(tmp0)];
-                            
-        % if pix lum range is 0-1
-        if pix_range(2)<=1
-            img  = floor((tmp0*255)+params.stim.bckgrnd_grayval);
-            img = img.^2;
-            
-            % if pix lum range is 1-255
-        elseif pix_range(2)<=255
-            tmp0 = tmp0.^2;
-        end
-        im_rz(:,:,:,kk) = uint8(tmp0);
+
+    % Load stored fixation dot images
+    if isempty(images.fix)
+        fprintf('[%s]: Loading fixation dot images..\n',mfilename);
+        % FIX: 5D array: [x,y, 3, 5 lum, 2 widths]
+        d = dir(sprintf('%s*.mat', params.stim.fix.stimfile));
+        load(fullfile(d(end).folder,d(end).name), 'fix_im','info');
+        images.fix = fix_im; clear fix_im;
+        images.info.fix = info; clear info;
     end
 
-    images.fix = reshape(im_rz,old_fix_sz(1),old_fix_sz(2),old_fix_sz(3),old_fix_sz(4),old_fix_sz(5));
-end
+    % rescale fix dot if needed:
+    if ~isempty(params.stim.fix.dres) && ...
+            length(params.stim.fix.dres)==2 && ...
+            sum(params.stim.fix.dres)~=0
 
-if ~isfield(scan,'fix_im') || ~isempty(scan.fix_im)
-    scan.fix_im = images.fix;
+        fprintf('[%s]: Resampling fixation dot images..\n',mfilename);
+        old_fix_sz = size(images.fix);
+        p.stim.(stimClass).iscolor
+        tmp_im = reshape(images.fix, ...
+            old_fix_sz(1),... x
+            old_fix_sz(2),... y
+            3, ... % rgb
+            []); % 5 luminance and 2 rim widths
+
+        numIn = size(tmp_im,4);
+
+        for kk = 1:numIn
+            tmp0 = imresize(tmp_im(:,:,:,kk),p.stim.fix.dres); %% DEFAULT IS BICUBIC
+
+            % square for CLUT
+            tmp0 = double(tmp0);
+            pix_range = [min(tmp0),max(tmp0)];
+
+            % if pix lum range is 0-1
+            if pix_range(2)<=1
+                img  = floor((tmp0*255)+params.stim.bckgrnd_grayval);
+                img = img.^2;
+
+                % if pix lum range is 1-255
+            elseif pix_range(2)<=255
+                tmp0 = tmp0.^2;
+            end
+            im_rz(:,:,:,kk) = uint8(tmp0);
+        end
+
+        images.fix = reshape(im_rz,old_fix_sz(1),old_fix_sz(2),old_fix_sz(3),old_fix_sz(4),old_fix_sz(5));
+    end
+
+    if ~isfield(scan,'fix_im') || ~isempty(scan.fix_im)
+        scan.fix_im = images.fix;
+    end
+
 end
 
 %% %%%%%%%%% TIMING
 
-if ~exist('timing','var') || ~isfield(timing,'block') || ~isempty(timing.block)
+if ~exist('timing','var') || ~isfield(timing,'seq_stim') || isempty(timing.seq_stim)
     
     timing = vcd_getImageTiming(params, subj_run, im_seq_order, scan.exp_im, scan.fix_im);
     
@@ -216,9 +231,7 @@ if ~exist('timing','var') || ~isfield(timing,'block') || ~isempty(timing.block)
         st_start = cat(1,st_start, cellblock{6,ii}.onset_time(1));
         st_end = cat(1,st_end, cellblock{6,ii}.run_time(end));
     end
-    
-%     trig_block_start = find(~cellfun(@isempty, cellfun(@(x) find(x==97), timing.seq_stim,'UniformOutput', false)));
-
+   
     timing.block = [st_ID', st_start,st_end];
     
 end
@@ -226,7 +239,7 @@ end
 
 %% %%%%%%%%% IMAGE XY CENTER OFFSET
 
-if ~isfield(scan,'rect') || ~isempty(scan.rect)
+if ~exist('scan','var') || ~isfield(scan, 'rects') || isempty(scan.rects)
     
     % recenter x,y-center coordinates if needed
     if any(params.offsetpix~=0) || isempty(params.offsetpix)
@@ -363,14 +376,14 @@ end
 % input 4: number of unique noise background images
 % input 5: offset of center in pixels [x,y]
 % create background image that adjusts for shifted background if needed
-scan.bckground = vcd_pinknoisebackground(params, 'comb', 'fat', 1, params.offsetpix); 
-
-
-%% Save images and timing just in case we run into an error?
-if params.savetempstimuli
-    save(fullfile(params.savedatadir,sprintf('tmp_expim_%s.mat',datestr(now,30))),'scan','timing','params','-v7.3')
+if ~exist('scan','var') || ~isfield(scan, 'bckground') || isempty(scan.bckground)
+    scan.bckground = vcd_pinknoisebackground(params, 'comb', 'fat', 1, params.offsetpix); 
 end
 
+%% Save images and timing just in case we run into an error?
+if params.savetempstimuli && ~params.loadtempstimuli % assume we don't to resave the same stimuli
+    save(fullfile(params.savedatadir,sprintf('tmp_expim_%s.mat',datestr(now,30))),'scan','timing','params','-v7.3')
+end
 
 %% %%%%%%%%%%%%% TASK INSTRUCTIONS %%%%%%%%%%%%%
 
@@ -517,7 +530,7 @@ end
 %% START EXPERIMENT
 
 % call ptviewmovie
-timeofshowstimcall = datestr(now);
+timeofshowstimcall = datestr(now,30);
 
 % GO!
 [data,getoutearly] = vcd_showStimulus(...
