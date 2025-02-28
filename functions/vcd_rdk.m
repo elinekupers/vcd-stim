@@ -55,8 +55,7 @@ p.stim.rdk.dots_angle = pi*p.stim.rdk.dots_direction/180;             % convert 
 ap_center = p.stim.rdk.dots_aperture(1:2);
 ap_radius = p.stim.rdk.dots_aperture(3:4);
 
-num_frames = p.stim.rdk.duration / (p.stim.fps/p.stim.rdk.dots_interval);
-
+num_frames = p.stim.rdk.duration/p.stim.rdk.dots_interval;
 
 ndots = min(p.stim.rdk.max_dots_per_frame, ...
     round(p.stim.rdk.dots_density .* (p.stim.rdk.dots_aperture(:,3).*p.stim.rdk.dots_aperture(:,4)) / p.stim.fps));
