@@ -162,10 +162,10 @@ for bb = 1:size(cellblock,2)
     end
 end
 
-seq_stim  = cat(1, seq_stim, 0);
-seq_timing = cat(1, seq_timing, cumultime);
-seq_block = cat(1, seq_block, 0);
-seq_exp_im = cat(1, seq_exp_im, {0});
+seq_stim  = cat(1, seq_stim(2:end), 0);
+seq_timing = cat(1, seq_timing(2:end), cumultime);
+seq_block = cat(1, seq_block(2:end), 0);
+seq_exp_im = cat(1, seq_exp_im(2:end), {0});
 
 timing.seq_stim        = seq_stim;
 timing.seq_spatial_cue = spatial_cue;
@@ -218,17 +218,17 @@ for tt = 1:length(seq_timing)
     end
 
     if iscell(seq_exp_im{tt}) && size(seq_exp_im{tt}{1},3) > 3 % we are dealing with rdk, which has time dim
-        rdk_images = [squeeze(mat2cell(seq_exp_im{tt}{1}, size(seq_exp_im{tt}{1},1),size(seq_exp_im{tt}{1},2), ones(1,size(seq_exp_im{tt}{1},3)))), ...
-            squeeze(mat2cell(seq_exp_im{tt}{2}, size(seq_exp_im{tt}{2},1),size(seq_exp_im{tt}{2},2), ones(1,size(seq_exp_im{tt}{2},3))))];
+        rdk_images = [squeeze(mat2cell(uint8(seq_exp_im{tt}{1}), size(seq_exp_im{tt}{1},1),size(seq_exp_im{tt}{1},2), ones(1,size(seq_exp_im{tt}{1},3)))), ...
+            squeeze(mat2cell(uint8(seq_exp_im{tt}{2}), size(seq_exp_im{tt}{2},1),size(seq_exp_im{tt}{2},2), ones(1,size(seq_exp_im{tt}{2},3))))];
         for oob = 1:size(rdk_images,1)
             rdk_images2{oob} = [rdk_images(oob,1),rdk_images(oob,2)];
         end
         if size(rdk_images2,1) < size(rdk_images2,2)
             rdk_images2 = rdk_images2';
         end
-        trig_seq_exp_im(t_idx_total) = uint(rdk_images2(1:length(t_idx_total),:));
+        trig_seq_exp_im(t_idx_total) = rdk_images2(1:length(t_idx_total),:);
     else
-        trig_seq_exp_im(t_idx_total) = repmat(uint(seq_exp_im(tt)), length(t_idx_total),1);
+        trig_seq_exp_im(t_idx_total) = repmat(seq_exp_im(tt), length(t_idx_total),1);
     end
 end
 

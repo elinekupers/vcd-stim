@@ -190,9 +190,9 @@ for ii = 1:length(run_image_order)
             case 'ns'
                 sz = size(block(ii).trial);
                 if sz(1)>sz(2) && any(sz~=1)
-                    numTrials = sz(2);
-                elseif sz(1)<sz(2) && any(sz~=1)
                     numTrials = sz(1);
+                elseif sz(1)<sz(2) && any(sz~=1)
+                    numTrials = sz(2);
                 end
                 
                 if isempty(images.ns)
@@ -235,16 +235,14 @@ for ii = 1:length(run_image_order)
         
         %         if ~isempty(params.stim.(stimClass).dres) && ...
         %                 sum(params.stim.(stimClass).dres)~=0
-        fprintf('check stim size..',mfilename);
-        if ~strcmp(stimClass,'cobj')
-            
+        fprintf('[%s]: check stim size..',mfilename);
         for jj = 1:numTrials
             
             statusdots(jj,length(numTrials));
-
+            
             tmp0 = squeeze(run_images(ii,jj,:,:));
             sz0 = size(tmp0);
-
+            
             tmp0 = reshape(tmp0,1,[]);
             
             for kk = 1:length(tmp0)
@@ -261,23 +259,25 @@ for ii = 1:length(run_image_order)
                         params.stim.(stimClass).dres_additional = scale_factor;
                         
                         % reshape to get one vector of pixels by 1 (or time)
-                        tmp0_im = tmp0{kk};
+                        tmp0_im = double(tmp0{kk});
                         
-                        % GRAY SCALE has 2 or 3 dim
-                        if ~params.stim.(stimClass).iscolor
-                            tmp_im = reshape(tmp0_im, ...
-                                size(tmp0_im,1),... x
-                                size(tmp0_im,2),... y
-                                []);
-                            
-                            % COLOR has 3 or 4 dim
-                        elseif params.stim.(stimClass).iscolor
-                            tmp_im = reshape(tmp0_im, ...
-                                size(tmp0_im,1),... x
-                                size(tmp0_im,2),... y
-                                3, ... % rgb
-                                []);
-                        end
+                        
+                        
+                        %                         % GRAY SCALE has 2 or 3 dim
+                        %                         if ~params.stim.(stimClass).iscolor
+                        %                             tmp_im = reshape(tmp0_im, ...
+                        %                                 size(tmp0_im,1),... x
+                        %                                 size(tmp0_im,2),... y
+                        %                                 []);
+                        %
+                        %                             % COLOR has 3 or 4 dim
+                        %                         elseif params.stim.(stimClass).iscolor
+                        %                             tmp_im = reshape(tmp0_im, ...
+                        %                                 size(tmp0_im,1),... x
+                        %                                 size(tmp0_im,2),... y
+                        %                                 3, ... % rgb
+                        %                                 []);
+                        %                         end
                         
                         numFrames = size(tmp_im);
                         numFrames = numFrames(end);
@@ -289,27 +289,28 @@ for ii = 1:length(run_image_order)
                                 im_rz(:,:,ll) = imresize(tmp_im(:,:,ll),scale_factor);
                             end
                         end
+                        
                         run_im_tmp{kk} = im_rz;
                     end
-                        
-                
+                    
+                    
                 else
                     tmp0{kk} = tmp0{kk};
                 end
             end
             run_im_tmp = reshape(tmp0,sz0(1),sz0(2));
             run_images(ii,jj,:,:) = run_im_tmp;
-        end
+            
         end
     end
-        
-        
+    
+    
     % If using BOLDSCREEN, we want to square pixel values for objects and
     % scenes
     if strcmp(params.disp.name,'7TAS_BOLDSCREEN32') && ...
             ~any(strcmp(taskClass,{'pre','post'}))
-            any(strcmp(stimClass,{'cobj','ns'}))
-            
+        any(strcmp(stimClass,{'cobj','ns'}))
+        
         assert(p.stim.(stimClass).square_pix_val==true)
         
         fprintf('square pix values for CLUT..',mfilename);

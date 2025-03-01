@@ -174,7 +174,7 @@ for frame = 1:size(frameorder,2)+1
     frame0 = floor(frame);
     reporttext = '';
     
-    blockID = timing.trig_block(frame);
+    blockID = timing.trig_block(framecnt);
     
     % we have to wait until the last frame of the run sequence is done.
     if frame0 == size(frameorder,2)+1
@@ -197,21 +197,21 @@ for frame = 1:size(frameorder,2)+1
     end
     
     % get fixation dot
-    opacity_idx = timing.trig_fix(frame);
-    if isnan(timing.trig_spatial_cue(frame))
+    opacity_idx = timing.trig_fix(framecnt);
+    if isnan(timing.trig_spatial_cue(framecnt))
         fix_tex0 = fix_texture_thin_full{opacity_idx};
-        fix_rect = fix_rect_thick;
+        fix_rect = fix_rect_thin;
     else
-        switch timing.trig_spatial_cue(frame)
+        switch timing.trig_spatial_cue(framecnt)
             case 1
                 fix_tex0 = fix_texture_thick_left{opacity_idx};
-                fix_rect = fix_rect_thin;
+                fix_rect = fix_rect_thick;
             case 2
                 fix_tex0 = fix_texture_thick_right{opacity_idx};
-                fix_rect = fix_rect_thin;
+                fix_rect = fix_rect_thick;
             case 0
                 fix_tex0 = fix_texture_thick_full{opacity_idx};
-                fix_rect = fix_rect_thin;
+                fix_rect = fix_rect_thick;
         end
     end
     
@@ -226,22 +226,23 @@ for frame = 1:size(frameorder,2)+1
     
     % Draw background and fix dot
     Screen('DrawTexture',win,bckrgound_texture,[], bckground_rect, 0, filtermode, 1, framecolor);...
-%     Screen('DrawTexture',win,fix_tex0,[], fix_rect, 0, filtermode, params.stim.fix.dotopacity, [framecolor,params.stim.fix.dotopacity]);...
-    Screen('DrawTexture',win,fix_tex0,[], fix_rect, 0, filtermode, [], [framecolor,params.stim.fix.dotopacity]);...
+    Screen('DrawTexture',win,fix_tex0,[], fix_rect, 0, filtermode, params.stim.fix.dotopacity, framecolor);...
 
     switch timing.trig_stim(frame,1)
         
         % 0  : pre/post blank
-        % 94 : trial_start_ID 
-        % 95 : spatial_cue_ID 
-        % 96 : delay_ID
-        % 97 : response_ID
-        % 98 : ITI
-        % 99 : IBI
-        case {0, 94, 95, 96, 97, 98} 
+        % 93 : exp_session.miniblock.response_ID
+        % 94 : exp_session.miniblock.trial_start_ID
+        % 95 : exp_session.miniblock.spatial_cue_ID
+        % 96 : exp_session.miniblock.delay_ID
+        % 97 : exp_session.miniblock.task_cue_ID
+        % 98 : exp_session.miniblock.ITI_ID
+        % 99 : exp_session.miniblock.IBI_ID
+   
+        case {0, 93, 94, 95, 96, 98, 99} 
             % do nothing beyond what we do above
             
-        case 93 % task_cue_ID            
+        case 97 % task_cue_ID            
             fd = fopen(taskscript{~cellfun(@isempty, regexp(taskscript,sprintf('%02d',blockID),'match'))}, 'rt');
             instrtext = '';
             tl = fgets(fd);
@@ -257,9 +258,9 @@ for frame = 1:size(frameorder,2)+1
             DrawFormattedText(win, instrtext, 'center', (rect_text(4)/2)-50,0,75,[],[],[],[],rect_text);
         
         % Draw 2 aperture stimuli textures
-        case {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29} 
+        case {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39} 
             % trig_seq_exp_im_w_cd is a cell with dims: frames x 1, where each cell has 1 or 2 sides (1:l, 2:r)
-            for side = [1,2] %1:length(timing.trig_seq_exp_im_w_cd{frame})
+            for side = 1:length(find(~cellfun(@isempty, timing.trig_seq_exp_im_w_cd{frame})))
                 txttemp = feval(flipfun,timing.trig_seq_exp_im_w_cd{frame}{side});
                 stim_rect = scan.rects{frame,side};
                 stim_texture = Screen('MakeTexture',win, txttemp);
@@ -267,11 +268,11 @@ for frame = 1:size(frameorder,2)+1
             end
        
          % Draw scene stimulus texture
-        case {30, 31, 32, 33,34,35,36,37,38,39}
-            txttemp = feval(flipfun,timing.trig_seq_exp_im_w_cd{frame}{1});
-            stim_rect = scan.centers{frame,1};
-            stim_texture = Screen('MakeTexture',win, txttemp);
-            Screen('DrawTexture',win,stim_texture,[],stim_rect,0,filtermode,1,framecolor);
+%         case {30,31,32,33,34,35,36,37,38,39}
+%             txttemp = feval(flipfun,timing.trig_seq_exp_im_w_cd{frame}{1});
+%             stim_rect = scan.centers{frame,1};
+%             stim_texture = Screen('MakeTexture',win, txttemp);
+%             Screen('DrawTexture',win,stim_texture,[],stim_rect,0,filtermode,1,framecolor);
 %                 Screen('Close',stim_texture);
     end
     

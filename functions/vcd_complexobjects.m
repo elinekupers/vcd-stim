@@ -99,7 +99,7 @@ else
             alpha0  = (double(alpha0./255)).^2;
             
             % crop image
-            extent  = size(im0)/2 + ([-1 1].*p.stim.cobj.img_sz_pix);
+            extent  = size(im0)/2 + ([-1 1].*(p.stim.cobj.img_sz_pix/2));
             cropme = extent(1):extent(2);
             
             alpha0_cropped = alpha0(cropme,cropme);
