@@ -85,8 +85,8 @@ else
     % SPATIAL
     stim.fix.dotcenterdiam_deg            = 0.215;                           % dot diameter in deg
     stim.fix.dotcenterdiam_pix            = round(stim.fix.dotcenterdiam_deg * disp_params.ppd);     % dot diameter in pixels
-    stim.fix.dotthinborderdiam_pix        = stim.fix.dotcenterdiam_pix+3;     % pixel-width for dot thin border (during ITI/IBI)
-    stim.fix.dotthickborderdiam_pix       = stim.fix.dotcenterdiam_pix+6;     % pixel-width for dot border (during trial)
+    stim.fix.dotthinborderdiam_pix        = stim.fix.dotcenterdiam_pix+6;     % pixel-width for dot thin border (during ITI/IBI)
+    stim.fix.dotthickborderdiam_pix       = stim.fix.dotcenterdiam_pix+10;     % pixel-width for dot border (during trial)
     
     stim.fix.lumminmaxstep          = [42,212,5];                       % min and max luminance of dot [1-255],
     stim.fix.dotlum                 = uint8(linspace(stim.fix.lumminmaxstep(1),stim.fix.lumminmaxstep(2),stim.fix.lumminmaxstep(3))); % dot gray levels

@@ -86,7 +86,7 @@ else
     assert(isempty(intersect([1:length(exp_session.stimTaskLabels)],exp_session.miniblock.IBI_ID)));
     
     % timing
-    exp_session.miniblock.task_cue_dur        = p.stim.fps*60; % 2.0 seconds
+    exp_session.miniblock.task_cue_dur        = p.stim.fps*60*2; % 4.0 seconds
     exp_session.miniblock.IBI                 = p.stim.fps*linspace(150,270,5); % [5:1:9] seconds Inter-block interval -- uniformly sample between [min,max]
     
     
