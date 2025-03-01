@@ -61,14 +61,21 @@ end
 
 if params.debugmode % skip synctest
     skipsync = 1;
-    if isempty(params.deviceNr) && ~isempty(deviceNr.internal) && ~isempty(deviceNr.external)
-        params.deviceNr = [deviceNr.internal, deviceNr.external];
-    elseif isempty(params.deviceNr) && ~isempty(deviceNr.internal) && isempty(deviceNr.external)
-        params.deviceNr = deviceNr.internal;
-    elseif isempty(params.deviceNr) && isempty(deviceNr.internal) && ~isempty(deviceNr.external)
-        params.deviceNr = deviceNr.external;
-    elseif isempty(params.deviceNr) && isempty(deviceNr.internal) && isempty(deviceNr.external)
+    if isempty(params.deviceNr)
         params.deviceNr = -3; % listen to all
+    elseif ~isfield(deviceNr,'internal') && ~isfield(deviceNr,'external')
+        params.deviceNr = -3; % listen to all
+    else
+        if isfield(deviceNr,'external') && ~isempty(deviceNr.external) && ...
+            (~isfield(deviceNr,'internal') || isempty(deviceNr.internal))
+            params.deviceNr = deviceNr.external;
+        elseif isfield(deviceNr,'internal') && ~isempty(deviceNr.internal) && ...
+            (~isfield(deviceNr,'external') || isempty(deviceNr.external))
+            params.deviceNr = deviceNr.internal;
+        elseif isfield(deviceNr,'external') && isfield(deviceNr,'internal') && ...
+                ~isempty(deviceNr.external) && ~isempty(deviceNr.internal)
+            params.deviceNr = [deviceNr.internal, deviceNr.external];
+        end
     end
 else
     skipsync = 0;
@@ -169,9 +176,10 @@ if ~exist('scan','var') || ~isfield(scan,'exp_im') || isempty(scan.exp_im)
     
     % exp_im is a cell with dims:
     % blocks x trials x locations (1:l, 2:r) x stim epoch (first or second)
-    [exp_im, images] = vcd_loadRunImages(run_image_order, subj_run.block, params);
+    [exp_im, alpha_masks, images] = vcd_loadRunImages(run_image_order, subj_run.block, params);
     
     scan.exp_im = exp_im; clear exp_im
+    scan.exp_im_masks = alpha_masks; clear alpha masks;
 end
 %% %%%%%%%%%%%%% FIXATION IM/PARAMS %%%%%%%%%%%%%
 
@@ -236,7 +244,7 @@ end
 
 if ~exist('timing','var') || ~isfield(timing,'seq_stim') || isempty(timing.seq_stim)
     
-    timing = vcd_getImageTiming(params, subj_run, im_seq_order, scan.exp_im, scan.fix_im);
+    timing = vcd_getImageTiming(params, subj_run, im_seq_order, scan.exp_im, scan.fix_im, scan.exp_im_masks);
     
     cellblock = struct2cell(subj_run.block);
     cellblock = squeeze(cellblock);

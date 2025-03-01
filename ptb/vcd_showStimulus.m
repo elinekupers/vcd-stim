@@ -240,7 +240,7 @@ for frame = 1:size(frameorder,2)+1
         % 99 : exp_session.miniblock.IBI_ID
    
         case {0, 93, 94, 95, 96, 98, 99} 
-            % do nothing beyond what we do above
+            % do nothing beyond what we already did above (fix+background)
             
         case 97 % task_cue_ID            
             fd = fopen(taskscript{~cellfun(@isempty, regexp(taskscript,sprintf('%02d',blockID),'match'))}, 'rt');
@@ -257,7 +257,18 @@ for frame = 1:size(frameorder,2)+1
             rect_text = rect + [params.offsetpix(1) params.offsetpix(2) params.offsetpix(1) params.offsetpix(2)];
             DrawFormattedText(win, instrtext, 'center', (rect_text(4)/2)-50,0,75,[],[],[],[],rect_text);
         
-        % Draw 2 aperture stimuli textures
+            fix_tex0 = fix_texture_thick_full{opacity_idx};
+            fix_rect = fix_rect_thick;
+            Screen('DrawTexture',win,fix_tex0,[], fix_rect, 0, filtermode, params.stim.fix.dotopacity, framecolor);...
+                 
+        % Draw stimulus textures
+        % 1-30 = all 2 peripheral stimulus aperture stim-task crossings:
+        %   01-xx = Gabors
+        %   xx-xx = RDKs
+        %   xx-xx = Simple dot
+        %   xx-30 = Complex objects
+        % 31-39 = Natural Scene stim-task crossings
+        
         case {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39} 
             % trig_seq_exp_im_w_cd is a cell with dims: frames x 1, where each cell has 1 or 2 sides (1:l, 2:r)
             for side = 1:length(find(~cellfun(@isempty, timing.trig_seq_exp_im_w_cd{frame})))
@@ -265,15 +276,16 @@ for frame = 1:size(frameorder,2)+1
                 stim_rect = scan.rects{frame,side};
                 stim_texture = Screen('MakeTexture',win, txttemp);
                 Screen('DrawTexture',win,stim_texture,[],stim_rect,0,filtermode,1,framecolor);
+                
+                % draw mask if it is there
+                if ~isempty(timing.trig_seq_exp_im_mask{frame}{side})
+                    if ~isnan(timing.trig_seq_exp_im_mask{frame}{side})
+                        txttemp = feval(flipfun,timing.trig_seq_exp_im_mask{frame}{side});
+                        mask_texture = Screen('MakeTexture',win, txttemp);
+                        Screen('DrawTexture',win,stim_texture,[],stim_rect,0,filtermode,1,framecolor);
+                    end
+                end
             end
-       
-         % Draw scene stimulus texture
-%         case {30,31,32,33,34,35,36,37,38,39}
-%             txttemp = feval(flipfun,timing.trig_seq_exp_im_w_cd{frame}{1});
-%             stim_rect = scan.centers{frame,1};
-%             stim_texture = Screen('MakeTexture',win, txttemp);
-%             Screen('DrawTexture',win,stim_texture,[],stim_rect,0,filtermode,1,framecolor);
-%                 Screen('Close',stim_texture);
     end
     
     
@@ -288,43 +300,8 @@ for frame = 1:size(frameorder,2)+1
         % read input until we have to do the flip
         while 1
 
-            % EK: Why would load gamma every frame???
-            %           % load the gamma table (for a future frame)
-            %           if ~isempty(specialcon)
-            %               frameL = frame0 + specialcon{4};
-            %               if frameL <= size(frameorder,2)
-            %                   if frameorder(1,frameL)==0  % if blank frame, who cares, don't change
-            %                   else
-            %                       con = specialcon{2}(frameorder(1,frameL));
-            %                       if lastsc ~= con
-            %                           %            sound(sin(1:100),1);
-            %                           Screen('LoadNormalizedGammaTable',win,specialcluts(:,:,allcons==con));  % don't use loadOnNextFlip!
-            %                           lastsc = con;
-            %                       end
-            %                   end
-            %               end
-            %           end
-
-
-
-
             % if we are in the initial case OR if we have hit the when time, then display the frame
             if when == 0 || GetSecs >= when
-
-                % EK: we don't need this????
-                % right before we issue the flip command, deal with frameevents.
-                % hopefully the frameevent doesn't slow us down.
-                %                 if ~isempty(frameevents)
-                %                     if frameevents(frame0)==0
-                %                     else
-                %                         temp = framefuncs{frameevents(frame0)};
-                %                         if ischar(temp)
-                %                             evalin('caller',temp);
-                %                         else
-                %                             feval(temp);
-                %                         end
-                %                     end
-                %                 end
 
                 % issue the flip command and record the empirical time
                 [VBLTimestamp,~,~,~,~] = Screen('Flip',win,  0, 1);
@@ -441,6 +418,8 @@ end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% PT CLEANUP STUFF
 Screen('Close',bckrgound_texture);
+Screen('Close',stim_texture);
+Screen('Close',fix_tex0);
 ptoff;
 
 % restore priority and cursor
