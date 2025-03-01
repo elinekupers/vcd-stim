@@ -3,7 +3,8 @@ function [data,getoutearly] = vcd_showStimulus(params, ...
     timing, ...
     introscript, ...
     taskscript, ...
-    tfunEYE)
+    tfunEYE, ...
+    deviceNr)
 
 getoutearly    = 0;
 glitchcnt      = 0;
@@ -17,11 +18,13 @@ digitrecord    = [];
 digitframe     = [];
 digitpolarity  = [];
 
+
+
 %% PREPARE IMAGES
 
 % deal with movieflip
 if params.movieflip(1) && params.movieflip(2)
-    flipfun = @(x) flipdim(flipdim(x,1),2);
+    flipfun = @(x) flipdim(flipdim(x,1),2); %#ok<*DFLIPDIM>
 elseif params.movieflip(1)
     flipfun = @(x) flipdim(x,1);
 elseif params.movieflip(2)
@@ -47,10 +50,14 @@ allowforceglitch     = 0; % 0 means do nothing special. [1 D] means allow keyboa
 frameorder           = 1:size(timing.trig_stim,1);
 
 % init variables, routines, constants
-timeframes = repmat(NaN,[1 floor(size(frameorder,2)-1)+1]);
+timeframes = NaN(1, floor(size(frameorder,2)-1)+1);
 
-
-
+% make tmpdir
+if wantframefiles
+    tmpDir = '~/Desktop/tmp/'; %#ok<UNRCH>
+    framefiles = {'~/Desktop/tmp/frame%05d.png', []};
+    if ~exist('tmpDir','dir'), mkdir(tmpDir); end
+end
 
 %% ptb stuff
 win  = firstel(Screen('Windows'));
@@ -69,14 +76,12 @@ mfi = 1/round(1/mfi);
 
 if ~params.debugmode
     HideCursor;
-    deviceNr = params.deviceNr(1);
 else
-    deviceNr = params.deviceNr(2);
     ShowCursor;
 end
 
 %% Create background and fixation textures prior to exp onset (as we need them throughout the experiment)
-bckground_rect = CenterRect([0 0 round(size(scan.bckground,1)) round(size(scan.bckground,2))],rect);
+% bckground_rect = CenterRect([0 0 round(size(scan.bckground,1)) round(size(scan.bckground,2))],rect);
 bckground_rect = rect;
 bckrgound_texture = Screen('MakeTexture', win, feval(flipfun,scan.bckground));
 
@@ -89,10 +94,10 @@ fix_rect_thin = CenterRect([0 0 round(size(scan.fix_im,1)) round(size(scan.fix_i
 fix_rect_thick = CenterRect([0 0 round(size(scan.fix_im,1)) round(size(scan.fix_im,2))],rect);
 
 for ll = 1:size(scan.fix_im,4) % loop over luminance values
-    fix_texture_thin_full{ll} = Screen('MakeTexture',win,feval(flipfun,cat(3,scan.fix_im(:,:,:,ll,1),params.stim.fix.dotopacity.*ones(size(scan.fix_im,1),size(scan.fix_im,2)))));
-    fix_texture_thick_full{ll} = Screen('MakeTexture',win,feval(flipfun,cat(3,scan.fix_im(:,:,:,ll,2),params.stim.fix.dotopacity.*ones(size(scan.fix_im,1),size(scan.fix_im,2)))));
-    fix_texture_thick_left{ll} = Screen('MakeTexture',win,feval(flipfun,cat(3,scan.fix_im(:,:,:,ll,3),params.stim.fix.dotopacity.*ones(size(scan.fix_im,1),size(scan.fix_im,2)))));
-    fix_texture_thick_right{ll} = Screen('MakeTexture',win,feval(flipfun,cat(3,scan.fix_im(:,:,:,ll,4),params.stim.fix.dotopacity.*ones(size(scan.fix_im,1),size(scan.fix_im,2)))));
+    fix_texture_thin_full{ll} = Screen('MakeTexture',win,feval(flipfun,scan.fix_im(:,:,:,ll,1)));   %cat(3, ...,params.stim.fix.dotopacity.*ones(size(scan.fix_im,1),size(scan.fix_im,2)))));
+    fix_texture_thick_full{ll} = Screen('MakeTexture',win,feval(flipfun,scan.fix_im(:,:,:,ll,2)));   %cat(3, ...,,params.stim.fix.dotopacity.*ones(size(scan.fix_im,1),size(scan.fix_im,2)))));
+    fix_texture_thick_left{ll} = Screen('MakeTexture',win,feval(flipfun,scan.fix_im(:,:,:,ll,3)));  %cat(3, ...,params.stim.fix.dotopacity.*ones(size(scan.fix_im,1),size(scan.fix_im,2)))));
+    fix_texture_thick_right{ll} = Screen('MakeTexture',win,feval(flipfun,scan.fix_im(:,:,:,ll,4)));  %cat(3, ...,params.stim.fix.dotopacity.*ones(size(scan.fix_im,1),size(scan.fix_im,2)))));
 end
 
 % run functions as first time running them always takes more time
@@ -102,16 +107,26 @@ ceil(1);
 fprintf('');
 
 % display instruction screen
-Screen('FillRect',win,params.stim.bckgrnd_grayval,rect);
-Screen('Flip',win);
-
-if ~isempty(introscript)
-    if ischar(introscript)
-        evalin('caller',introscript);
-    else
-        feval(introscript);
-    end
+fd = fopen(introscript, 'rt');
+instrtext = '';
+tl = fgets(fd);
+lcount = 0;
+while lcount < 48
+    instrtext = [instrtext tl]; %#ok<*AGROW>
+    tl = fgets(fd);
+    lcount = lcount + 1;
 end
+fclose(fd);
+
+rect_text = rect + [params.offsetpix(1) params.offsetpix(2) params.offsetpix(1) params.offsetpix(2)];
+
+% draw background + fix dot
+Screen('DrawTexture',win,bckrgound_texture,[], bckground_rect, 0, filtermode, 1, framecolor);...
+  
+Screen('TextSize', win, 25);
+Screen('TextStyle', win, 0);
+DrawFormattedText(win, instrtext, 'center', (rect_text(4)/2)-250,0,75,[],[],[],[],rect_text);
+Screen('Flip',win);
 
 fprintf('Instructions are on screen, waiting for trgger...\n');
 
@@ -120,7 +135,7 @@ fprintf('Instructions are on screen, waiting for trgger...\n');
 fprintf('press trigger key to begin the movie. (consider turning off network, energy saver, software updates.)\n');
 % safemode = 0;
 while 1
-    [secs,keyCode,deltaSecs] = KbWait(deviceNr,2); % previously deviceNr = -3;
+    [~,keyCode,~] = KbWait(deviceNr,2); % previously deviceNr = -3; outputs: secs,keyCode,deltaSecs
     temp = KbName(keyCode);
 %     if isequal(temp(1),'=')
 %         if safemode
@@ -142,13 +157,13 @@ end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%% log the start!
 
-fprintf('STIMULUS STARTED.\n');
+% fprintf('STIMULUS STARTED.\n');
 feval(tfunEYE) %Eyelink('Message','SYNCTIME'));
 timekeys = [timekeys; {GetSecs 'trigger'}];
 
 
 %% %%%%%%% MAKE TEXTURES
-
+blockcnt = 0;
 prev_blockID = timing.trig_block(1);
 
 % show the stim
@@ -159,7 +174,7 @@ for frame = 1:size(frameorder,2)+1
     frame0 = floor(frame);
     reporttext = '';
     
-    blockID = timing.trig_block(frame);
+    blockID = timing.trig_block(framecnt);
     
     % we have to wait until the last frame of the run sequence is done.
     if frame0 == size(frameorder,2)+1
@@ -182,89 +197,95 @@ for frame = 1:size(frameorder,2)+1
     end
     
     % get fixation dot
-    opacity_idx = timing.trig_fix(frame);
-    if isnan(timing.trig_spatial_cue(frame))
+    opacity_idx = timing.trig_fix(framecnt);
+    if isnan(timing.trig_spatial_cue(framecnt))
         fix_tex0 = fix_texture_thin_full{opacity_idx};
-        fix_rect = fix_rect_thick;
+        fix_rect = fix_rect_thin;
     else
-        switch timing.trig_spatial_cue(frame)
+        switch timing.trig_spatial_cue(framecnt)
             case 1
                 fix_tex0 = fix_texture_thick_left{opacity_idx};
-                fix_rect = fix_rect_thin;
+                fix_rect = fix_rect_thick;
             case 2
                 fix_tex0 = fix_texture_thick_right{opacity_idx};
-                fix_rect = fix_rect_thin;
+                fix_rect = fix_rect_thick;
             case 0
                 fix_tex0 = fix_texture_thick_full{opacity_idx};
-                fix_rect = fix_rect_thin;
+                fix_rect = fix_rect_thick;
         end
     end
     
-    
-    if frame==1 || prev_blockID~=blockID
+    if prev_blockID~=blockID
         sendELmessage = true;
+        blockcnt = blockcnt+1;
     else
         sendELmessage = false;
     end
     
-    switch timing.trig_stim(frame)
+    if frame==1, sendELmessage = true; end
+    
+    % Draw background and fix dot
+    Screen('DrawTexture',win,bckrgound_texture,[], bckground_rect, 0, filtermode, 1, framecolor);...
+    Screen('DrawTexture',win,fix_tex0,[], fix_rect, 0, filtermode, params.stim.fix.dotopacity, framecolor);...
+
+    switch timing.trig_stim(frame,1)
         
         % 0  : pre/post blank
-        % 94 : trial_start_ID 
-        % 95 : spatial_cue_ID 
-        % 96 : delay_ID
-        % 97 : response_ID
-        % 98 : ITI
-        % 99 : IBI
-        case {0, 94, 95, 96, 97, 98} 
-            % Draw background and thin rim fix dot texture
-            Screen('DrawTexture',win,bckrgound_texture,[], bckground_rect, 0, filtermode, 1, framecolor);...
-            Screen('DrawTexture',win,fix_tex0,[], fix_rect, 0, filtermode, params.stim.fix.dotopacity, [framecolor,params.stim.fix.dotopacity]);...
-        
-        case 93 % task_cue_ID            
-%             showinstructionscreen_pinknoisebackground(taskscript{timing.trig_block(frame)},250,75,25,...
-%                 params.offsetpix,bckrgound_texture,fix_tex0,bckground_rect,fix_rect,filtermode,framecolor,params.stim.fix.dotopacity) 
-
-            fd = fopen(taskscript{timing.trig_block(frame)}, 'rt');
-            mytext = '';
+        % 93 : exp_session.miniblock.response_ID
+        % 94 : exp_session.miniblock.trial_start_ID
+        % 95 : exp_session.miniblock.spatial_cue_ID
+        % 96 : exp_session.miniblock.delay_ID
+        % 97 : exp_session.miniblock.task_cue_ID
+        % 98 : exp_session.miniblock.ITI_ID
+        % 99 : exp_session.miniblock.IBI_ID
+   
+        case {0, 93, 94, 95, 96, 98, 99} 
+            % do nothing beyond what we already did above (fix+background)
+            
+        case 97 % task_cue_ID            
+            fd = fopen(taskscript{~cellfun(@isempty, regexp(taskscript,sprintf('%02d',blockID),'match'))}, 'rt');
+            instrtext = '';
             tl = fgets(fd);
             lcount = 0;
             while lcount < 48
-                mytext = [mytext tl]; %#ok<*AGROW>
+                instrtext = [instrtext tl]; %#ok<*AGROW>
                 tl = fgets(fd);
                 lcount = lcount + 1;
             end
             fclose(fd);
-            instr=mytext;
 
-            rect_text = rect + [offset(1) offset(2) offset(1) offset(2)];
-            
-            % draw background + fix dot
-            Screen('DrawTexture',win,bckrgound_texture,[], bckground_rect, 0, filtermode, 1, framecolor);...
-            Screen('DrawTexture',win,fix_tex0,[], fix_rect, 0, filtermode, params.stim.fix.dotopacity, [framecolor,params.stim.fix.dotopacity]);...                
-            Screen('TextSize', win, 25);
-            Screen('TextStyle', win, 0);
-            DrawFormattedText(win, instr, 'center', (rect_text(4)/2)-250,0,75,[],[],[],[],rect_text);
-            
-        case {1:39} % stimuli
-            % %             wm_blocks = find(~cellfun(@isempty, regexp(params.exp.stimTaskLabels,'wm')));
-            % %             ltm_blocks = find(~cellfun(@isempty, regexp(params.exp.stimTaskLabels,'ltm')));
-            % %             img_blocks = find(~cellfun(@isempty, regexp(params.exp.stimTaskLabels,'img')));
-            
-            % Draw background + dot
-            Screen('DrawTexture',win,bckrgound_texture,[], bckground_rect, 0, filtermode, 1, framecolor);...
-
-            % Draw stim texture + % Draw thin rim fix dot texture
+            rect_text = rect + [params.offsetpix(1) params.offsetpix(2) params.offsetpix(1) params.offsetpix(2)];
+            DrawFormattedText(win, instrtext, 'center', (rect_text(4)/2)-50,0,75,[],[],[],[],rect_text);
+        
+            fix_tex0 = fix_texture_thick_full{opacity_idx};
+            fix_rect = fix_rect_thick;
+            Screen('DrawTexture',win,fix_tex0,[], fix_rect, 0, filtermode, params.stim.fix.dotopacity, framecolor);...
+                 
+        % Draw stimulus textures
+        % 1-30 = all 2 peripheral stimulus aperture stim-task crossings:
+        %   01-xx = Gabors
+        %   xx-xx = RDKs
+        %   xx-xx = Simple dot
+        %   xx-30 = Complex objects
+        % 31-39 = Natural Scene stim-task crossings
+        
+        case {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39} 
             % trig_seq_exp_im_w_cd is a cell with dims: frames x 1, where each cell has 1 or 2 sides (1:l, 2:r)
-            for side = 1:length(timing.trig_seq_exp_im_w_cd{frame,:})
-                txttemp = feval(flipfun,timing.trig_seq_exp_im_w_cd{frame,side}{1});
-                stim_rect = scan.centers{frame,side};
+            for side = 1:length(find(~cellfun(@isempty, timing.trig_seq_exp_im_w_cd{frame})))
+                txttemp = feval(flipfun,timing.trig_seq_exp_im_w_cd{frame}{side});
+                stim_rect = scan.rects{frame,side};
                 stim_texture = Screen('MakeTexture',win, txttemp);
-                Screen('DrawTextures',win,stim_texture,[],stim_rect,0,filtermode,1,framecolor);
+                Screen('DrawTexture',win,stim_texture,[],stim_rect,0,filtermode,1,framecolor);
+                
+                % draw mask if it is there
+                if ~isempty(timing.trig_seq_exp_im_mask{frame}{side})
+                    if ~isnan(timing.trig_seq_exp_im_mask{frame}{side})
+                        txttemp = feval(flipfun,timing.trig_seq_exp_im_mask{frame}{side});
+                        mask_texture = Screen('MakeTexture',win, txttemp);
+                        Screen('DrawTexture',win,stim_texture,[],stim_rect,0,filtermode,1,framecolor);
+                    end
+                end
             end
-
-            Screen('DrawTexture',win,fix_tex0,[], fix_rect, 0, filtermode, params.stim.fix.dotopacity, [framecolor,params.stim.fix.dotopacity]);...
-            Screen('Close',stim_texture);
     end
     
     
@@ -272,43 +293,6 @@ for frame = 1:size(frameorder,2)+1
     Screen('DrawingFinished',win);
  
     %%%%%%%%%%%%%%%%%%%%%%%% the main while loop that actually puts up stimuli and records button presses
-%     if params.debugmode
-%         % get matlab now for the very first stimulus frame
-%         if framecnt==1
-%             absnowtime = now;
-%         end
-%         
-%         VBLTimestamp = Screen(win, 'Flip', win, 0);
-% %         VBLTimestamp = Screen(win, 'Flip', win, absnowtime + timing.trig_timing(frame) - (mfi * (1/2)));
-%         timeframes(framecnt) = VBLTimestamp;
-%         
-%         % report text to command window?
-%         if ~isempty(reporttext)
-%             fprintf(reporttext);
-%         end
-%         
-%         % Send eyelink a message when new block is started
-%         ts = GetSecs;
-%         timekeys = [timekeys; {ts blockID}];
-%         
-%         if detectinput
-%             [keyIsDown,secs,keyCode,~] = KbCheck(-3);  % all devices
-%             if keyIsDown
-%                 
-%                 % get the name of the key and record it
-%                 kn = KbName(keyCode);
-%                 timekeys = [timekeys; {secs kn}];
-%                 
-%                 % check if ESCAPE was pressed
-%                 if isequal(kn,'ESCAPE')
-%                     fprintf('Escape key detected.  Exiting prematurely.\n');
-%                     getoutearly = 1;
-%                     break;
-%                 end
-%             end
-%         end
-%     
-%     else
         
         when = 0;
 
@@ -316,46 +300,11 @@ for frame = 1:size(frameorder,2)+1
         % read input until we have to do the flip
         while 1
 
-            % EK: Why would load gamma every frame???
-            %           % load the gamma table (for a future frame)
-            %           if ~isempty(specialcon)
-            %               frameL = frame0 + specialcon{4};
-            %               if frameL <= size(frameorder,2)
-            %                   if frameorder(1,frameL)==0  % if blank frame, who cares, don't change
-            %                   else
-            %                       con = specialcon{2}(frameorder(1,frameL));
-            %                       if lastsc ~= con
-            %                           %            sound(sin(1:100),1);
-            %                           Screen('LoadNormalizedGammaTable',win,specialcluts(:,:,allcons==con));  % don't use loadOnNextFlip!
-            %                           lastsc = con;
-            %                       end
-            %                   end
-            %               end
-            %           end
-
-
-
-
             % if we are in the initial case OR if we have hit the when time, then display the frame
-            if when == 0 | GetSecs >= when
-
-                % EK: we don't need this????
-                % right before we issue the flip command, deal with frameevents.
-                % hopefully the frameevent doesn't slow us down.
-                %                 if ~isempty(frameevents)
-                %                     if frameevents(frame0)==0
-                %                     else
-                %                         temp = framefuncs{frameevents(frame0)};
-                %                         if ischar(temp)
-                %                             evalin('caller',temp);
-                %                         else
-                %                             feval(temp);
-                %                         end
-                %                     end
-                %                 end
+            if when == 0 || GetSecs >= when
 
                 % issue the flip command and record the empirical time
-                [VBLTimestamp,~,~,~,~] = Screen('Flip',win,  0);
+                [VBLTimestamp,~,~,~,~] = Screen('Flip',win,  0, 1);
                 timeframes(framecnt) = VBLTimestamp;
 
                 % get matlab now for the very first stimulus frame
@@ -389,7 +338,7 @@ for frame = 1:size(frameorder,2)+1
                 % otherwise, try to read input
             else
                 if detectinput
-                    [keyIsDown,secs,keyCode,~] = KbCheck(-3);  % all devices
+                    [keyIsDown,secs,keyCode,~] = KbCheck(deviceNr);  % previously -3 listen to all devices
                     if keyIsDown
 
                         % get the name of the key and record it
@@ -413,16 +362,32 @@ for frame = 1:size(frameorder,2)+1
             end
 
         end
-%     end
 
     % write to file if desired
-%     if wantframefiles
-%         if isempty(framefiles{2})
-%             imwrite(Screen('GetImage',win),sprintf(framefiles{1},framecnt));
-%         else
-%             imwrite(uint8(placematrix(zeros([framefiles{2} 3]),Screen('GetImage',win))),sprintf(framefiles{1},framecnt));
-%         end
-%     end
+    if wantframefiles
+        if isempty(framefiles{2}) %#ok<UNRCH>
+            imwrite(Screen('GetImage',win),sprintf(framefiles{1},framecnt));
+        else
+            imwrite(uint8(placematrix(zeros([framefiles{2} 3]),Screen('GetImage',win))),sprintf(framefiles{1},framecnt));
+        end
+    end
+    
+    % update when
+    if didglitch
+        % if there were glitches, proceed from our earlier when time.
+        % set the when time to 9/10 a frame before the desired frame.
+        % notice that the accuracy of the mfi is strongly assumed here.
+        whendesired = whendesired + mfi * frameduration;
+        when = whendesired - mfi * (9/10); %#ok<*NASGU>
+    else
+        % if there were no glitches, just proceed from the last recorded time
+        % and set the when time to 9/10 a frame before the desired time.
+        % notice that the accuracy of the mfi is only weakly assumed here,
+        % since we keep resetting to the empirical VBLTimestamp.
+        whendesired = VBLTimestamp + mfi * frameduration;
+        when = whendesired - mfi * (9/10);  % should we be less aggressive??
+    end
+   
     
     % update when
     if didglitch
@@ -440,26 +405,7 @@ for frame = 1:size(frameorder,2)+1
         when = whendesired - mfi * (9/10);  % should we be less aggressive??
     end
     
-%     % PUT THE STIMULUS ON THE SCREEN USING A FLIP
-%     Screen('FillRect',win,params.stim.bckrgnd_grayval,rect);
-%     Screen('Flip',win);
-    
-    % update when
-    if didglitch
-        % if there were glitches, proceed from our earlier when time.
-        % set the when time to 9/10 a frame before the desired frame.
-        % notice that the accuracy of the mfi is strongly assumed here.
-        whendesired = whendesired + mfi * frameduration;
-        when = whendesired - mfi * (9/10);
-    else
-        % if there were no glitches, just proceed from the last recorded time
-        % and set the when time to 9/10 a frame before the desired time.
-        % notice that the accuracy of the mfi is only weakly assumed here,
-        % since we keep resetting to the empirical VBLTimestamp.
-        whendesired = VBLTimestamp + mfi * frameduration;
-        when = whendesired - mfi * (9/10);  % should we be less aggressive??
-    end
-    
+                
 end
 
 
@@ -472,6 +418,9 @@ end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% PT CLEANUP STUFF
 Screen('Close',bckrgound_texture);
+Screen('Close',stim_texture);
+Screen('Close',fix_tex0);
+ptoff;
 
 % restore priority and cursor
 Priority(oldPriority);
@@ -528,58 +477,4 @@ end
 
 
 
-%% OLD STUFF MAIN EXPERIMENT
 
-
-% OLD STUFF TR trigger to start experiment
-% getKey(params.triggerkey,k);
-% fprintf('*** TRIGGER DETECTING. NOW STARTING. ***\n');
-% ts = GetSecs; %record when trigger happened
-% Eyelink('message', sprintf('TRIGGER %d',ts)); % USE
-
-
-% target= struct('target_color',[],'xy_pixels',[],'background_color',[]);
-
-% if scan.trigger
-%     Screen(win, 'TextSize', 24);
-% else
-%     Screen(win, 'TextSize', 18);
-% end
-%
-% Screen('BlendFunction', win, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-% rect = Screen('Rect',screennum);  % what is the total rect
-% rect = CenterRect(round([0 0 rect(3)*winsize rect(4)*winsize]),rect);
-% [win, rect] = Screen('OpenWindow',max(Screen('Screens')),127,rect);
-%
-% params.ifi = Screen('GetFlipInterval',win);
-% Screen('Preference', 'SyncTestSettings', .0004);
-% Screen('BlendFunction', w, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-% Screen('Preference','TextRenderer',1);
-% HideCursor;
-
-
-%%%%%%% Load textures
-% fTex = cell(1,length(scan.allFlips)-1);
-% for n = 1:(length(scan.allFlips)-1)
-%
-%     if any(flip.IDs{n} > 0) % draw 1 or 4 squares
-%         trialImages = flip.IDs{n};
-%
-%         for ii = 1:length(trialImages)
-%             f = squares{trialImages(ii)};
-%             fTex{n}(ii) = Screen('MakeTexture',win,f);
-%             ok = Screen('PreloadTextures', win, fTex{n}(ii)); %#ok<NASGU>
-%
-%         end
-%     end
-% end
-
-%% DISPLAY TASK INSTRUCTIONS PRE-BACKTICK
-% [w,h] = RectSize(Screen('TextBounds',win,p.task));
-% DrawFormattedText(win, params.task, xc-(w/2),yc-(h/2), params.taskColor(1,:),[], flipLR, flipUD);
-% Screen(win, 'Flip', 0);
-% Screen('FillRect',win,grayval,rect);
-%%% initial window - wait for backtick
-% startText = 'Waiting for trigger, get ready!';
-% Screen('DrawText',win, startText, 10,10,params.textColor);

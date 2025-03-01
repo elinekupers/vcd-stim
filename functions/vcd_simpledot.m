@@ -1,4 +1,4 @@
-function [simple_dot, p] = vcd_simpledot(p)
+function [simple_dot, mask, p] = vcd_simpledot(p)
 %
 %  [simple_dot, p] = vcd_simpledot(p)
 %
@@ -11,6 +11,7 @@ function [simple_dot, p] = vcd_simpledot(p)
 %
 % OUTPUTS:
 %   simple_dot     : dot image 
+%   masks          : alpha masks to crop out image edges
 %   p              : updated params
 
 % Written by Eline Kupers 2024/12
@@ -20,7 +21,7 @@ function [simple_dot, p] = vcd_simpledot(p)
 
 % Make sure the image has an uneven number of pixels, so we have center pix
 if mod(p.stim.dot.img_sz_pix,2)==0
-    p.stim.dot.img_sz_pix = p.stim.dot.img_sz_pix +1;
+    p.stim.dot.img_sz_pix = p.stim.dot.img_sz_pix+1;
 end
 
 % Create spatial support
@@ -29,6 +30,9 @@ y = (0:(p.stim.dot.img_sz_pix - 1));
 x = x - x(end) / 2;
 y = y - y(end) / 2;
 [X, Y] = meshgrid(x, y);
+
+% pixel edge for alpha mask
+pixel_edge = 5;
 
 % clean up
 clear x y
@@ -45,9 +49,23 @@ simple_dot = uint8(simple_dot);
 simple_dot(simple_dot==0) = p.stim.bckgrnd_grayval;
 simple_dot(simple_dot==1) = p.stim.dot.color(1);
 
-fprintf('\nDone!')
+
+mask = uint8(ones(size(simple_dot,1),size(simple_dot,2),2).*p.stim.bckgrnd_grayval);
+mask0 = (Y - centerY).^2 ...
+    + (X - centerX).^2 <= (p.stim.dot.radius_pix+pixel_edge).^2;
+mask(:,:,2) = uint8(mask0.*p.stim.bckgrnd_grayval);
 
 
+% debug figure
+% figure(99); clf;
+% subplot(131); imagesc(simple_dot); colormap gray; axis image; set(gca, 'CLim', [1 255])
+% subplot(132); imagesc(mask(:,:,2)); colormap gray; axis image;  set(gca, 'CLim', [1 255])
+% subplot(133); imagesc(simple_dot, 'AlphaData',mask(:,:,2)); colormap gray; axis image;  set(gca, 'CLim', [1 255])
+
+
+
+
+% Create info about dots
 bins = [1:length(p.stim.dot.loc_deg)];
 
 if ~isempty(p.stim.dot.delta_from_ref)
@@ -78,7 +96,7 @@ if p.stim.store_imgs
     fprintf('\nStoring images..')
     saveDir = fileparts(fullfile(p.stim.dot.stimfile));
     if ~exist(saveDir,'dir'), mkdir(saveDir); end
-    save(fullfile(sprintf('%s_%s.mat',p.stim.dot.stimfile,datestr(now,30))),'simple_dot','info','-v7.3');
+    save(fullfile(sprintf('%s_%s.mat',p.stim.dot.stimfile,datestr(now,30))),'simple_dot','mask','info','-v7.3');
     
     saveDir = fileparts(fullfile(p.stim.dot.infofile));
     if ~exist(saveDir,'dir'), mkdir(saveDir); end

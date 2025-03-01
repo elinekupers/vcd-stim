@@ -1,4 +1,4 @@
-function timing = vcd_getImageTiming(params, subj_run,im_seq_order, exp_im, fix_im) 
+function timing = vcd_getImageTiming(params, subj_run,im_seq_order, exp_im, fix_im, exp_im_mask) 
 
 % Fixation order and fixation
 fixsoafun = @() round(params.stim.fix.dotmeanchange + (params.stim.fix.dotchangeplusminus*(2*(rand-.5))))*params.stim.fps;
@@ -15,6 +15,7 @@ spatial_cue = [];
 seq_block = [];
 
 seq_exp_im = {};
+seq_exp_im_mask = {};
 
 % 6 fields (name, ID, within_session_repeat, trial, trial_type, timing)
 % 8 blocks: 1:run, 2:block, 3:stimtaskID, 4:unique_im, 5:spatial_cue, 6:onset_time, 7:event_dur, 8:run_time
@@ -57,6 +58,7 @@ for bb = 1:size(cellblock,2)
             cumultime = cumultime + tmp_timing.event_dur(tt);
             
             seq_exp_im = cat(1,seq_exp_im, {0});
+            seq_exp_im_mask = cat(1,seq_exp_im_mask, {NaN});
             
         elseif im_nr{tt}==97 % 97: task cue
             seq_stim = cat(1, seq_stim, im_nr(tt));
@@ -64,6 +66,7 @@ for bb = 1:size(cellblock,2)
             seq_block = cat(1,seq_block,block_ID);
             cumultime = cumultime + tmp_timing.event_dur(tt);
             seq_exp_im = cat(1,seq_exp_im, {0});
+            seq_exp_im_mask = cat(1,seq_exp_im_mask, {NaN});
 
         elseif any(im_nr{tt}==([98,99])) % 98: iti or 99: ibi
             seq_stim = cat(1, seq_stim, im_nr(tt));
@@ -77,6 +80,7 @@ for bb = 1:size(cellblock,2)
                 seq_block = cat(1,seq_block,0);
             end
             seq_exp_im = cat(1,seq_exp_im, {0});
+            seq_exp_im_mask = cat(1,seq_exp_im_mask, {NaN});
 
 
         % 93: response ID // 94: trial_start_ID // 95: spatial_cue_ID // 96:delay_ID = 96    
@@ -132,6 +136,12 @@ for bb = 1:size(cellblock,2)
                                                {0}, ...
                                                {squeeze(exp_im(bb,idx,:,2))'}, ...
                                                {0});
+               seq_exp_im_mask = cat(1,seq_exp_im_mask, repmat({NaN},2,1), ...
+                                               {squeeze(exp_im_mask(bb,idx,:,1))'}, ...
+                                               {NaN}, ...
+                                               {squeeze(exp_im_mask(bb,idx,:,2))'}, ...
+                                               {NaN});
+
 
             else
                 response_im = {params.exp.miniblock.response_ID};
@@ -154,6 +164,9 @@ for bb = 1:size(cellblock,2)
                 seq_exp_im = cat(1,seq_exp_im, repmat({0},2,1), ...
                                                {squeeze(exp_im(bb,idx,:,1))'}, ...
                                                {0});
+                seq_exp_im_mask = cat(1,seq_exp_im_mask, repmat({NaN},2,1), ...
+                                               {squeeze(exp_im_mask(bb,idx,:,1))'}, ...
+                                               {NaN});
 
             end
             spatial_cue = cat(1,spatial_cue, [spatial_cue_im, tmp_timing.spatial_cue(tt)]); % same as params.exp.trial.spatial_cue_dur?;
@@ -162,16 +175,18 @@ for bb = 1:size(cellblock,2)
     end
 end
 
-seq_stim  = cat(1, seq_stim, 0);
-seq_timing = cat(1, seq_timing, cumultime);
-seq_block = cat(1, seq_block, 0);
-seq_exp_im = cat(1, seq_exp_im, {0});
+seq_stim        = cat(1, seq_stim(2:end), 0);
+seq_timing      = cat(1, seq_timing(2:end), cumultime);
+seq_block       = cat(1, seq_block(2:end), 0);
+seq_exp_im      = cat(1, seq_exp_im(2:end), {0});
+seq_exp_im_mask = cat(1, seq_exp_im_mask(2:end), {NaN});
 
 timing.seq_stim        = seq_stim;
 timing.seq_spatial_cue = spatial_cue;
 timing.seq_timing      = seq_timing;
 timing.seq_block       = seq_block;
 timing.seq_exp_im      = seq_exp_im;
+timing.seq_exp_im_mask = seq_exp_im_mask;
 
 %% Convert sequence of events from seconds into frames
 
@@ -181,6 +196,7 @@ trig_stim   = zeros(size(trig_timing,1),2);
 trig_block  = zeros(size(trig_timing,1),1);
 trig_spatial_cue = zeros(size(trig_timing,1),1);
 trig_seq_exp_im = cell(size(trig_timing,1),1);
+trig_seq_exp_im_mask = cell(size(trig_timing,1),1);
 
 spc_idx = 1;
 for tt = 1:length(seq_timing)
@@ -218,8 +234,8 @@ for tt = 1:length(seq_timing)
     end
 
     if iscell(seq_exp_im{tt}) && size(seq_exp_im{tt}{1},3) > 3 % we are dealing with rdk, which has time dim
-        rdk_images = [squeeze(mat2cell(seq_exp_im{tt}{1}, size(seq_exp_im{tt}{1},1),size(seq_exp_im{tt}{1},2), ones(1,size(seq_exp_im{tt}{1},3)))), ...
-            squeeze(mat2cell(seq_exp_im{tt}{2}, size(seq_exp_im{tt}{2},1),size(seq_exp_im{tt}{2},2), ones(1,size(seq_exp_im{tt}{2},3))))];
+        rdk_images = [squeeze(mat2cell(uint8(seq_exp_im{tt}{1}), size(seq_exp_im{tt}{1},1),size(seq_exp_im{tt}{1},2), ones(1,size(seq_exp_im{tt}{1},3)))), ...
+            squeeze(mat2cell(uint8(seq_exp_im{tt}{2}), size(seq_exp_im{tt}{2},1),size(seq_exp_im{tt}{2},2), ones(1,size(seq_exp_im{tt}{2},3))))];
         for oob = 1:size(rdk_images,1)
             rdk_images2{oob} = [rdk_images(oob,1),rdk_images(oob,2)];
         end
@@ -227,17 +243,20 @@ for tt = 1:length(seq_timing)
             rdk_images2 = rdk_images2';
         end
         trig_seq_exp_im(t_idx_total) = rdk_images2(1:length(t_idx_total),:);
+        trig_seq_exp_im_mask(t_idx_total) = repmat({catcell(2,{NaN NaN})},length(t_idx_total),1); % no alpha mask for RDK??
     else
         trig_seq_exp_im(t_idx_total) = repmat(seq_exp_im(tt), length(t_idx_total),1);
+        trig_seq_exp_im_mask(t_idx_total) = repmat(seq_exp_im_mask(tt), length(t_idx_total),1);
     end
 end
 
 
-timing.trig_stim    = trig_stim;
-timing.trig_timing  = trig_timing;
-timing.trig_block   = trig_block;
-timing.trig_spatial_cue = trig_spatial_cue;
-timing.trig_seq_exp_im = trig_seq_exp_im;
+timing.trig_stim            = trig_stim;
+timing.trig_timing          = trig_timing;
+timing.trig_block           = trig_block;
+timing.trig_spatial_cue     = trig_spatial_cue;
+timing.trig_seq_exp_im      = trig_seq_exp_im;
+timing.trig_seq_exp_im_mask = trig_seq_exp_im_mask;
 
 %% FIXATION DOT SEQUENCE
 fudge   = 5; % shave off 2 second at the end to avoid going over run dur
@@ -304,6 +323,7 @@ for nn = 1:length(subj_run.block)
     else
         cdID(nn) = 0;
     end
+    
 end
 
 cdID = find(cdID);
@@ -325,6 +345,7 @@ if ~isempty(cdID)
         stimOnset_all  = [stimOnset(1); stimOnset((find(abs(diff(stimOnset))>1)+1))];
         time_table = subj_run.block(ii).timing;
         stim0 = time_table.onset_time(2:2:end-1);
+        
         for ss = 1:length(stim0)
             trig_stim_time0 = trig_timing(stimOnset_all(ss));
             assert(nearZero((stim0(ss)+params.exp.trial.start_cue_dur+params.exp.trial.spatial_cue_dur) -trig_stim_time0))
@@ -337,14 +358,25 @@ if ~isempty(cdID)
                 
                 for tt = 1:length(t_idx)
                     clear tmp_im_c
-                    tmp_im = double(timing.trig_seq_exp_im{t_idx(tt)}{nn});
-                    sz0 = size(tmp_im);
-                    tmp_im = tmp_im(:); tmp_im_c = tmp_im;
-                    
-                    tmp_im_c = (tmp_im_c-params.stim.bckgrnd_grayval)./255; % center around 0, range [-1 1]
-                    tmp_im_c = tmp_im_c.*params.stim.cd.t_gauss(tt); % scale
-                    tmp_im_c = (255.*tmp_im_c)+params.stim.bckgrnd_grayval; % bring back to 0-255
-                    trig_seq_exp_im_w_cd{t_idx(tt)}{nn} = uint8(reshape(tmp_im_c,sz0(1),sz0(2)));
+                    if ~isempty(regexp(subj_run.block(ii).name,'*-ns','ONCE')) || ...
+                        ~isempty(regexp(subj_run.block(ii).name,'*-cobj','ONCE'))
+                        tmp_im = (double(timing.trig_seq_exp_im{t_idx(tt)}{nn})).^2;
+                        tmp_im_c = (tmp_im_c-1)./254; % range [0 1]
+                        tmp_im_c = tmp_im_c-0.5; % center around 0, min/max range [-1 1]
+                        
+                        tmp_im_c = tmp_im_c.*params.stim.cd.t_gauss(tt); % scale
+                        tmp_im_c = (254.*sqrt(tmp_im_c))+1; % bring back to 1-255
+                        trig_seq_exp_im_w_cd{t_idx(tt)}{nn} = uint8(reshape(tmp_im_c,sz0(1),sz0(2)));
+
+                    else
+                        tmp_im = double(timing.trig_seq_exp_im{t_idx(tt)}{nn});
+                        sz0 = size(tmp_im);
+                        tmp_im = tmp_im(:); tmp_im_c = tmp_im;
+                        tmp_im_c = (tmp_im_c-params.stim.bckgrnd_grayval)./254; % center around 0, range [-1 1]
+                        tmp_im_c = tmp_im_c.*params.stim.cd.t_gauss(tt); % scale
+                        tmp_im_c = (254.*tmp_im_c)+params.stim.bckgrnd_grayval; % bring back to 0-255
+                        trig_seq_exp_im_w_cd{t_idx(tt)}{nn} = uint8(reshape(tmp_im_c,sz0(1),sz0(2)));
+                    end
                 end
             end
         end
