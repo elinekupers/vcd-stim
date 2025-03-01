@@ -236,6 +236,8 @@ for ii = 1:length(run_image_order)
         %         if ~isempty(params.stim.(stimClass).dres) && ...
         %                 sum(params.stim.(stimClass).dres)~=0
         fprintf('check stim size..',mfilename);
+        if ~strcmp(stimClass,'cobj')
+            
         for jj = 1:numTrials
             
             statusdots(jj,length(numTrials));
@@ -298,7 +300,7 @@ for ii = 1:length(run_image_order)
             run_im_tmp = reshape(tmp0,sz0(1),sz0(2));
             run_images(ii,jj,:,:) = run_im_tmp;
         end
-            
+        end
     end
         
         
