@@ -27,6 +27,8 @@ p.addParameter('movieflip'      , [0 0]     , @isnumeric)                    % w
 p.addParameter('debugmode'      , false     , @islogical)                    % whether to use debug mode (no BOLDscreen, no eyelink)
 p.addParameter('dispName'       , '7TAS_BOLDSCREEN32' , @ischar)             % display params: 7TAS_BOLDSCREEN32, KKOFFICE_AOCQ3277, PPROOM_EIZOFLEXSCAN, 'EKHOME_ASUSVE247'
 p.addParameter('savetempstimuli', false     , @islogical)                    % whether we want to store temp stim file 
+p.addParameter('loadtempstimuli', false     , @islogical)                    % whether we want to store temp stim file 
+
 % Parse inputs
 p.parse(subjID, sesID, runnum, varargin{:});
 
@@ -48,15 +50,30 @@ if ~isfield(params, 'disp') || isempty(params.disp)
      params.disp = vcd_getDisplayParams(params.dispName); % BOLDSCREEN is default
 end
 
+devices = PsychHID('Devices');
+for vv = 1:length(devices)
+    if strcmp(devices(vv).usageName,'Keyboard') && ~isempty(regexp(devices(vv).product,'\w*Internal Keyboard\w*'))
+        deviceNr.internal = vv;
+    elseif strcmp(devices(vv).usageName,'Keyboard') && ~isempty(regexp(devices(vv).product,'\w*USB\w*'))
+        deviceNr.external = vv;
+    end
+end
+
 if params.debugmode % skip synctest
     skipsync = 1;
-    if isempty(params.deviceNr)
-        params.deviceNr = [1, 3]; % 1: external keyboard, 3: internal keyboard
+    if isempty(params.deviceNr) && ~isempty(deviceNr.internal) && ~isempty(deviceNr.external)
+        params.deviceNr = [deviceNr.internal, deviceNr.external];
+    elseif isempty(params.deviceNr) && ~isempty(deviceNr.internal) && isempty(deviceNr.external)
+        params.deviceNr = deviceNr.internal;
+    elseif isempty(params.deviceNr) && isempty(deviceNr.internal) && ~isempty(deviceNr.external)
+        params.deviceNr = deviceNr.external;
+    elseif isempty(params.deviceNr) && isempty(deviceNr.internal) && isempty(deviceNr.external)
+        params.deviceNr = -3; % listen to all
     end
 else
     skipsync = 0;
-    if isempty(params.deviceNr)
-        params.deviceNr = [1, 3];
+    if isempty(params.deviceNr) && ~isempty(deviceNr.external)
+        params.deviceNr = deviceNr.external;
     end
 end
 
@@ -71,6 +88,7 @@ ptonparams = {[params.disp.w_pix params.disp.h_pix params.disp.refresh_hz 24],[]
 
 % Buttonbox / keyboard
 params.ignorekeys = KbName({params.triggerkey});  % dont record TR triggers as subject responses
+
 
 %% %%%%%%%%% SETUP RNG %%%%%%%%%
 
@@ -388,7 +406,11 @@ end
 %% %%%%%%%%%%%%% TASK INSTRUCTIONS %%%%%%%%%%%%%
 
 % inputs for showinstructionscreen: (fileIn,txtOffset=250,instTextWrap=75,textsize=25,background=128,offset=[0,0])
-introscript  = sprintf('showinstructionscreen(''%s'',''00_runvcdcore_subjectinstructions.txt'',250,75,25,%d,[%d %d])',params.instrtextdir,params.stim.bckgrnd_grayval,params.offsetpix(1),params.offsetpix(2));
+% introscript  = sprintf('showinstructionscreen(''%s'',''00_runvcdcore_subjectinstructions.txt'',250,75,25,%d,[%d %d])',params.instrtextdir,params.stim.bckgrnd_grayval,params.offsetpix(1),params.offsetpix(2));
+introscript = fullfile(params.instrtextdir,'00_runvcdcore_subjectinstructions.txt');
+if ~exist(introscript,'file')
+    error('[%s]: Can''t find instructions text file!',mfilename')
+end
 
 tasks_to_run = squeeze(struct2cell(subj_run.block));
 
@@ -539,7 +561,8 @@ timeofshowstimcall = datestr(now,30);
         timing, ...
         introscript, ...
         taskscript, ...
-        tfunEYE);
+        tfunEYE, ...
+        params.deviceNr);
 
 
 %% CLEAN UP AND SAVE
