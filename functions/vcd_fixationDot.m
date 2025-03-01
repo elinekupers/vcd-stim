@@ -35,13 +35,13 @@ right_idx = find((XX > 0));
 
 
 % Where to insert luminance val
-fixationmask_inner    = find(makecircleimage(2*p.stim.fix.dotcenterdiam_pix, p.stim.fix.dotcenterdiam_pix/2));
+fixationmask_inner    = find(makecircleimage(2*p.stim.fix.dotcenterdiam_pix, p.stim.fix.dotcenterdiam_pix/4));
 
-fixationmask_rimthin    = find( makecircleimage(2*p.stim.fix.dotcenterdiam_pix, p.stim.fix.dotthinborderdiam_pix/2) - ...
-                           makecircleimage(2*p.stim.fix.dotcenterdiam_pix, p.stim.fix.dotcenterdiam_pix/2));  
+fixationmask_rimthin    = find( makecircleimage(2*p.stim.fix.dotcenterdiam_pix, p.stim.fix.dotthinborderdiam_pix/4) - ...
+                           makecircleimage(2*p.stim.fix.dotcenterdiam_pix, p.stim.fix.dotcenterdiam_pix/4));  
 
-fixationmask_rimthick   = find( makecircleimage(2*p.stim.fix.dotcenterdiam_pix, p.stim.fix.dotthickborderdiam_pix/2) - ...
-                           makecircleimage(2*p.stim.fix.dotcenterdiam_pix, p.stim.fix.dotcenterdiam_pix/2));  
+fixationmask_rimthick   = find( makecircleimage(2*p.stim.fix.dotcenterdiam_pix, p.stim.fix.dotthickborderdiam_pix/4) - ...
+                           makecircleimage(2*p.stim.fix.dotcenterdiam_pix, p.stim.fix.dotcenterdiam_pix/4));  
 
 [~,li] = intersect(fixationmask_rimthick,left_idx);
 [~,ri] = intersect(fixationmask_rimthick,right_idx);
