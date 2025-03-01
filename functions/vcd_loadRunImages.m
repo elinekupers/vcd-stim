@@ -302,9 +302,13 @@ for ii = 1:length(run_image_order)
     end
         
         
-    % If using BOLDSCREEN, we want to square pixel values
+    % If using BOLDSCREEN, we want to square pixel values for objects and
+    % scenes
     if strcmp(params.disp.name,'7TAS_BOLDSCREEN32') && ...
             ~any(strcmp(taskClass,{'pre','post'}))
+            any(strcmp(stimClass,{'cobj','ns'}))
+            
+        assert(p.stim.(stimClass).square_pix_val==true)
         
         fprintf('square pix values for CLUT..',mfilename);
         % reshape to get one vector of images
