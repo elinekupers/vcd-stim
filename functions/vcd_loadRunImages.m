@@ -1,4 +1,4 @@
-function [run_images, images] = vcd_loadRunImages(run_image_order, block, params)
+function [run_images, run_alpha_masks, images] = vcd_loadRunImages(run_image_order, block, params)
 
 %% %%%%%%%%%%%%% PRE-LOAD STIMULI %%%%%%%%%%%%%
 if isfield(params, 'images')
@@ -7,7 +7,7 @@ end
 
 if ~exist('images','var') || isempty(fieldnames(images))
     images = struct('gabor',[],'rdk',[],'dot',[],'cobj',[],'ns',[],...
-        'fix',[], 'info',[], 'image_order',[]);
+        'fix',[], 'info',[], 'image_order',[],'alpha',[]);
 end
 
 fprintf('[%s]: Loading images..',mfilename); tic;
@@ -41,20 +41,23 @@ for ii = 1:length(run_image_order)
                 if isempty(images.gabor)
                     % GABORS: 6D array: [x,y,8 orient, 4 phase,3 contrast, og + 4 delta]
                     d = dir(sprintf('%s*.mat', params.stim.gabor.stimfile));
-                    load(fullfile(d(end).folder,d(end).name), 'gabors','info');
+                    load(fullfile(d(end).folder,d(end).name), 'gabors','masks','info');
                     
                     images.gabor = gabors; clear gabors;
-                    images.info.gabor = info; clear info;
+                    images.info.gabor  = info; clear info;
+                    images.alpha.gabor = masks; clear masks;
                 end
                 
                 for jj = 1:numTrials
                     for nn = 1:numSides
                         i3 = run_image_order{ii}{jj,1}(nn);
                         run_images{ii,jj,nn,1} = images.gabor(:,:,i3,1);
+                        run_alpha_masks{ii,jj,nn,1} = images.alpha.gabor(:,:,i3,1);
                         
                         if strcmp(taskClass,'wm')
                             i4 = run_image_order{ii}{jj,2}(nn);
                             run_images{ii,jj,nn,2} = images.gabor(:,:,i3,i4+1);
+                            run_alpha_masks{ii,jj,nn,1} = images.alpha.gabor(:,:,i3,i4+1);
                         end
                         %                 if strcmp(taskClass,'ltm')
                         %
@@ -131,17 +134,21 @@ for ii = 1:length(run_image_order)
                 if isempty(images.dot)
                     % Simple dot: 2D array: [x,y]
                     d = dir(sprintf('%s*.mat', params.stim.dot.stimfile));
-                    load(fullfile(d(end).folder,d(end).name), 'simple_dot','info');
+                    load(fullfile(d(end).folder,d(end).name), 'simple_dot','mask','info');
                     images.dot = simple_dot; clear simple_dot;
+                    images.alpha.dot = mask; clear mask;
                     images.info.dot = info; clear info;
                 end
                 for jj = 1:numTrials
                     for nn = 1:numSides
                         
+                        % regular stim interval
                         run_images{ii,jj,nn,1} = images.dot;
+                        run_alpha_masks{ii,jj,nn,1} = images.alpha.dot;
+                        
                         if strcmp(taskClass,'wm')
-                            
-                            run_images{ii,jj,nn,1} = images.dot;
+                            run_images{ii,jj,nn,2} = images.dot;
+                            run_alpha_masks{ii,jj,nn,2} = images.alpha.dot;
                         end
                         %                 if strcmp(taskClass,'ltm')
                         %
@@ -163,8 +170,9 @@ for ii = 1:length(run_image_order)
                 if isempty(images.cobj)
                     % Complex objects: 4D array: [x,y,16 object, og + 10 rotation]
                     d = dir(sprintf('%s*.mat', params.stim.cobj.stimfile));
-                    load(fullfile(d(end).folder,d(end).name), 'objects','info','im_order');
+                    load(fullfile(d(end).folder,d(end).name), 'objects','masks','info','im_order');
                     images.cobj = objects; clear objects;
+                    images.alpha.cobj = masks; clear masks;
                     images.info.cobj = info; clear info;
                     images.image_order.cobj = im_order; clear im_order;
                 end
@@ -173,11 +181,13 @@ for ii = 1:length(run_image_order)
                     for nn = 1:numSides
                         [i3,i4] = ind2sub([size(images.cobj,3),size(images.cobj,4)],run_image_order{ii}{jj,1}(nn));
                         
-                        run_images{ii,jj,nn,1} = images.cobj(:,:,i3,i4);
+                        run_images{ii,jj,nn,1} = images.cobj(:,:,:,i3,i4);
+                        run_alpha_masks{ii,jj,nn,1} = images.alpha.cobj(:,:,:,i3,i4);
                         
                         if strcmp(taskClass,'wm')
                             [i3,i4] = ind2sub([size(images.cobj,3),size(images.cobj,4)],run_image_order{ii}{jj,2}(nn));
-                            run_images{ii,jj,nn,2} = images.cobj(:,:,i3,i4);
+                            run_images{ii,jj,nn,2} = images.cobj(:,:,:,i3,i4);
+                            run_alpha_masks{ii,jj,nn,2} = images.alpha.cobj(:,:,:,i3,i4);
                         end
                         %                 if strcmp(taskClass,'ltm')
                         %
@@ -214,6 +224,7 @@ for ii = 1:length(run_image_order)
                     i5 = curr_im.ns_loc_i;
                     i6 = curr_im.obj_loc_i;
                     
+                    % third dim has image and alpha mask
                     run_images{ii,jj,1,1} = images.ns(:,:,:,i4,i5,i6);
                     
                     if strcmp(taskClass,'wm')
@@ -279,14 +290,14 @@ for ii = 1:length(run_image_order)
                         %                                 []);
                         %                         end
                         
-                        numFrames = size(tmp_im);
+                        numFrames = size(tmp0_im);
                         numFrames = numFrames(end);
                         
                         for ll = 1:numFrames
                             if params.stim.(stimClass).iscolor
-                                im_rz(:,:,:,ll) = imresize(tmp_im(:,:,:,ll),scale_factor); %% DEFAULT IS BICUBIC
+                                im_rz(:,:,:,ll) = imresize(tmp0_im(:,:,:,ll),scale_factor); %% DEFAULT IS BICUBIC
                             else
-                                im_rz(:,:,ll) = imresize(tmp_im(:,:,ll),scale_factor);
+                                im_rz(:,:,ll) = imresize(tmp0_im(:,:,ll),scale_factor);
                             end
                         end
                         
@@ -294,8 +305,8 @@ for ii = 1:length(run_image_order)
                     end
                     
                     
-                else
-                    tmp0{kk} = tmp0{kk};
+%                 else
+%                     tmp0{kk} = tmp0{kk};
                 end
             end
             run_im_tmp = reshape(tmp0,sz0(1),sz0(2));
