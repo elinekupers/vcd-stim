@@ -1,4 +1,4 @@
-function objects = vcd_complexobjects(p)
+function [objects, masks] = vcd_complexobjects(p)
 %
 %  objects = vcd_complexobjects(p)
 %
@@ -8,11 +8,15 @@ function objects = vcd_complexobjects(p)
 %   or valid csv file in stim.cobj.infofile, e.g.: fullfile(vcd_rootPath,'workspaces','objects_info.csv')
 %
 % INPUTS:
-%  p            : struct with stimulus params
+%  p            :   struct with stimulus params
 %
 % OUTPUTS:
-% objects       :   uint8 images of complex images, dimensions are
+%  objects      :   uint8 images of complex images, dimensions are
 %                   width x height x 3 (rgb) x num views (or poses), 
+%                   num exemplars, num of basic categories,
+%                   num of superordinate categories
+%  masks        :   uint8 alpha masks of complex objects, removing the
+%                   background: width x height x 3 (rgb) x num views (or poses), 
 %                   num exemplars, num of basic categories,
 %                   num of superordinate categories
 %
@@ -46,13 +50,20 @@ else
     im_order = table(cell(n_cols,1),NaN(n_cols,1),NaN(n_cols,1),cell(n_cols,1),NaN(n_cols,1));
     im_order.Properties.VariableNames = {'object_name','abs_rot','rel_rot','rot_name','unique_im'};
     
+    % 
+    og_im_sz = 1024;
+    extent  = og_im_sz/2 + ([-1 1].*((p.stim.cobj.img_sz_pix+1)/1.5));
+    new_im_z = diff(extent)+1;
+    
     % Preallocate space
     if p.stim.cobj.iscolor
-        objects = uint8(ones((2*p.stim.cobj.img_sz_pix)+1, (2*p.stim.cobj.img_sz_pix)+1,3,...
+        objects = uint8(ones(new_im_z, new_im_z,3,...
             length(subordinate),length(rotations)));
+        masks = objects;
     else
-        objects = uint8(ones((2*p.stim.cobj.img_sz_pix)+1, (2*p.stim.cobj.img_sz_pix)+1,2,...
+        objects = uint8(ones(new_im_z, new_im_z,2,...
             length(canonical_view),length(rotations)));
+        masks = objects;
     end
     
 
@@ -99,7 +110,6 @@ else
             alpha0  = (double(alpha0./255)).^2;
             
             % crop image
-            extent  = size(im0)/2 + ([-1 1].*(p.stim.cobj.img_sz_pix/2));
             cropme = extent(1):extent(2);
             
             alpha0_cropped = alpha0(cropme,cropme);
@@ -118,9 +128,11 @@ else
 %             figure(99); clf; imagesc(im,'AlphaData',alpha_im); colormap gray; colorbar; axis image
 
             if p.stim.cobj.iscolor
-                objects(:,:,:,sub,rr) = cat(3,im,alpha_im);
+                objects(:,:,:,sub,rr) = im;
+                masks(:,:,:,sub,rr) = alpha_im;
             else
-                objects(:,:,:,sub,rr) = cat(3,im,alpha_im);
+                objects(:,:,sub,rr) = im;
+                masks(:,:,sub,rr) = alpha_im;
             end
             
             im_order.object_name(counter) = subordinate(sub);
@@ -160,7 +172,7 @@ else
         fprintf('\nStoring images..')
         saveDir = fileparts(fullfile(p.stim.cobj.stimfile));
         if ~exist(saveDir,'dir'), mkdir(saveDir); end
-        save(fullfile(sprintf('%s_%s.mat',p.stim.cobj.stimfile,datestr(now,30))),'objects','info','im_order','-v7.3');
+        save(fullfile(sprintf('%s_%s.mat',p.stim.cobj.stimfile,datestr(now,30))),'objects','masks','info','im_order','-v7.3');
     end
 end
 % 

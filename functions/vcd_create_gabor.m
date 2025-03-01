@@ -1,4 +1,4 @@
-function img = vcd_create_gabor(img_sz_pix,gauss_std_pix,sf,ori_deg, ph_deg, contrast, grayval)
+function [img, alpha_mask] = vcd_create_gabor(img_sz_pix,gauss_std_pix,sf,ori_deg, ph_deg, contrast, grayval)
 % 
 %  img = vcd_create_gabor(img_sz_pix,gauss_std_pix,sf,ori_deg, ph_deg, contrast)
 %
@@ -12,6 +12,7 @@ function img = vcd_create_gabor(img_sz_pix,gauss_std_pix,sf,ori_deg, ph_deg, con
 %
 % OUTPUT:
 %   img             : (matrix) [x,y] gabor image
+%   alpha_mask      : (matrix) [x,y] gabor circular mask at 7 std gauss win
 %
 % Written by Eline Kupers @ UMN 2025/02/04
 
@@ -40,8 +41,8 @@ G = G ./ max(G(:)); % normalize height
 G_mask   = exp( - ((X.^2)/(2*3.5*gauss_std_pix^2) + (Y.^2)/(2*3.5*gauss_std_pix^2)));
 G_center = floor(size(G_mask,1)/2)+1;
 thresh   = G_mask(G_center - ceil(3.5*gauss_std_pix), G_center);
-mask_idx = G_mask < thresh;
-G(mask_idx)  = 0;
+alpha_mask = G_mask < thresh;
+G(alpha_mask)  = 0;
 
 % clean up
 clear G_mask mask_idx
@@ -67,7 +68,7 @@ img  = floor((img*127)+grayval);
 % % alternative normalization
 % maxval_c = abs(max(max(img_c)));
 % minval_c = abs(min(min(img_c)));
-% k        = 127/max(maxval_c,minval_c); % assume 127 is mid-grey level
-% img_c    = floor(img_c*k+127);
+% k        = 128/max(maxval_c,minval_c); % assume 128 is mid-grey level
+% img_c    = floor(img_c*k+128);
 
 end
