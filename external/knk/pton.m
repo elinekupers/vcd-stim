@@ -108,10 +108,10 @@ end
 if wantstereo
       %   % STEREO MODE:
       %   %[win,rect] = Screen('OpenWindow',screennum,127,rect,[],[],4);
-  [win,rect] = PsychImaging('OpenWindow', screennum, 127, rect, [], [], 1);
+  [win,rect] = PsychImaging('OpenWindow', screennum, 128, rect, [], [], 1);
   SetStereoBlueLineSyncParameters(win, rect(4)+10);
 else
-  [win,rect] = Screen('OpenWindow',screennum,127,rect);
+  [win,rect] = Screen('OpenWindow',screennum,128,rect);
 end
 
 % record the current clut
