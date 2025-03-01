@@ -137,13 +137,13 @@ end
 % bckgrnd_im = bsxfun(@(x,y) x.*y, im1, bckground_mask);
 tmp = reshape(im1,size(im1,1)*size(im1,2),[]);
 tmp(bckground_mask(:),:) = p.stim.bckgrnd_grayval;
+tmp = uint8(tmp);
 
-% square values if using BOLDscreen
-if strcmp(p.disp.name,'7TAS_BOLDSCREEN32')
-    tmp0 = double(tmp);
-    tmp0 = tmp0.^2;
-    tmp = uint8(tmp0);
-end
+% if strcmp(p.disp.name,'7TAS_BOLDSCREEN32')
+% tmp0 = double(tmp);
+% tmp0 = tmp0.^2;
+% tmp = uint8(tmp0);
+% end
 
 bckgrnd_im = reshape(tmp, size(bckground_mask,1),size(bckground_mask,2),num);
 

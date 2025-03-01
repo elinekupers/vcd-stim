@@ -21,7 +21,7 @@ subject_sessions = vcd_createSessions(p,p.load_params,p.store_params);
 
 %% background
 
-bckgrnd_im = vcd_pinknoisebackground(p, 'comb', 'fat', 80); % 'skinny' or 'fat', type: 'puzzle', 'dotring', or 'comb'
+bckgrnd_im = vcd_pinknoisebackground(p, 'comb', 'fat', 1); % 'skinny' or 'fat', type: 'puzzle', 'dotring', or 'comb'
 
 %% fixation dot
 fix_im = vcd_fixationDot(p);

@@ -163,7 +163,7 @@ for cc = 1:length(p.stim.rdk.dots_coherence)
                 ax.Units = 'pixels';
                 r = rectangle(ax,'Position', [(ap_center -1.*ap_radius), ...
                     2.*ap_radius], ...
-                    'FaceColor', [repmat(p.stim.bckgrnd_grayval,1,3)]./255, 'EdgeColor', 'none');
+                    'FaceColor', [repmat(p.stim.bckgrnd_grayval,1,3)-1]./254, 'EdgeColor', 'none'); % [0.5 0.5 0.5]
                 colormap gray; axis square; axis off; axis tight; axis manual; axis image
                 
                 %round dot_pos and transpose it because Screen wants positions in row

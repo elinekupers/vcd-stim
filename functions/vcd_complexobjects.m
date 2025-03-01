@@ -23,8 +23,8 @@ function objects = vcd_complexobjects(p)
 if isfield(p.stim.cobj, 'stimfile') && exist(p.stim.cobj.stimfile,'file')
     load(p.stim.cobj.stimfile,'objects');
 else
-
-    info = readtable(fullfile(p.stim.cobj.infofile));
+    d = dir(sprintf('%s*',fullfile(p.stim.cobj.infofile)));
+    info = readtable(fullfile(d(end).folder,d(end).name));
     
     % Define superordinate and basic categories, and number of exemplars per basic category
     mask            = info.unique_im>0;
@@ -38,7 +38,8 @@ else
         rotations = [rotations, choose(regexp(rotation_names{ii}, 'rot_minus'),-1,1).*str2num(cell2mat(regexp(rotation_names{ii}, '\d+','match')))];
     end             
     
-    rotation_names2 = catcell(2,{{'none'}, rotation_names});
+    rotations = rotations([1, 3:end-1]);
+    rotation_names2 = catcell(2,{{'none'}, rotation_names(2:end-1)});
     
     % Preallocate info table
     n_cols = length(canonical_view)*length(rotations);
@@ -47,57 +48,79 @@ else
     
     % Preallocate space
     if p.stim.cobj.iscolor
-        objects = uint8(ones(p.stim.cobj.img_sz_pix, p.stim.cobj.img_sz_pix,3,...
+        objects = uint8(ones((2*p.stim.cobj.img_sz_pix)+1, (2*p.stim.cobj.img_sz_pix)+1,3,...
             length(subordinate),length(rotations)));
     else
-        objects = uint8(ones(p.stim.cobj.img_sz_pix, p.stim.cobj.img_sz_pix, ...
+        objects = uint8(ones((2*p.stim.cobj.img_sz_pix)+1, (2*p.stim.cobj.img_sz_pix)+1,2,...
             length(canonical_view),length(rotations)));
     end
     
+
     counter = 1;
     for sub = 1:length(subordinate)
         
         for rr = 1:length(rotations)
             
             % Get file name
-            rot = (canonical_view(sub)+rotations(rr))/2;
-            d = dir(fullfile(vcd_rootPath,'workspaces','stimuli','vcd_complex_objects_2degstep',...
+            rot = (canonical_view(sub)/2) + mod(rotations(rr),2);
+            d = dir(fullfile(vcd_rootPath,'workspaces','stimuli','vcd_complex_objects_2degstep_lumcorrected',...
                 sprintf('*%s*_rot%d.png', subordinate{sub},rot)));
            
             % Load image
-            [im0, ~, transparency] = imread(fullfile(d.folder,d.name),'BackgroundColor','none');
+            [im0, ~, alpha0] = imread(fullfile(d.folder,d.name),'BackgroundColor','none');
             
+            
+            % we have done preprocessing already
+%             if p.stim.cobj.iscolor
+%                 % Gray --> Color: Add RGB dim when grayscale image
+%                 if ismatrix(im0)
+%                     im0 = uint8(repmat(im0,[1 1 3]));
+%                 end
+%                 
+%                 % If color, no background, then add gray background
+%                 if ~isempty(transparency)
+%                     transparency_3d = repmat(transparency,[1 1 3]);
+%                     im0(~transparency_3d) = p.stim.bckgrnd_grayval;
+%                 end
+%                 
+%             else
+%                 % convert to gray if no color
+%                 if ~p.stim.cobj.iscolor && ndims(im0)==3
+%                     im0 = rgb2gray(im0);
+%                 end
+%                 % Add background to 2D grayscale image
+%                 if ~isempty(transparency)
+%                     im0(~transparency) = p.stim.bckgrnd_grayval;
+%                 end
+%             end
+            
+            % assume range is 1-255
+            im0     = (double(im0-1)./254).^2;
+            alpha0  = (double(alpha0./255)).^2;
+            
+            % crop image
+            extent  = size(im0)/2 + ([-1 1].*p.stim.cobj.img_sz_pix);
+            cropme = extent(1):extent(2);
+            
+            alpha0_cropped = alpha0(cropme,cropme);
+            im0_cropped = im0(cropme,cropme);
+
+            
+            im = uint8(1+(sqrt(im0_cropped)*254));
+            alpha_im = uint8((sqrt(alpha0_cropped)*255));
+
+%             im = imresize(im0_cropped,[p.stim.cobj.img_sz_pix,p.stim.cobj.img_sz_pix]);
+%             aplha = imresize(alpha0_cropped,[p.stim.cobj.img_sz_pix,p.stim.cobj.img_sz_pix]);
+            
+            clear im0 alpha0 im0_cropped alpha0_cropped
+            
+%             figure(99); clf; imagesc(im0_cropped,'AlphaData',alpha0_cropped); colormap gray; colorbar; axis image
+%             figure(99); clf; imagesc(im,'AlphaData',alpha_im); colormap gray; colorbar; axis image
+
             if p.stim.cobj.iscolor
-                % Add RGB dim when grayscale image
-                if ismatrix(im0)
-                    im0 = uint8(repmat(im0,[1 1 3]));
-                end
-                
-                % If color, no background, then add gray background
-                if ~isempty(transparency)
-                    transparency_3d = repmat(transparency,[1 1 3]);
-                    im0(~transparency_3d) = 127;
-                end
-                
+                objects(:,:,:,sub,rr) = cat(3,im,alpha_im);
             else
-                % convert to gray if no color
-                if ~p.stim.cobj.iscolor && ndims(im0)==3
-                    im0 = rgb2gray(im0);
-                end
-                % Add background to 2D grayscale image
-                if ~isempty(transparency)
-                    im0(~transparency) = 127;
-                end
-            end
-            
-            
-            im = imresize(im0,[p.stim.cobj.img_sz_pix,p.stim.cobj.img_sz_pix]);
-            clear im0
-            
-            if p.stim.cobj.iscolor
-                objects(:,:,:,sub,rr) = im;
-            else
-                objects(:,:,sub,rr) = im;
+                objects(:,:,:,sub,rr) = cat(3,im,alpha_im);
             end
             
             im_order.object_name(counter) = subordinate(sub);
@@ -145,18 +168,18 @@ end
 %     figure(2); clf;
 %     figure(3); clf;
 %     figure(4); clf;
-%     for ii = 1:size(objects,4)
-%         figure(1); subplot(2,11,ii); hold all;
-%         imshow(objects(:,:,1,ii),[1 255]);
+%     for ii = 1:size(objects,5)
+%         figure(1); subplot(3,3,ii); hold all;
+%         imshow(objects(:,:,1,1,ii),[1 255]);
 % 
-%         figure(2); subplot(2,11,ii); hold all;
-%         imshow(objects(:,:,2,ii),[1 255]);
+%         figure(2); subplot(3,3,ii); hold all;
+%         imshow(objects(:,:,1,2,ii),[1 255]);
 % 
-%         figure(3); subplot(2,11,ii); hold all;
-%         imshow(objects(:,:,3,ii),[1 255]);
+%         figure(3); subplot(3,3,ii); hold all;
+%         imshow(objects(:,:,1,3,ii),[1 255]);
 % 
-%         figure(4); subplot(2,11,ii); hold all;
-%         imshow(objects(:,:,4,ii),[1 255]);
+%         figure(4); subplot(3,3,ii); hold all;
+%         imshow(objects(:,:,1,4,ii),[1 255]);
 %     end
 return
 

@@ -45,7 +45,6 @@ simple_dot = uint8(simple_dot);
 simple_dot(simple_dot==0) = p.stim.bckgrnd_grayval;
 simple_dot(simple_dot==1) = p.stim.dot.color(1);
 
-
 fprintf('\nDone!')
 
 

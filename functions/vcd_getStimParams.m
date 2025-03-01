@@ -135,7 +135,8 @@ else
                 p.og_res_stim     = p.img_sz_pix;                               % resolution of stored dot stimuli (in pixels)
                 p.dres            = ((p.img_sz_deg/disp_params.h_deg * disp_params.h_pix) / p.og_res_stim);  % scale factor to apply
                 p.iscolor         = false;                                      % use color or not [[[IF WE USE COLOR: MAKE SURE TO SQUARE IMAGE VALS FOR CLUT]]
-                
+                p.square_pix_val  = false;
+
                 p.gauss_std_deg   = 0.5;                                        % standard deviation of gaussian window (deg)
                 p.gauss_std_pix   = round(p.gauss_std_deg.*disp_params.ppd);
                 
@@ -182,7 +183,8 @@ else
                 p.og_res_stim     = p.img_sz_pix;                               % resolution of stored dot stimuli (in pixels)
                 p.dres            = ((p.img_sz_deg/disp_params.h_deg * disp_params.h_pix) / p.og_res_stim);  % scale factor to apply
                 p.iscolor         = false;                                      % use color or not [[[IF WE USE COLOR: MAKE SURE TO SQUARE IMAGE VALS FOR CLUT]]
-                
+                p.square_pix_val  = false;
+
                 p.num_mot_dir      = 8;
                 p.motdir_bins      = [0:(360/p.num_mot_dir):359]+10;             % sample direction of coherent motion from [0-359] in deg (0 deg is aligned with 12 o'clock)
                 p.motdir_jitter_sd = 2;                                          % std of normal distribution to sample orientation jitter
@@ -193,7 +195,7 @@ else
                 % RDK specific
                 p.dots_density     = 16.7;                                      % dots/deg??
                 p.dots_size        = 3;                                         % radius in pixels??
-                p.dots_color       = [255 255 255;0 0 0]./255;                  % 50:50 white:black, color in RGB [0-1]
+                p.dots_color       = [255 255 255; 1 1 1]./255;                  % 50:50 white:black, color in RGB [0-1]
                 p.max_dots_per_frame = 200;                                     % from Kiani lab (roughly matches to nr of pixels in aperture)
                 p.dots_contrast    = 1;                                         % Michelson [0-1] (fraction)
                 
@@ -224,9 +226,10 @@ else
                 
                 p.radius_deg      = 0.5;                                        % radius in deg
                 p.radius_pix      = p.radius_deg * disp_params.ppd;                        % radius in pix
-                p.color           = [255 255 255];                              % white, color in uint8 RGB
+                p.color           = [255 255 255];                              % white in uint8 RGB
                 p.contrast        = 1;                                          % Michelson [0-1] (fraction)
-               
+                p.square_pix_val  = false;
+
                 p.num_loc         = 16;                                          % orientation "bins" from which we create final gabor orientations (deg), 0 = 12 o'clock
                 p.loc_jitter_sd   = 1;                                          % std of normal distribution to sample orientation jitter
                 p.loc_jitter_mu   = 1;                                          % mean of normal distribution to sample orientation jitter
@@ -282,6 +285,7 @@ else
                 p.sub_cat{3}         = {'drill','brush','pizza','banana','bus','suv'};
                 p.sub_cat{4}         = {'church','house','watertower'};
                 
+                p.square_pix_val     = true;
                 p.delta_from_ref     = [-8, -4, 4, 8];                        % how much should stim pose rotate from reference (WM: for double epochs)
                 % the bigger the delta, the easier the trial. Negative is counter-clockwise, positive is clockwise
                 % Add params to struct
@@ -304,7 +308,8 @@ else
                 
                 p.img_sz_deg  = ctr_square_deg;                                 % height (or width) of square stimulus support (deg)
                 p.img_sz_pix  = ceil(p.og_res_stim.*p.dres);                    % height (or width) of square stimulus support (pix)
-                
+                p.square_pix_val     = true;
+
                 
                 
                 p.x0_deg        = 0;                                       % x-center loc in deg (translation from 0,0)
