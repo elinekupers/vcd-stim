@@ -61,8 +61,8 @@ img0 = img0./max(maxval,minval);
 
 img = contrast * img0;
 
-% Convert to image range [0 255]
-img  = floor((img*255)+grayval);
+% Convert to image range [1 255]
+img  = floor((img*127)+grayval);
 
 % % alternative normalization
 % maxval_c = abs(max(max(img_c)));
