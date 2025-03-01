@@ -226,9 +226,9 @@ for tt = 1:length(seq_timing)
         if size(rdk_images2,1) < size(rdk_images2,2)
             rdk_images2 = rdk_images2';
         end
-        trig_seq_exp_im(t_idx_total) = rdk_images2(1:length(t_idx_total),:);
+        trig_seq_exp_im(t_idx_total) = uint(rdk_images2(1:length(t_idx_total),:));
     else
-        trig_seq_exp_im(t_idx_total) = repmat(seq_exp_im(tt), length(t_idx_total),1);
+        trig_seq_exp_im(t_idx_total) = repmat(uint(seq_exp_im(tt)), length(t_idx_total),1);
     end
 end
 
@@ -304,6 +304,7 @@ for nn = 1:length(subj_run.block)
     else
         cdID(nn) = 0;
     end
+    
 end
 
 cdID = find(cdID);
@@ -325,6 +326,7 @@ if ~isempty(cdID)
         stimOnset_all  = [stimOnset(1); stimOnset((find(abs(diff(stimOnset))>1)+1))];
         time_table = subj_run.block(ii).timing;
         stim0 = time_table.onset_time(2:2:end-1);
+        
         for ss = 1:length(stim0)
             trig_stim_time0 = trig_timing(stimOnset_all(ss));
             assert(nearZero((stim0(ss)+params.exp.trial.start_cue_dur+params.exp.trial.spatial_cue_dur) -trig_stim_time0))
@@ -337,14 +339,25 @@ if ~isempty(cdID)
                 
                 for tt = 1:length(t_idx)
                     clear tmp_im_c
-                    tmp_im = double(timing.trig_seq_exp_im{t_idx(tt)}{nn});
-                    sz0 = size(tmp_im);
-                    tmp_im = tmp_im(:); tmp_im_c = tmp_im;
-                    
-                    tmp_im_c = (tmp_im_c-params.stim.bckgrnd_grayval)./255; % center around 0, range [-1 1]
-                    tmp_im_c = tmp_im_c.*params.stim.cd.t_gauss(tt); % scale
-                    tmp_im_c = (255.*tmp_im_c)+params.stim.bckgrnd_grayval; % bring back to 0-255
-                    trig_seq_exp_im_w_cd{t_idx(tt)}{nn} = uint8(reshape(tmp_im_c,sz0(1),sz0(2)));
+                    if ~isempty(regexp(subj_run.block(ii).name,'*-ns','ONCE')) || ...
+                        ~isempty(regexp(subj_run.block(ii).name,'*-cobj','ONCE'))
+                        tmp_im = (double(timing.trig_seq_exp_im{t_idx(tt)}{nn})).^2;
+                        tmp_im_c = (tmp_im_c-1)./254; % range [0 1]
+                        tmp_im_c = tmp_im_c-0.5; % center around 0, min/max range [-1 1]
+                        
+                        tmp_im_c = tmp_im_c.*params.stim.cd.t_gauss(tt); % scale
+                        tmp_im_c = (254.*sqrt(tmp_im_c))+1; % bring back to 1-255
+                        trig_seq_exp_im_w_cd{t_idx(tt)}{nn} = uint8(reshape(tmp_im_c,sz0(1),sz0(2)));
+
+                    else
+                        tmp_im = double(timing.trig_seq_exp_im{t_idx(tt)}{nn});
+                        sz0 = size(tmp_im);
+                        tmp_im = tmp_im(:); tmp_im_c = tmp_im;
+                        tmp_im_c = (tmp_im_c-params.stim.bckgrnd_grayval)./254; % center around 0, range [-1 1]
+                        tmp_im_c = tmp_im_c.*params.stim.cd.t_gauss(tt); % scale
+                        tmp_im_c = (254.*tmp_im_c)+params.stim.bckgrnd_grayval; % bring back to 0-255
+                        trig_seq_exp_im_w_cd{t_idx(tt)}{nn} = uint8(reshape(tmp_im_c,sz0(1),sz0(2)));
+                    end
                 end
             end
         end
