@@ -158,14 +158,14 @@ else
                             shuffled_c = case_vec(shuffle_c + repmat(repelem([0:n_contrasts:(n_unique_cases-1)],n_contrasts),1,2),:);
                             
                             conds_shuffle0 = unique_im(shuffle_ori,:); % <-- first shuffle based on unique nr of orientations
-                            conds_shuffle1 = conds_shuffle0(shuffled_c,:); % <-- then shuffle based on unique nr of contrasts, such that new trial order prioritized contrast order
+                            conds_shuffle0 = conds_shuffle0(shuffled_c,:); % <-- then shuffle based on unique nr of contrasts, such that new trial order prioritized contrast order
                             
                             
                             cue_vec = NaN(size(unique_im,1),1);
                             
-                            conds_shuffle2 = [conds_shuffle1, cue_vec];
+                            conds_shuffle1 = [conds_shuffle0, cue_vec];
                             
-                            conds_master_single_rep = [conds_master_single_rep;conds_shuffle2];
+                            conds_master_single_rep = [conds_master_single_rep;conds_shuffle1];
                             
                         else
                             
@@ -185,28 +185,32 @@ else
                                 assert(isequal(unique(shuffle_c + repelem([0:n_contrasts:(n_unique_cases-1)],n_contrasts)),[1:n_unique_cases]))
                                 
                                 conds_shuffle0 = unique_im(shuffle_ori,:); % <-- first shuffle based on unique nr of orientations
-                                conds_shuffle1 = conds_shuffle0(shuffled_c,:); % <-- then shuffle based on unique nr of contrasts, such that new trial order prioritized contrast order
+                                conds_shuffle0 = conds_shuffle0(shuffled_c,:); % <-- then shuffle based on unique nr of contrasts, such that new trial order prioritized contrast order
                                 
                                 if loc == 1
+                                    % generate random cueing vector
                                     cue_vec = shuffle_concat(stimloc_cues,n_unique_cases/n_stimloc_cues)';
                                     
                                     % store for next round
                                     cue_vec1 = cue_vec;
-                                    im_cue_vec1 = conds_shuffle1(find(cue_vec1),1);
+                                    im_cue_vec1 = conds_shuffle0(find(cue_vec1),1);
                                     
                                 elseif loc == 2
                                     cue_vec_anti = zeros(size(cue_vec));
+                                    % These unique images were cued previously
                                     prev_cue_vec = im_cue_vec1;
-                                    
+                                    % These unique images still need to be
+                                    % cued to keep cueing balanced
                                     im_to_be_cued = setdiff([1:n_unique_cases],prev_cue_vec);
-                                    im_to_be_cued_i = intersect(conds_shuffle1(:,1),im_to_be_cued','stable');
+                                    [~,im_to_be_cued_i] = intersect(conds_shuffle0(:,1),im_to_be_cued','stable');
+                                    assert(isequal(sort(conds_shuffle0(im_to_be_cued_i)),im_to_be_cued'))
                                     cue_vec_anti(im_to_be_cued_i) = 1;
                                     cue_vec = cue_vec_anti;
                                 end
                                 
-                                conds_shuffle2 = [conds_shuffle1, cue_vec];
+                                conds_shuffle1 = [conds_shuffle0, cue_vec];
                                 
-                                conds_master_single_rep = [conds_master_single_rep;conds_shuffle2];
+                                conds_master_single_rep = [conds_master_single_rep;conds_shuffle1];
                                 
 %                                  clear conds_shuffle0 conds_shuffle1 conds_shuffle2
                                 
@@ -272,7 +276,7 @@ else
                         % thickening direction doesn't have to match
                         % between left and right, from my
                         % understanding...
-                        assert(isequal(sum(cond_master(:,2)==1),sum(cond_master(:,2)==2)))
+%                         assert(isequal(sum(cond_master(:,2)==1),sum(cond_master(:,2)==2)))
                         
                         % Clean up
                         clear  conds_master_single_rep2 conds_master_single_rep3
@@ -329,6 +333,14 @@ else
                 end
                 
                 all_cond_master.gabor = cond_master;
+                all_cond_master.info.gabor = ...
+                    {'trial nr (every trial occupies two rows)', ...
+                     'thickening_dir (1=left, 2=right, 3=both)', ...
+                     'unique im nr', ...
+                     'stim loc (1=left, 2=right, 3=central)', ...
+                     'cue status (0=uncued, 1 =cued)', ...
+                     'gabor orientation', 'gabor contrast','gabor phase','gabor delta ref','paired_stim', 'lure', ...
+                     'repeat nr'};
                 
                 clear cond_master
                 all_trials.stim(stimClass_idx).name  = stimClass_name;
@@ -420,13 +432,13 @@ else
                             shuffled_c = case_vec(shuffle_c + repmat(repelem([0:n_coh:(n_unique_cases-1)],n_coh),1,2),:);
                             
                             conds_shuffle0 = unique_im(shuffle_motdir,:); % <-- first shuffle based on unique nr of orientations
-                            conds_shuffle1 = conds_shuffle0(shuffled_c,:); % <-- then shuffle based on unique nr of coherence levels, such that new trial order prioritizes coherence order
+                            conds_shuffle0 = conds_shuffle0(shuffled_c,:); % <-- then shuffle based on unique nr of coherence levels, such that new trial order prioritizes coherence order
                             
                             cue_vec = NaN(size(unique_im,1),1);
                             
-                            conds_shuffle2 = [conds_shuffle1, cue_vec];
+                            conds_shuffle1 = [conds_shuffle0, cue_vec];
                             
-                            conds_master_single_rep = [conds_master_single_rep;conds_shuffle2];
+                            conds_master_single_rep = [conds_master_single_rep;conds_shuffle1];
                             
                         else
                             
@@ -444,26 +456,31 @@ else
                                 shuffled_c = case_vec(shuffle_c + repelem([0:n_coh:(n_unique_cases-1)],n_coh),:);
                                 
                                 conds_shuffle0 = unique_im(shuffle_motdir,:); % <-- first shuffle based on unique nr of orientations
-                                conds_shuffle1 = conds_shuffle0(shuffled_c,:); % <-- then shuffle based on unique nr of coh, such that new trial order prioritized coh order
+                                conds_shuffle0 = conds_shuffle0(shuffled_c,:); % <-- then shuffle based on unique nr of coh, such that new trial order prioritized coh order
                                 
                                 if loc == 1
                                     cue_vec = shuffle_concat(stimloc_cues,n_unique_cases/n_stimloc_cues)';
                                     
-                                    
+                                    % store for next round
+                                    cue_vec1 = cue_vec;
+                                    im_cue_vec1 = conds_shuffle0(find(cue_vec1),1);
                                     
                                 elseif loc == 2
                                     cue_vec_anti = zeros(size(cue_vec));
-                                    prev_cue_vec = conds_shuffle1(find(cue_vec),1);
-                                    
+                                    % These unique images were cued previously
+                                    prev_cue_vec = im_cue_vec1;
+                                    % These unique images still need to be
+                                    % cued to keep cueing balanced
                                     im_to_be_cued = setdiff([1:n_unique_cases],prev_cue_vec);
-                                    im_to_be_cued_i = intersect(conds_shuffle1(:,1),im_to_be_cued','stable');
+                                    [~,im_to_be_cued_i] = intersect(conds_shuffle0(:,1),im_to_be_cued','stable');
+                                    assert(isequal(sort(conds_shuffle0(im_to_be_cued_i)),im_to_be_cued'))
                                     cue_vec_anti(im_to_be_cued_i) = 1;
                                     cue_vec = cue_vec_anti;
                                 end
                                 
-                                conds_shuffle2 = [conds_shuffle1, cue_vec];
+                                conds_shuffle1 = [conds_shuffle0, cue_vec];
                                 
-                                conds_master_single_rep = [conds_master_single_rep;conds_shuffle2];
+                                conds_master_single_rep = [conds_master_single_rep;conds_shuffle1];
                             end
                             
                             clear conds_shuffle0 conds_shuffle1 conds_shuffle2
@@ -546,6 +563,14 @@ else
                 end
                 
                 all_cond_master.rdk = cond_master;
+                all_cond_master.info.rdk = ...
+                    {'trial nr (every trial occupies two rows)', ...
+                     'thickening_dir (1=left, 2=right, 3=both)', ...
+                     'unique im nr', ...
+                     'stim loc (1=left, 2=right, 3=central)', ...
+                     'cue status (0=uncued, 1 =cued)', ...
+                     'rdk motion dir', 'rdk coherence','rdk delta ref','paired_stim', 'lure', ...
+                     'repeat nr'};
                 clear cond_master
                 all_trials.stim(stimClass_idx).name  = stimClass_name;
                 all_trials.stim(stimClass_idx).tasks = tasks;
@@ -623,13 +648,13 @@ else
                             % shuffle dot angle every 8 trials
                             shuffle_loc = shuffle_concat([1:n_dot_loc],2);
                             
-                            conds_shuffle1 = unique_im(shuffle_loc,:); % <-- shuffle based on unique nr of orientations
+                            conds_shuffle0 = unique_im(shuffle_loc,:); % <-- shuffle based on unique nr of orientations
                             
                             cue_vec = NaN(size(unique_im,1),1);
                             
-                            conds_shuffle2 = [conds_shuffle1, cue_vec];
+                            conds_shuffle1 = [conds_shuffle0, cue_vec];
                             
-                            conds_master_single_rep = [conds_master_single_rep;conds_shuffle2];
+                            conds_master_single_rep = [conds_master_single_rep;conds_shuffle1];
                             
                         else
                             
@@ -638,24 +663,31 @@ else
                                 % shuffle dot angle every 8 trials
                                 shuffle_loc = shuffle_concat([1:n_dot_loc],1);
                                 
-                                conds_shuffle1 = unique_im(shuffle_loc,:); % <-- shuffle based on unique nr of orientations
+                                conds_shuffle0 = unique_im(shuffle_loc,:); % <-- shuffle based on unique nr of orientations
                                 
                                 if loc == 1
                                     cue_vec = shuffle_concat(stimloc_cues,n_unique_cases/n_stimloc_cues)';
                                     
+                                    % store for next round
+                                    cue_vec1 = cue_vec;
+                                    im_cue_vec1 = conds_shuffle0(find(cue_vec1),1);
+                                    
                                 elseif loc == 2
                                     cue_vec_anti = zeros(size(cue_vec));
-                                    prev_cue_vec = conds_shuffle1(find(cue_vec),1);
-                                    
+                                    % These unique images were cued previously
+                                    prev_cue_vec = im_cue_vec1;
+                                    % These unique images still need to be
+                                    % cued to keep cueing balanced
                                     im_to_be_cued = setdiff([1:n_unique_cases],prev_cue_vec);
-                                    im_to_be_cued_i = intersect(conds_shuffle1(:,1),im_to_be_cued','stable');
+                                    [~,im_to_be_cued_i] = intersect(conds_shuffle0(:,1),im_to_be_cued','stable');
+                                    assert(isequal(sort(conds_shuffle0(im_to_be_cued_i)),im_to_be_cued'))
                                     cue_vec_anti(im_to_be_cued_i) = 1;
                                     cue_vec = cue_vec_anti;
                                 end
                                 
-                                conds_shuffle2 = [conds_shuffle1, cue_vec];
+                                conds_shuffle1 = [conds_shuffle0, cue_vec];
                                 
-                                conds_master_single_rep = [conds_master_single_rep;conds_shuffle2];
+                                conds_master_single_rep = [conds_master_single_rep;conds_shuffle1];
                             end
                         end
                         clear conds_shuffle0 conds_shuffle1 conds_shuffle2
@@ -735,6 +767,15 @@ else
                 end
                 
                 all_cond_master.dot = cond_master;
+                all_cond_master.info.dot = ...
+                    {'trial nr (every trial occupies two rows)', ...
+                     'thickening_dir (1=left, 2=right, 3=both)', ...
+                     'unique im nr', ...
+                     'stim loc (1=left, 2=right, 3=central)', ...
+                     'cue status (0=uncued, 1 =cued)', ...
+                     'dot loc angle','dot delta ref','paired_stim', 'lure', ...
+                     'repeat nr'};
+                
                 clear cond_master
                 
                 all_trials.stim(stimClass_idx).name  = stimClass_name;
@@ -889,12 +930,12 @@ else
                             assert(isequal(histcounts(shuffled_super_cat),n_sub_cat*2))
                             
                             % NOW SHUFFLE!
-                            conds_shuffle1 = unique_im(basic_cat_shuffle_idx,:); % <-- shuffle based on basic category
-                            conds_shuffle2 = conds_shuffle1(super_cat_shuffle_idx,:); % <-- shuffle based on super category, last one to give it priority
+                            conds_shuffle0 = unique_im(basic_cat_shuffle_idx,:); % <-- shuffle based on basic category
+                            conds_shuffle1 = conds_shuffle0(super_cat_shuffle_idx,:); % <-- shuffle based on super category, last one to give it priority
                             
-                            conds_shuffle3 = [conds_shuffle2, cue_vec];
+                            conds_shuffle2 = [conds_shuffle1, cue_vec];
                             
-                            conds_master_single_rep = [conds_master_single_rep;conds_shuffle3];
+                            conds_master_single_rep = [conds_master_single_rep;conds_shuffle2];
                         else
                             
                             for loc = 1:n_stimloc_cues % cued vs uncued
@@ -915,30 +956,37 @@ else
                                 assert(isequal(histcounts(shuffled_super_cat),n_sub_cat))
                                 
                                 % NOW SHUFFLE!
-                                conds_shuffle1 = unique_im(basic_cat_shuffle_idx,:); % <-- shuffle based on basic category
-                                conds_shuffle2 = conds_shuffle1(super_cat_shuffle_idx,:); % <-- shuffle based on super category, last one to give it priority
+                                conds_shuffle0 = unique_im(basic_cat_shuffle_idx,:); % <-- shuffle based on basic category
+                                conds_shuffle1 = conds_shuffle0(super_cat_shuffle_idx,:); % <-- shuffle based on super category, last one to give it priority
                                 
                                 % shuffle cued vs uncued status
                                 if loc == 1
                                     cue_vec = shuffle_concat(stimloc_cues,n_unique_cases/n_stimloc_cues)';
                                     
+                                    % store for next round
+                                    cue_vec1 = cue_vec;
+                                    im_cue_vec1 = conds_shuffle1(find(cue_vec1),1);
+                                    
                                 elseif loc == 2
                                     cue_vec_anti = zeros(size(cue_vec));
-                                    prev_cue_vec = conds_shuffle2(find(cue_vec),1);
-                                    
+                                    % These unique images were cued previously
+                                    prev_cue_vec = im_cue_vec1;
+                                    % These unique images still need to be
+                                    % cued to keep cueing balanced
                                     im_to_be_cued = setdiff([1:n_unique_cases],prev_cue_vec);
-                                    im_to_be_cued_i = intersect(conds_shuffle2(:,1),im_to_be_cued','stable');
+                                    [~,im_to_be_cued_i] = intersect(conds_shuffle1(:,1),im_to_be_cued','stable');
+                                    assert(isequal(sort(conds_shuffle1(im_to_be_cued_i)),im_to_be_cued'))
                                     cue_vec_anti(im_to_be_cued_i) = 1;
                                     cue_vec = cue_vec_anti;
                                 end
                                 
-                                conds_shuffle3 = [conds_shuffle2, cue_vec];
+                                conds_shuffle2 = [conds_shuffle1, cue_vec];
                                 
-                                conds_master_single_rep = [conds_master_single_rep;conds_shuffle3];
+                                conds_master_single_rep = [conds_master_single_rep;conds_shuffle2];
                             end
                         end
                         % save some memory
-                        clear conds_shuffle0 conds_shuffle1 conds_shuffle2 conds_shuffle3
+                        clear conds_shuffle0 conds_shuffle1 conds_shuffle2
                         
                         
                         % Reorganize columns
@@ -1030,6 +1078,22 @@ else
                 end
                 
                 all_cond_master.cobj = cond_master;
+                all_cond_master.info.cobj = ...
+                    {'trial nr (every trial occupies two rows)', ...
+                     'thickening_dir (1=left, 2=right, 3=both)', ...
+                     'unique im nr', ...
+                     'stim loc (1=left, 2=right, 3=central)', ...
+                     'cue status (0=uncued, 1 =cued)', ...
+                     'object superordinate category nr',...
+                     'object basic category nr', ...
+                     'object subordinate category nr',...
+                     'object superordinate category name', ...
+                     'object basic category name', ...
+                     'object subordinate category name', ...
+                     'object facing direction', 'object delta ref', ...
+                     'paired_stim', 'lure', ...
+                     'repeat nr'};
+                
                 clear cond_master
                 
                 all_trials.stim(stimClass_idx).name  = stimClass_name;
@@ -1126,12 +1190,12 @@ else
                         assert(isequal(histcounts(shuffled_super_cat),sum(n_sub_cat,2)'))
                         
                         % NOW SHUFFLE!
-                        conds_shuffle1 = unique_im(basic_cat_shuffle_idx,:); % <-- shuffle based on basic category
-                        conds_shuffle2 = conds_shuffle1(super_cat_shuffle_idx,:); % <-- shuffle based on super category, last one to give it priority
+                        conds_shuffle0 = unique_im(basic_cat_shuffle_idx,:); % <-- shuffle based on basic category
+                        conds_shuffle1 = conds_shuffle0(super_cat_shuffle_idx,:); % <-- shuffle based on super category, last one to give it priority
                         
                         % shuffle cued vs uncued status
                         cue_vec = NaN(n_unique_cases,1);
-                        cond_shuffle3 = [conds_shuffle2, cue_vec];
+                        cond_shuffle3 = [conds_shuffle1, cue_vec];
                         conds_master_single_rep = [conds_master_single_rep; cond_shuffle3];
                         
                         clear conds_shuffle0 conds_shuffle1 conds_shuffle2 conds_shuffle3
@@ -1239,6 +1303,21 @@ else
                 end
                 
                 all_cond_master.ns = cond_master;
+                all_cond_master.info.ns = ...
+                    {'trial nr (every trial occupies two rows)', ...
+                     'thickening_dir (1=left, 2=right, 3=both)', ...
+                     'unique im nr', ...
+                     'stim loc (1=left, 2=right, 3=central)', ...
+                     'cue status (0=uncued, 1 =cued)', ...
+                     'object superordinate category nr',...
+                     'object basic category nr', ...
+                     'object subordinate category nr',...
+                     'object superordinate category name', ...
+                     'object basic category name', ...
+                     'object subordinate category name', ...
+                     'change blindness scene', ...
+                     'paired_stim', 'lure', ...
+                     'repeat nr'};
                 clear cond_master
                 
                 all_trials.stim(stimClass_idx).name = stimClass_name;
@@ -1328,7 +1407,6 @@ else
     shuffled_right_uncued = right_uncued(shuffle_idx_right_uncued);
     
     nr_trials_per_cued_side = [length(shuffled_left_uncued)+length(shuffled_right_cued),length(shuffled_left_cued)+length(shuffled_right_uncued)];
-    [min_trials, min_trial_idx] = min(nr_trials_per_cued_side);
     
     counter_left_cue = 1; counter_right_cue = 1;
     for ii = 1:length(stim_crossings)
@@ -1346,20 +1424,24 @@ else
                         all_trials.stim(stim_crossings(ii)).tasks(scc_idx).miniblock(mm).trial{tt,1} = shuffled_left_uncued{counter_right_cue}; % left images
                         all_trials.stim(stim_crossings(ii)).tasks(scc_idx).miniblock(mm).trial{tt,2} = shuffled_right_cued{counter_right_cue};  % right images
                         counter_right_cue = counter_right_cue+1;
-                    elseif counter_left_cue <= nr_trials_per_cued_side(3) % pad with other condition if we run out
-                        all_trials.stim(stim_crossings(ii)).tasks(scc_idx).miniblock(mm).trial{tt,1} = shuffled_left_cued{counter_left_cue}; % left images
-                        all_trials.stim(stim_crossings(ii)).tasks(scc_idx).miniblock(mm).trial{tt,2} = shuffled_right_uncued{counter_left_cue};  % right images
-                        counter_left_cue = counter_left_cue +1;
+%                     elseif counter_left_cue <= nr_trials_per_cued_side(3) % pad with other condition if we run out
+%                         all_trials.stim(stim_crossings(ii)).tasks(scc_idx).miniblock(mm).trial{tt,1} = shuffled_left_cued{counter_left_cue}; % left images
+%                         all_trials.stim(stim_crossings(ii)).tasks(scc_idx).miniblock(mm).trial{tt,2} = shuffled_right_uncued{counter_left_cue};  % right images
+%                         counter_left_cue = counter_left_cue +1;
+                    else
+                        error('[:%s]: Not enough trials to fill a block!')
                     end
                 elseif left_cue_status == 1 % left cued / right uncued
                     if counter_left_cue <= nr_trials_per_cued_side(2)
                         all_trials.stim(stim_crossings(ii)).tasks(scc_idx).miniblock(mm).trial{tt,1} = shuffled_left_cued{counter_left_cue}; % left images
                         all_trials.stim(stim_crossings(ii)).tasks(scc_idx).miniblock(mm).trial{tt,2} = shuffled_right_uncued{counter_left_cue}; % right images
                         counter_left_cue = counter_left_cue +1;
-                    elseif counter_right_cue <= nr_trials_per_cued_side(1)
-                        all_trials.stim(stim_crossings(ii)).tasks(scc_idx).miniblock(mm).trial{tt,1} = shuffled_left_uncued{counter_right_cue}; % left images
-                        all_trials.stim(stim_crossings(ii)).tasks(scc_idx).miniblock(mm).trial{tt,2} = shuffled_right_cued{counter_right_cue};  % right images
-                        counter_right_cue = counter_right_cue+1;
+%                     elseif counter_right_cue <= nr_trials_per_cued_side(1)
+%                         all_trials.stim(stim_crossings(ii)).tasks(scc_idx).miniblock(mm).trial{tt,1} = shuffled_left_uncued{counter_right_cue}; % left images
+%                         all_trials.stim(stim_crossings(ii)).tasks(scc_idx).miniblock(mm).trial{tt,2} = shuffled_right_cued{counter_right_cue};  % right images
+%                         counter_right_cue = counter_right_cue+1;
+                    else
+                        error('[:%s]: Not enough trials to fill a block!')
                     end
                 end
                 

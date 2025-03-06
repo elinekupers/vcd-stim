@@ -82,7 +82,7 @@ end
 
 %% Create background and fixation textures prior to exp onset (as we need them throughout the experiment)
 % bckground_rect = CenterRect([0 0 round(size(scan.bckground,1)) round(size(scan.bckground,2))],rect);
-bckground_rect = rect;
+bckground_rect    = rect;
 bckrgound_texture = Screen('MakeTexture', win, feval(flipfun,scan.bckground));
 
 % make fixation dot texture
@@ -100,6 +100,33 @@ for ll = 1:size(scan.fix_im,4) % loop over luminance values
 end
 
 fix_texture_alpha = Screen('MakeTexture',win,feval(flipfun,scan.fix_alpha_mask));
+
+%% create single vector for fix textures
+% 
+% % set up fixation dot textures
+% opacity_idx = timing.trig_seq_fix(framecnt);
+% 
+% if isnan(timing.seq_spatial_cue(framecnt))
+%     fix_tex0 = fix_texture_thin_full{opacity_idx};
+%     fix_rect = fix_rect_thin;
+% else
+%     switch timing.trig_spatial_cue(framecnt)
+%         case 1
+%             fix_tex0 = fix_texture_thick_left{opacity_idx};
+%             fix_rect = fix_rect_thick;
+%         case 2
+%             fix_tex0 = fix_texture_thick_right{opacity_idx};
+%             fix_rect = fix_rect_thick;
+%         case 0
+%             fix_tex0 = fix_texture_thick_full{opacity_idx};
+%             fix_rect = fix_rect_thick;
+%     end
+% end
+
+
+%%
+
+
 
 
 % run functions as first time running them always takes more time

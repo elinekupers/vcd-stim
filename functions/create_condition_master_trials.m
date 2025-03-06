@@ -37,32 +37,78 @@ trial_vec_i = NaN(size(conds_master,1)/2,2);
 n_unique_cases = numel(unique(conds_master(:,1)));
 trial_vec = repelem(1:size(trial_vec_i,1),2); % or     trial_vec = repelem(1:(n_unique_cases/2),2); ????
 
+
 % Define thickening of central cue
 if ~fix_task_flag
     
     thickening_dir = zeros(length(trial_vec),1);
+    th_count = 1;
     
-    for ii = 1:length(conds_master(:,3))
+    left_cued    = find((conds_master(:,3) == 1) & (conds_master(:,2) == 1));
+    left_uncued  = find((conds_master(:,3) == 0) & (conds_master(:,2) == 1));
+    right_cued   = find((conds_master(:,3) == 1) & (conds_master(:,2) == 2));
+    right_uncued = find((conds_master(:,3) == 0) & (conds_master(:,2) == 2));
+    
+    cond_idx = shuffle_concat([1:4],size(trial_vec_i,1)/4);  
+    
+    
+    for ii = 1:size(trial_vec_i,1)
 
-        % EK START HERE  
-        cue_dir  = conds_master(ii,3);
-        stim_loc = conds_master(ii,2);
-        
-        if cue_dir == 1 && stim_loc == 1 % left cued
-            thickening_dir(ii) = 1;
-        elseif cue_dir == 1 && stim_loc == 2 % right cued
-            thickening_dir(ii) = 2;
-        elseif cue_dir == 0 && stim_loc == 1 % left uncued
-            thickening_dir(ii) = 2;
-        elseif cue_dir == 0 && stim_loc == 2 % right uncued
-            thickening_dir(ii) = 1;
-        elseif cue_dir == 0 || isnan(cue_dir)
-            thickening_dir(ii) = 3;
+        if cond_idx(ii) == 1 % left cued;
+            leading_cue_status  = 1; 
+            leading_stim_loc    = 1;
+        elseif cond_idx(ii) == 2 % left uncued;
+            leading_cue_status  = 0;
+            leading_stim_loc    = 1;
+        elseif cond_idx(ii) == 3 % right cued;
+            leading_cue_status  = 1; 
+            leading_stim_loc    = 2;
+        elseif cond_idx(ii) == 4 % right uncued;
+            leading_cue_status  = 0; 
+            leading_stim_loc    = 2;
         end
+            
+        if leading_cue_status == 1 && leading_stim_loc == 1 % left cued
+            thickening_dir(th_count)   = 1; % left thickening
+            thickening_dir(th_count+1) = 1; % left thickening
+            
+            trial_vec_i(ii,1) = left_cued(1);
+            left_cued(1) = [];
+            trial_vec_i(ii,2) = right_uncued(1);
+            right_uncued(1) = [];
+            
+        elseif leading_cue_status == 1 && leading_stim_loc == 2 % right cued
+            thickening_dir(th_count) = 2; % right thickening
+            thickening_dir(th_count+1) = 2; % right thickening
+            
+            trial_vec_i(ii,1) = left_uncued(1);
+            left_uncued(1) = [];
+            trial_vec_i(ii,2) = right_cued(1);
+            right_cued(1) = [];
            
-        stim_to_allocate = find(isnan(trial_vec_i(:,stim_loc)));
-        trial_vec_i(stim_to_allocate(1), stim_loc) = ii;
-
+        elseif leading_cue_status == 0 && leading_stim_loc == 1 % left uncued
+            thickening_dir(th_count) = 2; % right thickening
+            thickening_dir(th_count+1) = 2; % right thickening
+            
+            trial_vec_i(ii,1) = left_uncued(1);
+            left_uncued(1) = [];
+            trial_vec_i(ii,2) = right_cued(1);
+            right_cued(1) = [];
+            
+        elseif leading_cue_status == 0 && leading_stim_loc == 2 % right uncued
+            thickening_dir(th_count) = 1; % left thickening
+            thickening_dir(th_count+1) = 1; % left thickening
+            
+            trial_vec_i(ii,1) = left_cued(1);
+            left_cued(1) = [];
+            trial_vec_i(ii,2) = right_uncued(1);
+            right_uncued(1) = [];
+            
+        elseif leading_cue_status == 0 || isnan(leading_cue_status)
+            thickening_dir(th_count) = 3;  % both sides thickening
+            thickening_dir(th_count+1) = 3;  % both sides thickening
+        end
+        th_count = th_count +2;
     end
     
     trial_vec_i = trial_vec_i';

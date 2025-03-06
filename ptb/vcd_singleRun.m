@@ -250,8 +250,9 @@ end
 
 if ~exist('timing','var') || ~isfield(timing,'seq_stim') || isempty(timing.seq_stim)
     
-    timing = vcd_getImageTiming(params, subj_run, im_seq_order, scan.exp_im, scan.fix_im, scan.exp_im_masks);
-    
+    timing = vcd_getImageTiming_framelocked30Hz(params, subj_run, im_seq_order, scan.exp_im, scan.fix_im, scan.exp_im_masks);
+%     timing = vcd_getImageTiming_systemclocklocked(params, subj_run, im_seq_order,  scan.exp_im, scan.exp_im_masks, scan.fix_im, scan.fix_im_masks);
+
     cellblock = struct2cell(subj_run.block);
     cellblock = squeeze(cellblock);
     
@@ -297,8 +298,8 @@ if ~exist('scan','var') || ~isfield(scan, 'rects') || isempty(scan.rects)
     
     % Get [x,y]-center in pixels of peripheral stimuli given display size, and
     % offset. Get stimulus aperture size..
-    centers = cell(size(timing.trig_stim));
-    apsize  = cell(size(timing.trig_stim));
+    centers = cell(size(timing.seq_stim));
+    apsize  = cell(size(timing.seq_stim));
     
     unique_blocks =  [unique(timing.trig_block,'stable')];
     
@@ -309,8 +310,8 @@ if ~exist('scan','var') || ~isfield(scan, 'rects') || isempty(scan.rects)
     trial_counter = 1;
     block_counter = 1;
     
-    for nn = 1:length(timing.trig_block)
-        block_nr = timing.trig_block(nn);
+    for nn = 1:length(timing.seq_block)
+        block_nr = timing.seq_block(nn);
         
         if (block_nr > 0) && (block_nr < 90)
             prev_block_counter = block_counter;
@@ -321,9 +322,9 @@ if ~exist('scan','var') || ~isfield(scan, 'rects') || isempty(scan.rects)
             end
             
             if  (timing.trig_stim(nn,1)<90)
-                if timing.trig_stim(nn,1) ~= timing.trig_stim(nn-1,1)
+                if timing.seq_stim(nn,1) ~= timing.seq_stim(nn-1,1)
                     trial_counter = trial_counter + 1;
-                    if timing.trig_stim(nn-1,1)==96
+                    if timing.seq_stim(nn-1,1)==96
                         delay_period = 1;
                     else
                         delay_period = 0;
@@ -331,7 +332,7 @@ if ~exist('scan','var') || ~isfield(scan, 'rects') || isempty(scan.rects)
                 end
                 
                 
-                numSides = length(unique(timing.trig_stim(nn,:)));
+                numSides = length(unique(timing.seq_stim(nn,:)));
                 
                 for side = 1:numSides
                     
@@ -348,6 +349,8 @@ if ~exist('scan','var') || ~isfield(scan, 'rects') || isempty(scan.rects)
                         if ~isempty(intersect(block_nr,[wm_blocks,ltm_blocks,img_blocks]))
                             trial_counter0 = round(trial_counter./2);
                         end
+                        
+                        % deal with dot pol2cart 
                         if delay_period && ~isnan(cellblock{4,block_counter}(trial_counter0,side).ref_delta)
                             dot_angle = cellblock{4,block_counter}(trial_counter0,side).ref_delta;
                             [dot_x,dot_y] = pol2cart(deg2rad(dot_angle),params.stim.dot.iso_eccen);
@@ -357,6 +360,7 @@ if ~exist('scan','var') || ~isfield(scan, 'rects') || isempty(scan.rects)
                             dot_x = params.stim.dot.x0_pix(xy_idx);
                             dot_y = params.stim.dot.y0_pix(xy_idx);
                         end
+                        
                         centers{nn,side}(1) = dot_x + params.stim.xc;
                         centers{nn,side}(2) = dot_y + params.stim.yc;
                         

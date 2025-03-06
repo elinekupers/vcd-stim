@@ -256,8 +256,8 @@ else
                     t_im_id(2:2:end,:) = {p.exp.miniblock.ITI_ID};
                     
                     % Thickening dir
-                    t_spat_cue(1:2:end,:) = mat2cell(tmp_att);
-                    t_spat_cue(2:2:end,:) = {NaN};
+                    t_spat_cue(1:2:end,:) = mat2cell(tmp_att(:,1),ones(8,1),ones(1,1));
+                    t_spat_cue(2:2:end,:) = mat2cell(NaN(8,1),ones(8,1),ones(1,1));
                 
                     clear tmp
                     
@@ -416,9 +416,9 @@ else
             set(gca,'TickDir', 'out')
             title(sprintf('run %d',ii))
         end
-        if p.store_imgs
-            print(gcf,'-dpng','-r300',fullfile(vcd_rootPath,'figs',sprintf('ses%02d_run_order_master',ses)));
-        end
+%         if p.store_imgs
+%             print(gcf,'-dpng','-r300',fullfile(vcd_rootPath,'figs',sprintf('ses%02d_run_order_master',ses)));
+%         end
     end
     
     
@@ -517,9 +517,9 @@ else
                 title(sprintf('run %d',rr))
                 sgtitle(sprintf('Subject %02d, session %02d',sj, ses));
             end
-            if p.store_imgs
-                print(gcf,'-dpng','-r300',fullfile(vcd_rootPath,'figs',sprintf('subj%02d_ses%02d_run_order',sj,ses)));
-            end
+%             if p.store_imgs
+%                 print(gcf,'-dpng','-r300',fullfile(vcd_rootPath,'figs',sprintf('subj%02d_ses%02d_run_order',sj,ses)));
+%             end
         end
     end
 
