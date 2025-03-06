@@ -1,10 +1,11 @@
-function [fix_im, info, p] = vcd_fixationDot(p)
+function [fix_im, mask, info, p] = vcd_fixationDot(p)
 % VCD function:
-%  fixIm = vcd_fixationDot(p)
+%  [fix_im, info, p] = vcd_fixationDot(p)
 %
 % Purpose:
-%   Create a set of fixation dot images for experimental display.
-%   See vcd_setStimParams.m for fixation parameters.
+%   Create a set of fixation dot images for experimental display. We want a
+%   dot that will change between luminance between 5 (or more?) levels up 
+%   or down. See vcd_setStimParams.m for fixation parameters.
 %
 % INPUTS:
 %   p       : params stuct (see vcd_setStimParams.m)
@@ -17,32 +18,30 @@ function [fix_im, info, p] = vcd_fixationDot(p)
 % OUTPUTS:
 %   fix_im  : fixation dot images, 5-dim array:
 %               w (pixels) x h (pixels) x 3 x 5 luminance levels x 2 rim widths
+%   mask    : alpha mask for ptb: w (pixels) x h (pixels) x 2 (one gray
+%                   layer, one transparency layer)
 %   info    : table with fix image information
 %   p       : updated params struct
 %
 % Written by Eline Kupers 2025/02
 
-% we want a dot that will change between luminance between 5 (or more?) levels
-% up or down:
 
-% 2*fixation diam x 2*fixation diam x 3 x 5 luminance levels x 2 dot rims
+% Create support: 2*fixation diam x 2*fixation diam x 3 x 5 luminance levels x 2 dot rims
 fix_im   = zeros([2*p.stim.fix.dotcenterdiam_pix, 2*p.stim.fix.dotcenterdiam_pix, 3, length(p.stim.fix.dotlum), 2]); 
 
 x = [1:(2*p.stim.fix.dotcenterdiam_pix)]-p.stim.fix.dotcenterdiam_pix;
 [XX,~] = meshgrid(x,x);
-left_idx = find((XX <= 0));
-right_idx = find((XX > 0));
-
 
 % Where to insert luminance val
 fixationmask_inner    = find(makecircleimage(2*p.stim.fix.dotcenterdiam_pix, p.stim.fix.dotcenterdiam_pix/4));
-
-fixationmask_rimthin    = find( makecircleimage(2*p.stim.fix.dotcenterdiam_pix, p.stim.fix.dotthinborderdiam_pix/4) - ...
+fixationmask_rimthin  = find( makecircleimage(2*p.stim.fix.dotcenterdiam_pix, p.stim.fix.dotthinborderdiam_pix/4) - ...
+                           makecircleimage(2*p.stim.fix.dotcenterdiam_pix, p.stim.fix.dotcenterdiam_pix/4));  
+fixationmask_rimthick = find( makecircleimage(2*p.stim.fix.dotcenterdiam_pix, p.stim.fix.dotthickborderdiam_pix/4) - ...
                            makecircleimage(2*p.stim.fix.dotcenterdiam_pix, p.stim.fix.dotcenterdiam_pix/4));  
 
-fixationmask_rimthick   = find( makecircleimage(2*p.stim.fix.dotcenterdiam_pix, p.stim.fix.dotthickborderdiam_pix/4) - ...
-                           makecircleimage(2*p.stim.fix.dotcenterdiam_pix, p.stim.fix.dotcenterdiam_pix/4));  
-
+% Find left & right half moons
+left_idx = find((XX <= 0));
+right_idx = find((XX > 0));
 [~,li] = intersect(fixationmask_rimthick,left_idx);
 [~,ri] = intersect(fixationmask_rimthick,right_idx);
 
@@ -83,6 +82,13 @@ for lum = 1:length(p.stim.fix.dotlum)
     clear temp0 
 end
 
+% create alpha mask
+alpha_mask0 = ones(2*p.stim.fix.dotcenterdiam_pix,2*p.stim.fix.dotcenterdiam_pix,2).*p.stim.bckgrnd_grayval;
+alpha0     = find(makecircleimage(2*p.stim.fix.dotcenterdiam_pix, p.stim.fix.dotthickborderdiam_pix/2));
+
+alpha_mask = reshape(alpha_mask0, size(alpha_mask0,1)*size(alpha_mask0,2),[]);
+alpha_mask(alpha0,2) = ones(length(alpha0),1).*255;
+mask = uint8(reshape(alpha_mask,size(alpha_mask0,1),size(alpha_mask0,2),[]));
 
 figure; 
 for ii = 1:4
@@ -101,7 +107,7 @@ if p.stim.store_imgs
     fprintf('\nStoring images..')
     saveDir = fileparts(fullfile(p.stim.fix.stimfile));
     if ~exist(saveDir,'dir'), mkdir(saveDir); end
-    save(fullfile(sprintf('%s_%s.mat',p.stim.fix.stimfile,datestr(now,30))),'fix_im','info','-v7.3');
+    save(fullfile(sprintf('%s_%s.mat',p.stim.fix.stimfile,datestr(now,30))),'fix_im','mask','info','-v7.3');
 
     saveDir = fileparts(fullfile(p.stim.fix.infofile));
     if ~exist(saveDir,'dir'), mkdir(saveDir); end

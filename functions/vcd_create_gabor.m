@@ -1,4 +1,4 @@
-function [img, alpha_mask] = vcd_create_gabor(img_sz_pix,gauss_std_pix,sf,ori_deg, ph_deg, contrast, grayval)
+function [img, mask] = vcd_create_gabor(img_sz_pix,gauss_std_pix,sf,ori_deg, ph_deg, contrast, grayval)
 % 
 %  img = vcd_create_gabor(img_sz_pix,gauss_std_pix,sf,ori_deg, ph_deg, contrast)
 %
@@ -9,6 +9,7 @@ function [img, alpha_mask] = vcd_create_gabor(img_sz_pix,gauss_std_pix,sf,ori_de
 %   ori_deg         : (int) orientation of grating, 0 = east (degrees)
 %   ph_deg          : (int) phase of grating (degrees)
 %   contrast        : (int) Michelson contrast of gabor (fraction 0-1)
+%   grayval         : (int) background gray value (128)
 %
 % OUTPUT:
 %   img             : (matrix) [x,y] gabor image
@@ -41,12 +42,15 @@ G = G ./ max(G(:)); % normalize height
 G_mask   = exp( - ((X.^2)/(2*3.5*gauss_std_pix^2) + (Y.^2)/(2*3.5*gauss_std_pix^2)));
 G_center = floor(size(G_mask,1)/2)+1;
 thresh   = G_mask(G_center - ceil(3.5*gauss_std_pix), G_center);
-alpha_mask = G_mask < thresh;
-G(alpha_mask)  = 0;
+outsideWindow = G_mask < thresh;
+G(outsideWindow)  = 0;
 
+mask = double(~outsideWindow);
+mask(mask==0) = 0.5; 
+mask = (mask.*254)+1;
+ 
 % clean up
-clear G_mask mask_idx
-
+clear G_mask insideWindow
 
 % Create harmonic
 H = cos(2 * pi * sf * ...
