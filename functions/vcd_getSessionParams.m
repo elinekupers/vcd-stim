@@ -41,14 +41,21 @@ else
     exp_session.stimTaskLabels = cell(length(exp_session.taskClassLabels),length(exp_session.stimClassLabels));
     for row = 1:size(exp_session.crossings,1)
         for col = 1:size(exp_session.crossings,2)
-            exp_session.stimTaskLabels{col,row} = sprintf('%s-%s',lower(exp_session.taskClassLabels{col}),lower(exp_session.stimClassLabels{row}));
+            if strcmp(exp_session.taskClassLabels{col},'scc')
+                    exp_session.stimTaskLabels{col,row} = sprintf('%s-all',lower(exp_session.taskClassLabels{col}));
+            else
+                exp_session.stimTaskLabels{col,row} = sprintf('%s-%s',lower(exp_session.taskClassLabels{col}),lower(exp_session.stimClassLabels{row}));
+            end
         end
     end
     
-    % Set Classic block
-    exp_session.crossings(1:5,1:7) = true;
-    exp_session.crossings(5,3) = false;
+    exp_session.stimTaskLabels(cellfun(@isempty, exp_session.stimTaskLabels)) = [];
     
+    % Set Classic block
+    exp_session.crossings(1:5,1:7) = true; % we keep scc x gabor/rdk/dot/cobj despite that they are technically the same crossing. 
+    exp_session.crossings(5,3) = false; % we remove scc form NS.
+    
+
     % Set Naturalistic tail
     exp_session.crossings(4:5,8:10) = true;
     exp_session.crossings(4,9) = false;
@@ -56,7 +63,7 @@ else
     exp_session.stimTaskLabels = exp_session.stimTaskLabels(exp_session.crossings');
     
     % General exp params
-    exp_session.n_unique_trial_repeats = 4;
+    exp_session.n_unique_trial_repeats = 8;
     exp_session.n_sessions             = 1;%30;
     exp_session.n_runs_per_session     = 10;
     exp_session.TR                     = 1.6; % seconds
@@ -132,10 +139,10 @@ else
         exp_session.trial.stim_array_dur, ...
         exp_session.trial.response_win_dur]);
     
-    assert( nearZero(mod(exp_session.trial.single_epoch_dur / p.stim.fps,1),tolerance))
+    assert( nearZero(mod(exp_session.trial.single_epoch_dur / p.stim.fps,1)))
     
     %%
-    
+    sc_all = 1;
     exp_session.ses_blocks = zeros(size(exp_session.crossings,1),size(exp_session.crossings,2),exp_session.n_sessions);
     
     for ses = 1:exp_session.n_sessions
@@ -143,10 +150,13 @@ else
         for ii = 1:size(exp_session.stimTaskLabels)
             
             curr_cross = exp_session.stimTaskLabels{ii};
-            
-            sc = ~cellfun(@isempty, regexp(curr_cross,exp_session.stimClassLabels, 'match','once'));
-            tc = ~cellfun(@isempty, regexp(curr_cross,exp_session.taskClassLabels, 'match','once'));
-            
+            if strcmp(curr_cross,'scc-all')
+                sc = sc_all; sc_all = sc_all+1;
+                tc = ~cellfun(@isempty, regexp(curr_cross,exp_session.taskClassLabels, 'match','once'));
+            else
+                sc = ~cellfun(@isempty, regexp(curr_cross,exp_session.stimClassLabels, 'match','once'));
+                tc = ~cellfun(@isempty, regexp(curr_cross,exp_session.taskClassLabels, 'match','once'));
+            end
             switch curr_cross
                 %%% FIXATION %%%
                 case {'fix-gabor','fix-rdk','fix-dot','fix-cobj','fix-ns'}
@@ -165,10 +175,10 @@ else
                         exp_session.ses_blocks(sc,tc,ses) = 0;
                     end
                     
-                case 'scc-gabor'
+                case {'scc-gabor','scc-rdk','scc-dot','scc-cobj','scc-all'}
                     if ses >= exp_session.session.task_start(tc)
                         if any(ses==exp_session.session.wideSessions)
-                            exp_session.ses_blocks(sc,tc,ses) = 2;
+                            exp_session.ses_blocks(sc,tc,ses) = 1;
                         else
                             exp_session.ses_blocks(sc,tc,ses) = 1;
                         end
@@ -231,18 +241,7 @@ else
                     else % shouldn't occur, but for completeness..
                         exp_session.ses_blocks(sc,tc,ses) = 0;
                     end
-                    
-                case 'scc-rdk'
-                    if ses >= exp_session.session.task_start(tc)
-                        if any(ses==exp_session.session.wideSessions)
-                            exp_session.ses_blocks(sc,tc,ses) = 2;
-                        else
-                            exp_session.ses_blocks(sc,tc,ses) = 1;
-                        end
-                    else % shouldn't occur, but for completeness..
-                        exp_session.ses_blocks(sc,tc,ses) = 0;
-                    end
-                    
+
                 case 'pc-rdk'
                     if ses >= exp_session.session.task_start(tc)
                         if any(ses==exp_session.session.wideSessions)
@@ -306,24 +305,7 @@ else
                     else % shouldn't occur, but for completeness..
                         exp_session.ses_blocks(sc,tc,ses) = 0;
                     end
-                    
-                case 'scc-dot'
-                    if ses >= exp_session.session.task_start(tc)
-                        
-                        if any(ses==exp_session.session.wideSessions)
-                            exp_session.ses_blocks(sc,tc,ses) = 1;
-                        else
-                            if mod(ses,2)==1 % uneven sessions
-                                exp_session.ses_blocks(sc,tc,ses) = 0;
-                            elseif mod(ses,2)==0 % even sessions
-                                exp_session.ses_blocks(sc,tc,ses) = 1;
-                            end
-                        end
-                        
-                    else % shouldn't occur, but for completeness..
-                        exp_session.ses_blocks(sc,tc,ses) = 0;
-                    end
-                    
+
                 case 'pc-dot'
                     if ses >= exp_session.session.task_start(tc)
                         
@@ -401,28 +383,11 @@ else
                         exp_session.ses_blocks(sc,tc,ses) = 0;
                     end
                     
-                case 'scc-cobj'
-                    if ses >= exp_session.session.task_start(tc)
-                        
-                        if any(ses==exp_session.session.wideSessions)
-                            exp_session.ses_blocks(sc,tc,ses) = 1;
-                        else
-                            if mod(ses,2)==1 % uneven sessions
-                                exp_session.ses_blocks(sc,tc,ses) = 0;
-                            elseif mod(ses,2)==0 % even sessions
-                                exp_session.ses_blocks(sc,tc,ses) = 1;
-                            end
-                        end
-                        
-                    else % shouldn't occur, but for completeness..
-                        exp_session.ses_blocks(sc,tc,ses) = 0;
-                    end
-                    
                 case 'pc-cobj'
                     if ses >= exp_session.session.task_start(tc)
                         
                         if any(ses==exp_session.session.wideSessions)
-                            exp_session.ses_blocks(sc,tc,ses) = 1;
+                            exp_session.ses_blocks(sc,tc,ses) = 2;
                         else
                             if mod(ses,2)==1 % uneven sessions
                                 exp_session.ses_blocks(sc,tc,ses) = 1;
@@ -666,12 +631,16 @@ else
         end
         
     end
+    
+    % Remove scc duplicate stim task label
+    scc_duplicates = find(~cellfun(@isempty, strfind(p.exp.stimTaskLabels,'scc-all')));
+    exp_session.stimTaskLabels(scc_duplicates(2:end)) = [];
 
     if store_params
         fprintf('[%s]:Storing session data..\n',mfilename)
         saveDir = fileparts(fullfile(p.stim.fix.infofile));
         if ~exist(saveDir,'dir'), mkdir(saveDir); end
-        save(fullfile(saveDir, sprintf('exp_session_%s.mat',datestr(now,30))),'exp_session','-v7.3');
+        save(fullfile(saveDir, sprintf('exp_session_%s_%s.mat',p.disp.name, datestr(now,30))),'exp_session','-v7.3');
     end
 end
 
