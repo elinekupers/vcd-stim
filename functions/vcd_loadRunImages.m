@@ -246,7 +246,7 @@ for ii = 1:length(run_image_order)
         
         %         if ~isempty(params.stim.(stimClass).dres) && ...
         %                 sum(params.stim.(stimClass).dres)~=0
-        fprintf('[%s]: check stim size..',mfilename);
+        fprintf('check stim size..');
         for jj = 1:numTrials
             
             statusdots(jj,length(numTrials));
@@ -324,7 +324,7 @@ for ii = 1:length(run_image_order)
         
         assert(p.stim.(stimClass).square_pix_val==true)
         
-        fprintf('square pix values for CLUT..',mfilename);
+        fprintf('square pix values for CLUT..');
         % reshape to get one vector of images
         run_im_tmp0 = squeeze(run_images(ii,jj,:,:));
         sz0 = size(run_im_tmp0);
