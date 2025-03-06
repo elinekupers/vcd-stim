@@ -15,55 +15,50 @@ if load_params
     else
         error('[%s]: Can''t find subject sessions file!', mfilename)
     end
+    
 else
     % Create subject sessions
-
-    % check if trial struct is already defined
-    if isempty(p.trials) || ~isfield(p,'trials')
-        if p.load_params
-            
-            % load trial info
-            d = dir(fullfile(vcd_rootPath,'workspaces','info','trials*.mat'));
-            
-            if ~isempty(d(end).name) && length(d) > 1
+    
+    % check if trial struct is already defined and load it if needed
+    if ~isfield(p,'trials') || isempty(p.trials)
+        
+        % load trial info
+        d = dir(fullfile(vcd_rootPath,'workspaces','info','trials*.mat'));
+        
+        if ~isempty(d(end).name)
+            if length(d) > 1
                 warning('[%s]: Multiple trial.mat files! Will pick the most recent one', mfilename);
-                load(fullfile(d(end).folder,d(end).name),'all_trials');
-                p.trials = all_trials;
-            else
-                error('[%s]: Can''t find trial.mat files! Please check', mfilename);
             end
-            
-        else % or create it
-            p.trials = vcd_makeTrials(p,load_params,store_params);
+            load(fullfile(d(end).folder,d(end).name),'all_trials');
+            p.trials = all_trials;
+        else
+            error('[%s]: Can''t find trial.mat files! Please check or run vcd_makeTrials.m', mfilename);
         end
     end
     
-    if isempty(p.exp) ||  ~isfield(p,'exp')
-        if p.load_params
-            
+    % check if session struct is already defined and load it if needed
+    if ~isfield(p,'exp') || isempty(p.exp) 
+
             % load trial info
             d = dir(fullfile(vcd_rootPath,'workspaces','info','exp_session*.mat'));
             
-            if ~isempty(d(end).name) && length(d) > 1
+            if length(d) == 1
+                load(fullfile(d(end).folder,d(end).name),'exp_session');
+                p.exp = exp_session;
+            elseif length(d) > 1
                 warning('[%s]: Multiple trial.mat files! Will pick the most recent one', mfilename);
                 load(fullfile(d(end).folder,d(end).name),'exp_session');
                 p.exp = exp_session;
             else
-                error('[%s]: Can''t find exp session .mat files! Please check', mfilename);
+                error('[%s]: Can''t find exp session .mat files! Please check or run vcd_getSessionParams.m', mfilename);
             end
-            
-        else % or create it
-            p.exp = vcd_getSessionParams(load_params,store_params);
-        end
     end
     
     %% per task/stim crossing: get nr of trials per miniblock
     
     % Different trial order per block (already accomplished in vcd_makeTrials.m)
-    % Across a single session, each subject will experience the same miniblocks and unique images.
-    tolerance = 1.^-10;
-    nearZero = @(x,tol) abs(x) < tol;
-
+    % Across a single session, each subject will experience the same
+    % miniblocks and unique images
     
     % reset RNG
     rng('shuffle','twister');
@@ -107,13 +102,15 @@ else
                     n_blocks = miniblock_distr(sc,tc);
                     
                     if (n_blocks > 0)
-                        
-                        fprintf('\n%s\t x %s\t\t:\t %d block(s)',p.exp.stimClassLabels{sc},p.exp.taskClassLabels{tc},n_blocks)
-                        
+
                         curr_miniblocks = [stimtask_tracker(sc,tc) : (stimtask_tracker(sc,tc)+n_blocks-1)];
                         
                         for ii = 1:length(curr_miniblocks)
-                            miniblock(bb).name                      = sprintf('%s-%s',p.exp.taskClassLabels{tc},p.exp.stimClassLabels{sc});
+                            if strcmp(p.exp.taskClassLabels{tc},'scc')
+                                miniblock(bb).name   = sprintf('%s-all',p.exp.taskClassLabels{tc});
+                            else
+                                miniblock(bb).name   = sprintf('%s-%s',p.exp.taskClassLabels{tc},p.exp.stimClassLabels{sc});
+                            end
                             miniblock(bb).ID                        = find(strcmp(miniblock(bb).name,p.exp.stimTaskLabels));
                             miniblock(bb).within_session_repeat     = sprintf('%d-out-of-%d',curr_miniblocks(ii),n_blocks);
                             miniblock(bb).trial                     = p.trials.stim(sc).tasks(tc).miniblock(curr_miniblocks(ii)).trial;
@@ -123,11 +120,13 @@ else
                             else
                                 miniblock(bb).trial_type = 1; % double epoch;
                             end
+                                                        
                             bb = bb+1;
                             stimtask_tracker(sc,tc) = stimtask_tracker(sc,tc)+1;
                         end
+                        
+                        fprintf('\n%s   \t:\t %d block(s)',miniblock(bb-1).name,n_blocks)
                     end
-                    
                 end
             end
         end
@@ -138,21 +137,26 @@ else
         while 1
             run_ok = 0;
             run_not_ok = false;
+            
             % Shuffle blocks
             shuffle_idx = randperm(length(miniblock),length(miniblock));
             miniblock_shuffled = miniblock(shuffle_idx);
             
             tt = struct2cell(miniblock_shuffled);
             tm = cell2mat(tt(end,:));
-            for jj = 1:6:length(tm)-1
-                if sum(tm(jj:(jj+5))==2)>2
-                    run_not_ok = true;
+            for jj = 1:p.exp.run.miniblocks_per_run:length(tm) % 
+                if jj+p.exp.run.miniblocks_per_run-1 > length(tm)
+                    break; % exceeding nr of defined blocks
                 else
-                    run_ok = run_ok + 1;
-                end
-                
-                if run_not_ok
-                    break;
+                    if sum(tm(jj:(jj+p.exp.run.miniblocks_per_run-1))==2)>2
+                        run_not_ok = true;
+                    else
+                        run_ok = run_ok + 1;
+                    end
+
+                    if run_not_ok
+                        break;
+                    end
                 end
             end
             if run_ok == p.exp.n_runs_per_session
@@ -221,24 +225,61 @@ else
                 end
                 
                 % Task cue
-                t_taskcue = num2cell([rr, bb-1, miniblock_shuffled(total_block_i).ID, p.exp.miniblock.task_cue_ID, NaN, total_run_time, p.exp.miniblock.task_cue_dur,  total_run_time+p.exp.miniblock.task_cue_dur]);
+                if strcmp(miniblock_shuffled(total_block_i).name,'scc-all')
+                    miniblock_shuffled(total_block_i).ID = miniblock_shuffled(total_block_i).ID(1);
+                end
+                t_taskcue = num2cell([rr, ...
+                    bb-1, ...
+                    miniblock_shuffled(total_block_i).ID, ...
+                    p.exp.miniblock.task_cue_ID, ...
+                    NaN, ...
+                    total_run_time, ...
+                    p.exp.miniblock.task_cue_dur, ...
+                    total_run_time+p.exp.miniblock.task_cue_dur]);
                 
                 
-                % Image IDs
-                fn = fieldnames(miniblock_shuffled(total_block_i).trial);
-                tmp = struct2cell(miniblock_shuffled(total_block_i).trial);
-                unique_im_nr_idx = strcmp(fn,{'unique_im_nr'});
+                % Preallocate space for Image IDs & spat loc cue (thickening dir)
                 t_im_id = cell(n_trials_per_block*2,1);
-                tmp2 = squeeze(tmp(unique_im_nr_idx,:,:));
-                t_im_id(1:2:end,:) = mat2cell(cell2mat(tmp2),ones(1,n_trials_per_block));
-                t_im_id(2:2:end,:) = {p.exp.miniblock.ITI_ID};
-                
-                % Thickening dir
-                thicking_nr_idx = strcmp(fn,{'covert_att_loc_cue'});
                 t_spat_cue =  cell(n_trials_per_block*2,1);
-                t_spat_cue(1:2:end,:) = squeeze(tmp(thicking_nr_idx,:,1));
-                t_spat_cue(2:2:end,:) = {NaN};
+
+                % SCC-all is a cell
+                if iscell(miniblock_shuffled(total_block_i).trial)
+                    % Image IDs
+                    for kk = 1:n_trials_per_block
+                        for ll = 1:length(miniblock_shuffled(total_block_i).trial(kk,:))
+                            fn = fieldnames(miniblock_shuffled(total_block_i).trial{kk,ll});
+                            tmp_unr(kk,ll) = miniblock_shuffled(total_block_i).trial{kk,ll}.unique_im_nr;
+                            tmp_att(kk,ll) = miniblock_shuffled(total_block_i).trial{kk,ll}.covert_att_loc_cue;
+                        end
+                    end
+                    t_im_id(1:2:end,:) = mat2cell(tmp_unr,ones(1,n_trials_per_block));
+                    t_im_id(2:2:end,:) = {p.exp.miniblock.ITI_ID};
+                    
+                    % Thickening dir
+                    t_spat_cue(1:2:end,:) = mat2cell(tmp_att);
+                    t_spat_cue(2:2:end,:) = {NaN};
                 
+                    clear tmp
+                    
+                else % Other crossings are not..
+                    fn = fieldnames(miniblock_shuffled(total_block_i).trial);
+                    tmp = struct2cell(miniblock_shuffled(total_block_i).trial);
+                    unique_im_nr_idx = strcmp(fn,{'unique_im_nr'});
+                    tmp2 = squeeze(tmp(unique_im_nr_idx,:,:));
+                    t_im_id(1:2:end,:) = mat2cell(cell2mat(tmp2),ones(1,n_trials_per_block));
+                    t_im_id(2:2:end,:) = {p.exp.miniblock.ITI_ID};
+
+                    
+                    % Thickening dir
+                    thicking_nr_idx = strcmp(fn,{'covert_att_loc_cue'});
+                    t_spat_cue =  cell(n_trials_per_block*2,1);
+                    t_spat_cue(1:2:end,:) = squeeze(tmp(thicking_nr_idx,:,1));
+                    t_spat_cue(2:2:end,:) = {NaN};
+                    
+                    clear tmp tmp2
+                end
+                
+ 
                 % Assign stimtask ID
                 t_st_id = num2cell(repmat(miniblock_shuffled(total_block_i).ID,2*n_trials_per_block,1));
                 t_st_id(2:2:end,1) = {0};
@@ -255,8 +296,8 @@ else
                 t_cumul_time = t_taskcue{end} + cumsum(t_trial_time);
                 t_onset_time = t_cumul_time - t_trial_time;
                 
-                assert( all(nearZero(mod((t_onset_time./p.stim.fps),1),tolerance)))
-                assert( all(nearZero(mod((t_cumul_time./p.stim.fps),1),tolerance)))
+                assert( all(isint(t_onset_time./p.stim.fps)))
+                assert( all(isint(t_cumul_time./p.stim.fps)))
 
                 % concat columns
                 t_total = [num2cell(repmat(rr,2*n_trials_per_block,1)), num2cell(repmat(bb-1,2*n_trials_per_block,1)), ...
@@ -267,7 +308,7 @@ else
                 sampled_IBI = p.exp.miniblock.IBI(randi(length(p.exp.miniblock.IBI),1));
                 IBI =  sampled_IBI + (1 - mod(t_total{end,end}+sampled_IBI,1));
                 
-                assert( all(nearZero(mod((IBI./p.stim.fps),1),tolerance)))
+                assert( all(nearZero(mod((IBI./p.stim.fps),1))))
                 
                 t_ibi = {rr, bb-1, 0, p.exp.miniblock.IBI_ID, NaN, t_total{end,end}, IBI, t_total{end,end} + IBI};
                 
@@ -308,7 +349,7 @@ else
             
             % Add post-blank period and update total duration
             run(rr).block(bb-1).timing.event_dur(end) = 0; % reset postblank_dur to 0
-            assert(nearZero(run(rr).block(bb-1).timing.run_time(end-1)-total_run_time, tolerance));
+            assert(nearZero(run(rr).block(bb-1).timing.run_time(end-1)-total_run_time));
             
             run(rr).block(bb-1).timing.run_time(end) = total_run_time; % restate previous trial total_run_time;
             
@@ -326,7 +367,7 @@ else
             run(rr).block(bb).trial_type = []; % single or double epoch
             run(rr).block(bb).timing     = cell2table(t_postblank, 'VariableNames',{'run','block','stimtaskID','unique_im','spatial_cue','onset_time','event_dur','run_time'});
             
-            assert(nearZero(mod(run(rr).block(bb).timing.run_time(end),p.exp.TR),tolerance))
+            assert(nearZero(mod(run(rr).block(bb).timing.run_time(end),p.exp.TR)))
             
             % go to the next run
             rr = rr + 1;
