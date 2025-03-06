@@ -92,13 +92,15 @@ fix_texture_thick_left = {};
 fix_texture_thick_right = {};
 fix_rect_thin = CenterRect([0 0 round(size(scan.fix_im,1)) round(size(scan.fix_im,2))],rect);
 fix_rect_thick = CenterRect([0 0 round(size(scan.fix_im,1)) round(size(scan.fix_im,2))],rect);
-
 for ll = 1:size(scan.fix_im,4) % loop over luminance values
     fix_texture_thin_full{ll} = Screen('MakeTexture',win,feval(flipfun,scan.fix_im(:,:,:,ll,1)));   %cat(3, ...,params.stim.fix.dotopacity.*ones(size(scan.fix_im,1),size(scan.fix_im,2)))));
     fix_texture_thick_full{ll} = Screen('MakeTexture',win,feval(flipfun,scan.fix_im(:,:,:,ll,2)));   %cat(3, ...,,params.stim.fix.dotopacity.*ones(size(scan.fix_im,1),size(scan.fix_im,2)))));
     fix_texture_thick_left{ll} = Screen('MakeTexture',win,feval(flipfun,scan.fix_im(:,:,:,ll,3)));  %cat(3, ...,params.stim.fix.dotopacity.*ones(size(scan.fix_im,1),size(scan.fix_im,2)))));
     fix_texture_thick_right{ll} = Screen('MakeTexture',win,feval(flipfun,scan.fix_im(:,:,:,ll,4)));  %cat(3, ...,params.stim.fix.dotopacity.*ones(size(scan.fix_im,1),size(scan.fix_im,2)))));
 end
+
+fix_texture_alpha = Screen('MakeTexture',win,feval(flipfun,scan.fix_alpha_mask));
+
 
 % run functions as first time running them always takes more time
 GetSecs;
@@ -224,9 +226,8 @@ for frame = 1:size(frameorder,2)+1
     
     if frame==1, sendELmessage = true; end
     
-    % Draw background and fix dot
-    Screen('DrawTexture',win,bckrgound_texture,[], bckground_rect, 0, filtermode, 1, framecolor);...
-    Screen('DrawTexture',win,fix_tex0,[], fix_rect, 0, filtermode, params.stim.fix.dotopacity, framecolor);...
+    % Draw background 
+    Screen('DrawTexture',win,bckrgound_texture,[], bckground_rect, 0, filtermode, 1, framecolor);
 
     switch timing.trig_stim(frame,1)
         
@@ -240,9 +241,16 @@ for frame = 1:size(frameorder,2)+1
         % 99 : exp_session.miniblock.IBI_ID
    
         case {0, 93, 94, 95, 96, 98, 99} 
-            % do nothing beyond what we already did above (fix+background)
+            % Draw fix dot on top
+            Screen('DrawTexture',win,fix_tex0,[], fix_rect, 0, filtermode, params.stim.fix.dotopacity, []);
+            Screen('DrawTexture',win,fix_texture_alpha,[], fix_rect_thick, 0, filtermode, [], framecolor);
             
-        case 97 % task_cue_ID            
+        case 97 % task_cue_ID  
+            
+            fix_tex0 = fix_texture_thick_full{opacity_idx};
+            fix_rect = fix_rect_thick;
+            Screen('DrawTexture',win,fix_tex0,[], fix_rect, 0, filtermode, params.stim.fix.dotopacity, framecolor);...
+            
             fd = fopen(taskscript{~cellfun(@isempty, regexp(taskscript,sprintf('%02d',blockID),'match'))}, 'rt');
             instrtext = '';
             tl = fgets(fd);
@@ -257,9 +265,7 @@ for frame = 1:size(frameorder,2)+1
             rect_text = rect + [params.offsetpix(1) params.offsetpix(2) params.offsetpix(1) params.offsetpix(2)];
             DrawFormattedText(win, instrtext, 'center', (rect_text(4)/2)-50,0,75,[],[],[],[],rect_text);
         
-            fix_tex0 = fix_texture_thick_full{opacity_idx};
-            fix_rect = fix_rect_thick;
-            Screen('DrawTexture',win,fix_tex0,[], fix_rect, 0, filtermode, params.stim.fix.dotopacity, framecolor);...
+            
                  
         % Draw stimulus textures
         % 1-30 = all 2 peripheral stimulus aperture stim-task crossings:
@@ -267,25 +273,37 @@ for frame = 1:size(frameorder,2)+1
         %   xx-xx = RDKs
         %   xx-xx = Simple dot
         %   xx-30 = Complex objects
-        % 31-39 = Natural Scene stim-task crossings
         
-        case {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39} 
-            % trig_seq_exp_im_w_cd is a cell with dims: frames x 1, where each cell has 1 or 2 sides (1:l, 2:r)
-            for side = 1:length(find(~cellfun(@isempty, timing.trig_seq_exp_im_w_cd{frame})))
-                txttemp = feval(flipfun,timing.trig_seq_exp_im_w_cd{frame}{side});
-                stim_rect = scan.rects{frame,side};
-                stim_texture = Screen('MakeTexture',win, txttemp);
-                Screen('DrawTexture',win,stim_texture,[],stim_rect,0,filtermode,1,framecolor);
-                
-                % draw mask if it is there
-                if ~isempty(timing.trig_seq_exp_im_mask{frame}{side})
-                    if ~isnan(timing.trig_seq_exp_im_mask{frame}{side})
-                        txttemp = feval(flipfun,timing.trig_seq_exp_im_mask{frame}{side});
-                        mask_texture = Screen('MakeTexture',win, txttemp);
-                        Screen('DrawTexture',win,stim_texture,[],stim_rect,0,filtermode,1,framecolor);
+        case {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30} 
+            if blockID <= 30
+                % trig_seq_exp_im_w_cd is a cell with dims: frames x 1, where each cell has 1 or 2 sides (1:l, 2:r)
+                for side = 1:length(find(~cellfun(@isempty, timing.trig_seq_exp_im_w_cd{frame})))
+                    txttemp = feval(flipfun,timing.trig_seq_exp_im_w_cd{frame}{side});
+                    stim_rect = scan.rects{frame,side};
+                    stim_texture = Screen('MakeTexture',win, txttemp);
+                    Screen('DrawTexture',win,stim_texture,[],stim_rect,0,filtermode,1,framecolor);
+
+                    % draw mask if it is there
+                    if ~isempty(timing.trig_seq_exp_im_mask{frame}{1})
+                        if ~isnan(timing.trig_seq_exp_im_mask{frame}{1})
+                            txttemp = feval(flipfun,timing.trig_seq_exp_im_mask{frame}{1});
+                            mask_texture = Screen('MakeTexture',win, txttemp);
+                            Screen('DrawTexture',win,stim_texture,[],stim_rect,0,filtermode,1,framecolor);
+                        end
                     end
                 end
+            
+            else % 31-39 = Natural Scene stim-task crossings ({31,32,33,34,35,36,37,38,39})
+                txttemp = feval(flipfun,timing.trig_seq_exp_im_w_cd{frame}{1});
+                stim_rect = scan.rects{frame,1};
+                stim_texture = Screen('MakeTexture',win, txttemp);
+                Screen('DrawTexture',win,stim_texture,[],stim_rect,0,filtermode,1,framecolor);
             end
+            
+        % Draw fix dot on top
+        Screen('DrawTexture',win,fix_tex0,[], fix_rect, 0, filtermode, params.stim.fix.dotopacity, []);
+        Screen('DrawTexture',win,fix_texture_alpha,[], fix_rect_thick, 0, filtermode, [], framecolor);
+            
     end
     
     
@@ -304,7 +322,7 @@ for frame = 1:size(frameorder,2)+1
             if when == 0 || GetSecs >= when
 
                 % issue the flip command and record the empirical time
-                [VBLTimestamp,~,~,~,~] = Screen('Flip',win,  0, 1);
+                [VBLTimestamp,~,~,~,~] = Screen('Flip',win,  0);
                 timeframes(framecnt) = VBLTimestamp;
 
                 % get matlab now for the very first stimulus frame
