@@ -29,7 +29,7 @@ else
     
     all_unique_im = struct();
     all_cond_master = struct();
-
+    
     % We need to define all possible combinations
     % Depending on the session, run, and subject, we need to define the
     % combinations we want to show, converted into miniblocks, where trials are
@@ -139,7 +139,7 @@ else
                     all_unique_im.gabor = unique_im;
                     
                     % Start shuffling the conditions and add to master matrix
-                    cond_master = [];
+                    cond_master = []; clear conds_shuffle0 conds_shuffle1
                     for rep = 1:n_repeats
                         
                         conds_master_single_rep = [];
@@ -168,10 +168,13 @@ else
                             conds_master_single_rep = [conds_master_single_rep;conds_shuffle2];
                             
                         else
+                            
                             for loc = 1:n_stimloc_cues % cued vs uncued
+                                
                                 % shuffle orientation every 8 trials
                                 shuffle_ori = shuffle_concat([1:n_ori_bins],n_contrasts);
                                 shuffle_ori = shuffle_ori' + repelem([0:n_ori_bins:(n_unique_cases-1)],n_ori_bins)';
+                                assert(isequal(unique(shuffle_ori),[1:(n_ori_bins*n_contrasts)]'))
                                 
                                 % shuffle contrasts every 3 trials
                                 shuffle_c = shuffle_concat(1:n_contrasts,n_unique_cases/n_contrasts);
@@ -179,6 +182,7 @@ else
                                 case_vec = case_vec';
                                 case_vec = case_vec(:);
                                 shuffled_c = case_vec(shuffle_c + repelem([0:n_contrasts:(n_unique_cases-1)],n_contrasts),:);
+                                assert(isequal(unique(shuffle_c + repelem([0:n_contrasts:(n_unique_cases-1)],n_contrasts)),[1:n_unique_cases]))
                                 
                                 conds_shuffle0 = unique_im(shuffle_ori,:); % <-- first shuffle based on unique nr of orientations
                                 conds_shuffle1 = conds_shuffle0(shuffled_c,:); % <-- then shuffle based on unique nr of contrasts, such that new trial order prioritized contrast order
@@ -186,24 +190,47 @@ else
                                 if loc == 1
                                     cue_vec = shuffle_concat(stimloc_cues,n_unique_cases/n_stimloc_cues)';
                                     
+                                    % store for next round
+                                    cue_vec1 = cue_vec;
+                                    im_cue_vec1 = conds_shuffle1(find(cue_vec1),1);
+                                    
                                 elseif loc == 2
                                     cue_vec_anti = zeros(size(cue_vec));
-                                    prev_cue_vec = conds_shuffle1(find(cue_vec),1);
+                                    prev_cue_vec = im_cue_vec1;
                                     
-                                    conds_to_be_cued = setdiff([1:n_unique_cases],prev_cue_vec);
-                                    conds_to_be_cued_i = intersect(conds_shuffle1(:,1),conds_to_be_cued','stable');
-                                    cue_vec_anti(conds_to_be_cued_i) = 1;
+                                    im_to_be_cued = setdiff([1:n_unique_cases],prev_cue_vec);
+                                    im_to_be_cued_i = intersect(conds_shuffle1(:,1),im_to_be_cued','stable');
+                                    cue_vec_anti(im_to_be_cued_i) = 1;
                                     cue_vec = cue_vec_anti;
                                 end
+                                
+                                conds_shuffle2 = [conds_shuffle1, cue_vec];
+                                
+                                conds_master_single_rep = [conds_master_single_rep;conds_shuffle2];
+                                
+%                                  clear conds_shuffle0 conds_shuffle1 conds_shuffle2
+                                
+                                %% MEH
+                                %                             if ~exist('conds_shuffle1','var') || isempty(conds_shuffle1)
+                                %                                 cue_vec = shuffle_concat(stimloc_cues,n_unique_cases/n_stimloc_cues)';
+                                %                                 cue_vec_anti = double(~cue_vec);
+                                %                             else
+                                %                                 prev_cue_vec = conds_shuffle1(:,6)==1; % or just cue_vec?
+                                %                                 conds_to_be_cued = setdiff([1:n_unique_cases],conds_shuffle1(prev_cue_vec,1)');
+                                %                                 conds_to_be_cued_i = intersect(unique_im(:,1),conds_to_be_cued','stable');
+                                % %                                 assert(isequal(find(cue_vec_anti),conds_to_be_cued'))
+                                % %                                 cue_vec_anti(conds_to_be_cued_i) = 1;
+                                % %                                 cue_vec = cue_vec_anti;
+                                %                                 cue_vec = zeros(size(prev_cue_vec));
+                                %                                 cue_vec(conds_to_be_cued_i) = 1;
+                                %                             end
+                                
+                                %                             unique_im = [unique_im, cue_vec];
+                                %                             conds_master_single_rep = [conds_master_single_rep;conds_shuffle1];
+                                %%
                             end
                             
-                            conds_shuffle2 = [conds_shuffle1, cue_vec];
-                            
-                            conds_master_single_rep = [conds_master_single_rep;conds_shuffle2];
                         end
-                        
-                        clear conds_shuffle0 conds_shuffle1 conds_shuffle2
-                        
                         % reorganize column order
                         conds_master_single_rep2 = NaN(size(conds_master_single_rep));
                         
@@ -220,7 +247,7 @@ else
                         % Add WM change
                         if strcmp(tasks(task_crossings(curr_task)).name,'wm')
                             n_deltas = length(p.stim.gabor.delta_from_ref);
-                            delta_vec = shuffle_concat(p.stim.gabor.delta_from_ref, (n_unique_cases/n_deltas));
+                            delta_vec = shuffle_concat(p.stim.gabor.delta_from_ref, (n_unique_cases/(n_deltas/2)));
                             orient2 = conds_master_single_rep3(:,6) + delta_vec';
                         else
                             orient2 = NaN(size(conds_master_single_rep3,1),1);
@@ -242,11 +269,16 @@ else
                         % Accummulate
                         cond_master = [cond_master; conds_master_single_rep3];
                         
+                        % thickening direction doesn't have to match
+                        % between left and right, from my
+                        % understanding...
+                        assert(isequal(sum(cond_master(:,2)==1),sum(cond_master(:,2)==2)))
+                        
                         % Clean up
                         clear  conds_master_single_rep2 conds_master_single_rep3
                         
+                        
                     end
-                    
                     % conds_master_reordered :   n/2 trials x 9 matrix with the following columns
                     %                               1: trial nr (every trial occupies two rows)
                     %                               2: thickening_dir (1=left, 2=right, 3=both)
@@ -297,7 +329,7 @@ else
                 end
                 
                 all_cond_master.gabor = cond_master;
-
+                
                 clear cond_master
                 all_trials.stim(stimClass_idx).name  = stimClass_name;
                 all_trials.stim(stimClass_idx).tasks = tasks;
@@ -368,7 +400,7 @@ else
                     % give each unique image a nr, define it's properties
                     unique_im = cat(1, 1:length(motdir_vec), stimloc_vec, motdir_vec, coh_vec)';
                     all_unique_im.rdk = unique_im;
-
+                    
                     % Start shuffling the conditions and add to master matrix
                     cond_master = [];
                     for rep = 1:n_repeats
@@ -417,13 +449,15 @@ else
                                 if loc == 1
                                     cue_vec = shuffle_concat(stimloc_cues,n_unique_cases/n_stimloc_cues)';
                                     
+                                    
+                                    
                                 elseif loc == 2
                                     cue_vec_anti = zeros(size(cue_vec));
                                     prev_cue_vec = conds_shuffle1(find(cue_vec),1);
                                     
-                                    conds_to_be_cued = setdiff([1:n_unique_cases],prev_cue_vec);
-                                    conds_to_be_cued_i = intersect(conds_shuffle1(:,1),conds_to_be_cued','stable');
-                                    cue_vec_anti(conds_to_be_cued_i) = 1;
+                                    im_to_be_cued = setdiff([1:n_unique_cases],prev_cue_vec);
+                                    im_to_be_cued_i = intersect(conds_shuffle1(:,1),im_to_be_cued','stable');
+                                    cue_vec_anti(im_to_be_cued_i) = 1;
                                     cue_vec = cue_vec_anti;
                                 end
                                 
@@ -431,9 +465,9 @@ else
                                 
                                 conds_master_single_rep = [conds_master_single_rep;conds_shuffle2];
                             end
+                            
+                            clear conds_shuffle0 conds_shuffle1 conds_shuffle2
                         end
-                        clear conds_shuffle0 conds_shuffle1 conds_shuffle2
-                        
                         
                         % Reorganize column order
                         conds_master_single_rep2 = NaN(size(conds_master_single_rep));
@@ -456,14 +490,14 @@ else
                             motdir2 = NaN(size(conds_master_single_rep3,1),1);
                         end
                         % Add ltm pair.
-%                         if strcmp(tasks(task_crossings(curr_task)).name,'ltm')
-% %                             pair_match = [];
-% %                             delta_vec = shuffle_concat(p.stim.rdk.ltm_pairs, (n_unique_cases/(n_deltas/2)));
-% %                             pair_vec = conds_master_single_rep3(:,7) + delta_vec';
-%                         else
+                        %                         if strcmp(tasks(task_crossings(curr_task)).name,'ltm')
+                        % %                             pair_match = [];
+                        % %                             delta_vec = shuffle_concat(p.stim.rdk.ltm_pairs, (n_unique_cases/(n_deltas/2)));
+                        % %                             pair_vec = conds_master_single_rep3(:,7) + delta_vec';
+                        %                         else
                         pair_vec = NaN(size(conds_master_single_rep3,1),1);
                         lure_vec = pair_vec; % should be boolean
-%                         end
+                        %                         end
                         
                         % Keep track of repeat
                         rep_vec = rep.*ones(size(conds_master_single_rep3,1),1);
@@ -576,7 +610,7 @@ else
                     % give each unique image a nr, define it's properties
                     unique_im = cat(1, 1:length(dot_loc_vec), stimloc_vec, dot_loc_vec)';
                     all_unique_im.dot = unique_im;
-
+                    
                     % Start shuffling the conditions and add to master matrix
                     cond_master = [];
                     
@@ -613,9 +647,9 @@ else
                                     cue_vec_anti = zeros(size(cue_vec));
                                     prev_cue_vec = conds_shuffle1(find(cue_vec),1);
                                     
-                                    conds_to_be_cued = setdiff([1:n_unique_cases],prev_cue_vec);
-                                    conds_to_be_cued_i = intersect(conds_shuffle1(:,1),conds_to_be_cued','stable');
-                                    cue_vec_anti(conds_to_be_cued_i) = 1;
+                                    im_to_be_cued = setdiff([1:n_unique_cases],prev_cue_vec);
+                                    im_to_be_cued_i = intersect(conds_shuffle1(:,1),im_to_be_cued','stable');
+                                    cue_vec_anti(im_to_be_cued_i) = 1;
                                     cue_vec = cue_vec_anti;
                                 end
                                 
@@ -647,14 +681,14 @@ else
                         end
                         
                         % Add ltm pair.
-%                         if strcmp(tasks(task_crossings(curr_task)).name,'ltm')
-% %                             pair_match = [];
-% %                             delta_vec = shuffle_concat(p.stim.cobj.delta_from_ref, (n_unique_cases/(n_deltas/2)));
-% %                             pair_vec = conds_master_single_rep3(:,7) + delta_vec';
-%                         else
+                        %                         if strcmp(tasks(task_crossings(curr_task)).name,'ltm')
+                        % %                             pair_match = [];
+                        % %                             delta_vec = shuffle_concat(p.stim.cobj.delta_from_ref, (n_unique_cases/(n_deltas/2)));
+                        % %                             pair_vec = conds_master_single_rep3(:,7) + delta_vec';
+                        %                         else
                         pair_vec = NaN(size(conds_master_single_rep3,1),1);
                         lure_vec = pair_vec; % should be boolean
-%                         end
+                        %                         end
                         
                         % Keep track of repeat
                         rep_vec = rep.*ones(size(conds_master_single_rep3,1),1);
@@ -828,7 +862,7 @@ else
                     % give each unique image a nr, define it's properties
                     unique_im = cat(1, 1:length(stimloc_vec), stimloc_vec, super_cat_vec, basic_cat_vec, sub_cat_vec, facing_dir_vec)';
                     all_unique_im.cobj = unique_im;
-                                        
+                    
                     
                     % Start shuffling the conditions and add to master matrix
                     cond_master = [];
@@ -892,9 +926,9 @@ else
                                     cue_vec_anti = zeros(size(cue_vec));
                                     prev_cue_vec = conds_shuffle2(find(cue_vec),1);
                                     
-                                    conds_to_be_cued = setdiff([1:n_unique_cases],prev_cue_vec);
-                                    conds_to_be_cued_i = intersect(conds_shuffle2(:,1),conds_to_be_cued','stable');
-                                    cue_vec_anti(conds_to_be_cued_i) = 1;
+                                    im_to_be_cued = setdiff([1:n_unique_cases],prev_cue_vec);
+                                    im_to_be_cued_i = intersect(conds_shuffle2(:,1),im_to_be_cued','stable');
+                                    cue_vec_anti(im_to_be_cued_i) = 1;
                                     cue_vec = cue_vec_anti;
                                 end
                                 
@@ -932,14 +966,14 @@ else
                         end
                         
                         % Add ltm pair.
-%                         if strcmp(tasks(task_crossings(curr_task)).name,'ltm')
-% %                             pair_match = [];
-% %                             delta_vec = shuffle_concat(p.stim.cobj.delta_from_ref, (n_unique_cases/(n_deltas/2)));
-% %                             pair_vec = conds_master_single_rep3(:,7) + delta_vec';
-%                         else
-                            pair_vec = NaN(size(conds_master_single_rep3,1),1);
-                            lure_vec = pair_vec;
-%                         end
+                        %                         if strcmp(tasks(task_crossings(curr_task)).name,'ltm')
+                        % %                             pair_match = [];
+                        % %                             delta_vec = shuffle_concat(p.stim.cobj.delta_from_ref, (n_unique_cases/(n_deltas/2)));
+                        % %                             pair_vec = conds_master_single_rep3(:,7) + delta_vec';
+                        %                         else
+                        pair_vec = NaN(size(conds_master_single_rep3,1),1);
+                        lure_vec = pair_vec;
+                        %                         end
                         
                         % Keep track of repeat
                         rep_vec = rep.*ones(size(conds_master_single_rep3,1),1);
@@ -1039,7 +1073,7 @@ else
                 % give each unique image a nr, define it's properties
                 unique_im = cat(1, 1:n_unique_cases, stimloc_vec, super_cat_vec, basic_cat_vec, sub_cat_vec)';
                 all_unique_im.ns = unique_im;
-
+                
                 tasks = struct('name',[],'miniblock',[],'has_loc_cue',[]);
                 
                 for curr_task = 1:length(task_crossings)
@@ -1131,17 +1165,17 @@ else
                         end
                         
                         % add ltm change
-%                         if strcmp(tasks(task_crossings(curr_task)).name,'ltm')
-%                             n_stim_pairs = length(p.stim.ns.stim_pairs_ltm);
-%                             pair_vec = shuffle_concat(1:length(p.stim.ns.stim_pairs_ltm), ceil(size(trial_vec,1)/n_changes))';
-%                             pair_vec = pair_vec(1:size(trial_vec,1));
-%                             
-%                             n_lures = length(p.stim.ns.lure_im);
-%                             lure_vec = (pair_vec==;
-%                         else
-                            pair_vec = NaN(size(conds_master_single_rep3,1),1);
-                            lure_vec = pair_vec;
-%                         end
+                        %                         if strcmp(tasks(task_crossings(curr_task)).name,'ltm')
+                        %                             n_stim_pairs = length(p.stim.ns.stim_pairs_ltm);
+                        %                             pair_vec = shuffle_concat(1:length(p.stim.ns.stim_pairs_ltm), ceil(size(trial_vec,1)/n_changes))';
+                        %                             pair_vec = pair_vec(1:size(trial_vec,1));
+                        %
+                        %                             n_lures = length(p.stim.ns.lure_im);
+                        %                             lure_vec = (pair_vec==;
+                        %                         else
+                        pair_vec = NaN(size(conds_master_single_rep3,1),1);
+                        lure_vec = pair_vec;
+                        %                         end
                         
                         % Keep track of repeat
                         rep_vec = rep.*ones(size(conds_master_single_rep3,1),1);
@@ -1156,14 +1190,14 @@ else
                     
                     
                     %% Divide trials into miniblocks
-                    %                 lingering_trials = mod(size(conds_master_reordered,1),n_trials_per_block);
-                    %                 if (n_trials_per_block == 8) && (lingering_trials == 6)
-                    %                     n_trials_per_block2 = n_trials_per_block - 2;
-                    %                 elseif (n_trials_per_block == 4) && (lingering_trials == 2)
-                    %                     n_trials_per_block2 = n_trials_per_block + 1;
-                    %                 else
-                    n_trials_per_block2 = n_trials_per_block;
-                    %                 end
+                    %                     %                 lingering_trials = mod(size(conds_master_reordered,1),n_trials_per_block);
+                    %                     %                 if (n_trials_per_block == 8) && (lingering_trials == 6)
+                    %                     %                     n_trials_per_block2 = n_trials_per_block - 2;
+                    %                     %                 elseif (n_trials_per_block == 4) && (lingering_trials == 2)
+                    %                     %                     n_trials_per_block2 = n_trials_per_block + 1;
+                    %                     %                 else
+                    %                     n_trials_per_block2 = n_trials_per_block;
+                    %                     %                 end
                     miniblock_trials = reshape(1:size(cond_master,1),n_trials_per_block,[]);
                     
                     for mm = 1:size(miniblock_trials,2)
@@ -1184,7 +1218,7 @@ else
                             trial(1,local_trial_nr).paired_stim             = cond_master(miniblock_trials(local_trial_nr,mm),10);
                             trial(1,local_trial_nr).lure                    = cond_master(miniblock_trials(local_trial_nr,mm),11);
                             trial(1,local_trial_nr).repeat_nr               = cond_master(miniblock_trials(local_trial_nr,mm),12);
-
+                            
                             if ~isnan(trial(1,local_trial_nr).change_blindness)
                                 trial(1,local_trial_nr).change_blindness_name   = p.stim.ns.change_im{cond_master(miniblock_trials(local_trial_nr,mm),9)};
                             else
@@ -1211,7 +1245,129 @@ else
                 all_trials.stim(stimClass_idx).tasks = tasks;
         end
     end
-
+    
+    %% Combine and shuffle SCC trials
+    scc_idx = cell2mat(cellfun(@(x) strcmp(p.exp.taskClassLabels,x), {'scc'}, 'UniformOutput', false));
+    stim_crossings = find(p.exp.crossings(:,scc_idx));
+    
+    left_cued = {};
+    right_cued = {};
+    left_uncued = {};
+    right_uncued = {};
+    
+    stim_trial_counter = NaN(4,4);
+    
+    for ii = 1:length(stim_crossings)
+        
+        trial_nr_cued_left    = 1;
+        trial_nr_uncued_left  = 1;
+        trial_nr_cued_right   = 1;
+        trial_nr_uncued_right = 1;
+        
+        for mm = 1:length(all_trials.stim(stim_crossings(ii)).tasks(scc_idx).miniblock)
+            
+            for tt = 1:size(all_trials.stim(stim_crossings(ii)).tasks(scc_idx).miniblock(mm).trial,1)
+                
+                curr_trial_left = all_trials.stim(stim_crossings(ii)).tasks(scc_idx).miniblock(mm).trial(tt,1);
+                curr_trial_right = all_trials.stim(stim_crossings(ii)).tasks(scc_idx).miniblock(mm).trial(tt,2);
+                
+                % left uncued images
+                if curr_trial_left.cue_status == 0
+                    curr_trial_left.name = p.exp.stimClassLabels{stim_crossings(ii)};
+                    left_uncued{ii,trial_nr_uncued_left} = curr_trial_left;
+                    trial_nr_uncued_left = trial_nr_uncued_left+1;
+                    
+                    % left cued images
+                elseif curr_trial_left.cue_status == 1
+                    curr_trial_left.name = p.exp.stimClassLabels{stim_crossings(ii)};
+                    left_cued{ii,trial_nr_cued_left} = curr_trial_left;
+                    trial_nr_cued_left = trial_nr_cued_left+1;
+                end
+                
+                
+                
+                % right uncued images
+                if curr_trial_right.cue_status == 0
+                    curr_trial_right.name = p.exp.stimClassLabels{stim_crossings(ii)};
+                    right_uncued{ii,trial_nr_uncued_right} = curr_trial_right;
+                    trial_nr_uncued_right = trial_nr_uncued_right+1;
+                    
+                    % right cued images
+                elseif curr_trial_right.cue_status == 1
+                    curr_trial_right.name = p.exp.stimClassLabels{stim_crossings(ii)};
+                    right_cued{ii,trial_nr_cued_right} = curr_trial_right;
+                    trial_nr_cued_right = trial_nr_cued_right+1;
+                end
+                
+                
+            end
+        end
+        
+        stim_trial_counter(ii,:) = [trial_nr_uncued_left, trial_nr_cued_left,  trial_nr_uncued_right, trial_nr_cued_right]-1;
+    end
+    
+    left_cued = left_cued(:);
+    right_cued = right_cued(:);
+    left_uncued = left_uncued(:);
+    right_uncued = right_uncued(:);
+    
+    left_cued(cellfun(@isempty, left_cued)) = [];
+    right_cued(cellfun(@isempty, right_cued)) = [];
+    left_uncued(cellfun(@isempty, left_uncued)) = [];
+    right_uncued(cellfun(@isempty, right_uncued)) = [];
+    
+    shuffle_idx_left_uncued  = shuffle_concat(1:length(left_uncued),1);
+    shuffle_idx_left_cued    = shuffle_concat(1:length(left_cued),1);
+    shuffle_idx_right_uncued = shuffle_concat(1:length(right_uncued),1);
+    shuffle_idx_right_cued   = shuffle_concat(1:length(right_cued),1);
+    
+    
+    shuffled_left_cued  = left_cued(shuffle_idx_left_cued);
+    shuffled_right_cued = right_cued(shuffle_idx_right_cued);
+    shuffled_left_uncued  = left_uncued(shuffle_idx_left_uncued);
+    shuffled_right_uncued = right_uncued(shuffle_idx_right_uncued);
+    
+    nr_trials_per_cued_side = [length(shuffled_left_uncued)+length(shuffled_right_cued),length(shuffled_left_cued)+length(shuffled_right_uncued)];
+    [min_trials, min_trial_idx] = min(nr_trials_per_cued_side);
+    
+    counter_left_cue = 1; counter_right_cue = 1;
+    for ii = 1:length(stim_crossings)
+        for mm = 1:length(all_trials.stim(stim_crossings(ii)).tasks(scc_idx).miniblock)
+            all_trials.stim(stim_crossings(ii)).tasks(scc_idx).miniblock(mm).name = 'scc-all';
+            
+            curr_block_trials = all_trials.stim(stim_crossings(ii)).tasks(scc_idx).miniblock(mm).trial;
+            all_trials.stim(stim_crossings(ii)).tasks(scc_idx).miniblock(mm).trial = cell(p.exp.miniblock.n_trials_single_epoch,2);
+            
+            for tt = 1:p.exp.miniblock.n_trials_single_epoch
+                left_cue_status = curr_block_trials(tt,1).cue_status;
+                
+                if left_cue_status == 0 % left uncued / right cued
+                    if counter_right_cue <= nr_trials_per_cued_side(1)
+                        all_trials.stim(stim_crossings(ii)).tasks(scc_idx).miniblock(mm).trial{tt,1} = shuffled_left_uncued{counter_right_cue}; % left images
+                        all_trials.stim(stim_crossings(ii)).tasks(scc_idx).miniblock(mm).trial{tt,2} = shuffled_right_cued{counter_right_cue};  % right images
+                        counter_right_cue = counter_right_cue+1;
+                    elseif counter_left_cue <= nr_trials_per_cued_side(3) % pad with other condition if we run out
+                        all_trials.stim(stim_crossings(ii)).tasks(scc_idx).miniblock(mm).trial{tt,1} = shuffled_left_cued{counter_left_cue}; % left images
+                        all_trials.stim(stim_crossings(ii)).tasks(scc_idx).miniblock(mm).trial{tt,2} = shuffled_right_uncued{counter_left_cue};  % right images
+                        counter_left_cue = counter_left_cue +1;
+                    end
+                elseif left_cue_status == 1 % left cued / right uncued
+                    if counter_left_cue <= nr_trials_per_cued_side(2)
+                        all_trials.stim(stim_crossings(ii)).tasks(scc_idx).miniblock(mm).trial{tt,1} = shuffled_left_cued{counter_left_cue}; % left images
+                        all_trials.stim(stim_crossings(ii)).tasks(scc_idx).miniblock(mm).trial{tt,2} = shuffled_right_uncued{counter_left_cue}; % right images
+                        counter_left_cue = counter_left_cue +1;
+                    elseif counter_right_cue <= nr_trials_per_cued_side(1)
+                        all_trials.stim(stim_crossings(ii)).tasks(scc_idx).miniblock(mm).trial{tt,1} = shuffled_left_uncued{counter_right_cue}; % left images
+                        all_trials.stim(stim_crossings(ii)).tasks(scc_idx).miniblock(mm).trial{tt,2} = shuffled_right_cued{counter_right_cue};  % right images
+                        counter_right_cue = counter_right_cue+1;
+                    end
+                end
+                
+            end
+        end
+    end
+    
+    
     if store_params
         fprintf('[%s]:Storing trial data..\n',mfilename)
         saveDir = fullfile(vcd_rootPath,'workspaces','info');
