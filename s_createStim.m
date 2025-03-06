@@ -2,9 +2,13 @@
 
 verbose = true; % plot stimuli or not
 
+%% %%%%%%%%%%%%%%%%%%%
+%%%%%% PARAMETERS %%%% 
+%%%%%%%%%%%%%%%%%%%%%%
+
 % Get display params
-dispname = '7TAS_BOLDSCREEN32'; % or 'KKOFFICEQ3277' or psychophys room??
-p.disp = vcd_getDisplayParams(dispname);
+dispname = '7TAS_BOLDSCREEN32'; % or 'KKOFFICEQ3277' or 'EKHOME_ASUSVE247' or 'PPROOM_EIZOFLEXSCAN'
+p.disp   = vcd_getDisplayParams(dispname);
 
 %% Get stimulus parameters
 p.load_params  = true;
@@ -12,36 +16,51 @@ p.store_params = true;
 p.store_imgs   = true;
 saveFigsFolder = fullfile(vcd_rootPath,'figs');
 
-p.stim   = vcd_getStimParams('all',p.disp,p.load_params,p.store_params); % Choose from <'gabor'> <'rdk'> <'dot'> <'cobj'> <'ns'> <'all'>
+%% Define/Load stimulus params 
+% !!WARNING!! There is randomization component in this function, if you rerun
+% this function without loading prior stored parameters, some values will
+% change (e.g., orientation of gabor stimuli or dot locations)
+% Input 1: Stimulus type, choose from 'gabor','rdk','dot','cobj','ns','all' (default is 'all')
+% Input 2: display params struct (see vcd_getDisplayParams.m)
+p.stim   = vcd_getStimParams('all',p.disp,p.load_params,p.store_params); 
+
+%% Define/Load experiment session params
 p.exp    = vcd_getSessionParams(p,p.load_params,p.store_params);
-%%
+
+%% Make/Load miniblocks with trials that sample unique stimuli from each class
 p.trials = vcd_makeTrials(p,p.load_params,p.store_params);
-subject_sessions = vcd_createSessions(p,p.load_params,p.store_params);
 
+%% Create/Load miniblocks into runs and sessions, shuffle blocks within a run for each subject's run
+subject_sessions = vcd_createSessions(p,false,p.store_params);
 
-%% background
+%% %%%%%%%%%%%%%%%%
+%%%%%% STIMULI %%%% 
+%%%%%%%%%%%%%%%%%%%
 
-bckgrnd_im = vcd_pinknoisebackground(p, 'comb', 'fat', 1); % 'skinny' or 'fat', type: 'puzzle', 'dotring', or 'comb'
+%% Create background
+% 1: params struct
+% 2: type: 'puzzle', 'dotring', or 'comb'
+% 3: rim width, choose from: 'skinny' (no blank space between noise and stim) or 'fat' (2 dva space between noise and stim)
+% 4: number of images with uniquely generated noise
+bckgrnd_im = vcd_pinknoisebackground(p, 'comb', 'fat', 1); 
 
-%% fixation dot
+%% Fixation dot
 fix_im = vcd_fixationDot(p);
 
-%% Gabor
+%% Gabor image
 gbr_im = vcd_gabor(p);
 
-%% RDK
+%% RDK image
 rdk_im = vcd_rdk(p);
 
 %% Simple dot
 img_dot  = vcd_simpledot(p);
 
-%% Complex object
+%% Complex objects
 img_cobj = vcd_complexobjects(p);
-
 
 %% Natural scenes
 img_ns  = vcd_naturalscenes(p);
-
 
 %% Visualize stimuli
 
