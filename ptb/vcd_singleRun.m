@@ -191,9 +191,10 @@ if ~exist('scan','var') || ~isfield(scan,'fix_im') || isempty(scan.fix_im)
         fprintf('[%s]: Loading fixation dot images..\n',mfilename);
         % FIX: 5D array: [x,y, 3, 5 lum, 2 widths]
         d = dir(sprintf('%s*.mat', params.stim.fix.stimfile));
-        load(fullfile(d(end).folder,d(end).name), 'fix_im','info');
+        load(fullfile(d(end).folder,d(end).name), 'fix_im','mask','info');
         images.fix = fix_im; clear fix_im;
         images.info.fix = info; clear info;
+        images.alpha.fix = mask; clear mask;
     end
     
     % rescale fix dot if needed:
@@ -209,9 +210,9 @@ if ~exist('scan','var') || ~isfield(scan,'fix_im') || isempty(scan.fix_im)
             old_fix_sz(2),... y
             3, ... % rgb
             []); % 5 luminance and 2 rim widths
-        
+                
         numIn = size(tmp_im,4);
-        
+        tmp_im = double(tmp_im);
         for kk = 1:numIn
             tmp0 = imresize(tmp_im(:,:,:,kk),p.stim.fix.dres); %% DEFAULT IS BICUBIC
             
@@ -232,10 +233,15 @@ if ~exist('scan','var') || ~isfield(scan,'fix_im') || isempty(scan.fix_im)
         end
         
         images.fix = reshape(im_rz,old_fix_sz(1),old_fix_sz(2),old_fix_sz(3),old_fix_sz(4),old_fix_sz(5));
+        
+        tmp_alpha = double(images.alpha.fix);
+        tmp_alpha = imresize(tmp_alpha,p.stim.fix.dres); %% DEFAULT IS BICUBIC
+        images.alpha.fix = uint8(tmp_alpha);
     end
     
     if ~isfield(scan,'fix_im') || ~isempty(scan.fix_im)
         scan.fix_im = images.fix;
+        scan.fix_alpha_mask = images.alpha.fix;
     end
     
 end
