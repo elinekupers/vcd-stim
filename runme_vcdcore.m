@@ -211,7 +211,6 @@ end
 % Deal with debug mode
 if debugmode
     wanteyetracking = false;
-    Screen('Preference', 'SkipSyncTests', 1);
 end
 
 
