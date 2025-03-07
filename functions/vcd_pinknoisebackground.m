@@ -146,7 +146,8 @@ tmp = uint8(tmp);
 % end
 
 bckgrnd_im = reshape(tmp, size(bckground_mask,1),size(bckground_mask,2),num);
-
+bckgrnd_im = repmat(bckgrnd_im, [1 1 1 3]);
+bckgrnd_im = permute(bckgrnd_im, [1 2 4 3]);
 % if p.verbose
 %     figure; clf;
 %     for jj = 1:num
