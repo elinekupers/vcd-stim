@@ -260,15 +260,17 @@ else
                 p.duration      = dur_fps;                                     % frames (nr of monitor refreshes)
                 
                 % SPATIAL
-                p.img_sz_deg    = parafov_circle_diam_deg;                      % height (or width) of square stimulus support (deg)
-                p.img_sz_pix    = parafov_circle_diam_pix;                      % height (or width) of square stimulus support (pix)
                 p.contrast      = 1;                                            % Michelson [0-1] (fraction)
                 p.x0_deg        = x0_deg;                                       % x-center loc in deg (translation from 0,0)
                 p.y0_deg        = y0_deg;                                       % y-center loc in deg (translation from 0,0)
                 p.x0_pix        = x0_pix;                                       % x-center loc in pix (translation from 0,0)
                 p.y0_pix        = y0_pix;                                       % y-center loc in pix (translation from 0,0)
-                p.og_res_stim   = 801;                                          % resolution of stored object stimuli
-                p.dres = ((p.img_sz_deg/disp_params.h_deg * disp_params.h_pix) / p.og_res_stim);  % scale factor to apply
+                
+                p.og_res_stim   = 1024;                                           % original resolution of object stimuli
+                p.dres          = ((parafov_circle_diam_deg/disp_params.h_deg .* disp_params.h_pix)/p.og_res_stim);       % 1080 is bold screen height in pix, scale factor to apply
+                p.img_sz_deg    = parafov_circle_diam_deg;                      % height (or width) of square stimulus support (deg)
+                p.img_sz_pix    = ceil(p.og_res_stim.*p.dres);                  % height (or width) of square stimulus support (pix)
+                
                 
                 p.num_unique_objects = 16;                                      % orientation "bins" from which we create final gabor orientations (deg), 0 = 12 o'clock
                 p.facing_dir_deg     = repmat(90 + [-34, 34],1,p.num_unique_objects/2); % rotate 10 deg away from canonical view
