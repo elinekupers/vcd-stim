@@ -67,10 +67,10 @@ if params.debugmode % skip synctest
         params.deviceNr = -3; % listen to all
     else
         if isfield(deviceNr,'external') && ~isempty(deviceNr.external) && ...
-            (~isfield(deviceNr,'internal') || isempty(deviceNr.internal))
+                (~isfield(deviceNr,'internal') || isempty(deviceNr.internal))
             params.deviceNr = deviceNr.external;
         elseif isfield(deviceNr,'internal') && ~isempty(deviceNr.internal) && ...
-            (~isfield(deviceNr,'external') || isempty(deviceNr.external))
+                (~isfield(deviceNr,'external') || isempty(deviceNr.external))
             params.deviceNr = deviceNr.internal;
         elseif isfield(deviceNr,'external') && isfield(deviceNr,'internal') && ...
                 ~isempty(deviceNr.external) && ~isempty(deviceNr.internal)
@@ -181,10 +181,10 @@ if ~exist('scan','var') || ~isfield(scan,'exp_im') || isempty(scan.exp_im)
     scan.exp_im = exp_im; clear exp_im
     scan.exp_im_masks = alpha_masks; clear alpha masks;
 end
+
 %% %%%%%%%%%%%%% FIXATION IM/PARAMS %%%%%%%%%%%%%
 
 if ~exist('scan','var') || ~isfield(scan,'fix_im') || isempty(scan.fix_im)
-    
     
     % Load stored fixation dot images
     if isempty(images.fix)
@@ -210,7 +210,7 @@ if ~exist('scan','var') || ~isfield(scan,'fix_im') || isempty(scan.fix_im)
             old_fix_sz(2),... y
             3, ... % rgb
             []); % 5 luminance and 2 rim widths
-                
+        
         numIn = size(tmp_im,4);
         tmp_im = double(tmp_im);
         for kk = 1:numIn
@@ -249,10 +249,9 @@ end
 %% %%%%%%%%% TIMING
 
 if ~exist('timing','var') || ~isfield(timing,'seq_stim') || isempty(timing.seq_stim)
-    
     timing = vcd_getImageTiming_framelocked30Hz(params, subj_run, im_seq_order, scan.exp_im, scan.fix_im, scan.exp_im_masks);
-%     timing = vcd_getImageTiming_systemclocklocked(params, subj_run, im_seq_order,  scan.exp_im, scan.exp_im_masks, scan.fix_im, scan.fix_im_masks);
-
+    %     timing = vcd_getImageTiming_systemclocklocked(params, subj_run, im_seq_order,  scan.exp_im, scan.exp_im_masks, scan.fix_im, scan.fix_im_masks);
+    
     cellblock = struct2cell(subj_run.block);
     cellblock = squeeze(cellblock);
     
@@ -310,8 +309,8 @@ if ~exist('scan','var') || ~isfield(scan, 'rects') || isempty(scan.rects)
     trial_counter = 1;
     block_counter = 1;
     
-    for nn = 1:length(timing.seq_block)
-        block_nr = timing.seq_block(nn);
+    for nn = 1:length(timing.trig_block)
+        block_nr = timing.trig_block(nn);
         
         if (block_nr > 0) && (block_nr < 90)
             prev_block_counter = block_counter;
@@ -322,9 +321,9 @@ if ~exist('scan','var') || ~isfield(scan, 'rects') || isempty(scan.rects)
             end
             
             if  (timing.trig_stim(nn,1)<90)
-                if timing.seq_stim(nn,1) ~= timing.seq_stim(nn-1,1)
+                if timing.trig_stim(nn,1) ~= timing.trig_stim(nn-1,1)
                     trial_counter = trial_counter + 1;
-                    if timing.seq_stim(nn-1,1)==96
+                    if timing.trig_stim(nn-1,1)==96
                         delay_period = 1;
                     else
                         delay_period = 0;
@@ -332,7 +331,7 @@ if ~exist('scan','var') || ~isfield(scan, 'rects') || isempty(scan.rects)
                 end
                 
                 
-                numSides = length(unique(timing.seq_stim(nn,:)));
+                numSides = length(unique(timing.trig_stim(nn,:)));
                 
                 for side = 1:numSides
                     
@@ -350,12 +349,12 @@ if ~exist('scan','var') || ~isfield(scan, 'rects') || isempty(scan.rects)
                             trial_counter0 = round(trial_counter./2);
                         end
                         
-                        % deal with dot pol2cart 
+                        % deal with dot pol2cart
                         if delay_period && ~isnan(cellblock{4,block_counter}(trial_counter0,side).ref_delta)
                             dot_angle = cellblock{4,block_counter}(trial_counter0,side).ref_delta;
                             [dot_x,dot_y] = pol2cart(deg2rad(dot_angle),params.stim.dot.iso_eccen);
-                        elseif isfield(cellblock{4,block_counter}(trial_counter0,side),'loc_deg')
-                            dot_angle = cellblock{4,block_counter}(trial_counter0,side).loc_deg;
+                        elseif isfield(cellblock{4,block_counter}(trial_counter,side),'loc_deg')
+                            dot_angle = cellblock{4,block_counter}(trial_counter,side).loc_deg;
                             xy_idx = find(dot_angle == params.stim.dot.loc_deg);
                             dot_x = params.stim.dot.x0_pix(xy_idx);
                             dot_y = params.stim.dot.y0_pix(xy_idx);
@@ -373,9 +372,9 @@ if ~exist('scan','var') || ~isfield(scan, 'rects') || isempty(scan.rects)
                         centers{nn,side}(2) = params.stim.ns.y0_pix(side) + params.stim.yc;
                     end
                     
-                    apsize{nn,side}(1)  = size(timing.trig_seq_exp_im{nn}{1},2); % apsize 1: image width (pixels)
-                    apsize{nn,side}(2)  = size(timing.trig_seq_exp_im{nn}{1},1); % apsize 2: height (pixels)
-%                     disp(apsize{nn,side})
+                    apsize{nn,side}(1)  = size(timing.trig_seq_exp_im_w_cd{nn}{1},2); % apsize 1: image width (pixels)
+                    apsize{nn,side}(2)  = size(timing.trig_seq_exp_im_w_cd{nn}{1},1); % apsize 2: height (pixels)
+                    %                     disp(apsize{nn,side})
                 end
             end
         end
@@ -454,13 +453,20 @@ end
 
 
 %% %%%%%%%%%%%%% INIT SCREEN %%%%%%%%%%%%%
+Screen('Preference', 'SyncTestSettings', .0004);
 oldclut = pton(ptonparams{:});
 
-% Flag incase we want to quit early
-getoutearly = 0;
+win  = firstel(Screen('Windows'));
+oldPriority = Priority(MaxPriority(win));
 
-%% %%%%%%%%%%%%% EYELINK: initialize, setup, calibrate, and start %%%%%%%%%%%%%
+rect = Screen('Rect',win); % what is the total rect
+% rect = CenterRect(round([0 0 rect(3)*winsize rect(4)*winsize]),rect);
+[win, rect] = Screen('OpenWindow',max(Screen('Screens')),params.stim.bckgrnd_grayval,rect);
 
+
+
+
+%% %%%%%%%%%%%%% Eyelink stuff %%%%%%%%%%%%%
 % ANON EYE FUN for SYNC TIME
 if params.wanteyetracking
     tfunEYE     = @() cat(2,fprintf('EXP STARTS.\n'),Eyelink('Message','SYNCTIME'));
@@ -472,12 +478,13 @@ else
     tfunEYE = @() fprintf('EXP STARTS.\n');
 end
 
+
+
 % INIT/CALIBRATION/VALIDATION
 if params.wanteyetracking && ~isempty(params.eyelinkfile)
     
     % initialize
     assert(EyelinkInit()==1);
-    win = firstel(Screen('Windows'));
     
     %     % Check TCP/IP address
     %     if strcmp(dispName,'7TAS_BOLDSCREEN32')
@@ -497,7 +504,7 @@ if params.wanteyetracking && ~isempty(params.eyelinkfile)
     EyelinkUpdateDefaults(el);
     
     % Get window size
-    [wwidth,wheight] = Screen('WindowSize',win);  % returns in pixels
+    [wwidth,wheight] = [rect(3), rect(4)];  % returns in pixels
     
     % Ensure window size is what we think it is
     assert(isequal(wwidth,disp.w_pix))
@@ -584,20 +591,21 @@ end
 timeofshowstimcall = datestr(now,30);
 
 % GO!
-[data,getoutearly] = vcd_showStimulus(...
+[data,getoutearly] = vcd_showStimulus(win, rect,...
     params, ...
     scan, ...
     timing, ...
     introscript, ...
     taskscript, ...
     tfunEYE, ...
-    params.deviceNr);
+    params.deviceNr, ...
+    oldclut,  oldPriority);
 
 
 %% CLEAN UP AND SAVE
 
 % Close out eyelink
-if wanteyetracking
+if params.wanteyetracking
     if ~isempty(eyetempfile)
         
         % before we close out the eyelink, we send one more syntime message
