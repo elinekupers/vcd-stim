@@ -51,12 +51,12 @@ for ii = 1:length(run_image_order)
                 for jj = 1:numTrials
                     for nn = 1:numSides
                         i3 = run_image_order{ii}{jj,1}(nn);
-                        run_images{ii,jj,nn,1} = images.gabor(:,:,i3,1);
+                        run_images{ii,jj,nn,1} = images.gabor(:,:,:,i3,1);
                         run_alpha_masks{ii,jj,nn,1} = images.alpha.gabor(:,:,i3,1);
                         
                         if strcmp(taskClass,'wm')
                             i4 = run_image_order{ii}{jj,2}(nn);
-                            run_images{ii,jj,nn,2} = images.gabor(:,:,i3,i4+1);
+                            run_images{ii,jj,nn,2} = images.gabor(:,:,:,i3,i4+1);
                             run_alpha_masks{ii,jj,nn,1} = images.alpha.gabor(:,:,i3,i4+1);
                         end
                         %                 if strcmp(taskClass,'ltm')
@@ -93,12 +93,14 @@ for ii = 1:length(run_image_order)
                             error('[%s]: Can''t find RDK stim file!')
                         end
                         
-                        
+                        %% hack in alpha mask for RDKs for now
+                        d0 = dir(sprintf('%s*.mat', params.stim.gabor.stimfile));
+                        a1 = load(fullfile(d0(end).folder,d0(end).name), 'masks');
                         
                         % each file contains a 4D array: [x,y,3,frames]
                         run_images{ii,jj,nn,1} = frames;
-                        
-                        
+                        run_alpha_masks{ii,jj,nn,1} = a1.masks(:,:,1,1);
+
                         
                         if strcmp(taskClass,'wm')
                             delta_idx = find((block(ii).trial(jj,nn).motdir - block(ii).trial(jj,nn).ref_delta) == params.stim.rdk.delta_from_ref);
@@ -113,6 +115,7 @@ for ii = 1:length(run_image_order)
                             
                             load(stimfile_delta, 'frames');
                             run_images{ii,jj,nn,2} = frames;
+                            run_alpha_masks{ii,jj,nn,2} = run_alpha_masks{ii,jj,nn,1};
                         end
                         %                 if strcmp(taskClass,'ltm')
                         %
@@ -183,13 +186,13 @@ for ii = 1:length(run_image_order)
                     for nn = 1:numSides
                         [i3,i4] = ind2sub([size(images.cobj,3),size(images.cobj,4)],run_image_order{ii}{jj,1}(nn));
                         
-                        run_images{ii,jj,nn,1} = images.cobj(:,:,:,i3,i4);
-                        run_alpha_masks{ii,jj,nn,1} = images.alpha.cobj(:,:,:,i3,i4);
+                        run_images{ii,jj,nn,1} = images.cobj(:,:,i3,i4);
+                        run_alpha_masks{ii,jj,nn,1} = images.alpha.cobj(:,:,i3,i4);
                         
                         if strcmp(taskClass,'wm')
                             [i3,i4] = ind2sub([size(images.cobj,3),size(images.cobj,4)],run_image_order{ii}{jj,2}(nn));
-                            run_images{ii,jj,nn,2} = images.cobj(:,:,:,i3,i4);
-                            run_alpha_masks{ii,jj,nn,2} = images.alpha.cobj(:,:,:,i3,i4);
+                            run_images{ii,jj,nn,2} = images.cobj(:,:,i3,i4);
+                            run_alpha_masks{ii,jj,nn,2} = images.alpha.cobj(:,:,i3,i4);
                         end
                         %                 if strcmp(taskClass,'ltm')
                         %
@@ -266,6 +269,7 @@ for ii = 1:length(run_image_order)
                     if strcmp(stimClass,'rdk'); sz = sz([1,2]); end
                     if isequal(sz(1),sz(2)), sz = sz(1); end
                     
+                     
                     if any(params.stim.(stimClass).img_sz_pix ~= sz)
                         % recompute scale factor
                         scale_factor = params.stim.(stimClass).img_sz_pix./sz;
@@ -291,19 +295,28 @@ for ii = 1:length(run_image_order)
                         %                                 3, ... % rgb
                         %                                 []);
                         %                         end
+                        if ndims(tmp0_im)==3
+                            numFrames = size(tmp0_im);
+                            numFrames = numFrames(end);
                         
-                        numFrames = size(tmp0_im);
-                        numFrames = numFrames(end);
+                            for ll = 1:numFrames
+                                if params.stim.(stimClass).iscolor
+                                    im_rz(:,:,:,ll) = imresize(tmp0_im(:,:,:,ll),scale_factor); %% DEFAULT IS BICUBIC
+                                else
+                                    im_rz(:,:,ll) = imresize(tmp0_im(:,:,ll),scale_factor);
+                                end
+                            end
                         
-                        for ll = 1:numFrames
+                        else
                             if params.stim.(stimClass).iscolor
-                                im_rz(:,:,:,ll) = imresize(tmp0_im(:,:,:,ll),scale_factor); %% DEFAULT IS BICUBIC
+                                im_rz = imresize(tmp0_im,scale_factor); %% DEFAULT IS BICUBIC
                             else
-                                im_rz(:,:,ll) = imresize(tmp0_im(:,:,ll),scale_factor);
+                                im_rz = imresize(tmp0_im,scale_factor);
                             end
                         end
                         
                         run_im_tmp{kk} = im_rz;
+
                     end
                     
                     
