@@ -43,9 +43,9 @@ for frame = 1:length(timing.trig_stim)
     blockID = timing.trig_block(frame);
     
     % set up fixation dot textures
-    opacity_idx = timing.trig_seq_fix(frame);
+    opacity_idx = timing.trig_fix(frame);
     
-    if isnan(timing.seq_spatial_cue(frame))
+    if isnan(timing.seq_spatial_cue{frame})
         fix_tex{frame} = fix_texture_thin_full{opacity_idx};
         fix_rect{frame} = fix_rect_thin;
     else
