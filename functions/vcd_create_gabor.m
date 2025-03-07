@@ -46,8 +46,8 @@ outsideWindow = G_mask < thresh;
 G(outsideWindow)  = 0;
 
 mask = double(~outsideWindow);
-mask(mask==0) = 0.5; 
-mask = (mask.*254)+1;
+mask(mask==0) = 0; 
+mask = mask.*255;
  
 % clean up
 clear G_mask insideWindow

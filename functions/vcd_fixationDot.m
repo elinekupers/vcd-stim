@@ -73,7 +73,7 @@ for lum = 1:length(p.stim.fix.dotlum)
     fixation_rimthick_right(fixationmask_inner,:)     = repmat(double(p.stim.fix.dotlum(lum)),[length(fixationmask_inner) 1]);
     fixation_rimthick_left(fixationmask_inner,:)    = repmat(double(p.stim.fix.dotlum(lum)),[length(fixationmask_inner) 1]);
     
-    % reshape back to square image
+    % repmat to get RGB, reshape back to square image
     fix_im(:,:,:,lum,1) = repmat(reshape(fixation_rimthin,[2*p.stim.fix.dotcenterdiam_pix, 2*p.stim.fix.dotcenterdiam_pix, 1]),[1 1 3]);
     fix_im(:,:,:,lum,2) = repmat(reshape(fixation_rimthick,      [2*p.stim.fix.dotcenterdiam_pix, 2*p.stim.fix.dotcenterdiam_pix, 1]),[1 1 3]);
     fix_im(:,:,:,lum,3) = repmat(reshape(fixation_rimthick_left, [2*p.stim.fix.dotcenterdiam_pix, 2*p.stim.fix.dotcenterdiam_pix, 1]),[1 1 3]);
@@ -83,20 +83,22 @@ for lum = 1:length(p.stim.fix.dotlum)
 end
 
 % create alpha mask
-alpha_mask0 = ones(2*p.stim.fix.dotcenterdiam_pix,2*p.stim.fix.dotcenterdiam_pix,2).*p.stim.bckgrnd_grayval;
-alpha0     = find(makecircleimage(2*p.stim.fix.dotcenterdiam_pix, p.stim.fix.dotthickborderdiam_pix/2));
+alpha_mask0   = zeros(2*p.stim.fix.dotcenterdiam_pix, 2*p.stim.fix.dotcenterdiam_pix);
+alpha_mask0   = alpha_mask0(:);
+alpha_idx     = find(makecircleimage(2*p.stim.fix.dotcenterdiam_pix, p.stim.fix.dotthickborderdiam_pix/2));
 
-alpha_mask = reshape(alpha_mask0, size(alpha_mask0,1)*size(alpha_mask0,2),[]);
-alpha_mask(alpha0,2) = ones(length(alpha0),1).*255;
-mask = uint8(reshape(alpha_mask,size(alpha_mask0,1),size(alpha_mask0,2),[]));
+alpha_mask0(alpha_idx) = ones(length(alpha_idx),1).*255;
 
-figure; 
-for ii = 1:4
-    subplot(2,2,ii);
-    imagesc(uint8(squeeze(fix_im(:,:,:,5,ii))))
-    set(gca,'CLim',[0 255])
-    colormap gray
-end
+alpha_mask_rz = reshape(alpha_mask0,2*p.stim.fix.dotcenterdiam_pix,2*p.stim.fix.dotcenterdiam_pix);
+mask = uint8(alpha_mask_rz);
+
+% figure; 
+% for ii = 1:4
+%     subplot(2,2,ii);
+%     imagesc(uint8(squeeze(fix_im(:,:,:,5,ii))))
+%     set(gca,'CLim',[0 255])
+%     colormap gray
+% end
 
 % create info table
 lum_info = repmat(p.stim.fix.dotlum',4,1);

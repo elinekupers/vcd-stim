@@ -51,20 +51,15 @@ else
     im_order.Properties.VariableNames = {'object_name','abs_rot','rel_rot','rot_name','unique_im'};
     
     % 
-    og_im_sz = 1024;
-    extent  = og_im_sz/2 + ([-1 1].*((p.stim.cobj.img_sz_pix+1)/1.5));
-    new_im_z = diff(extent)+1;
     
+    extent   = p.stim.cobj.og_res_stim; %/2 + ([-1 1].*((p.stim.cobj.img_sz_pix+1)/1.5));
+%     new_im_z = diff(extent)+1;
+
     % Preallocate space
-    if p.stim.cobj.iscolor
-        objects = uint8(ones(new_im_z, new_im_z,3,...
-            length(subordinate),length(rotations)));
-        masks = objects;
-    else
-        objects = uint8(ones(new_im_z, new_im_z,2,...
-            length(canonical_view),length(rotations)));
-        masks = objects;
-    end
+    objects = uint8(ones(extent, extent,3,...
+        length(subordinate),length(rotations)));
+    masks = objects;
+
     
 
     counter = 1;
@@ -108,33 +103,26 @@ else
             % assume range is 1-255
             im0     = (double(im0-1)./254).^2;
             alpha0  = (double(alpha0./255)).^2;
+           
+%             im1 = imresize(im0, p.stim.cobj.dres);
+%             alpha1 = imresize(alpha0,p.stim.cobj.dres);
+                        
+            im = uint8(1+(sqrt(im0)*254));
+            alpha_im = uint8((sqrt(alpha0)*255));
             
-            % crop image
-            cropme = extent(1):extent(2);
-            
-            alpha0_cropped = alpha0(cropme,cropme);
-            im0_cropped = im0(cropme,cropme);
-
-            
-            im = uint8(1+(sqrt(im0_cropped)*254));
-            alpha_im = uint8((sqrt(alpha0_cropped)*255));
-
-%             im = imresize(im0_cropped,[p.stim.cobj.img_sz_pix,p.stim.cobj.img_sz_pix]);
-%             aplha = imresize(alpha0_cropped,[p.stim.cobj.img_sz_pix,p.stim.cobj.img_sz_pix]);
-            
-            clear im0 alpha0 im0_cropped alpha0_cropped
+            clear im0 alpha0 im1 alpha1 im0_cropped alpha0_cropped
             
 %             figure(99); clf; imagesc(im0_cropped,'AlphaData',alpha0_cropped); colormap gray; colorbar; axis image
 %             figure(99); clf; imagesc(im,'AlphaData',alpha_im); colormap gray; colorbar; axis image
 
-            if p.stim.cobj.iscolor
-                objects(:,:,:,sub,rr) = im;
-                masks(:,:,:,sub,rr) = alpha_im;
-            else
-                objects(:,:,sub,rr) = im;
-                masks(:,:,sub,rr) = alpha_im;
-            end
-            
+%             if p.stim.cobj.iscolor
+               objects(:,:,:,sub,rr) = repmat(im, [1 1 3]);
+                masks(:,:,:,sub,rr) = repmat(alpha_im, [1 1 3]);
+%             else
+%                 objects(:,:,sub,rr) = im;
+%                 masks(:,:,sub,rr) = alpha_im;
+%             end
+%             
             im_order.object_name(counter) = subordinate(sub);
             im_order.canonical_view(counter) = canonical_view(sub);
             im_order.abs_rot(counter) = canonical_view(sub)+rotations(rr);
