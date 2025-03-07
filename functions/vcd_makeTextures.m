@@ -79,8 +79,8 @@ for frame = 1:length(timing.trig_stim)
              % DrawTextures 
              % * TexturePointers  need to be: n vector (where n is the number of textures)
              % * DestinationRects need to be: 4 row x n columns (where n is the number of textures)            
-            im_tex{frame,:} = cat(1, bckrgound_texture, fix_tex);
-            im_rect{frame,:} = cat(1, bckground_rect, fix_rect);
+            im_tex{frame} = cat(1, bckrgound_texture, fix_tex{frame});
+            im_rect{frame} = cat(1, bckground_rect, fix_rect{frame});
 %             im_global_alpha{frame} = 1;
             
         case 97 % task_cue_ID  
@@ -88,11 +88,11 @@ for frame = 1:length(timing.trig_stim)
             script = taskscript{~cellfun(@isempty, regexp(taskscript,sprintf('%02d',blockID),'match'))};
             [task_instr, task_rect] = vcd_getInstructionText(params, script, rect);
             
-            im_tex{frame,:} = cat(1, bckrgound_texture, fix_texture_thick_full{opacity_idx});
-            im_rect{frame,:} = cat(1, bckground_rect, fix_rect_thick);
+            im_tex{frame} = cat(1, bckrgound_texture, fix_texture_thick_full{opacity_idx});
+            im_rect{frame} = cat(1, bckground_rect, fix_rect_thick);
             
-            txt_tex{frame,:} = task_instr;
-            txt_rect{frame,:} = task_rect;
+            txt_tex{frame} = task_instr;
+            txt_rect{frame} = task_rect;
 
             % Draw stimulus textures
         % 1-30 = all 2 peripheral stimulus aperture stim-task crossings:
@@ -125,8 +125,8 @@ for frame = 1:length(timing.trig_stim)
                     stim_texture = Screen('MakeTexture',win, txttemp);
                     
                     
-                    im_tex{frame,:} = cat(1, bckrgound_texture, stim_texture, fix_tex{frame});
-                    im_rect{frame,:} = cat(1, bckground_rect, stim_rect, fix_rect{frame});
+                    im_tex{frame} = cat(1, bckrgound_texture, stim_texture, fix_tex{frame});
+                    im_rect{frame} = cat(1, bckground_rect, stim_rect, fix_rect{frame});
                                         
                 end
             
@@ -135,8 +135,8 @@ for frame = 1:length(timing.trig_stim)
                 stim_rect = scan.rects{frame,1};
                 stim_texture = Screen('MakeTexture',win, txttemp);
                 
-                im_tex{frame,:} = cat(1, bckrgound_texture, stim_texture, fix_tex{frame});
-                im_rect{frame,:} = cat(1, bckground_rect, stim_rect, fix_rect{frame});
+                im_tex{frame} = cat(1, bckrgound_texture, stim_texture, fix_tex{frame});
+                im_rect{frame} = cat(1, bckground_rect, stim_rect, fix_rect{frame});
             end
     end  
 end
