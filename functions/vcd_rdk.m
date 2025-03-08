@@ -58,7 +58,7 @@ ap_radius = p.stim.rdk.dots_aperture(3:4);
 num_frames = p.stim.rdk.duration/p.stim.rdk.dots_interval;
 
 ndots = min(p.stim.rdk.max_dots_per_frame, ...
-    round(p.stim.rdk.dots_density .* (p.stim.rdk.dots_aperture(:,3).*p.stim.rdk.dots_aperture(:,4)) / p.stim.fps));
+    round(p.stim.rdk.dots_density .* (p.stim.rdk.dots_aperture(:,3).*p.stim.rdk.dots_aperture(:,4)) / p.stim.famedur_s));
 
 if ~isempty(p.stim.rdk.delta_from_ref)
     rdk_motdir_ref = [0:length(p.stim.rdk.delta_from_ref)];
@@ -105,7 +105,7 @@ for cc = 1:length(p.stim.rdk.dots_coherence)
             end
         
             %find the xy displacement of coherent
-            dxdy = repmat(p.stim.rdk.dots_speed * (p.stim.fps / p.stim.rdk.dots_interval) * ... %% same as dots_speed * disp.fps
+            dxdy = repmat(p.stim.rdk.dots_speed * (p.stim.famedur_s / p.stim.rdk.dots_interval) * ... %% same as dots_speed * disp.famedur_s
                 [cos(curr_motdir_deg) -sin(curr_motdir_deg)], ndots, 1) * p.disp.ppd;  
             
             d_ppd = repmat(ap_radius, ndots, 1);

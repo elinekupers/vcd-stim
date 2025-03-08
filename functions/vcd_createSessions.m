@@ -296,8 +296,8 @@ else
                 t_cumul_time = t_taskcue{end} + cumsum(t_trial_time);
                 t_onset_time = t_cumul_time - t_trial_time;
                 
-                assert( all(isint(t_onset_time./p.stim.fps)))
-                assert( all(isint(t_cumul_time./p.stim.fps)))
+                assert( all(isint(t_onset_time./p.stim.famedur_s)))
+                assert( all(isint(t_cumul_time./p.stim.famedur_s)))
 
                 % concat columns
                 t_total = [num2cell(repmat(rr,2*n_trials_per_block,1)), num2cell(repmat(bb-1,2*n_trials_per_block,1)), ...
@@ -308,7 +308,7 @@ else
                 sampled_IBI = p.exp.miniblock.IBI(randi(length(p.exp.miniblock.IBI),1));
                 IBI =  sampled_IBI + (1 - mod(t_total{end,end}+sampled_IBI,1));
                 
-                assert( all(nearZero(mod((IBI./p.stim.fps),1))))
+                assert( all(nearZero(mod((IBI./p.stim.famedur_s),1))))
                 
                 t_ibi = {rr, bb-1, 0, p.exp.miniblock.IBI_ID, NaN, t_total{end,end}, IBI, t_total{end,end} + IBI};
                 
