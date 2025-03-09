@@ -86,7 +86,7 @@ for ii = 1:length(run_image_order)
                             find(block(ii).trial(jj,nn).coh==params.stim.rdk.dots_coherence), ...
                             0);
                         
-                        stimfile = fullfile(stimDir.folder,stimDir.name,sprintf('%s.mat', filename));
+                        stimfile = fullfile(stimDir(1).folder,stimDir(1).name,sprintf('%s.mat', filename));
                         if exist(stimfile,'file')
                             load(stimfile, 'frames');
                         else
@@ -334,10 +334,10 @@ for ii = 1:length(run_image_order)
     % If using BOLDSCREEN, we want to square pixel values for objects and
     % scenes
     if strcmp(params.disp.name,'7TAS_BOLDSCREEN32') && ...
-            ~any(strcmp(taskClass,{'pre','post'}))
+            ~any(strcmp(taskClass,{'pre','post'}))  && ...
         any(strcmp(stimClass,{'cobj','ns'}))
         
-        assert(p.stim.(stimClass).square_pix_val==true)
+        assert(params.stim.(stimClass).square_pix_val==true)
         
         fprintf('square pix values for CLUT..');
         % reshape to get one vector of images
