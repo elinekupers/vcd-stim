@@ -95,7 +95,7 @@ Folders ignored by git (see .gitignore):
 	* `ITI:` Intertrial interval (time between trials within a miniblock)
 	* `IBI:` Interblock interval (time between mini blocks within a run)
 
-* `Unique images:_ For each stimulus class, we create a unique set of imagees where we manipulate a fix set of features. These manipulations can be at the image level (e.g., gabor contrast level, RDK motion coherence), sometimes they are at the global property level (indoor vs outdoor, manmade vs natural foods). 
+* `Unique images:` For each stimulus class, we create a unique set of imagees where we manipulate a fix set of features. These manipulations can be at the image level (e.g., gabor contrast level, RDK motion coherence), sometimes they are at the global property level (indoor vs outdoor, manmade vs natural foods). 
 
 * `Semantic Categories:` For CO and NS we sample different semantic categories:
 	* `Superordinate level:` humans, animals, food, objects, places
