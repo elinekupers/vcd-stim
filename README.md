@@ -62,7 +62,7 @@ Folders ignored by git (see .gitignore):
 * `data` 		: 	Folder where subject's button presses and created stimuli are stored (if requested).
 
 
-## Example
+## Examples
 
 * Example 1: Create stimuli
   
@@ -102,9 +102,13 @@ Folders ignored by git (see .gitignore):
 	* `Basic level:` faces, cats, giraffes, tools, houses
 	* `Subordinate level:`  *this* cat or *this* dog
 
-* `Stimulus display`
+* `Stimulus spatial layout`
   
-![vcd_stim_extend](https://github.com/user-attachments/assets/70146c2c-b355-48f7-afc7-9ec5aefd0851)
+![vcd_stimulus spatial extend](https://github.com/user-attachments/assets/70146c2c-b355-48f7-afc7-9ec5aefd0851)
+Black solid line shows spatial extent of display that is seen by either left or right eye. 
+Red dotted line shows spatial extent of display that is seen by both eyes.
+Yellow circles are the two peripheral stimulus apertures. Small simple single dot is show at 4.5 deg eccentricity (blue circle)
+
 
 ## MIT License
 
