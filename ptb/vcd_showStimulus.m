@@ -50,7 +50,7 @@ end
 
 scan.ifi       = Screen('GetFlipInterval',win);
 mfi            = scan.ifi;
-frameduration  = round(mfi)/params.stim.famedur_s; % 30 Hz presentation, 2 frames for office/psph monitors (60 Hz), 4 frames for BOLDscreen (120 Hz);
+frameduration  = round(mfi)/params.stim.framedur_s; % 30 Hz presentation, 2 frames for office/psph monitors (60 Hz), 4 frames for BOLDscreen (120 Hz);
 
 Screen('BlendFunction', win, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 Screen('Preference','TextRenderer',1);

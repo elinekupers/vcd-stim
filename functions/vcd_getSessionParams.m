@@ -93,8 +93,8 @@ else
     assert(isempty(intersect([1:length(exp_session.stimTaskLabels)],exp_session.miniblock.IBI_ID)));
     
     % timing
-    exp_session.miniblock.task_cue_dur        = p.stim.famedur_s*60*2; % 4.0 seconds
-    exp_session.miniblock.IBI                 = p.stim.famedur_s*linspace(150,270,5); % [5:1:9] seconds Inter-block interval -- uniformly sample between [min,max]
+    exp_session.miniblock.task_cue_dur        = p.stim.framedur_s*60*2; % 4.0 seconds
+    exp_session.miniblock.IBI                 = p.stim.framedur_s*linspace(150,270,5); % [5:1:9] seconds Inter-block interval -- uniformly sample between [min,max]
     
     
     % %%%% RUN %%%%
@@ -104,9 +104,9 @@ else
     exp_session.run.miniblocks_per_run = exp_session.run.n_single_epoch_miniblocks + exp_session.run.n_double_epoch_miniblocks;
     
     % timing
-    exp_session.run.pre_blank_dur     = p.stim.famedur_s*330; % 11 s
-    exp_session.run.post_blank_dur    = p.stim.famedur_s*330; % 11s
-    exp_session.run.total_run_dur     = p.stim.famedur_s*9936; % 9936 famedur_s or 207 TRs or 331.2 s
+    exp_session.run.pre_blank_dur     = p.stim.framedur_s*330; % 11 s
+    exp_session.run.post_blank_dur    = p.stim.framedur_s*330; % 11s
+    exp_session.run.total_run_dur     = p.stim.framedur_s*9936; % 9936 framedur_s or 207 TRs or 331.2 s
     exp_session.run.actual_task_dur = exp_session.run.total_run_dur - exp_session.run.pre_blank_dur - exp_session.run.post_blank_dur; %s
 
     
@@ -117,13 +117,13 @@ else
     exp_session.trial.stim_LR_loc_cue    = logical([1 1 1 1 0]);
     
     % timing
-    exp_session.trial.start_cue_dur       = p.stim.famedur_s*12; % 0.4 seconds (thickening of dot rim)
-    exp_session.trial.spatial_cue_dur     = p.stim.famedur_s*24; % 0.8 seconds
-    exp_session.trial.stim_array_dur      = p.stim.famedur_s*60; % 2.0 seconds
-    exp_session.trial.response_win_dur    = p.stim.famedur_s*30; % 1.0 seconds
+    exp_session.trial.start_cue_dur       = p.stim.framedur_s*12; % 0.4 seconds (thickening of dot rim)
+    exp_session.trial.spatial_cue_dur     = p.stim.framedur_s*24; % 0.8 seconds
+    exp_session.trial.stim_array_dur      = p.stim.framedur_s*60; % 2.0 seconds
+    exp_session.trial.response_win_dur    = p.stim.framedur_s*30; % 1.0 seconds
     % p.trial.end_cue_dur         = 0.4; % seconds  (thinning of dot rim)
-    exp_session.trial.ITI                 = p.stim.famedur_s.*[6:6:48]; % 0.2:0.2:1.6 seconds (thinning of dot rim)
-    exp_session.trial.delay_dur           = p.stim.famedur_s*240; % 8.0 seconds
+    exp_session.trial.ITI                 = p.stim.framedur_s.*[6:6:48]; % 0.2:0.2:1.6 seconds (thinning of dot rim)
+    exp_session.trial.delay_dur           = p.stim.framedur_s*240; % 8.0 seconds
     
     exp_session.trial.single_epoch_dur   = ...
         sum([exp_session.trial.start_cue_dur,... % seconds
@@ -139,7 +139,7 @@ else
         exp_session.trial.stim_array_dur, ...
         exp_session.trial.response_win_dur]);
     
-    assert( nearZero(mod(exp_session.trial.single_epoch_dur / p.stim.famedur_s,1)))
+    assert( nearZero(mod(exp_session.trial.single_epoch_dur / p.stim.framedur_s,1)))
     
     %%
     sc_all = 1;

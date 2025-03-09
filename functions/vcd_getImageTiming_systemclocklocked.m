@@ -1,10 +1,10 @@
 function timing = vcd_getImageTiming_systemclocklocked(params, subj_run,im_seq_order, exp_im, exp_im_mask, fix_im, fix_im_mask) 
 
 % Fixation order and fixation
-fixsoafun = @() round(params.stim.fix.dotmeanchange + (params.stim.fix.dotchangeplusminus*(2*(rand-.5))))*params.stim.fps;
+fixsoafun = @() round(params.stim.fix.dotmeanchange + (params.stim.fix.dotchangeplusminus*(2*(rand-.5))))*params.stim.famedur_s;
 
 % Contrast decrement gaussian time window onset
-cdsoafun = @() round(params.stim.cd.meanchange + params.stim.cd.changeplusminus*(2*(rand-.5)))*params.stim.fps;
+cdsoafun = @() round(params.stim.cd.meanchange + params.stim.cd.changeplusminus*(2*(rand-.5)))*params.stim.famedur_s;
 
 
 %% TIMING
@@ -221,7 +221,7 @@ timing.seq_duration    = seq_duration;
 
 %% Convert sequence of events from seconds into frames
 
-% trig_timing = [0:params.stim.fps:seq_timing(end)]'; % seconds
+% trig_timing = [0:params.stim.famedur_s:seq_timing(end)]'; % seconds
 % 
 % trig_stim   = zeros(size(trig_timing,1),2);
 % trig_block  = zeros(size(trig_timing,1),1);
@@ -245,7 +245,7 @@ timing.seq_duration    = seq_duration;
 %     
 %     event_dur = next_event-event_time;
 %     if event_dur > 0
-%         event_dur = round(event_dur/params.stim.fps);
+%         event_dur = round(event_dur/params.stim.famedur_s);
 %         t_idx_total = t_idx:(t_idx+event_dur-1);
 %     else
 %         t_idx_total = t_idx;
@@ -349,7 +349,7 @@ timing.fix_seq_im_mask = fix_seq_im_mask;
 %     end
 %     
 %     event_dur = next_event-event_time;
-%     event_dur = round(event_dur/params.stim.fps);
+%     event_dur = round(event_dur/params.stim.famedur_s);
 %     if  tt==length(fix_timing)
 %         event_dur = event_dur+1;
 %     end
@@ -388,7 +388,7 @@ end
 
 cdID = find(cdID);
 
-gauss_win_t_sec = params.stim.cd.t_gauss.*params.stim.fps;
+gauss_win_t_sec = params.stim.cd.t_gauss.*params.stim.famedur_s;
 cd_timing = ones(size(trig_timing,1),2);
 cd_seq    = [];
 trig_seq_exp_im_w_cd = timing.trig_seq_exp_im;

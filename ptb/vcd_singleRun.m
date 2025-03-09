@@ -665,8 +665,8 @@ ptoff(oldclut);
 % check the timing
 if getoutearly == 0 %if we completed the experiment
     fprintf('Experiment duration was %4.3f.\n',data.timing.endtime);
-    slack = [-5 5].*params.stim.famedur_s;
-    expectedduration = (timing.trig_timing(end)+params.stim.famedur_s) + slack;
+    slack = [-5 5].*params.stim.framedur_s;
+    expectedduration = (timing.trig_timing(end)+params.stim.framedur_s) + slack;
     
     if data.timing.endtime > expectedduration(1) && data.timing.endtime < expectedduration(2)
         fprintf('Timing was ok and within [%d - %d] sec slack\n',slack(1),slack(2));

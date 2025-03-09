@@ -1,4 +1,4 @@
-function stim = vcd_getStimParams(type, disp_params,load_params,store_params)
+function stim = vcd_getStimParams(type, disp_params,load_params,store_params, overwrite_randomized_params)
 
 if ~exist('type','var') || isempty(type)
     type = {'all'};
@@ -25,6 +25,10 @@ if ~exist('load_params','var') || isempty(load_params)
     load_params = true;
 end
 
+if ~exist('overwrite_randomized_params','var') || isempty(overwrite_randomized_params)
+    overwrite_randomized_params = false;
+end
+
 if load_params
     d = dir(fullfile(vcd_rootPath,'workspaces','info',sprintf('stim_%s*.mat',disp_params.name)));
     if ~isempty(d)
@@ -41,21 +45,28 @@ else
     % Setup struct
     stim = struct();
     
-    %% GENERAL PARAMS for Nova1x32 (some will get inherited below)
+    %% GENERAL PARAMS
     
-    stim.store_imgs                 = true;
-    stim.frame_bin                  = 4;                                            % we update disp every 4 VBL monitor refreshes to match PP monitor limit (30 Hz)
-    stim.fps                        = stim.frame_bin * (1/disp_params.refresh_hz);  % duration of frame bin (seconds)
-    stim.bckgrnd_grayval            = uint8(round(diff([0,255])/2));                % background color (middle of 0-255 pixel lum)
-    stim.scfactor                   = 1;                                            % no scaling
+    stim.store_imgs                 = true;                                     % Store images when creating them? (see s_createStimuli.m)
+    
+    % we want to present images at a rate of 30 Hz, so for a monitor
+    % refresh rate of 120 Hz, this number is 4, for 60 Hz this is 2. 
+    stim.presentationrate_hz        = 30;                                       % rate of frame presentation (Hz)
+    stim.framedur_s                  = isint(disp_params.refresh_hz/stim.presentationrate_hz) * (1/disp_params.refresh_hz); % frames per second (seconds)
+    stim.bckgrnd_grayval            = uint8(1+255/2);                           % background color (middle of 1-255 pixel lum)
+    stim.scfactor                   = 1;                                        % no scaling
+    
     % Default params to inherit (or overwrite)
-    dur_fps                         = 60;                                       % nr of frame bins (2 sec)
-    x0_deg                          = [-4 4];                                 % [Left Center Right] (degrees)
-    y0_deg                          = [0 0];                                  % [Left Center Right] (degrees)
-    x0_pix                          = round(x0_deg.*disp_params.ppd);           % [Left Center Right] (pixels)
-    y0_pix                          = round(y0_deg.*disp_params.ppd);           % [Left Center Right] (pixels)
+    stimdur_frames                  = 60;                                       % nr of (33 ms) presentation frames (60 frames = 2 sec)
+    x0_deg                          = [-4 4];                                   % [Left Right] (degrees)
+    y0_deg                          = [0 0];                                    % [Left Right] (degrees)
+    
+    x0_pix                          = round(x0_deg.*disp_params.ppd);           % [Left Right] (pixels)
+    y0_pix                          = round(y0_deg.*disp_params.ppd);           % [Left Right] (pixels)
+    
     parafov_circle_diam_deg         = 4;                                        % desired parafoveal circular diameter aperture (degrees)
     ctr_square_deg                  = 8.4;                                      % desired center square side length (degrees)
+    
     parafov_circle_diam_pix         = round(parafov_circle_diam_deg.*disp_params.ppd); % desired parafoveal circular diameter aperture (pixels)
     ctr_square_pix                  = round(ctr_square_deg.*disp_params.ppd);          % desired center square side length in pixels (pixels)
     
@@ -69,8 +80,6 @@ else
     stim.bckground.mode             = 0; %<mode> (optional) is means fixed amplitude spectrum + random phase
     stim.bckground.std_clip_range   = 3.5; % std of image values, that defines the range we use to rescale image to 1 255.
     
-    
-    
     %% FIXATION DOT
     
     % general
@@ -78,15 +87,15 @@ else
     stim.fix.infofile               = fullfile(vcd_rootPath,'workspaces','info',sprintf('fix_info_%s',disp_params.name)); % csv file
     
     % TEMPORAL
-    stim.fix.dotmeanchange          = 3/stim.fps;                        % 3 s dot changes occur with this average interval (in frames)
-    stim.fix.dotchangeplusminus     = 2/stim.fps;                        % plus or minus 2-s (in frames)
-    stim.fix.dres                   = [];                                % rescale factor (fraction)
-    
+    stim.fix.dotmeanchange          = 3/stim.framedur_s;                     % (nr 33ms frames), on average, dot changes occur every 3 seconds
+    stim.fix.dotchangeplusminus     = 2/stim.framedur_s;                     % (nr 33ms frames), earliest and latests time that dot changes occur. 2 seconds means [-1:1] from meanchange
+    stim.fix.dres                   = [];                                   % rescale factor (fraction)
+        
     % SPATIAL
-    stim.fix.dotcenterdiam_deg            = 0.215;                           % dot diameter in deg
-    stim.fix.dotcenterdiam_pix            = round(stim.fix.dotcenterdiam_deg * disp_params.ppd);     % dot diameter in pixels
-    stim.fix.dotthinborderdiam_pix        = stim.fix.dotcenterdiam_pix+6;     % pixel-width for dot thin border (during ITI/IBI)
-    stim.fix.dotthickborderdiam_pix       = stim.fix.dotcenterdiam_pix+10;     % pixel-width for dot border (during trial)
+    stim.fix.dotcenterdiam_pix      = 18;                                   % dot diameter in pixels (18 pixels)
+    stim.fix.dotcenterdiam_deg      = stim.fix.dotcenterdiam_pix/disp_params.ppd; % 0.2037 deg, dot diameter
+    stim.fix.dotthinborderdiam_pix  = stim.fix.dotcenterdiam_pix+6;         % pixel-width for dot thin border (during ITI/IBI)
+    stim.fix.dotthickborderdiam_pix  = stim.fix.dotcenterdiam_pix+10;       % pixel-width for dot border (during trial)
     
     stim.fix.lumminmaxstep          = [42,212,5];                       % min and max luminance of dot [1-255],
     stim.fix.dotlum                 = uint8(linspace(stim.fix.lumminmaxstep(1),stim.fix.lumminmaxstep(2),stim.fix.lumminmaxstep(3))); % dot gray levels
@@ -96,21 +105,39 @@ else
         stim.fix.dotcenterdiam_pix,stim.fix.dotthinborderdiam_pix,stim.fix.dotthickborderdiam_pix);
     
     %% CONTRAST DECREMENT -- INVERTED GAUSSIAN TEMPORAL WINDOW
-    stim.cd.t_gausswin_N            = round(dur_fps/4);                     % 15 number of timepoints for gaussian time window (contrast decrement)
+    % We treat timepoint t=0 as the onset time of a frame flip, and t=1 is 
+    % the offset of the first frame flip and the onset of the second frame 
+    % flip (so in between flips). Each time point has a duration of 33.33 ms 
+    % (see framedur_s). 
+    % For the contrast decrement, we implement an inverted gaussian with a
+    % support of 15 time points (a 1/4 of the total stimulus duration),
+    % thus t=[0,14]. How quickly the contrast decrement change occurs is 
+    % determined by the std. Here, we pick std = 3 time points (3*33.33 ms). 
+    % This means that peak contrast decrement occurs at t=7 (233.33 ms).
+    stim.cd.t_gausswin_N            = 15;                                   % 15 number of timepoints for gaussian time window (contrast decrement)
     stim.cd.t_gausswin_std          = 3;                                    % standard devation of gaussian window in time (frames)
-    stim.cd.meanchange              = 1/stim.fps;                           % mean of gaussian window in time (30 frames = 1 sec)  
-    stim.cd.changeplusminus         = (0.5/stim.fps)-1;                     % plus or minus this amount (14 frames = 0.46 sec)  
-
-    t_support = linspace(-stim.cd.t_gausswin_N / 2, stim.cd.t_gausswin_N / 2, stim.cd.t_gausswin_N);
-    t_gauss = exp(-t_support .^ 2 / (2 * stim.cd.t_gausswin_std ^ 2));
-    t_gauss = 1-(t_gauss*0.5);
-    stim.cd.t_gauss = t_gauss;
+    stim.cd.meanchange              = 1/stim.framedur_s;                     % mean of gaussian window in time (30 frames = 1 sec)  
+    stim.cd.changeplusminus         = (0.5/stim.framedur_s)-1;               % plus or minus this amount (14 frames = 0.46 sec)  
+    stim.cd.max_cd                  = 0.5;                                  % we reduce contrast by 50% of mean luminance
+    
+    % Create 1D gaussian
+    t_support           = linspace(-stim.cd.t_gausswin_N / 2, stim.cd.t_gausswin_N / 2, stim.cd.t_gausswin_N);
+    t_gauss             = exp(-t_support .^ 2 / (2 * stim.cd.t_gausswin_std ^ 2));
+    
+    % invert and scale it
+    t_gauss             = 1-(t_gauss*stim.cd.max_cd);
+    stim.cd.t_gauss     = t_gauss;
 
     %% EYELINK PARAMS
-    
-    stim.el.point2point_distance = 350; % pixels (results in dots at x1=610,x2=1310 y1=190,y2=890 pixels
-    
-    
+    % we manually place the eyelink calibration/validation points on the
+    % display. The distance between the center and 4 left/right/up/down
+    % points are set as [xc,yc] ± 350 pixels. This results in dots at
+    % [x1,y1]=[610,0],
+    % [x2,y2]=[1310,0],
+    % [x3,y3]=[0,190],
+    % [x4,y4]=[0,890] pixels
+    stim.el.point2point_distance = 350; % pixels 
+
     %% STIM PARAMS
     for ii = 1:length(type)
         
@@ -126,12 +153,12 @@ else
                 
                 % TEMPORAL
                 % Fixed params
-                p.duration        	  = dur_fps;                               % frames (nr of monitor refreshes)
+                p.duration        = stimdur_frames;                                    % frames (nr of monitor refreshes)
 
                 % SPATIAL
                 % Fixed params
-                p.img_sz_deg      = parafov_circle_diam_deg;                    % height (or width) of stimulus support (deg)
-                p.img_sz_pix      = parafov_circle_diam_pix;                    % height (or width) of square stimulus support (pix)
+                p.img_sz_deg      = parafov_circle_diam_deg;                    % height (and width) of stimulus support (deg)
+                p.img_sz_pix      = parafov_circle_diam_pix;                    % height (and width) of square stimulus support (pix)
                 p.og_res_stim     = p.img_sz_pix;                               % resolution of stored dot stimuli (in pixels)
                 p.dres            = ((p.img_sz_deg/disp_params.h_deg * disp_params.h_pix) / p.og_res_stim);  % scale factor to apply
                 p.iscolor         = false;                                      % use color or not [[[IF WE USE COLOR: MAKE SURE TO SQUARE IMAGE VALS FOR CLUT]]
@@ -156,8 +183,14 @@ else
                 p.ori_jitter_mu   = 1;                                          % mean of normal distribution to sample orientation jitter
                 p.num_ori         = 8;                                          % orientation "bins" from which we create final gabor orientations (deg), 0 = 12 o'clock
                 p.ori_bins        = [10:(180/p.num_ori):170];                   % rotate 10 deg away from vertical, to avoid ill-defined response options
-                p.ori_jitter      = p.ori_jitter_mu + (p.ori_jitter_sd.*randn(1,p.num_ori)); % add a small amount of jitter around the orientation
-                p.ori_deg         = round(p.ori_bins + p.ori_jitter);           % final gabor orientations
+                                                                                % [10 32.5000 55 77.5000 100 122.5000 145 167.5000]
+                if overwrite_randomized_params 
+                    p.ori_jitter  = p.ori_jitter_mu + (p.ori_jitter_sd.*randn(1,p.num_ori)); % add a small amount of jitter around the orientation
+                    p.ori_deg     = round(p.ori_bins + p.ori_jitter);           % final gabor orientations
+                else
+                    p.ori_jitter  = [2.0753 4.6678 -3.5177 2.7243 1.6375 -1.6154 0.1328 1.6852];
+                    p.ori_deg     = [12 37 51 80 102 121 145 169];           % final gabor orientations
+                end
                 
                 p.delta_from_ref  = [-15, -5, 5, 15];                           % how much should stim iso-eccen loc deviate from reference (WM: double epochs)
                 % the bigger the delta, the easier the trial
@@ -171,10 +204,10 @@ else
                 p.infofile = fullfile(vcd_rootPath,'workspaces','info',sprintf('rdk_info_%s',disp_params.name)); % csv file
                 
                 % TEMPORAL
-                p.duration        = dur_fps;                                   % frames (nr of monitor refreshes)
-                p.dots_coherence  = [0.064, 0.128, 0.512];                     % Kiani lab uses usually one of these [0 0.032 0.064 0.128 0.256 0.512]
-                p.dots_speed      = 5;                                         % pix/ms? Kiani lab uses usually 5 to 10
-                p.dots_interval   = 1;                                         % fps interval by which dots update (so 30 disp.fps / 1 interval = 30 frames/sec) 
+                p.duration        = stimdur_frames;                                   % frames (nr of monitor refreshes)
+                p.dots_coherence  = [0.064, 0.128, 0.512];                     % fraction of dots. Kiani lab uses usually one of these [0 0.032 0.064 0.128 0.256 0.512]
+                p.dots_speed      = 5;                                         % pixels/frame? Kiani lab uses usually 5 to 10
+                p.dots_interval   = 1;                                         % framedur_s interval by which dots update (so 30 disp.framedur_s / 1 interval = 30 frames/sec) 
                                                                                % currently set to 30 frames per second to approx Kiani's 75 hz refresh rate / 3 interval = 25 frames/sec
                 
                 % SPATIAL
@@ -187,10 +220,17 @@ else
 
                 p.num_mot_dir      = 8;
                 p.motdir_bins      = [0:(360/p.num_mot_dir):359]+10;             % sample direction of coherent motion from [0-359] in deg (0 deg is aligned with 12 o'clock)
+                                                                                 % [10 55 100 145 190 235 280 325]
                 p.motdir_jitter_sd = 2;                                          % std of normal distribution to sample orientation jitter
                 p.motdir_jitter_mu = 1;                                          % mean of normal distribution to sample orientation jitter
-                p.motdir_jitter    = p.motdir_jitter_mu + (p.motdir_jitter_sd.*randn(1,p.num_mot_dir)); % add a small amount of jitter around the orientation
-                p.dots_direction   = round(p.motdir_bins + p.motdir_jitter);     % final gabor orientations
+                
+                if overwrite_randomized_params 
+                    p.motdir_jitter    = p.motdir_jitter_mu + (p.motdir_jitter_sd.*randn(1,p.num_mot_dir)); % add a small amount of jitter around the orientation
+                    p.dots_direction   = round(p.motdir_bins + p.motdir_jitter);     % final gabor orientations
+                else
+                    p.motdir_jitter    = [8.1568 6.5389 -1.6998 7.0698 2.4508 0.8739 2.4295 0.5901]; 
+                    p.dots_direction   = [18 62 98 152 192 236 282 326];
+                end
                 
                 % RDK specific
                 p.dots_density     = 16.7;                                      % dots/deg??
@@ -216,7 +256,7 @@ else
                 p.iscolor         = false;                                      % use color or not [[[IF WE USE COLOR: MAKE SURE TO SQUARE IMAGE VALS FOR CLUT]]
                 
                 % TEMPORAL
-                p.duration        = dur_fps;                                   % frames (nr of monitor refreshes)
+                p.duration        = stimdur_frames;                                   % frames (nr of monitor refreshes)
                 
                 % SPATIAL
                 p.img_sz_deg      = 1.1;                                        % radius in deg
@@ -234,8 +274,14 @@ else
                 p.loc_jitter_sd   = 1;                                          % std of normal distribution to sample orientation jitter
                 p.loc_jitter_mu   = 1;                                          % mean of normal distribution to sample orientation jitter
                 p.loc_bins        = [3:(180/p.num_loc):176];                   % rotate 10 deg away from vertical, to avoid ill-defined response options
-                p.loc_jitter      = p.loc_jitter_sd + (p.loc_jitter_mu.*randn(1,p.num_loc)); % add a small amount of jitter around the orientation
-                p.loc_deg         = round(p.loc_bins + p.loc_jitter) + 90;           % final gabor orientations to make North 0;
+                
+                if overwrite_randomized_params 
+                    p.loc_jitter      = p.loc_jitter_sd + (p.loc_jitter_mu.*randn(1,p.num_loc)); % add a small amount of jitter around the orientation
+                    p.loc_deg         = round(p.loc_bins + p.loc_jitter) + 90;           % final gabor orientations to make North 0;
+                else
+                    p.loc_jitter      = [0.8759,2.4897,2.4090,2.4172,1.6715,-0.2075,1.7172,2.6302,1.4889, 2.0347,1.7269,0.6966,1.2939,0.2127,1.8884,-0.1471];
+                    p.loc_deg         = [4 17 28 39 50 59 72 84 94 106 117 127 139 149 162 172]; 
+                end
                 
                 p.iso_eccen       = 4.5;
                 [x,y] = pol2cart(deg2rad(p.loc_deg),repmat(p.iso_eccen,1,length(p.loc_deg)));
@@ -257,7 +303,7 @@ else
                 
                 
                 % TEMPORAL
-                p.duration      = dur_fps;                                     % frames (nr of monitor refreshes)
+                p.duration      = stimdur_frames;                                     % frames (nr of monitor refreshes)
                 
                 % SPATIAL
                 p.contrast      = 1;                                            % Michelson [0-1] (fraction)
@@ -300,7 +346,7 @@ else
                 p.iscolor = true;                                               % Use color or not? [IF YES: MAKE SURE TO SQUARE IMAGE VALS FOR CLUT]
                 
                 % TEMPORAL
-                p.duration    = dur_fps;                                       % frames (nr of monitor refreshes)
+                p.duration    = stimdur_frames;                                       % frames (nr of monitor refreshes)
                 
                 % SPATIAL
                 p.og_res_stim = 425;                                            % original resolution of NSD stimuli
@@ -344,9 +390,6 @@ else
                 
                 p.change_im     = {'easy_added',  'hard_added','easy_removed'  'hard_removed'};
                 p.lure_im       = {'lure1',  'lure2', 'lure3', 'lure4'};
-
-                %             p.delta_from_ref  = [-5 15 5 15];                               % how much should scene pov rotate L/R for WM
-                % the bigger the delta, the easier the trial
                 
                 % Add params to struct
                 stim.ns = p;
@@ -356,7 +399,7 @@ else
         
         fprintf('*** %s: Using a stimulus size of %2.2f deg (%3.2f pixels). ***\n', upper(type{ii}), p.img_sz_deg, p.img_sz_pix);
         fprintf('*** %s: Using a stimulus duration of %d frame bins (%3.2f seconds), where 1 bin is %d frames of 1/%d Hz ***\n', ...
-            upper(type{ii}), p.duration, p.duration*stim.fps, stim.frame_bin, disp_params.refresh_hz);
+            upper(type{ii}), p.duration, p.duration*stim.framedur_s, stim.frame_bin, disp_params.refresh_hz);
     end
 
     
