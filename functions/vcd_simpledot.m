@@ -50,10 +50,11 @@ simple_dot(simple_dot==0) = p.stim.bckgrnd_grayval;
 simple_dot(simple_dot==1) = p.stim.dot.color(1);
 
 
-mask = uint8(ones(size(simple_dot,1),size(simple_dot,2),2).*p.stim.bckgrnd_grayval);
+mask = uint8(zeros(size(simple_dot,1),size(simple_dot,2)));
 mask0 = (Y - centerY).^2 ...
     + (X - centerX).^2 <= (p.stim.dot.radius_pix+pixel_edge).^2;
-mask(:,:,2) = uint8(mask0.*p.stim.bckgrnd_grayval);
+mask(mask0) = 255;
+mask = uint8(mask);
 
 
 % debug figure

@@ -141,7 +141,7 @@ for ii = 1:length(run_image_order)
                 end
                 
                 if ndims(images.alpha.dot)==3
-                    images.alpha.dot = images.alpha.dot(:,:,2);
+                    images.alpha.dot = images.alpha.dot;
                 end
                 for jj = 1:numTrials
                     for nn = 1:numSides
