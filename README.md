@@ -42,6 +42,9 @@ This stimulus presentation code requires a specific version of [Psychtoolbox-3](
 
 This stimulus presentation code has also been tested on a MacbookPro with macOS 10.14.6 Mojave, and MATLAB version 2018b, PTB version (November 17, 2020), git commit ef093cbf296115badddb995fa06452e34c8c7d02. The stimulus presentation code does not run on MacBook Pro's with Silicon chips (M1 or M2).
 
+## Stimuli and info files
+
+The content of the `workspaces` folder is ignored, as the files are too big. You can view a stored version of the workspace [here](https://www.dropbox.com/scl/fo/kwdmlhjh79w70nl8225wh/AATjemZUbgXi2P-_AGW_ffg?rlkey=c6ln9ms5nxz7n300nn03pynro&st=l9tpl1z4&dl=0).
 
 ## Code and folder overview
 
