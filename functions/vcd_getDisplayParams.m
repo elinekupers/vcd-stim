@@ -28,11 +28,12 @@ switch dispname
         disp.xc          = disp.w_pix/2;        % x-center relative to upper left corner (pixels)
         disp.yc          = disp.h_pix/2;        % y-center relative to upper left corner (pixels)
         disp.clut        = 0;                   % linear clut
+        disp.fontsize    = 25;                  % fontsize of text
         
     case 'KKOFFICE_AOCQ3277'                    % EK stimlaptop uses MATLAB version 2018b, psychtoolbox version ??? Nov 17 2020 (git commit ef093cbf296115badddb995fa06452e34c8c7d02)
         disp.w_cm        = 71;                  % cm wide; 
         disp.h_cm        = 40;                  % cm high;
-        disp.dist_cm     = 50;                  % from eye to display.
+        disp.dist_cm     = 100;                 % from eye to display.
         disp.h_pix       = 1440;                % height in pixels 
         disp.w_pix       = 2560;                % width in pixels
         disp.h_deg       = pix2deg(disp.h_pix,disp.h_pix,disp.h_cm,disp.dist_cm); % in degrees 
@@ -42,11 +43,12 @@ switch dispname
         disp.xc          = disp.w_pix/2;        % x-center relative to upper left corner (pixels)
         disp.yc          = disp.h_pix/2;        % y-center relative to upper left corner (pixels)
         disp.clut        = 0;                   % linear clut
-                
+        disp.fontsize    = 12;                  % fontsize of text
+        
      case 'EKHOME_ASUSVE247'                    % EK stimlaptop uses MATLAB version 2018b, psychtoolbox version ??? Nov 17 2020 (git commit ef093cbf296115badddb995fa06452e34c8c7d02)
         disp.w_cm        = 71;                  % cm wide; 
         disp.h_cm        = 40;                  % cm high;
-        disp.dist_cm     = 50;                  % from eye to display.
+        disp.dist_cm     = 100;                 % from eye to display.
         disp.h_pix       = 1080;                % height in pixels 
         disp.w_pix       = 1920;                % width in pixels
         disp.h_deg       = pix2deg(disp.h_pix,disp.h_pix,disp.h_cm,disp.dist_cm); % in degrees 
@@ -56,7 +58,8 @@ switch dispname
         disp.xc          = disp.w_pix/2;        % x-center relative to upper left corner (pixels)
         disp.yc          = disp.h_pix/2;        % y-center relative to upper left corner (pixels)       
         disp.clut        = 0;                   % linear clut
-        
+        disp.fontsize    = 12;                  % fontsize of text
+
     case 'PPROOM_EIZOFLEXSCAN'                  % MATLAB version 2016b, psychtoolbox version 3.0.14 December 30th 2014
         disp.w_cm        = 52;                  % width in cm
         disp.h_cm        = 32.5;                % height in cm
@@ -70,6 +73,7 @@ switch dispname
         disp.xc          = disp.w_pix/2;        % x-center relative to upper left corner (pixels)
         disp.yc          = disp.h_pix/2;        % y-center relative to upper left corner (pixels)
         disp.clut        = 0;                   % linear clut: amazingly, no lookup table needed!! when using user3 - gamma 2.2
+        disp.fontsize    = 18;                  % fontsize of text
 end
 
 assert(isint(disp.xc)); assert(isint(disp.yc));
