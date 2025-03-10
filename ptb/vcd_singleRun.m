@@ -27,8 +27,9 @@ p.addParameter('offsetpix'      , [0 0]     , @isnumeric);                   % o
 p.addParameter('movieflip'      , [0 0]     , @isnumeric)                    % whether to flip up-down, whether to flip left-right
 p.addParameter('debugmode'      , false     , @islogical)                    % whether to use debug mode (no BOLDscreen, no eyelink)
 p.addParameter('dispName'       , '7TAS_BOLDSCREEN32' , @ischar)             % display params: 7TAS_BOLDSCREEN32, KKOFFICE_AOCQ3277, PPROOM_EIZOFLEXSCAN, 'EKHOME_ASUSVE247'
-p.addParameter('savetempstimuli', false     , @islogical)                    % whether we want to store temp stim file
-p.addParameter('loadtempstimuli', false     , @islogical)                    % whether we want to store temp stim file
+p.addParameter('savestimtiming' , false     , @islogical)                    % whether we want to store tempfile with stimulus timing (no stimuli)
+p.addParameter('savestim'       , false     , @islogical)                    % whether we want to store temp file with stimuli and timing
+p.addParameter('loadstimtiming' , false     , @islogical)                    % whether we want to store temp stim timing file
 
 % Parse inputs
 p.parse(subjID, sesID, runnum, varargin{:});
@@ -64,24 +65,32 @@ if params.debugmode % skip synctest
     skipsync = 1;
     if isempty(params.deviceNr)
         params.deviceNr = -3; % listen to all
+        warning('[%s]: No specified device nrs, will listen to all devices!\n',mfilename)
     elseif ~isfield(deviceNr,'internal') && ~isfield(deviceNr,'external')
         params.deviceNr = -3; % listen to all
+        warning('[%s]: No internal or external device nrs found, will listen to all devices!\n',mfilename)
     else
         if isfield(deviceNr,'external') && ~isempty(deviceNr.external) && ...
                 (~isfield(deviceNr,'internal') || isempty(deviceNr.internal))
             params.deviceNr = deviceNr.external;
+            fprintf('[%s]: Using external device number(s): %d, %s %s\n',mfilename,params.deviceNr,devices(params.deviceNr).product, devices(params.deviceNr).manufacturer)
         elseif isfield(deviceNr,'internal') && ~isempty(deviceNr.internal) && ...
                 (~isfield(deviceNr,'external') || isempty(deviceNr.external))
             params.deviceNr = deviceNr.internal;
+            fprintf('[%s]: Using internal device number(s): %d %s %s\n',mfilename,params.deviceNr,devices(params.deviceNr).product, devices(params.deviceNr).manufacturer)
         elseif isfield(deviceNr,'external') && isfield(deviceNr,'internal') && ...
                 ~isempty(deviceNr.external) && ~isempty(deviceNr.internal)
             params.deviceNr = [deviceNr.internal, deviceNr.external];
+            fprintf('[%s]: Using external and internal device number(s): %d, %s %s\n',mfilename,params.deviceNr,devices(params.deviceNr).product, devices(params.deviceNr).manufacturer)
         end
     end
 else
     skipsync = 0;
     if isempty(params.deviceNr) && ~isempty(deviceNr.external)
         params.deviceNr = deviceNr.external;
+        fprintf('[%s]: Using external device number: %d, %s %s\n',mfilename,params.deviceNr,devices(params.deviceNr).product, devices(params.deviceNr).manufacturer)
+    elseif  isempty(params.deviceNr) && isempty(deviceNr.external)
+        error('[%s]: Cannot find external device number!',mfilename)
     end
 end
 
@@ -110,11 +119,16 @@ params.rng.randn = randn;
 % Stimulus params
 if ~isfield(params, 'stim') || isempty(params.stim)
     if params.loadparams
-        d = dir(fullfile(params.infofolder,'stim*.mat'));
-        load(fullfile(d(end).folder,d(end).name),'stim');
-        params.stim = stim; clear stim;
+        d = dir(fullfile(params.infofolder,sprintf('stim_%s*.mat',params.disp.name)));
+        if  isempty(d)
+            warning('[%s]: Can''t find stim params for %s, will reload params without overwriting params',mfilename,params.disp.name);
+            params.stim   = vcd_getStimParams('all',params.disp,false,params.storeparams,false);
+        else
+            load(fullfile(d(end).folder,d(end).name),'stim');
+            params.stim = stim; clear stim;
+        end
     else
-        params.stim   = vcd_getStimParams('all',disp.name,params.loadparams,params.storeparams,params.overwrite_randomized_params);
+        params.stim   = vcd_getStimParams('all',params.disp.name,params.loadparams,params.storeparams,params.overwrite_randomized_params);
     end
 end
 
@@ -351,16 +365,29 @@ if ~exist('scan','var') || ~isfield(scan, 'rects') || isempty(scan.rects)
                         end
                         
                         % deal with dot pol2cart
-                        if delay_period && ~isnan(cellblock{4,block_counter}(trial_counter0,side).ref_delta)
-                            dot_angle = cellblock{4,block_counter}(trial_counter0,side).ref_delta;
-                            [dot_x,dot_y] = pol2cart(deg2rad(dot_angle),params.stim.dot.iso_eccen);
-                        elseif isfield(cellblock{4,block_counter}(trial_counter,side),'loc_deg')
-                            dot_angle = cellblock{4,block_counter}(trial_counter,side).loc_deg;
-                            xy_idx = find(dot_angle == params.stim.dot.loc_deg);
-                            dot_x = params.stim.dot.x0_pix(xy_idx);
-                            dot_y = params.stim.dot.y0_pix(xy_idx);
+                        if side == 2
+                            if delay_period && ~isnan(cellblock{4,block_counter}(trial_counter0,side).ref_delta)
+                                dot_angle = cellblock{4,block_counter}(trial_counter0,side).ref_delta + 180;
+                                [dot_x,dot_y] = pol2cart(deg2rad(dot_angle),params.stim.dot.iso_eccen);
+                                
+                            elseif isfield(cellblock{4,block_counter}(trial_counter,side),'loc_deg')
+                                dot_angle = cellblock{4,block_counter}(trial_counter,side).loc_deg + 180;
+                                [dot_x,dot_y] = pol2cart(deg2rad(dot_angle),params.stim.dot.iso_eccen);
+                            end
+                            
+                        elseif side == 1
+                            
+                            if delay_period && ~isnan(cellblock{4,block_counter}(trial_counter0,side).ref_delta)
+                                dot_angle = cellblock{4,block_counter}(trial_counter0,side).ref_delta;
+                                [dot_x,dot_y] = pol2cart(deg2rad(dot_angle),params.stim.dot.iso_eccen);
+                                
+                            elseif isfield(cellblock{4,block_counter}(trial_counter,side),'loc_deg')
+                                dot_angle = cellblock{4,block_counter}(trial_counter,side).loc_deg;
+                                xy_idx = find(dot_angle == params.stim.dot.loc_deg);
+                                dot_x = params.stim.dot.x0_pix(xy_idx);
+                                dot_y = params.stim.dot.y0_pix(xy_idx);
+                            end
                         end
-                        
                         centers{nn,side}(1) = dot_x + params.stim.xc;
                         centers{nn,side}(2) = dot_y + params.stim.yc;
                         
@@ -427,9 +454,26 @@ if ~exist('scan','var') || ~isfield(scan, 'bckground') || isempty(scan.bckground
     scan.bckground = vcd_pinknoisebackground(params, 'comb', 'fat', 1, params.offsetpix);
 end
 
-%% Save images and timing just in case we run into an error?
-if params.savetempstimuli && ~params.loadtempstimuli % assume we don't to resave the same stimuli
-    save(fullfile(params.savedatadir,sprintf('tmp_expim_%s.mat',datestr(now,30))),'scan','timing','params','-v7.3')
+%% Save images and/or timing just in case we run into an error?
+if params.savestimtiming 
+    fprintf('[%s]: Saving stimulus timing..',mfilename)
+    tic
+    tmp_data = struct('scan',scan, 'params',params,'timing',timing);
+    tmp_data.scan.exp_im = []; tmp_data.scan.exp_im_masks = [];
+    tmp_data.scan.fix_im = []; tmp_data.scan.fix_im_masks = [];
+    tmp_data.scan.bckground_im = [];
+    save(fullfile(params.savedatadir,sprintf('tmp_expim_%s.mat',datestr(now,30))),'tmp_data','-v7.3');
+    clear tmp_data
+    fprintf('done!\n'); toc
+end
+
+if params.savestim
+    fprintf('[%s]: Saving stimuli and timing.. may take a minute!',mfilename)
+    tic 
+    tmp_data = struct('scan',scan, 'params',params,'timing',timing);
+    save(fullfile(params.savedatadir,sprintf('tmp_expim_%s.mat',datestr(now,30))),'tmp_data','-v7.3');
+    clear tmp_data
+    fprintf('done!\n'); toc
 end
 
 %% %%%%%%%%%%%%% TASK INSTRUCTIONS %%%%%%%%%%%%%
