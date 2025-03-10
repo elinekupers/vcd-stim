@@ -109,19 +109,19 @@ for frame = 1:length(timing.trig_stim)
     % set up fixation dot textures
     lum_idx = timing.trig_fix(frame);
     
-    if isnan(timing.seq_spatial_cue{frame})
-        fix_tex{frame} = fix_texture_thin_full{opacity_idx};
+    if timing.trig_spatial_cue(frame)==0 || isnan(timing.trig_spatial_cue(frame))
+        fix_tex{frame} = fix_texture_thin_full{lum_idx};
         fix_rect{frame} = fix_rect_thin;
     else
         switch timing.trig_spatial_cue(frame)
             case 1
-                fix_tex{frame} = fix_texture_thick_left{opacity_idx};
+                fix_tex{frame} = fix_texture_thick_left{lum_idx};
                 fix_rect{frame} = fix_rect_thick;
             case 2
-                fix_tex{frame} = fix_texture_thick_right{opacity_idx};
+                fix_tex{frame} = fix_texture_thick_right{lum_idx};
                 fix_rect{frame} = fix_rect_thick;
             case 0
-                fix_tex{frame} = fix_texture_thick_full{opacity_idx};
+                fix_tex{frame} = fix_texture_thick_full{lum_idx};
                 fix_rect{frame} = fix_rect_thick;
         end
     end
@@ -152,7 +152,7 @@ for frame = 1:length(timing.trig_stim)
             script = taskscript{~cellfun(@isempty, regexp(taskscript,sprintf('%02d',blockID),'match'))};
             [task_instr, task_rect] = vcd_getInstructionText(params, script, rect);
             
-            im_tex{frame} = cat(1, bckrgound_texture, fix_texture_thick_full{opacity_idx});
+            im_tex{frame} = cat(1, bckrgound_texture, fix_texture_thick_full{lum_idx});
             im_rect{frame} = cat(1, bckground_rect, fix_rect_thick);
             
             txt_tex{frame} = task_instr;
@@ -168,7 +168,8 @@ end
 [instrtext, prerun_text_rect] = vcd_getInstructionText(params, introscript, rect);
 
 % Draw background + dot
-Screen('DrawTextures',win, im_tex{1},[], im_rect{1}, 0, [], 1, framecolor{1});...
+% windowPointer, texturePointer(s), [sourceRect], destRects, rotAngles, filterModes, globalAlphas, modulateColors, textureShader, specialFlags, auxParameters]);
+Screen('DrawTextures',win, im_tex{1},[], im_rect{1}',[], [0;0], [1;1], framecolor{1}');
     
 % Draw text
 DrawFormattedText(win, instrtext, 'center', (prerun_text_rect(4)/2)-250,0,75,[],[],[],[],prerun_text_rect);
@@ -241,12 +242,12 @@ for frame = 1:size(frameorder,2)+1
         case {0, 93, 94, 95, 96, 98, 99}
             
             % draw background and dot textures
-            Screen('DrawTextures',win,im_tex{framecnt},[],im_rect{framecnt,:},0,[],1,framecolor{framecnt});
+            Screen('DrawTextures',win,im_tex{framecnt},[],im_rect{framecnt}',[0;0],[],[1;1],framecolor{framecnt}');
             
         case 97 % task_cue_ID
             
             % draw background and left/right cuing dot textures
-            Screen('DrawTextures',win,im_tex{framecnt},[],bckground_rect{framecnt},0,[],1,framecolor{framecnt});
+            Screen('DrawTextures',win,im_tex{framecnt},[],im_rect{framecnt}',[0;0],[],[1;1],framecolor{framecnt}');
             
             % draw text
             DrawFormattedText(win, txt_tex{framecnt}, 'center', (txt_rect{framecnt}(4)/2)-50,0,75,[],[],[],[],txt_rect{framecnt});
@@ -258,7 +259,7 @@ for frame = 1:size(frameorder,2)+1
             %   xx-xx = RDKs
             %   xx-xx = Simple dot
             %   xx-30 = Complex objects
-            Screen('DrawTexture',win, bckrgound_texture,[], im_rect{1}, 0, [], 1, 255*ones(1,3));...
+            Screen('DrawTexture',win, bckrgound_texture,[], bckground_rect, 0, [], 1, 255*ones(1,3));...
                 
         if blockID <= 30
             % trig_seq_exp_im_w_cd is a cell with dims: frames x 1, where each cell has 1 or 2 sides (1:l, 2:r)
@@ -281,31 +282,22 @@ for frame = 1:size(frameorder,2)+1
                 end
                 
                 stim_texture = Screen('MakeTexture',win, txttemp);
-                %
-                %
-                %                     im_tex{frame} = cat(1, bckrgound_texture, stim_texture, fix_tex{framecnt});
-                %                     im_rect{frame} = cat(1, bckground_rect, stim_rect, fix_rect{framecnt});
-                
+                Screen('DrawTexture',win,stim_texture,[], stim_tex, 0,[],1, 255*ones(1,3));
             end
             
         else % 31-39 = Natural Scene stim-task crossings ({31,32,33,34,35,36,37,38,39})
             txttemp = feval(flipfun,timing.trig_seq_exp_im_w_cd{framecnt}{1});
             stim_rect = scan.rects{framecnt,1};
             stim_texture = Screen('MakeTexture',win, txttemp);
-            
-            
-            
-            %                 im_tex{frame} = cat(1, bckrgound_texture, stim_texture, fix_tex{frame});
-            %                 im_rect{frame} = cat(1, bckground_rect, stim_rect, fix_rect{frame});
+            Screen('DrawTexture',win,stim_texture,[], stim_tex, 0,[],1, 255*ones(1,3));
         end
         
-        
+
         % Draw fix dot on top
         Screen('DrawTexture',win,fix_tex{frame} ,[], fix_rect{frame}, 0,[],1, 255*ones(1,3));
         
     end
 end
-
 
 
 % give hint to PT that we're done drawing
@@ -393,7 +385,7 @@ while 1
         when = whendesired - mfi * (9/10);  % should we be less aggressive??
     end
 end
-end
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -437,7 +429,7 @@ data.timing.empiricalfps    = length(timeframes)/dur;
 data.digitrecord            = digitrecord;
 
 
-end
+return
 
 
 
