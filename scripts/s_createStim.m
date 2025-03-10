@@ -7,15 +7,21 @@ verbose = true; % plot stimuli or not
 %%%%%%%%%%%%%%%%%%%%%%
 
 % Get display params
-dispname = '7TAS_BOLDSCREEN32'; % or 'KKOFFICEQ3277' or 'EKHOME_ASUSVE247' or 'PPROOM_EIZOFLEXSCAN'
+dispname = 'KKOFFICE_AOCQ3277'; %'7TAS_BOLDSCREEN32'; % or 'KKOFFICE_AOCQ3277' or 'EKHOME_ASUSVE247' or 'PPROOM_EIZOFLEXSCAN'
 p.disp   = vcd_getDisplayParams(dispname);
 
 %% Get stimulus parameters
-p.load_params  = true;
+p.load_params  = false; true;
 p.store_params = true;
 p.store_imgs   = true;
 p.overwrite_randomized_params = false;
 saveFigsFolder = fullfile(vcd_rootPath,'figs');
+
+%% SETUP RNG 
+rand('seed', sum(100*clock));
+randn('seed', sum(100*clock));
+params.rng.rand = rand;
+params.rng.randn = randn;
 
 %% Define/Load stimulus params 
 % !!WARNING!! There is a randomization component involved in creating some
