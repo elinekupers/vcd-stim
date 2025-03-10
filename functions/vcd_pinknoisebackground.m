@@ -158,10 +158,13 @@ bckgrnd_im = permute(bckgrnd_im, [1 2 4 3]);
 
 
 if p.stim.store_imgs
-    fprintf('\nStoring images..')
+    fprintf('[%s]:Storing background image(s)..',mfilename);
+    tic
     saveDir = fileparts(fullfile(p.stim.bckground.stimfile));
     if ~exist(saveDir,'dir'), mkdir(saveDir); end
     save(fullfile(sprintf('%s_%s_%s_%s.mat',p.stim.bckground.stimfile,type,borderwidth,datestr(now,30))),'bckgrnd_im','-v7.3');
+    toc
+    fprintf('\n')
 end
 
 
