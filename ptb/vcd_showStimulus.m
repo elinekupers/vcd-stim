@@ -103,7 +103,7 @@ txt_tex    = fix_tex;
 txt_rect   = fix_tex;
 
 for frame = 1:length(timing.trig_stim)
-
+    
     blockID = timing.trig_block(frame);
     
     % set up fixation dot textures
@@ -136,18 +136,18 @@ for frame = 1:length(timing.trig_stim)
         % 97 : exp_session.miniblock.task_cue_ID
         % 98 : exp_session.miniblock.ITI_ID
         % 99 : exp_session.miniblock.IBI_ID
-   
+        
         % Draw background + thin fix dot on top
-        case {0, 93, 94, 95, 96, 98, 99} 
+        case {0, 93, 94, 95, 96, 98, 99}
             
-             % DrawTextures 
-             % * TexturePointers  need to be: n vector (where n is the number of textures)
-             % * DestinationRects need to be: 4 row x n columns (where n is the number of textures)            
+            % DrawTextures
+            % * TexturePointers  need to be: n vector (where n is the number of textures)
+            % * DestinationRects need to be: 4 row x n columns (where n is the number of textures)
             im_tex{frame} = cat(1, bckrgound_texture, fix_tex{frame});
             im_rect{frame} = cat(1, bckground_rect, fix_rect{frame});
             framecolor{frame} = 255*ones(2,3); % <framecolor> can also be size(<frameorder>,2) x 1 with values in [0,1] indicating an alpha change.
-
-        case 97 % task_cue_ID  
+            
+        case 97 % task_cue_ID
             
             script = taskscript{~cellfun(@isempty, regexp(taskscript,sprintf('%02d',blockID),'match'))};
             [task_instr, task_rect] = vcd_getInstructionText(params, script, rect);
@@ -157,19 +157,19 @@ for frame = 1:length(timing.trig_stim)
             
             txt_tex{frame} = task_instr;
             txt_rect{frame} = task_rect;
-
+            
             framecolor{frame} = 255*ones(2,3); % <framecolor> can also be size(<frameorder>,2) x 1 with values in [0,1] indicating an alpha change.
-    
+            
     end
 end
-        
- 
-% Get pre-run intructions 
+
+
+% Get pre-run intructions
 [instrtext, prerun_text_rect] = vcd_getInstructionText(params, introscript, rect);
 
 % Draw background + dot
 Screen('DrawTextures',win, im_tex{1},[], im_rect{1}, 0, [], 1, framecolor{1});...
-
+    
 % Draw text
 DrawFormattedText(win, instrtext, 'center', (prerun_text_rect(4)/2)-250,0,75,[],[],[],[],prerun_text_rect);
 Screen('Flip',win);
@@ -184,7 +184,7 @@ fprintf('press trigger key to begin the movie. (consider turning off network, en
 while 1
     [~,keyCode,~] = KbWait(deviceNr,2); % previously deviceNr = -3; outputs: secs,keyCode,deltaSecs
     temp = KbName(keyCode);
-
+    
     if isempty(params.triggerkey) || any(strcmp(temp(1), params.triggerkey))
         break;
     end
@@ -204,7 +204,7 @@ for frame = 1:size(frameorder,2)+1
     frame0 = floor(frame);
     reporttext = '';
     
-%     blockID = timing.trig_block(framecnt);
+    %     blockID = timing.trig_block(framecnt);
     
     % we have to wait until the last frame of the run sequence is done.
     if frame0 == size(frameorder,2)+1
@@ -250,7 +250,7 @@ for frame = 1:size(frameorder,2)+1
             
             % draw text
             DrawFormattedText(win, txt_tex{framecnt}, 'center', (txt_rect{framecnt}(4)/2)-50,0,75,[],[],[],[],txt_rect{framecnt});
-
+            
         case {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30}
             % Draw stimulus textures
             % 1-30 = all 2 peripheral stimulus aperture stim-task crossings:
@@ -259,123 +259,123 @@ for frame = 1:size(frameorder,2)+1
             %   xx-xx = Simple dot
             %   xx-30 = Complex objects
             Screen('DrawTexture',win, bckrgound_texture,[], im_rect{1}, 0, [], 1, 255*ones(1,3));...
-
-            if blockID <= 30
-                % trig_seq_exp_im_w_cd is a cell with dims: frames x 1, where each cell has 1 or 2 sides (1:l, 2:r)
-                for side = 1:length(find(~cellfun(@isempty, timing.trig_seq_exp_im_w_cd{framecnt})))
-                    
-                    % add mask if we have one
-                    if ~isempty(timing.trig_seq_exp_im_mask{framecnt}) || ~isempty(timing.trig_seq_exp_im_mask{framecnt}{1})
-                        if  length(timing.trig_seq_exp_im_mask{framecnt})==1 && ~isequalwithequalnans(timing.trig_seq_exp_im_mask{framecnt}{1},NaN)
-                            
-                            stim_tex = feval(flipfun, cat(3, timing.trig_seq_exp_im_w_cd{framecnt}{side}, timing.trig_seq_exp_im_mask{framecnt}{1}));
-                            stim_rect = scan.rects{framecnt,side};
-                        else
-                            stim_tex = feval(flipfun, timing.trig_seq_exp_im_w_cd{framecnt}{side});
-                            stim_rect = scan.rects{framecnt,side};
-                        end
+                
+        if blockID <= 30
+            % trig_seq_exp_im_w_cd is a cell with dims: frames x 1, where each cell has 1 or 2 sides (1:l, 2:r)
+            for side = 1:length(find(~cellfun(@isempty, timing.trig_seq_exp_im_w_cd{framecnt})))
+                
+                % add mask if we have one
+                if ~isempty(timing.trig_seq_exp_im_mask{framecnt}) || ~isempty(timing.trig_seq_exp_im_mask{framecnt}{1})
+                    if  length(timing.trig_seq_exp_im_mask{framecnt})==1 && ~isequalwithequalnans(timing.trig_seq_exp_im_mask{framecnt}{1},NaN)
                         
+                        stim_tex = feval(flipfun, cat(3, timing.trig_seq_exp_im_w_cd{framecnt}{side}, timing.trig_seq_exp_im_mask{framecnt}{1}));
+                        stim_rect = scan.rects{framecnt,side};
                     else
                         stim_tex = feval(flipfun, timing.trig_seq_exp_im_w_cd{framecnt}{side});
                         stim_rect = scan.rects{framecnt,side};
                     end
                     
-                    stim_texture = Screen('MakeTexture',win, txttemp);
-%                     
-%                     
-%                     im_tex{frame} = cat(1, bckrgound_texture, stim_texture, fix_tex{framecnt});
-%                     im_rect{frame} = cat(1, bckground_rect, stim_rect, fix_rect{framecnt});
-                    
+                else
+                    stim_tex = feval(flipfun, timing.trig_seq_exp_im_w_cd{framecnt}{side});
+                    stim_rect = scan.rects{framecnt,side};
                 end
                 
-            else % 31-39 = Natural Scene stim-task crossings ({31,32,33,34,35,36,37,38,39})
-                txttemp = feval(flipfun,timing.trig_seq_exp_im_w_cd{framecnt}{1});
-                stim_rect = scan.rects{framecnt,1};
                 stim_texture = Screen('MakeTexture',win, txttemp);
+                %
+                %
+                %                     im_tex{frame} = cat(1, bckrgound_texture, stim_texture, fix_tex{framecnt});
+                %                     im_rect{frame} = cat(1, bckground_rect, stim_rect, fix_rect{framecnt});
                 
-                
-                
-%                 im_tex{frame} = cat(1, bckrgound_texture, stim_texture, fix_tex{frame});
-%                 im_rect{frame} = cat(1, bckground_rect, stim_rect, fix_rect{frame});
             end
             
+        else % 31-39 = Natural Scene stim-task crossings ({31,32,33,34,35,36,37,38,39})
+            txttemp = feval(flipfun,timing.trig_seq_exp_im_w_cd{framecnt}{1});
+            stim_rect = scan.rects{framecnt,1};
+            stim_texture = Screen('MakeTexture',win, txttemp);
             
-         % Draw fix dot on top
-         Screen('DrawTexture',win,fix_tex{frame} ,[], fix_rect{frame}, 0,[],1, 255*ones(1,3));
- 
-    end
-end
-    
-
-    
-    % give hint to PT that we're done drawing
-    Screen('DrawingFinished',win);
- 
-    %%%%%%%%%%%%%%%%%%%%%%%% the main while loop that actually puts up stimuli and records button presses   
-    
-    % here, deal with making the stimulus frame / texture / stuff
-    % read input until we have to do the flip
-    while 1
-        
-        % if we are in the initial case OR if we have hit the when time, then display the frame
-        if when == 0 || GetSecs >= when
             
-            % issue the flip command and record the empirical time
-            [VBLTimestamp,~,~,~,~] = Screen('Flip',win,  0);
-            timeframes(framecnt) = VBLTimestamp;
             
-            % get matlab now for the very first stimulus frame
-            if framecnt==1
-                absnowtime = now;
-            end
-            
-            % Detect glitch
-            if when ~= 0 && (VBLTimestamp - whendesired) > (mfi * (1/2))
-                glitchcnt = glitchcnt + 1;
-                didglitch = 1;
-            else
-                didglitch = 0;
-            end
-            
-            % get out of this loop
-            break;
-            
-            % otherwise, try to read input
-        else
-            if detectinput
-                [keyIsDown,secs,keyCode,~] = KbCheck(deviceNr);  % previously -3 listen to all devices
-                if keyIsDown
-                    
-                    % get the name of the key and record it
-                    kn = KbName(keyCode);
-                    timekeys = [timekeys; {secs kn}];
-                    
-                    % check if ESCAPE was pressed
-                    if isequal(kn,'ESCAPE')
-                        fprintf('Escape key detected.  Exiting prematurely.\n');
-                        getoutearly = 1;
-                        break;
-                    end
-                    
-                    % force a glitch?
-                    if allowforceglitch(1) && isequal(kn,'p')
-                        WaitSecs(allowforceglitch(2));
-                    end
-                    
-                end
-            end
+            %                 im_tex{frame} = cat(1, bckrgound_texture, stim_texture, fix_tex{frame});
+            %                 im_rect{frame} = cat(1, bckground_rect, stim_rect, fix_rect{frame});
         end
         
+        
+        % Draw fix dot on top
+        Screen('DrawTexture',win,fix_tex{frame} ,[], fix_rect{frame}, 0,[],1, 255*ones(1,3));
+        
+    end
+end
+
+
+
+% give hint to PT that we're done drawing
+Screen('DrawingFinished',win);
+
+%%%%%%%%%%%%%%%%%%%%%%%% the main while loop that actually puts up stimuli and records button presses
+
+% here, deal with making the stimulus frame / texture / stuff
+% read input until we have to do the flip
+while 1
+    
+    % if we are in the initial case OR if we have hit the when time, then display the frame
+    if when == 0 || GetSecs >= when
+        
+        % issue the flip command and record the empirical time
+        [VBLTimestamp,~,~,~,~] = Screen('Flip',win,  0);
+        timeframes(framecnt) = VBLTimestamp;
+        
+        % get matlab now for the very first stimulus frame
+        if framecnt==1
+            absnowtime = now;
+        end
+        
+        % Detect glitch
+        if when ~= 0 && (VBLTimestamp - whendesired) > (mfi * (1/2))
+            glitchcnt = glitchcnt + 1;
+            didglitch = 1;
+        else
+            didglitch = 0;
+        end
+        
+        % get out of this loop
+        break;
+        
+        % otherwise, try to read input
+    else
+        if detectinput
+            [keyIsDown,secs,keyCode,~] = KbCheck(deviceNr);  % previously -3 listen to all devices
+            if keyIsDown
+                
+                % get the name of the key and record it
+                kn = KbName(keyCode);
+                timekeys = [timekeys; {secs kn}];
+                
+                % check if ESCAPE was pressed
+                if isequal(kn,'ESCAPE')
+                    fprintf('Escape key detected.  Exiting prematurely.\n');
+                    getoutearly = 1;
+                    break;
+                end
+                
+                % force a glitch?
+                if allowforceglitch(1) && isequal(kn,'p')
+                    WaitSecs(allowforceglitch(2));
+                end
+                
+            end
+        end
     end
     
-%     % write to file if desired
-%     if wantframefiles
-%         if isempty(framefiles{2}) %#ok<UNRCH>
-%             imwrite(Screen('GetImage',win),sprintf(framefiles{1},framecnt));
-%         else
-%             imwrite(uint8(placematrix(zeros([framefiles{2} 3]),Screen('GetImage',win))),sprintf(framefiles{1},framecnt));
-%         end
-%     end
+    
+    
+    %     % write to file if desired
+    %     if wantframefiles
+    %         if isempty(framefiles{2}) %#ok<UNRCH>
+    %             imwrite(Screen('GetImage',win),sprintf(framefiles{1},framecnt));
+    %         else
+    %             imwrite(uint8(placematrix(zeros([framefiles{2} 3]),Screen('GetImage',win))),sprintf(framefiles{1},framecnt));
+    %         end
+    %     end
     
     % update when
     if didglitch
@@ -392,6 +392,7 @@ end
         whendesired = VBLTimestamp + mfi * frameduration;
         when = whendesired - mfi * (9/10);  % should we be less aggressive??
     end
+end
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -412,7 +413,7 @@ ShowCursor;
 starttime = timeframes(1);
 timeframes = timeframes - starttime;
 if size(timekeys,1) > 0
-  timekeys(:,1) = cellfun(@(x) x - starttime,timekeys(:,1),'UniformOutput',0);
+    timekeys(:,1) = cellfun(@(x) x - starttime,timekeys(:,1),'UniformOutput',0);
 end
 timekeys = [{absnowtime 'absolutetimefor0'}; timekeys];
 
