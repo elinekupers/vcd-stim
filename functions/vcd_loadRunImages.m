@@ -88,19 +88,14 @@ for ii = 1:length(run_image_order)
                         
                         stimfile = fullfile(stimDir(1).folder,stimDir(1).name,sprintf('%s.mat', filename));
                         if exist(stimfile,'file')
-                            load(stimfile, 'frames');
+                            load(stimfile, 'frames','mask');
                         else
                             error('[%s]: Can''t find RDK stim file!')
                         end
                         
-                        %% hack in alpha mask for RDKs for now
-                        d0 = dir(sprintf('%s*.mat', params.stim.gabor.stimfile));
-                        a1 = load(fullfile(d0(end).folder,d0(end).name), 'masks');
-                        
                         % each file contains a 4D array: [x,y,3,frames]
                         run_images{ii,jj,nn,1} = frames;
-                        run_alpha_masks{ii,jj,nn,1} = a1.masks(:,:,1,1);
-
+                        run_alpha_masks{ii,jj,nn,1} = mask;
                         
                         if strcmp(taskClass,'wm')
                             delta_idx = find((block(ii).trial(jj,nn).motdir - block(ii).trial(jj,nn).ref_delta) == params.stim.rdk.delta_from_ref);
@@ -111,7 +106,7 @@ for ii = 1:length(run_image_order)
                                 find(block(ii).trial(jj,nn).coh==params.stim.rdk.dots_coherence), ...
                                 delta_idx);
                             
-                            stimfile_delta = fullfile(stimDir.folder,stimDir.name,sprintf('%s.mat', filename_delta));
+                            stimfile_delta = fullfile(stimDir(1).folder,stimDir(1).name,sprintf('%s.mat', filename_delta));
                             
                             load(stimfile_delta, 'frames');
                             run_images{ii,jj,nn,2} = frames;
@@ -143,6 +138,10 @@ for ii = 1:length(run_image_order)
                     images.dot = simple_dot; clear simple_dot;
                     images.alpha.dot = mask; clear mask;
                     images.info.dot = info; clear info;
+                end
+                
+                if ndims(images.alpha.dot)==3
+                    images.alpha.dot = images.alpha.dot(:,:,2);
                 end
                 for jj = 1:numTrials
                     for nn = 1:numSides
@@ -184,15 +183,15 @@ for ii = 1:length(run_image_order)
                 
                 for jj = 1:numTrials
                     for nn = 1:numSides
-                        [i3,i4] = ind2sub([size(images.cobj,3),size(images.cobj,4)],run_image_order{ii}{jj,1}(nn));
+                        [i4,i5] = ind2sub([size(images.cobj,4),size(images.cobj,5)],run_image_order{ii}{jj,1}(nn));
                         
-                        run_images{ii,jj,nn,1} = images.cobj(:,:,i3,i4);
-                        run_alpha_masks{ii,jj,nn,1} = images.alpha.cobj(:,:,i3,i4);
+                        run_images{ii,jj,nn,1} = images.cobj(:,:,:,i4,i5);
+                        run_alpha_masks{ii,jj,nn,1} = images.alpha.cobj(:,:,i4,i5);
                         
                         if strcmp(taskClass,'wm')
-                            [i3,i4] = ind2sub([size(images.cobj,3),size(images.cobj,4)],run_image_order{ii}{jj,2}(nn));
-                            run_images{ii,jj,nn,2} = images.cobj(:,:,i3,i4);
-                            run_alpha_masks{ii,jj,nn,2} = images.alpha.cobj(:,:,i3,i4);
+                            [i4,i5] = ind2sub([size(images.cobj,4),size(images.cobj,5)],run_image_order{ii}{jj,2}(nn));
+                            run_images{ii,jj,nn,2} = images.cobj(:,:,:,i4,i5);
+                            run_alpha_masks{ii,jj,nn,2} = images.alpha.cobj(:,:,i4,i5);
                         end
                         %                 if strcmp(taskClass,'ltm')
                         %
@@ -257,11 +256,16 @@ for ii = 1:length(run_image_order)
             statusdots(jj,length(numTrials));
             
             tmp0 = squeeze(run_images(ii,jj,:,:));
+            tmp0_mask = squeeze(run_alpha_masks(ii,jj,:,:));
+
             sz0 = size(tmp0);
             
             tmp0 = reshape(tmp0,1,[]);
+            tmp0_mask = reshape(tmp0_mask,1,[]);
             
+            im_rz = []; im_mask_rz = [];
             for kk = 1:length(tmp0)
+                
                 if ~isempty(tmp0{kk})
                     sz = cell2mat(reshape(cellfun(@size, tmp0(kk),'UniformOutput',false),[],1));
                     
@@ -271,15 +275,18 @@ for ii = 1:length(run_image_order)
                     
                      
                     if any(params.stim.(stimClass).img_sz_pix ~= sz)
-                        % recompute scale factor
-                        scale_factor = params.stim.(stimClass).img_sz_pix./sz;
-                        params.stim.(stimClass).dres_additional = scale_factor;
+                        
+                        % recompute scale factor in case we didn't adjust
+                        % stim size to the current monitor
+                        scale_factor = params.stim.(stimClass).img_sz_pix/sz;
+                        params.stim.(stimClass).dres = scale_factor; % overwrite scale factor
                         
                         % reshape to get one vector of pixels by 1 (or time)
                         tmp0_im = double(tmp0{kk});
                         
-                        
-                        
+                        if ~isempty(tmp0_mask{kk})
+                            tmp0_im_mask = tmp0_mask{kk};
+                        end
                         %                         % GRAY SCALE has 2 or 3 dim
                         %                         if ~params.stim.(stimClass).iscolor
                         %                             tmp_im = reshape(tmp0_im, ...
@@ -295,38 +302,42 @@ for ii = 1:length(run_image_order)
                         %                                 3, ... % rgb
                         %                                 []);
                         %                         end
-                        if ndims(tmp0_im)==3
-                            numFrames = size(tmp0_im);
-                            numFrames = numFrames(end);
+                        if ndims(tmp0_im)==4
+                            numFrames = size(tmp0_im,4);
                         
                             for ll = 1:numFrames
-                                if params.stim.(stimClass).iscolor
-                                    im_rz(:,:,:,ll) = imresize(tmp0_im(:,:,:,ll),scale_factor); %% DEFAULT IS BICUBIC
-                                else
-                                    im_rz(:,:,ll) = imresize(tmp0_im(:,:,ll),scale_factor);
-                                end
+                                im_rz(:,:,:,ll) = imresize(tmp0_im(:,:,:,ll),scale_factor); %% DEFAULT IS BICUBIC
+                            end
+                            
+                            if exist('tmp0_im_mask','var') % assume there is only one mask, the same for every time point 
+                                im_mask_rz = imresize(tmp0_im_mask,scale_factor); %% DEFAULT IS BICUBIC
                             end
                         
                         else
-                            if params.stim.(stimClass).iscolor
-                                im_rz = imresize(tmp0_im,scale_factor); %% DEFAULT IS BICUBIC
-                            else
-                                im_rz = imresize(tmp0_im,scale_factor);
+                            im_rz = imresize(tmp0_im,scale_factor);
+                            if exist('tmp0_im_mask','var')
+                                im_mask_rz = imresize(tmp0_im_mask,scale_factor); %% DEFAULT IS BICUBIC
                             end
+                            
                         end
                         
                         run_im_tmp{kk} = im_rz;
-
+                        run_im_tmp_mask{kk} = im_mask_rz;
+                    else
+                        run_im_tmp{kk} = tmp0{kk};
+                        run_im_tmp_mask{kk} = tmp0_mask{kk};
                     end
-                    
-                    
-%                 else
-%                     tmp0{kk} = tmp0{kk};
                 end
             end
-            run_im_tmp = reshape(tmp0,sz0(1),sz0(2));
+            
+            % Reshape trial images back to 2xN
+            run_im_tmp = reshape(run_im_tmp,sz0(1),sz0(2));
             run_images(ii,jj,:,:) = run_im_tmp;
             
+            if exist('run_im_tmp_mask','var')
+                run_im_tmp_mask = reshape(run_im_tmp_mask,sz0(1),sz0(2));
+                run_alpha_masks(ii,jj,:,:) = run_im_tmp_mask;
+            end
         end
     end
     
