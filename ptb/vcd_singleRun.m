@@ -14,6 +14,7 @@ p.addParameter('behaviorfile'   , []        , @ischar);                      % f
 p.addParameter('eyelinkfile'    , []        , @ischar);                      % where the eyelink edf file can be obtained
 p.addParameter('loadparams'     , true      , @islogical)                    % whether load stim/condition params or regenerate
 p.addParameter('storeparams'    , true      , @islogical)                    % whether to store stimulus params
+p.addParameter('overwrite_randomized_params',false, @islogical);             % whether to overwrite randomization of certain stimulus parameters 
 p.addParameter('infofolder'     , fullfile(vcd_rootPath,'workspaces','info'), @ischar);     % where the *_info.csv file is
 p.addParameter('stimfolder'     , fullfile(vcd_rootPath,'workspaces','stimuli'), @ischar);  % where the images can be obtained
 p.addParameter('instrtextdir'   , fullfile(vcd_rootPath,'workspaces','instructions'), @ischar); % where the task instructions can be obtained
@@ -113,7 +114,7 @@ if ~isfield(params, 'stim') || isempty(params.stim)
         load(fullfile(d(end).folder,d(end).name),'stim');
         params.stim = stim; clear stim;
     else
-        params.stim   = vcd_getStimParams('all',disp.name,params.loadparams,params.storeparams);
+        params.stim   = vcd_getStimParams('all',disp.name,params.loadparams,params.storeparams,params.overwrite_randomized_params);
     end
 end
 
