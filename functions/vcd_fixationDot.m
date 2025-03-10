@@ -26,8 +26,8 @@ function [fix_im, mask, info, p] = vcd_fixationDot(p)
 % Written by Eline Kupers 2025/02
 
 
-% Create support: 2*fixation diam x 2*fixation diam x 3 x 5 luminance levels x 2 dot rims
-fix_im   = zeros([2*p.stim.fix.dotcenterdiam_pix, 2*p.stim.fix.dotcenterdiam_pix, 3, length(p.stim.fix.dotlum), 2]); 
+% Create support: 2*fixation diam x 2*fixation diam x 3 x 5 luminance levels x 5 dot rims
+fix_im   = zeros([2*p.stim.fix.dotcenterdiam_pix, 2*p.stim.fix.dotcenterdiam_pix, 3, length(p.stim.fix.dotlum), 5]); 
 
 x = [1:(2*p.stim.fix.dotcenterdiam_pix)]-p.stim.fix.dotcenterdiam_pix;
 [XX,~] = meshgrid(x,x);
@@ -66,19 +66,30 @@ for lum = 1:length(p.stim.fix.dotlum)
     fixation_rimthick_right = fixation_rimthick;
     fixation_rimthick_right(fixationmask_rimthick_right,:) = repmat(double(1),[size(fixationmask_rimthick_right,1) 1]);  % add left black rim
     
+    fixation_rimthick_both = fixation_rimthick;
+    fixation_rimthick_both([fixationmask_rimthick_right;fixationmask_rimthick_left],:) = repmat(double(1),[size(fixationmask_rimthick_right,1)+size(fixationmask_rimthick_left,1) 1]);  % add left black rim
+
+    
     % but we fill it with the specified color
     fixation_rimthin(fixationmask_inner,:)     = repmat(double(p.stim.fix.dotlum(lum)),[length(fixationmask_inner) 1]);
     fixation_rimthick(fixationmask_inner,:)    = repmat(double(p.stim.fix.dotlum(lum)),[length(fixationmask_inner) 1]);
     
-    fixation_rimthick_right(fixationmask_inner,:)     = repmat(double(p.stim.fix.dotlum(lum)),[length(fixationmask_inner) 1]);
+    fixation_rimthick_right(fixationmask_inner,:)   = repmat(double(p.stim.fix.dotlum(lum)),[length(fixationmask_inner) 1]);
     fixation_rimthick_left(fixationmask_inner,:)    = repmat(double(p.stim.fix.dotlum(lum)),[length(fixationmask_inner) 1]);
     
-    % repmat to get RGB, reshape back to square image
-    fix_im(:,:,:,lum,1) = repmat(reshape(fixation_rimthin,[2*p.stim.fix.dotcenterdiam_pix, 2*p.stim.fix.dotcenterdiam_pix, 1]),[1 1 3]);
-    fix_im(:,:,:,lum,2) = repmat(reshape(fixation_rimthick,      [2*p.stim.fix.dotcenterdiam_pix, 2*p.stim.fix.dotcenterdiam_pix, 1]),[1 1 3]);
-    fix_im(:,:,:,lum,3) = repmat(reshape(fixation_rimthick_left, [2*p.stim.fix.dotcenterdiam_pix, 2*p.stim.fix.dotcenterdiam_pix, 1]),[1 1 3]);
-    fix_im(:,:,:,lum,4) = repmat(reshape(fixation_rimthick_right,[2*p.stim.fix.dotcenterdiam_pix, 2*p.stim.fix.dotcenterdiam_pix, 1]),[1 1 3]);
+    fixation_rimthick_both(fixationmask_inner,:)    = repmat(double(p.stim.fix.dotlum(lum)),[length(fixationmask_inner) 1]);
     
+    % repmat to get RGB, reshape back to square image
+    fixation_rimthin1        = reshape(fixation_rimthin,[2*p.stim.fix.dotcenterdiam_pix, 2*p.stim.fix.dotcenterdiam_pix, 1]);
+    fixation_rimthick1       = reshape(fixation_rimthick,[2*p.stim.fix.dotcenterdiam_pix, 2*p.stim.fix.dotcenterdiam_pix, 1]);
+    fixation_rimthick_left1  = reshape(fixation_rimthick_left, [2*p.stim.fix.dotcenterdiam_pix, 2*p.stim.fix.dotcenterdiam_pix, 1]);
+    fixation_rimthick_right1 = reshape(fixation_rimthick_right,[2*p.stim.fix.dotcenterdiam_pix, 2*p.stim.fix.dotcenterdiam_pix, 1]);
+    fixation_rimthick_both1  = reshape(fixation_rimthick_both, [2*p.stim.fix.dotcenterdiam_pix, 2*p.stim.fix.dotcenterdiam_pix, 1]);
+    fix_im(:,:,:,lum,1) = repmat(fixation_rimthin1,[1 1 3]);
+    fix_im(:,:,:,lum,2) = repmat(fixation_rimthick1,[1 1 3]);
+    fix_im(:,:,:,lum,3) = repmat(fixation_rimthick_left1,[1 1 3]);
+    fix_im(:,:,:,lum,4) = repmat(fixation_rimthick_right1,[1 1 3]);
+    fix_im(:,:,:,lum,5) = repmat(fixation_rimthick_both1,[1 1 3]);
     clear temp0 
 end
 
@@ -101,8 +112,8 @@ mask = uint8(alpha_mask_rz);
 % end
 
 % create info table
-lum_info = repmat(p.stim.fix.dotlum',4,1);
-width_info = repelem({'thick','thin','thin_left','thin_right',},length(p.stim.fix.dotlum));
+lum_info = repmat(p.stim.fix.dotlum',5,1);
+width_info = repelem({'thin','thick','thick_left','thick_right','thick_both'},length(p.stim.fix.dotlum));
 info = table(lum_info,width_info','VariableNames',{'luminance','rim_width'});
 
 if p.stim.store_imgs
