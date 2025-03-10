@@ -58,8 +58,8 @@ else
     % Preallocate space
     objects = uint8(ones(extent, extent,3,...
         length(subordinate),length(rotations)));
-    masks = objects;
-
+    masks = uint8(ones(extent, extent, ...
+        length(subordinate),length(rotations)));
     
 
     counter = 1;
@@ -117,7 +117,7 @@ else
 
 %             if p.stim.cobj.iscolor
                objects(:,:,:,sub,rr) = repmat(im, [1 1 3]);
-                masks(:,:,:,sub,rr) = repmat(alpha_im, [1 1 3]);
+                masks(:,:,sub,rr) = alpha_im;
 %             else
 %                 objects(:,:,sub,rr) = im;
 %                 masks(:,:,sub,rr) = alpha_im;
