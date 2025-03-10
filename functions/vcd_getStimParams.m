@@ -52,23 +52,30 @@ else
     % we want to present images at a rate of 30 Hz, so for a monitor
     % refresh rate of 120 Hz, this number is 4, for 60 Hz this is 2. 
     stim.presentationrate_hz        = 30;                                       % rate of frame presentation (Hz)
-    stim.framedur_s                  = isint(disp_params.refresh_hz/stim.presentationrate_hz) * (1/disp_params.refresh_hz); % frames per second (seconds)
+    
+    % ensure we have a round number of monitor refreshes to achieve 30 Hz presentation rate  
+    assert(isint(disp_params.refresh_hz/stim.presentationrate_hz));
+    
+    stim.framedur_s                 = (disp_params.refresh_hz/stim.presentationrate_hz) * (1/disp_params.refresh_hz); % frames per second (seconds)
     stim.bckgrnd_grayval            = uint8(1+255/2);                           % background color (middle of 1-255 pixel lum)
     stim.scfactor                   = 1;                                        % no scaling
     
     % Default params to inherit (or overwrite)
     stimdur_frames                  = 60;                                       % nr of (33 ms) presentation frames (60 frames = 2 sec)
-    x0_deg                          = [-4 4];                                   % [Left Right] (degrees)
-    y0_deg                          = [0 0];                                    % [Left Right] (degrees)
+    x0_deg                          = [-4 4];                                   % desired x-center location for left right stim apertures (degrees)
+    y0_deg                          = [0 0];                                    % desired y-center location for left right stim apertures (degrees)
     
-    x0_pix                          = round(x0_deg.*disp_params.ppd);           % [Left Right] (pixels)
-    y0_pix                          = round(y0_deg.*disp_params.ppd);           % [Left Right] (pixels)
+    x0_pix                          = round((x0_deg.*disp_params.ppd)/2)*2;       % 354 pixels (4.0059 deg) for BOLD screen, empirical x-center location for left right stim apertures (pixels)
+    y0_pix                          = round((y0_deg.*disp_params.ppd)/2)*2;       % 354 pixels (4.0059 deg) for BOLD screen, empirical y-center location for left right stim apertures (pixels)
     
-    parafov_circle_diam_deg         = 4;                                        % desired parafoveal circular diameter aperture (degrees)
-    ctr_square_deg                  = 8.4;                                      % desired center square side length (degrees)
+    % Parafoveal circular aperture (for gabors, rdk, and cobj)
+    parafov_circle_diam_deg         = 4;                                        % desired  parafoveal circular diameter aperture (empirical is 4.0059 degrees)
+    parafov_circle_diam_pix         = round((parafov_circle_diam_deg*disp_params.ppd)/2)*2;  % parafoveal circular diameter aperture (pixels), 354 pixels
     
-    parafov_circle_diam_pix         = round(parafov_circle_diam_deg.*disp_params.ppd); % desired parafoveal circular diameter aperture (pixels)
-    ctr_square_pix                  = round(ctr_square_deg.*disp_params.ppd);          % desired center square side length in pixels (pixels)
+    % Center square image (for ns)
+    ctr_square_deg                  = 8.4;                                       % desired center square side length in degrees, same as NSD. Empirical is 8.3965 degrees.
+    ctr_square_pix                  = round((ctr_square_deg*disp_params.ppd)/2)*2; % center square side length in pixels (742 pixels)
+    
     
     %% NOISE BACKGROUND Puzzle piece
     % general
@@ -136,7 +143,7 @@ else
     % [x2,y2]=[1310,0],
     % [x3,y3]=[0,190],
     % [x4,y4]=[0,890] pixels
-    stim.el.point2point_distance = 350; % pixels 
+    stim.el.point2point_distance = 354; % pixels (4.0059 deg for BOLDscreen)
 
     %% STIM PARAMS
     for ii = 1:length(type)
@@ -160,12 +167,12 @@ else
                 p.img_sz_deg      = parafov_circle_diam_deg;                    % height (and width) of stimulus support (deg)
                 p.img_sz_pix      = parafov_circle_diam_pix;                    % height (and width) of square stimulus support (pix)
                 p.og_res_stim     = p.img_sz_pix;                               % resolution of stored dot stimuli (in pixels)
-                p.dres            = ((p.img_sz_deg/disp_params.h_deg * disp_params.h_pix) / p.og_res_stim);  % scale factor to apply
+                p.dres            = (( (p.img_sz_pix/disp_params.ppd) /disp_params.h_deg * disp_params.h_pix) / p.og_res_stim);  % scale factor to apply
                 p.iscolor         = false;                                      % use color or not [[[IF WE USE COLOR: MAKE SURE TO SQUARE IMAGE VALS FOR CLUT]]
                 p.square_pix_val  = false;
-
-                p.gauss_std_deg   = 0.5;                                        % standard deviation of gaussian window (deg)
-                p.gauss_std_pix   = round(p.gauss_std_deg.*disp_params.ppd);
+                
+                p.gauss_std_deg   = 0.5;                                        % desired standard deviation of gaussian window in degrees, empirical is 0.4979 deg for BOLD screen.
+                p.gauss_std_pix   = round((p.gauss_std_deg * disp_params.ppd)/2)*2; % standard deviation of gaussian window in pixels.
                 
                 p.sf_cpd          = 4;                                          % spatial frequency (cycles/deg)
                 p.cycles_per_pix  = (p.sf_cpd/p.img_sz_deg)/disp_params.ppd;           % nr of cycles per image (pix)
@@ -214,7 +221,7 @@ else
                 p.img_sz_deg      = parafov_circle_diam_deg;                    % stimulus aperture diameter (deg)
                 p.img_sz_pix      = parafov_circle_diam_pix;                    % stimulus aperture diameter (pix)
                 p.og_res_stim     = p.img_sz_pix;                               % resolution of stored dot stimuli (in pixels)
-                p.dres            = ((p.img_sz_deg/disp_params.h_deg * disp_params.h_pix) / p.og_res_stim);  % scale factor to apply
+                p.dres            = (( (p.img_sz_pix/disp_params.ppd) /disp_params.h_deg * disp_params.h_pix) / p.og_res_stim);  % scale factor to apply
                 p.iscolor         = false;                                      % use color or not [[[IF WE USE COLOR: MAKE SURE TO SQUARE IMAGE VALS FOR CLUT]]
                 p.square_pix_val  = false;
 
@@ -259,25 +266,24 @@ else
                 p.duration        = stimdur_frames;                                   % frames (nr of monitor refreshes)
                 
                 % SPATIAL
-                p.img_sz_deg      = 1.1;                                        % radius in deg
-                p.img_sz_pix      = round(p.img_sz_deg * disp_params.ppd);      % radius in deg
-                p.og_res_stim     = p.img_sz_pix;                               % resolution of stored dot stimuli (in pixels)
-                p.dres = ((p.img_sz_deg/disp_params.h_deg * disp_params.h_pix) / p.og_res_stim);  % scale factor to apply
-                
-                p.radius_deg      = 0.5;                                        % radius in deg
-                p.radius_pix      = p.radius_deg * disp_params.ppd;                        % radius in pix
-                p.color           = [255 255 255];                              % white in uint8 RGB
-                p.contrast        = 1;                                          % Michelson [0-1] (fraction)
+                p.img_sz_deg      = 1.1;                                     	 % desired spatial support of dot image in deg, empirical is 1.1090 deg for BOLD screen
+                p.img_sz_pix      = round((p.img_sz_deg * disp_params.ppd)/2)*2; % spatial support of dot image in pixels (98 pixels)
+                p.og_res_stim     = p.img_sz_pix;                                % resolution of stored dot stimuli (in pixels)
+                p.dres            = (( (p.img_sz_pix/disp_params.ppd) /disp_params.h_deg * disp_params.h_pix) / p.og_res_stim);  % scale factor to apply
+                p.radius_deg      = 0.5;                                         % desired dot radius in deg (empirical is 0.4979 for BOLDscreen)
+                p.radius_pix      = round((p.radius_deg * disp_params.ppd)/2)*2; % dot radius in pix (44 pixels for BOLDscreen)
+                p.color           = [255 255 255];                               % white in uint8 RGB
+                p.contrast        = 1;                                           % Michelson [0-1] (fraction)
                 p.square_pix_val  = false;
 
                 p.num_loc         = 16;                                          % orientation "bins" from which we create final gabor orientations (deg), 0 = 12 o'clock
-                p.loc_jitter_sd   = 1;                                          % std of normal distribution to sample orientation jitter
-                p.loc_jitter_mu   = 1;                                          % mean of normal distribution to sample orientation jitter
-                p.loc_bins        = [3:(180/p.num_loc):176];                   % rotate 10 deg away from vertical, to avoid ill-defined response options
+                p.loc_jitter_sd   = 1;                                           % std of normal distribution to sample orientation jitter
+                p.loc_jitter_mu   = 1;                                           % mean of normal distribution to sample orientation jitter
+                p.loc_bins        = [3:(180/p.num_loc):176];                     % rotate 10 deg away from vertical, to avoid ill-defined response options
                 
                 if overwrite_randomized_params 
                     p.loc_jitter      = p.loc_jitter_sd + (p.loc_jitter_mu.*randn(1,p.num_loc)); % add a small amount of jitter around the orientation
-                    p.loc_deg         = round(p.loc_bins + p.loc_jitter) + 90;           % final gabor orientations to make North 0;
+                    p.loc_deg         = round(p.loc_bins + p.loc_jitter) + 90;   % final gabor orientations to make North 0;
                 else
                     p.loc_jitter      = [0.8759,2.4897,2.4090,2.4172,1.6715,-0.2075,1.7172,2.6302,1.4889, 2.0347,1.7269,0.6966,1.2939,0.2127,1.8884,-0.1471];
                     p.loc_deg         = [4 17 28 39 50 59 72 84 94 106 117 127 139 149 162 172]; 
@@ -312,10 +318,15 @@ else
                 p.x0_pix        = x0_pix;                                       % x-center loc in pix (translation from 0,0)
                 p.y0_pix        = y0_pix;                                       % y-center loc in pix (translation from 0,0)
                 
-                p.og_res_stim   = 1024;                                           % original resolution of object stimuli
-                p.dres          = ((parafov_circle_diam_deg/disp_params.h_deg .* disp_params.h_pix)/p.og_res_stim);       % 1080 is bold screen height in pix, scale factor to apply
-                p.img_sz_deg    = parafov_circle_diam_deg;                      % height (or width) of square stimulus support (deg)
-                p.img_sz_pix    = ceil(p.og_res_stim.*p.dres);                  % height (or width) of square stimulus support (pix)
+                
+                p.og_res_stim_total_sz  = 1024;                                 % original resolution of object stimuli
+                p.og_res_stim_target_sz = 354;                                  % these og stimuli have a target size of 354 pixels = 4 dva
+                
+                p.og_res_stim_deg   = parafov_circle_diam_deg;                  % corresponding to 4 deg
+                
+                p.img_sz_pix        = (p.og_res_stim_total_sz/p.og_res_stim_target_sz)*parafov_circle_diam_pix;                      % scale factor to apply
+                p.img_sz_deg        = parafov_circle_diam_deg;                  % height (or width) of square stimulus support (deg)
+                p.dres              = p.img_sz_pix / p.og_res_stim_total_sz;    % height (or width) of square stimulus support (pix)
                 
                 
                 p.num_unique_objects = 16;                                      % orientation "bins" from which we create final gabor orientations (deg), 0 = 12 o'clock
@@ -346,24 +357,24 @@ else
                 p.iscolor = true;                                               % Use color or not? [IF YES: MAKE SURE TO SQUARE IMAGE VALS FOR CLUT]
                 
                 % TEMPORAL
-                p.duration    = stimdur_frames;                                       % frames (nr of monitor refreshes)
+                p.duration              = stimdur_frames;                                       % frames (nr of monitor refreshes)
                 
                 % SPATIAL
-                p.og_res_stim = 425;                                            % original resolution of NSD stimuli
-                p.rz_res_stim = 714;                                            % resized resolution of NSD stimuli
-                p.dres = ((ctr_square_deg/disp_params.h_deg * disp_params.h_pix) / p.og_res_stim);  % scale factor to apply
+                p.og_res_stim           = 425;                                            % original resolution of NSD stimuli
+                p.rz_res_stim           = 714;                                            % resized resolution of NSD stimuli
+                p.dres                  = ((ctr_square_deg/disp_params.h_deg * disp_params.h_pix) / p.og_res_stim);  % scale factor to apply
                 %             assert(isequal(stim.ns.rz_res_stim, round(stim.ns.img_sz_pix * -stim.dres))); % check: slightly larger than OG NSD stim size?? = 744 pixels 7TAS BOLDscreen Nova1x32
                 
-                p.img_sz_deg  = ctr_square_deg;                                 % height (or width) of square stimulus support (deg)
-                p.img_sz_pix  = ceil(p.og_res_stim.*p.dres);                    % height (or width) of square stimulus support (pix)
-                p.square_pix_val     = true;
+                p.img_sz_deg            = ctr_square_deg;                                 % height (or width) of square stimulus support (deg)
+                p.img_sz_pix            = ceil(p.og_res_stim.*p.dres);                    % height (or width) of square stimulus support (pix)
+                p.square_pix_val        = true;
 
                 
                 
-                p.x0_deg        = 0;                                       % x-center loc in deg (translation from 0,0)
-                p.y0_deg        = 0;                                       % y-center loc in deg (translation from 0,0)
-                p.x0_pix        = p.x0_deg.*disp_params.ppd;               % x-center loc in pix (translation from 0,0)
-                p.y0_pix        = p.y0_deg.*disp_params.ppd;               % y-center loc in pix (translation from 0,0)
+                p.x0_deg                = 0;                                       % desired x-center loc in deg (translation from 0,0)
+                p.y0_deg                = 0;                                       % desired y-center loc in deg (translation from 0,0)
+                p.x0_pix                = round((p.x0_deg.*disp_params.ppd)/2)*2;   % x-center loc in pix (translation from 0,0)
+                p.y0_pix                = round((p.y0_deg.*disp_params.ppd)/2)*2;   % y-center loc in pix (translation from 0,0)
                 
                 p.super_cat     = {'human','animal','food','object','place'};  % 5 superordinate categories
                 
@@ -398,8 +409,8 @@ else
         end
         
         fprintf('*** %s: Using a stimulus size of %2.2f deg (%3.2f pixels). ***\n', upper(type{ii}), p.img_sz_deg, p.img_sz_pix);
-        fprintf('*** %s: Using a stimulus duration of %d frame bins (%3.2f seconds), where 1 bin is %d frames of 1/%d Hz ***\n', ...
-            upper(type{ii}), p.duration, p.duration*stim.framedur_s, stim.frame_bin, disp_params.refresh_hz);
+        fprintf('*** %s: Using a stimulus duration of %d frames (%3.2f seconds), where 1 bin is %d frames of 1/%d Hz ***\n', ...
+            upper(type{ii}), p.duration, p.duration*stim.framedur_s, stim.presentationrate_hz, disp_params.refresh_hz);
     end
 
     
