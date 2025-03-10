@@ -17,32 +17,34 @@ function runme_vcdcore(subjID,sesID,runnum, varargin)
 %   [dispName]        : name of display (string), this affects stimulus size
 %                       Choose: '7TAS_BOLDSCREEN32' - BOLD screen at the 7TAS MRI scanner
 %                               'KKOFFICE_AOSQ3277' - external monitor in kendrick's CMRR office
+%                               'EKHOME_ASUSVE247'  - external monitor at Eline's home
 %                               'PPROOM_EIZOFLEXSCAN' - CMRR's Psychophysics room monitor 
-%                       Default: '7TAS_BOLDSCREEN32'                      
+%                        Default: '7TAS_BOLDSCREEN32'                      
 %   [debugmode]       : if true, there is no eyetracking, no waiting for external
 %                       trigger from scanner, no monitor synctest. 
-%                       Default: false
+%                        Default: false
 %   [loadparams]      : if true, load stored parameter values. 
-%                       Default: true
+%                        Default: true
 %   [storeparams]     : if true, store created parameter values. 
-%                       Default: true
-%   [loadtempstimuli] : if true, load temporary stimulus file that was store right before ptb flipping (to save time and rerun the same run) 
-%                       Default: true
-%   [savetempstimuli] : if true, store temporary stimulus file prior to ptb flipping (to save time and rerun the same run) 
-%                       Default: true
+%                        Default: true
+%   [loadstimtiming]  : if true, load temporary stimulus file that was store right before ptb flipping (to save time and rerun the same run) 
+%                        Default: true
+%   [savestimtiming]  : if true, store temporary stimulus file prior to ptb flipping (to save time and rerun the same run) 
+%                        Default: true
+%   [savestim]        : if true, store stimuli and timing in temporary file prior to ptb flipping. File is ~1.5 GB!
+%                        Default: false
 %   [offsetpix]       : offset of center [x,y]-coordinate in pixels. 
-%                       Default: No offset [0,0]
-%   [movieflip]       : flip presented stimulus display left-right (first argument) 
-%                       or up-down (second argument). 
-%                       Default: no flipping: [0,0].
-%   [stimDir]         : if true, there is no eyetracking, no waiting for external
-%                   trigger from scanner. Default: false
-%   [saveDataDir]     : if true, there is no eyetracking, no waiting for external
-%                   trigger from scanner. Default: false
-%   [subjFilename]    : if true, there is no eyetracking, no waiting for external
-%                   trigger from scanner. Default: false
-%   [wanteyetracking] : if true, there is no eyetracking, no waiting for external
-%                   trigger from scanner. Default: false
+%                        Default: No offset [0,0]
+%   [movieflip]       : flip presented stimulus display left-right (first argument) or up-down (second argument). 
+%                        Default: no flipping: [0,0].
+%   [stimdir]         : folder where pre-made stimuli are stored.
+%                        Default: fullfile(vcd_rootPath,'workspaces','info')
+%   [savedatadir]     : folder where subject's button presses and stim timing are stored. 
+%                        Default: [], which will turn into: sprintf('vcd_subj%03d_ses%02d',subjID,sesID);
+%   [subjfilename]    : pre-fix for behavioral mat-file. 
+%                        Default: [], which will turn into: sprintf('%s_vcd_subj%03d_ses%02d_run%02d.mat',ts0,subjID,sesID,runnum);
+%   [wanteyetracking] : if true, we will initialize eyetracking. 
+%                        Default: false;
 %
 % __OUTPUTS__
 %  None
@@ -75,13 +77,14 @@ p.addParameter('dispName'       , '7TAS_BOLDSCREEN32' , @(x) any(strcmp(x, {'7TA
 p.addParameter('debugmode'      , false, @islogical);
 p.addParameter('loadparams'     , true, @islogical);
 p.addParameter('storeparams'    , true, @islogical);
-p.addParameter('loadtempstimuli', false, @islogical);
-p.addParameter('savetempstimuli', false, @islogical);
+p.addParameter('loadstimtiming' , false, @islogical);
+p.addParameter('savestimtiming' , false, @islogical);
+p.addParameter('savestim'       , false, @islogical);
 p.addParameter('offsetpix'      , [0 0], @isnumerical); % [x,y]
 p.addParameter('movieflip'      , [0 0], @isnumerical); % up/down, left/right
 p.addParameter('stimDir'        , fullfile(vcd_rootPath,'workspaces','info'), @ischar);
 p.addParameter('savedatadir'    , [], @ischar);
-p.addParameter('subjFilename'   , [], @ischar);
+p.addParameter('subjfilename'   , [], @ischar);
 p.addParameter('wanteyetracking', false, @islogical);
 
 % Parse inputs
@@ -136,7 +139,7 @@ end
 if isempty(savedatadir)
     savedatadir = fullfile(vcd_rootPath,'data',sprintf('vcd_subj%03d_ses%02d',subjID, sesID));
 end
-if ~exist('saveDataDir', 'dir'); mkdir(savedatadir); end
+if ~exist(savedatadir, 'dir'); mkdir(savedatadir); end
 
 
 tempfiles = matchfiles(fullfile(savedatadir,sprintf('*_vcd_subj%03d_run*_exp*.mat',subjID)));
@@ -152,11 +155,11 @@ if ~exist('runnum','var') || isempty(runnum)
     runnum = input('What run number (1-12)? ')
 end
 
-if ~exist('wanteyetracking','var') || isempty(wanteyetracking)
+if ~exist('wanteyetracking','var')
     wanteyetracking  = input('Do you want to use eyetracking? (press 1 for yes, 0 for no) ')
 end
 
-if ~exist('dispName','var') || isempty(dispName)
+if ~exist('dispName','var')
     dispName = input('What monitor are you using? (press 1 for 7TAS, 2 for Psychophysics room, 3 for Office) ')
 end
 
@@ -169,8 +172,8 @@ fprintf('[%s]: Running experiment with images optimized for %s\n', mfilename, di
 instructionsDir = fullfile(vcd_rootPath, 'workspaces','instructions');
 
 ts0 = gettimestring;
-if isempty(subjFilename)
-    behavioralFilename    = sprintf('%s_vcd_subj%03d_ses%02d_run%02d.mat',ts0,subjID,sesID,runnum);
+if isempty(subjfilename)
+    behavioralfilename    = sprintf('%s_vcd_subj%03d_ses%02d_run%02d.mat',ts0,subjID,sesID,runnum);
     
     if wanteyetracking
         eyelinkfilename = fullfile(vcd_rootPath,sprintf('eye_%s_vcd_subj%03d_ses%02d_run%02d.edf',ts0,subjID,sesID,runnum));
@@ -179,10 +182,10 @@ if isempty(subjFilename)
     end
         
 else
-    behavioralFilename    = fullfile(savedatadir,sprintf('%s_%s.mat',ts0,subjFilename));
+    behavioralfilename    = fullfile(savedatadir,sprintf('%s_%s.mat',ts0,subjfilename));
     
     if wanteyetracking
-        eyelinkfilename = fullfile(savedatadir,sprintf('%s_%s.edf',ts0,subjFilename));
+        eyelinkfilename = fullfile(savedatadir,sprintf('%s_%s.edf',ts0,subjfilename));
     else
         eyelinkfilename = '';
     end
@@ -214,7 +217,7 @@ if debugmode
 end
 
 
-if loadtempstimuli
+if loadstimtiming
     d = dir(fullfile(savedatadir,'tmp_expim_*.mat'));
     if isempty(d)
         error('[%s]: Cannot find temporarily stored run stimulus file\n',mfilename)
@@ -233,7 +236,7 @@ end
 %% run experiment
 vcd_singleRun(subjID, sesID, runnum, ... % mandatory inputs
     'debugmode',debugmode, ...
-    'behaviorfile',behavioralFilename, ... % optional inputs use: 'var',<val>
+    'behaviorfile',behavioralfilename, ... % optional inputs use: 'var',<val>
     'eyelinkfile',eyelinkfilename, ...
     'savedatadir', savedatadir, ...
     'wanteyetracking', wanteyetracking, ...
@@ -245,7 +248,7 @@ vcd_singleRun(subjID, sesID, runnum, ... % mandatory inputs
     'instrtextdir',instructionsDir, ...
     'scan', scan, ...
     'timing',timing, ...
-    'savetempstimuli', savetempstimuli); 
+    'savestimtiming', savestimtiming); 
 
 % analyze dat
 runvcdbehavioralanalysis(filename,3000,[299.8 300.2],[stimulusdir filesep 'vcd_expdesign.mat']);
