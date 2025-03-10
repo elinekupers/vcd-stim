@@ -82,6 +82,16 @@ counter = 1;
 tmpDir = fullfile(vcd_rootPath, 'workspaces','stimuli',['rdk_' datestr(now,'yyyymmdd')]);
 if ~exist('tmpDir','dir'), mkdir(tmpDir); end
 
+% Create circle alpha mask for image
+[XX,YY] = meshgrid((1:549)-(549/2),(1:549)-(549/2));
+radius  = ap_radius(1);
+circlemask = (YY - ap_center(1)).^2 + (XX - ap_center(2)).^2 <= radius.^2;
+mask = double(circlemask);
+mask(mask==1) = 255;
+mask = uint8(mask);
+
+
+%% Create rdk images
 fH = figure(1); clf; 
 set(gcf,'Position',[0,0,p.stim.rdk.img_sz_pix,p.stim.rdk.img_sz_pix], 'Units','Pixels','Renderer','zbuffer')
 
@@ -111,7 +121,7 @@ for cc = 1:length(p.stim.rdk.dots_coherence)
             d_ppd = repmat(ap_radius, ndots, 1);
             dot_pos = (rand(ndots,2,num_frames)-0.5)*2;  % prior code said: dot_pos = (rand(ndots,2,p.stim.rdk.dots_interval)-0.5)*2;
 
-            % Reset rng
+            % Initialize and reset rng
             RandStream.setGlobalStream(RandStream('mt19937ar','seed',prod(rseed)));
             RandStream.setGlobalStream(RandStream('mt19937ar','seed',sum(100*clock)));
             
@@ -163,8 +173,9 @@ for cc = 1:length(p.stim.rdk.dots_coherence)
                 ax.Units = 'pixels';
                 r = rectangle(ax,'Position', [(ap_center -1.*ap_radius), ...
                     2.*ap_radius], ...
-                    'FaceColor', [repmat(p.stim.bckgrnd_grayval,1,3)-1]./254, 'EdgeColor', 'none'); % [0.5 0.5 0.5]
+                    'FaceColor', [0.5 0.5 0.5], 'EdgeColor', 'none'); % 
                 colormap gray; axis square; axis off; axis tight; axis manual; axis image
+                set(gca, 'CLim',[0 1]);
                 
                 %round dot_pos and transpose it because Screen wants positions in row
                 pos = round(dot_pos(L,:,loopi));
@@ -178,10 +189,10 @@ for cc = 1:length(p.stim.rdk.dots_coherence)
                                 
                 f = getframe(ax);
                 im = frame2im(f);
-                f_bw = rgb2gray(im);
-                
-                frames = cat(3,frames,f_bw);
-                clear f im f_bw
+%                 f_bw = rgb2gray(im);
+
+                frames = cat(3,frames,im);
+                clear f im
             end
    
             rdk{bb,cc,dd+1} = frames;
@@ -206,7 +217,7 @@ for cc = 1:length(p.stim.rdk.dots_coherence)
             
             % save intermediate stage in case matlab crashes 
             rdk_info = info(counter,:);
-            save(fullfile(tmpDir, sprintf('%d_rdk_ori%d_coh%d_delta%d.mat', im_name, bb,cc,dd)),'frames','rdk_info','-v7.3');
+            save(fullfile(tmpDir, sprintf('%d_rdk_ori%d_coh%d_delta%d.mat', im_name, bb,cc,dd)),'frames','rdk_info','mask','-v7.3');
 
             clear frames
             counter = counter +1;
@@ -219,7 +230,7 @@ if p.store_imgs
     % in addition to storing separate conditions, also store ginormous file 
     saveDir = fileparts(fullfile(p.stim.rdk.stimfile));
     if ~exist(saveDir,'dir'), mkdir(saveDir); end
-    save(fullfile(sprintf('%s_%s.mat',p.stim.rdk.stimfile,datestr(now,30))),'rdk','info','-v7.3');
+    save(fullfile(sprintf('%s_%s.mat',p.stim.rdk.stimfile,datestr(now,30))),'rdk','info','mask','-v7.3');
     
     saveDir = fileparts(fullfile(p.stim.rdk.infofile));
     if ~exist(saveDir,'dir'), mkdir(saveDir); end
