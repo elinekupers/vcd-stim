@@ -191,7 +191,7 @@ for cc = 1:length(p.stim.rdk.dots_coherence)
                 im = frame2im(f);
 %                 f_bw = rgb2gray(im);
 
-                frames = cat(3,frames,im);
+                frames = cat(4,frames,im);
                 clear f im
             end
    
