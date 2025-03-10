@@ -94,8 +94,8 @@ else
     stim.fix.infofile               = fullfile(vcd_rootPath,'workspaces','info',sprintf('fix_info_%s',disp_params.name)); % csv file
     
     % TEMPORAL
-    stim.fix.dotmeanchange          = 3/stim.framedur_s;                     % (nr 33ms frames), on average, dot changes occur every 3 seconds
-    stim.fix.dotchangeplusminus     = 2/stim.framedur_s;                     % (nr 33ms frames), earliest and latests time that dot changes occur. 2 seconds means [-1:1] from meanchange
+    stim.fix.dotmeanchange          = 90;                                   % (nr 33ms frames), on average, dot changes occur every 3 seconds
+    stim.fix.dotchangeplusminus     = 6;                                    % (nr 33ms frames), earliest and latests time that dot changes occur. 2 seconds means [-1:1] from meanchange
     stim.fix.dres                   = [];                                   % rescale factor (fraction)
         
     % SPATIAL
