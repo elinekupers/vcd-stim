@@ -138,14 +138,13 @@ else
     %% EYELINK PARAMS
     % we manually place the eyelink calibration/validation points on the
     % display. The distance between the center and 4 left/right/up/down
-    % points are set as [xc,yc] ± 350 pixels. This results in dots at
-    % [x1,y1]=[610,0],
-    % [x2,y2]=[1310,0],
-    % [x3,y3]=[0,190],
-    % [x4,y4]=[0,890] pixels
+    % points are set as [xc,yc] ± 350 pixels. This results in dots at the
+    % following screen coordinates in pixels:
+    %                  [x3,y3]=[0,190]
+    % [x1,y1]=[610,0]  [x0,y0]=[0,0  ]   [x2,y2]=[1310,0]
+    %                  [x4,y4]=[0,890] 
     stim.el.point2point_distance_deg = 3.01;                                % desired  target distance from fixation (empirical is 4.0059 degrees)
     stim.el.point2point_distance_pix = round((stim.el.point2point_distance_deg*disp_params.ppd/2))*2; % pixels (4.0059 deg for BOLDscreen)
-
 
     %% STIM PARAMS
     for ii = 1:length(type)
