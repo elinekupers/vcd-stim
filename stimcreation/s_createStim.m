@@ -1,27 +1,30 @@
 %% s_createStim.m
-
-verbose = true; % plot stimuli or not
+%
+% Stand-alone script to create and store the stimuli shown in VCD core 
+% experiment.
 
 %% %%%%%%%%%%%%%%%%%%%
 %%%%%% PARAMETERS %%%% 
 %%%%%%%%%%%%%%%%%%%%%%
 
+verbose        = true; % visualize stimuli or not
+p.store_imgs   = true; % store visualization figures
+saveFigsFolder = fullfile(vcd_rootPath,'figs'); % where to store visualization figures
+
 % Get display params
 dispname = 'KKOFFICE_AOCQ3277'; %'7TAS_BOLDSCREEN32'; % or 'KKOFFICE_AOCQ3277' or 'EKHOME_ASUSVE247' or 'PPROOM_EIZOFLEXSCAN'
 p.disp   = vcd_getDisplayParams(dispname);
 
-%% Get stimulus parameters
-p.load_params  = false; true;
-p.store_params = true;
-p.store_imgs   = true;
+% Get stimulus parameters
+p.load_params                 = false; % re-create params if set to false
+p.store_params                = true;
 p.overwrite_randomized_params = false;
-saveFigsFolder = fullfile(vcd_rootPath,'figs');
 
-%% SETUP RNG 
+% SETUP RNG 
 rand('seed', sum(100*clock));
 randn('seed', sum(100*clock));
-params.rng.rand = rand;
-params.rng.randn = randn;
+p.rng.rand = rand;
+p.rng.randn = randn;
 
 %% Define/Load stimulus params 
 % !!WARNING!! There is a randomization component involved in creating some
@@ -39,21 +42,6 @@ params.rng.randn = randn;
 % parameters or not. Input 4: Store generated parameters or not. Input 5:
 % Overwrite stored parameters and regenerate probabilistic params
 p.stim   = vcd_getStimParams('all',p.disp,p.load_params,p.store_params, p.overwrite_randomized_params); 
-
-%% Define/Load experiment session params
-p.exp    = vcd_getSessionParams(p,p.load_params,p.store_params);
-
-%% Make/Load miniblocks with trials that sample unique stimuli from each class
-% !!WARNING!! There is a randomization component involved in creating the 
-% trial sequence (e.g., order of unique images within a miniblock). If you
-% don't want this, set second input (load_params) to true.
-p.trials = vcd_makeTrials(p,p.load_params,p.store_params);
-
-%% Create/Load miniblocks into runs and sessions, shuffle blocks within a run for each subject's run
-% !!WARNING!! There is a randomization component involved in creating the
-% miniblock order within a run. If you don't want this, set second input
-% (load_params) to true.
-subject_sessions = vcd_createSessions(p,false,p.store_params);
 
 %% %%%%%%%%%%%%%%%%
 %%%%%% STIMULI %%%% 
@@ -84,7 +72,9 @@ img_cobj = vcd_complexobjects(p);
 %% Natural scenes
 img_ns  = vcd_naturalscenes(p);
 
-%% Visualize stimuli
+%% %%%%%%%%%%%%%%%%
+%%%% Visualize %%%% 
+%%%%%%%%%%%%%%%%%%%
 
 if verbose
     
