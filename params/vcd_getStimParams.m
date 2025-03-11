@@ -94,12 +94,12 @@ else
     stim.fix.infofile               = fullfile(vcd_rootPath,'workspaces','info',sprintf('fix_info_%s',disp_params.name)); % csv file
     
     % TEMPORAL
-    stim.fix.dotmeanchange          = 90;                                   % (nr 33ms frames), on average, dot changes occur every 3 seconds
-    stim.fix.dotchangeplusminus     = 6;                                    % (nr 33ms frames), earliest and latests time that dot changes occur. 2 seconds means [-1:1] from meanchange
+    stim.fix.dotmeanchange          = 42;                                   % (nr 33ms frames), on average, dot changes occur every 1.4 seconds
+    stim.fix.dotchangeplusminus     = 0;                                    % (nr 33ms frames), earliest and latests time that dot changes occur. 2 seconds means [-1:1] from meanchange
     stim.fix.dres                   = [];                                   % rescale factor (fraction)
         
     % SPATIAL
-    stim.fix.dotcenterdiam_pix      = 18;                                   % dot diameter in pixels (18 pixels)
+    stim.fix.dotcenterdiam_pix      = 12;                                   % dot diameter in pixels (18 pixels)
     stim.fix.dotcenterdiam_deg      = stim.fix.dotcenterdiam_pix/disp_params.ppd; % 0.2037 deg, dot diameter
     stim.fix.dotthinborderdiam_pix  = stim.fix.dotcenterdiam_pix+6;         % pixel-width for dot thin border (during ITI/IBI)
     stim.fix.dotthickborderdiam_pix  = stim.fix.dotcenterdiam_pix+10;       % pixel-width for dot border (during trial)
@@ -143,7 +143,9 @@ else
     % [x2,y2]=[1310,0],
     % [x3,y3]=[0,190],
     % [x4,y4]=[0,890] pixels
-    stim.el.point2point_distance = 354; % pixels (4.0059 deg for BOLDscreen)
+    stim.el.point2point_distance_deg = 3.01;                                % desired  target distance from fixation (empirical is 4.0059 degrees)
+    stim.el.point2point_distance_pix = round((stim.el.point2point_distance_deg*disp_params.ppd/2))*2; % pixels (4.0059 deg for BOLDscreen)
+
 
     %% STIM PARAMS
     for ii = 1:length(type)

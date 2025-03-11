@@ -579,18 +579,18 @@ if params.wanteyetracking && ~isempty(params.eyelinkfile)
     Eyelink('command','calibration_sequence = 0,1,2,3,4');
     Eyelink('command','calibration_targets  = %d,%d %d,%d %d,%d %d,%d %d,%d',...
         xc_off,yc_off,  ... center x,y
-        xc_off + params.stim.el.point2point_distance, yc_off, ... horz shift right
-        xc_off - params.stim.el.point2point_distance, yc_off, ... horz shift left
-        xc_off, yc_off + params.stim.el.point2point_distance, ... vert shift down
-        xc_off, yc_off - params.stim.el.point2point_distance); %  vert shift up
+        xc_off + params.stim.el.point2point_distance_pix, yc_off, ... horz shift right
+        xc_off - params.stim.el.point2point_distance_pix, yc_off, ... horz shift left
+        xc_off, yc_off + params.stim.el.point2point_distance_pix, ... vert shift down
+        xc_off, yc_off - params.stim.el.point2point_distance_pix); %  vert shift up
     Eyelink('command','validation_samples = 5');
     Eyelink('command','validation_sequence = 0,1,2,3,4');
     Eyelink('command','validation_targets  = %d,%d %d,%d %d,%d %d,%d %d,%d',...
         xc_off,yc_off,  ... center x,y
-        xc_off + params.stim.el.point2point_distance, yc_off, ... horz shift right
-        xc_off - params.stim.el.point2point_distance, yc_off, ... horz shift left
-        xc_off, yc_off + params.stim.el.point2point_distance, ... vert shift down
-        xc_off, yc_off - params.stim.el.point2point_distance); %  vert shift up
+        xc_off + params.stim.el.point2point_distance_pix, yc_off, ... horz shift right
+        xc_off - params.stim.el.point2point_distance_pix, yc_off, ... horz shift left
+        xc_off, yc_off + params.stim.el.point2point_distance_pix, ... vert shift down
+        xc_off, yc_off - params.stim.el.point2point_distance_pix); %  vert shift up
     
     Eyelink('command','screen_pixel_coords = %ld %ld %ld %ld',0,0,wwidth-1,wheight-1); % X,Y coordinates left/top/right/bottom of display area
     Eyelink('message','DISPLAY_COORDS %ld %ld %ld %ld',0,0,wwidth-1,wheight-1);
