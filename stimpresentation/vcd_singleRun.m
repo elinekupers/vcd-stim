@@ -265,7 +265,6 @@ end
 
 if ~exist('timing','var') || ~isfield(timing,'seq_stim') || isempty(timing.seq_stim)
     timing = vcd_getImageTiming_framelocked30Hz(params, subj_run, im_seq_order, scan.exp_im, scan.fix_im, scan.exp_im_masks);
-    %     timing = vcd_getImageTiming_systemclocklocked(params, subj_run, im_seq_order,  scan.exp_im, scan.exp_im_masks, scan.fix_im, scan.fix_im_masks);
     
     cellblock = struct2cell(subj_run.block);
     cellblock = squeeze(cellblock);
@@ -402,7 +401,6 @@ if ~exist('scan','var') || ~isfield(scan, 'rects') || isempty(scan.rects)
                     
                     apsize{nn,side}(1)  = size(timing.trig_seq_exp_im_w_cd{nn}{1},2); % apsize 1: image width (pixels)
                     apsize{nn,side}(2)  = size(timing.trig_seq_exp_im_w_cd{nn}{1},1); % apsize 2: height (pixels)
-                    %                     disp(apsize{nn,side})
                 end
             end
         end
@@ -444,7 +442,7 @@ scan.rects(nonemptycells,:) = scan.rects_shortlist;
 %  BACKGROUND: 3D array: [x,y, num images]
 % input 2: 'puzzle'  (square central image + peripheral apertures,
 %          'dotring' (simple dot iso eccen donut),
-%          'comb'    (puzzle + dotring overlayed)
+%          'comb'    (puzzle + simple dot iso-eccen ring overlayed)
 % input 3: 'skinny'  (no space between stim and edge of background) or
 %          'fat'     (+2 deg from stim)
 % input 4: number of unique noise background images
@@ -478,8 +476,6 @@ end
 
 %% %%%%%%%%%%%%% TASK INSTRUCTIONS %%%%%%%%%%%%%
 
-% inputs for showinstructionscreen: (fileIn,txtOffset=250,instTextWrap=75,textsize=25,background=128,offset=[0,0])
-% introscript  = sprintf('showinstructionscreen(''%s'',''00_runvcdcore_subjectinstructions.txt'',250,75,25,%d,[%d %d])',params.instrtextdir,params.stim.bckgrnd_grayval,params.offsetpix(1),params.offsetpix(2));
 introscript = fullfile(params.instrtextdir,'00_runvcdcore_subjectinstructions.txt');
 if ~exist(introscript,'file')
     error('[%s]: Can''t find instructions text file!',mfilename')
