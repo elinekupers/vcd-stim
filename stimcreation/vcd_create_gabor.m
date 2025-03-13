@@ -33,21 +33,18 @@ clear x y
 ori_rad = ori_deg * (pi/180);
 ph_rad  = ph_deg * (pi/180);
 
-
 % Create Gaussian window
 G = exp( - ((X.^2)/(2*gauss_std_pix^2) + (Y.^2)/(2*gauss_std_pix^2))); % Gaussian window
 G = G ./ max(G(:)); % normalize height
 
-% Mask Gaussian window support to 7 stds to avoid funny border effects
-G_mask   = exp( - ((X.^2)/(2*3.5*gauss_std_pix^2) + (Y.^2)/(2*3.5*gauss_std_pix^2)));
-G_center = floor(size(G_mask,1)/2)+1;
-thresh   = G_mask(G_center - ceil(3.5*gauss_std_pix), G_center);
+% Create circular alpha mask for PTB at 7 std of the gabor gaussian window
+G_mask        = exp( - ((X.^2)/(7*gauss_std_pix^2) + (Y.^2)/(7*gauss_std_pix^2)));
+G_center      = floor(size(G_mask,1)/2)+1;
+thresh        = G_mask(G_center - ceil((7*gauss_std_pix)/2), G_center);
 outsideWindow = G_mask < thresh;
-G(outsideWindow)  = 0;
-
-mask = double(~outsideWindow);
+mask          = double(~outsideWindow);
 mask(mask==0) = 0; 
-mask = mask.*255;
+mask          = mask.*255;
  
 % clean up
 clear G_mask insideWindow
@@ -60,19 +57,17 @@ H = cos(2 * pi * sf * ...
 img0 = G .* H; % Gabor image = Gaussian .* harmonic
 
 % Contrast normalization
-maxval = abs(max(max(img0)));
-minval = abs(min(min(img0)));
-img0 = img0./max(maxval,minval);
-
-img = contrast * img0;
+maxval = abs(max(img0(:)));
+minval = abs(min(img0(:)));
+img1 = img0./max(maxval,minval); % VCD uses 128 as mid-grey level
+img2 = contrast * img1;
 
 % Convert to image range [1 255]
-img  = floor((img*127)+grayval);
+img = (img2*127)+double(grayval);
 
 % % alternative normalization
 % maxval_c = abs(max(max(img_c)));
 % minval_c = abs(min(min(img_c)));
-% k        = 128/max(maxval_c,minval_c); % assume 128 is mid-grey level
-% img_c    = floor(img_c*k+128);
-
+% k        = double(grayval)/max(maxval_c,minval_c); 
+% img_c    = floor(img0*k+127);
 end
