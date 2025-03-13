@@ -26,20 +26,20 @@ function [fix_im, mask, info, p] = vcd_fixationDot(p)
 % Written by Eline Kupers 2025/02
 
 
-% Create support: 2*fixation diam x 2*fixation diam x 3 x 5 luminance levels x 5 dot rims
-fix_im   = zeros([2*p.stim.fix.dotcenterdiam_pix, 2*p.stim.fix.dotcenterdiam_pix, 3, length(p.stim.fix.dotlum), 5]); 
+%% Create support width dims: 2*fixation diam x 2*fixation diam x 3 x 5 luminance levels x 5 dot rims
+fix_im  = zeros([2*p.stim.fix.dotcenterdiam_pix, 2*p.stim.fix.dotcenterdiam_pix, 3, length(p.stim.fix.dotlum), 5]); 
 
 x = [1:(2*p.stim.fix.dotcenterdiam_pix)]-p.stim.fix.dotcenterdiam_pix;
 [XX,~] = meshgrid(x,x);
 
-% Where to insert luminance val
+% Where to insert luminance val?
 fixationmask_inner    = find(makecircleimage(2*p.stim.fix.dotcenterdiam_pix, p.stim.fix.dotcenterdiam_pix/4));
-fixationmask_rimthin  = find( makecircleimage(2*p.stim.fix.dotcenterdiam_pix, p.stim.fix.dotthinborderdiam_pix/4) - ...
+fixationmask_rimthin  = find(makecircleimage(2*p.stim.fix.dotcenterdiam_pix, p.stim.fix.dotthinborderdiam_pix/4) - ...
                            makecircleimage(2*p.stim.fix.dotcenterdiam_pix, p.stim.fix.dotcenterdiam_pix/4));  
-fixationmask_rimthick = find( makecircleimage(2*p.stim.fix.dotcenterdiam_pix, p.stim.fix.dotthickborderdiam_pix/4) - ...
+fixationmask_rimthick = find(makecircleimage(2*p.stim.fix.dotcenterdiam_pix, p.stim.fix.dotthickborderdiam_pix/4) - ...
                            makecircleimage(2*p.stim.fix.dotcenterdiam_pix, p.stim.fix.dotcenterdiam_pix/4));  
 
-% Find left & right half moons
+% Find left & right half moons (for spatial cue)
 left_idx = find((XX <= 0));
 right_idx = find((XX > 0));
 [~,li] = intersect(fixationmask_rimthick,left_idx);
@@ -47,87 +47,99 @@ right_idx = find((XX > 0));
 
 fixationmask_rimthick_left = fixationmask_rimthick(li);
 fixationmask_rimthick_right = fixationmask_rimthick(ri);
-
-                       
-                       
+              
+% Loop over center dot luminance values
 for lum = 1:length(p.stim.fix.dotlum)
-    temp0 = double(p.stim.bckgrnd_grayval)*ones(2*p.stim.fix.dotcenterdiam_pix*2*p.stim.fix.dotcenterdiam_pix, 1);        % everything is initially black
+    
+    % everything is initially black
+    temp0 = double(p.stim.bckgrnd_grayval)*ones(2*p.stim.fix.dotcenterdiam_pix*2*p.stim.fix.dotcenterdiam_pix, 1);        
     fixation_rimthin = temp0; 
     fixation_rimthick = temp0;
 
-    % full rim
+    % full thin and thick rim base
     fixation_rimthin(fixationmask_rimthin,:)   = repmat(double(255),[size(fixationmask_rimthin,1) 1]);  % add rim
     fixation_rimthick(fixationmask_rimthick,:) = repmat(double(255),[size(fixationmask_rimthick,1) 1]);  % add rim
     
-    % half black rim
+    % left half black rim base
     fixation_rimthick_left = fixation_rimthick;
-    fixation_rimthick_left(fixationmask_rimthick_left,:) = repmat(double(1),[size(fixationmask_rimthick_left,1) 1]);  % add left black rim
+    fixation_rimthick_left(fixationmask_rimthick_left,:) = ...
+        repmat(double(1),[size(fixationmask_rimthick_left,1) 1]); 
     
+    % right half black rim base
     fixation_rimthick_right = fixation_rimthick;
-    fixation_rimthick_right(fixationmask_rimthick_right,:) = repmat(double(1),[size(fixationmask_rimthick_right,1) 1]);  % add left black rim
+    fixation_rimthick_right(fixationmask_rimthick_right,:) = ...
+        repmat(double(1),[size(fixationmask_rimthick_right,1) 1]);  
     
+    % both left&right sides black rim base (for ns)
     fixation_rimthick_both = fixation_rimthick;
-    fixation_rimthick_both([fixationmask_rimthick_right;fixationmask_rimthick_left],:) = repmat(double(1),[size(fixationmask_rimthick_right,1)+size(fixationmask_rimthick_left,1) 1]);  % add left black rim
+    fixation_rimthick_both([fixationmask_rimthick_right;fixationmask_rimthick_left],:) = ...
+        repmat(double(1),[size(fixationmask_rimthick_right,1)+size(fixationmask_rimthick_left,1) 1]);  
 
-    
-    % but we fill it with the specified color
-    fixation_rimthin(fixationmask_inner,:)     = repmat(double(p.stim.fix.dotlum(lum)),[length(fixationmask_inner) 1]);
-    fixation_rimthick(fixationmask_inner,:)    = repmat(double(p.stim.fix.dotlum(lum)),[length(fixationmask_inner) 1]);
-    
+    % Fill inner circle with the specified luminance 
+    fixation_rimthin(fixationmask_inner,:)          = repmat(double(p.stim.fix.dotlum(lum)),[length(fixationmask_inner) 1]);
+    fixation_rimthick(fixationmask_inner,:)         = repmat(double(p.stim.fix.dotlum(lum)),[length(fixationmask_inner) 1]);
     fixation_rimthick_right(fixationmask_inner,:)   = repmat(double(p.stim.fix.dotlum(lum)),[length(fixationmask_inner) 1]);
     fixation_rimthick_left(fixationmask_inner,:)    = repmat(double(p.stim.fix.dotlum(lum)),[length(fixationmask_inner) 1]);
-    
     fixation_rimthick_both(fixationmask_inner,:)    = repmat(double(p.stim.fix.dotlum(lum)),[length(fixationmask_inner) 1]);
     
-    % repmat to get RGB, reshape back to square image
+    % Repmat to get RGB, reshape back to square image
     fixation_rimthin1        = reshape(fixation_rimthin,[2*p.stim.fix.dotcenterdiam_pix, 2*p.stim.fix.dotcenterdiam_pix, 1]);
     fixation_rimthick1       = reshape(fixation_rimthick,[2*p.stim.fix.dotcenterdiam_pix, 2*p.stim.fix.dotcenterdiam_pix, 1]);
     fixation_rimthick_left1  = reshape(fixation_rimthick_left, [2*p.stim.fix.dotcenterdiam_pix, 2*p.stim.fix.dotcenterdiam_pix, 1]);
     fixation_rimthick_right1 = reshape(fixation_rimthick_right,[2*p.stim.fix.dotcenterdiam_pix, 2*p.stim.fix.dotcenterdiam_pix, 1]);
     fixation_rimthick_both1  = reshape(fixation_rimthick_both, [2*p.stim.fix.dotcenterdiam_pix, 2*p.stim.fix.dotcenterdiam_pix, 1]);
-    fix_im(:,:,:,lum,1) = repmat(fixation_rimthin1,[1 1 3]);
-    fix_im(:,:,:,lum,2) = repmat(fixation_rimthick1,[1 1 3]);
-    fix_im(:,:,:,lum,3) = repmat(fixation_rimthick_left1,[1 1 3]);
-    fix_im(:,:,:,lum,4) = repmat(fixation_rimthick_right1,[1 1 3]);
-    fix_im(:,:,:,lum,5) = repmat(fixation_rimthick_both1,[1 1 3]);
+    
+    % Duplicate images for RGB
+    fix_im(:,:,:,lum,1) = uint8(repmat(fixation_rimthin1,[1 1 3]));
+    fix_im(:,:,:,lum,2) = uint8(repmat(fixation_rimthick1,[1 1 3]));
+    fix_im(:,:,:,lum,3) = uint8(repmat(fixation_rimthick_left1,[1 1 3]));
+    fix_im(:,:,:,lum,4) = uint8(repmat(fixation_rimthick_right1,[1 1 3]));
+    fix_im(:,:,:,lum,5) = uint8(repmat(fixation_rimthick_both1,[1 1 3]));
+    
+    % clean up
     clear temp0 
 end
 
-% create alpha mask
-alpha_mask0   = zeros(2*p.stim.fix.dotcenterdiam_pix, 2*p.stim.fix.dotcenterdiam_pix);
+%% Create alpha mask
+
+% Create support to be the same size as dot image
+alpha_mask0   = zeros(2*p.stim.fix.dotcenterdiam_pix, 2*p.stim.fix.dotcenterdiam_pix); % initially everything is invisible
+
+% flatten image
 alpha_mask0   = alpha_mask0(:);
+
+% create a circle mask
 alpha_idx     = find(makecircleimage(2*p.stim.fix.dotcenterdiam_pix, p.stim.fix.dotthickborderdiam_pix/2));
 
-alpha_mask0(alpha_idx) = ones(length(alpha_idx),1).*255;
+% everything inside the alpha mask is 50% opacity, outside mask is invisible
+alpha_mask0(alpha_idx) = ones(length(alpha_idx),1)*255*p.stim.fix.dotopacity;
 
+% resize alpha mask 
 alpha_mask_rz = reshape(alpha_mask0,2*p.stim.fix.dotcenterdiam_pix,2*p.stim.fix.dotcenterdiam_pix);
-mask = uint8(alpha_mask_rz);
 
-% figure; 
-% for ii = 1:4
-%     subplot(2,2,ii);
-%     imagesc(uint8(squeeze(fix_im(:,:,:,5,ii))))
-%     set(gca,'CLim',[0 255])
-%     colormap gray
-% end
+% convert to uint8
+mask          = uint8(alpha_mask_rz);
 
-% create info table
-lum_info = repmat(p.stim.fix.dotlum',5,1);
+
+%% create info table
+lum_info   = repmat(p.stim.fix.dotlum',5,1);
 width_info = repelem({'thin','thick','thick_left','thick_right','thick_both'},length(p.stim.fix.dotlum));
-info = table(lum_info,width_info','VariableNames',{'luminance','rim_width'});
+info       = table(lum_info,width_info','VariableNames',{'luminance','rim_width'});
 
+%% Store images and info table if requested
 if p.stim.store_imgs
-    fprintf('\nStoring images..')
+    fprintf('[%s]: Storing images..',mfilename)
+    tic
     saveDir = fileparts(fullfile(p.stim.fix.stimfile));
     if ~exist(saveDir,'dir'), mkdir(saveDir); end
-    save(fullfile(sprintf('%s_%s.mat',p.stim.fix.stimfile,datestr(now,30))),'fix_im','mask','info','-v7.3');
+    save(fullfile(sprintf('%s_%s_%s.mat',p.stim.fix.stimfile,p.disp.name,datestr(now,30))),'fix_im','mask','info','-v7.3');
 
     saveDir = fileparts(fullfile(p.stim.fix.infofile));
     if ~exist(saveDir,'dir'), mkdir(saveDir); end
     writetable(info,fullfile(sprintf('%s_%s.csv',p.stim.fix.infofile,datestr(now,30))));
-
-
+    fprintf('done! '); toc
 end
 
-
 return
+
+
