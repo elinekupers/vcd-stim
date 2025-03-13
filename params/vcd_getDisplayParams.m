@@ -1,7 +1,7 @@
 function disp = vcd_getDisplayParams(dispname)
 
 if ~exist('dispname','var') || isempty(dispname)
-    dispname = '7TASBOLDSCREEN32';
+    dispname = '7TAS_BOLDSCREEN32';
 end
 
 disp = struct(); 
