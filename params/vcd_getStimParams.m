@@ -57,7 +57,7 @@ else
     assert(isint(disp_params.refresh_hz/stim.presentationrate_hz));
     
     stim.framedur_s                 = (disp_params.refresh_hz/stim.presentationrate_hz) * (1/disp_params.refresh_hz); % frames per second (seconds)
-    stim.bckgrnd_grayval            = uint8(1+255/2);                           % background color (middle of 1-255 pixel lum)
+    stim.bckgrnd_grayval            = ceil(255/2);                              % background color (middle of 1-255 pixel lum)
     stim.scfactor                   = 1;                                        % no scaling
     
     % Default params to inherit (or overwrite)
@@ -197,7 +197,7 @@ else
                     p.ori_deg     = round(p.ori_bins + p.ori_jitter);           % final gabor orientations
                 else
                     p.ori_jitter  = [2.0753 4.6678 -3.5177 2.7243 1.6375 -1.6154 0.1328 1.6852];
-                    p.ori_deg     = [12 37 51 80 102 121 145 169];           % final gabor orientations
+                    p.ori_deg     = [12 37 51 80 102 121 145 169];              % final gabor orientations
                 end
                 
                 p.delta_from_ref  = [-15, -5, 5, 15];                           % how much should stim iso-eccen loc deviate from reference (WM: double epochs)
@@ -234,7 +234,7 @@ else
                 
                 if overwrite_randomized_params 
                     p.motdir_jitter    = p.motdir_jitter_mu + (p.motdir_jitter_sd.*randn(1,p.num_mot_dir)); % add a small amount of jitter around the orientation
-                    p.dots_direction   = round(p.motdir_bins + p.motdir_jitter);     % final gabor orientations
+                    p.dots_direction   = round(p.motdir_bins + p.motdir_jitter);     % final gabor orientations. Note this is only for one hemifield (left), will be mirrored for right.
                 else
                     p.motdir_jitter    = [8.1568 6.5389 -1.6998 7.0698 2.4508 0.8739 2.4295 0.5901]; 
                     p.dots_direction   = [18 62 98 152 192 236 282 326];
@@ -267,15 +267,18 @@ else
                 p.duration        = stimdur_frames;                                   % frames (nr of monitor refreshes)
                 
                 % SPATIAL
-                p.img_sz_deg      = 1.1;                                     	 % desired spatial support of dot image in deg, empirical is 1.1090 deg for BOLD screen
-                p.img_sz_pix      = round((p.img_sz_deg * disp_params.ppd)/2)*2; % spatial support of dot image in pixels (98 pixels)
+                p.img_sz_deg      = 1.0;                                     	 % desired spatial support of dot image in deg, empirical is 0.9958 deg for BOLD screen
+                p.img_sz_pix      = round((p.img_sz_deg * disp_params.ppd)/2)*2; % spatial support of dot image in pixels (88 pixels)
                 p.og_res_stim     = p.img_sz_pix;                                % resolution of stored dot stimuli (in pixels)
                 p.dres            = (( (p.img_sz_pix/disp_params.ppd) /disp_params.h_deg * disp_params.h_pix) / p.og_res_stim);  % scale factor to apply
                 p.radius_deg      = 0.5;                                         % desired dot radius in deg (empirical is 0.4979 for BOLDscreen)
                 p.radius_pix      = round((p.radius_deg * disp_params.ppd)/2)*2; % dot radius in pix (44 pixels for BOLDscreen)
                 p.color           = [255 255 255];                               % white in uint8 RGB
                 p.contrast        = 1;                                           % Michelson [0-1] (fraction)
-                p.square_pix_val  = false;
+                p.square_pix_val  = false;                                       % no need to square pixel luminance values for linear CLUT
+                
+                % Alpha mask
+                p.alpha_mask_diam_pix = p.radius_pix+1; % pixel edge for alpha mask
 
                 p.num_loc         = 16;                                          % orientation "bins" from which we create final gabor orientations (deg), 0 = 12 o'clock
                 p.loc_jitter_sd   = 1;                                           % std of normal distribution to sample orientation jitter
@@ -284,19 +287,27 @@ else
                 
                 if overwrite_randomized_params 
                     p.loc_jitter      = p.loc_jitter_sd + (p.loc_jitter_mu.*randn(1,p.num_loc)); % add a small amount of jitter around the orientation
-                    p.loc_deg         = round(p.loc_bins + p.loc_jitter) + 90;   % final gabor orientations to make North 0;
+                    p.loc_deg_L       = round(p.loc_bins + p.loc_jitter) - 90;   % final gabor orientations (add 90 deg to make 0 deg 12 o'clock / north / upper vertical     
+                    p.loc_deg_R       = p.loc_deg_L+180;
                 else
                     p.loc_jitter      = [0.8759,2.4897,2.4090,2.4172,1.6715,-0.2075,1.7172,2.6302,1.4889, 2.0347,1.7269,0.6966,1.2939,0.2127,1.8884,-0.1471];
-                    p.loc_deg         = [4 17 28 39 50 59 72 84 94 106 117 127 139 149 162 172]; 
+                    p.loc_deg_L       = [4 17 28 39 50 59 72 84 94 106 117 127 139 149 162 172] - 90; 
+                    p.loc_deg_R       = p.loc_deg_L+180; 
                 end
                 
                 p.iso_eccen       = 4.5;
-                [x,y] = pol2cart(deg2rad(p.loc_deg),repmat(p.iso_eccen,1,length(p.loc_deg)));
-                p.x0_deg          = x;                                        % x-center loc in deg (translation from 0,0)
-                p.y0_deg          = y;                                        % y-center loc in deg (translation from 0,0)
-                p.x0_pix          = round(p.x0_deg * disp_params.ppd);        % x-center loc in pix (translation from 0,0)
-                p.y0_pix          = round(p.y0_deg * disp_params.ppd);        % y-center loc in pix (translation from 0,0)
-                                
+                [x,y] = pol2cart(deg2rad(p.loc_deg_L),repmat(p.iso_eccen,1,length(p.loc_deg_L)));
+                p.x0_deg_L        = x;                                        % idealized left hemifield x-center loc in deg (translation from 0,0)
+                p.y0_deg_L        = y;                                        % idealized left hemifield y-center loc in deg (translation from 0,0)
+                p.x0_pix_L        = round(p.x0_deg_L * disp_params.ppd);      % idealized left hemifield x-center loc in pix (translation from 0,0)
+                p.y0_pix_L        = round(p.y0_deg_L * disp_params.ppd);      % idealized left hemifield y-center loc in pix (translation from 0,0)
+                
+                [x,y] = pol2cart(deg2rad(p.loc_deg_R),repmat(p.iso_eccen,1,length(p.loc_deg_R)));
+                p.x0_deg_R        = x;                                        % idealized right hemifield x-center loc in deg (translation from 0,0)
+                p.y0_deg_R        = y;                                        % idealized right hemifieldy-center loc in deg (translation from 0,0)
+                p.x0_pix_R        = round(p.x0_deg_R * disp_params.ppd);      % idealized right hemifield x-center loc in pix (translation from 0,0)
+                p.y0_pix_R        = round(p.y0_deg_R * disp_params.ppd);      % idealized right hemifield y-center loc in pix (translation from 0,0)
+                                               
                 p.delta_from_ref  = [-15, -5, 5, 15];                           % how much should stim iso-eccen loc deviate from reference (WM: double epochs)
                 % the bigger the delta, the easier the trial
                 % Add params to struct
@@ -332,7 +343,6 @@ else
                 
                 p.num_unique_objects = 16;                                      % orientation "bins" from which we create final gabor orientations (deg), 0 = 12 o'clock
                 p.facing_dir_deg     = repmat(90 + [-34, 34],1,p.num_unique_objects/2); % rotate 10 deg away from canonical view
-                
                 p.super_cat          = {'human','animal','object','place'};     % 4 superordinate categories
                 
                 p.basic_cat{1}       = {'facemale','facefemale','facefemale'};
@@ -400,8 +410,8 @@ else
                 p.sub_cat{5,1}  = {'bathroom1_left','bathroom2_center','bathroom3_right'};
                 p.sub_cat{5,2}  = {'building1_left','building2_center','building3_right'};
                 
-                p.change_im     = {'easy_added',  'hard_added','easy_removed'  'hard_removed'};
-                p.lure_im       = {'lure1',  'lure2', 'lure3', 'lure4'};
+                p.change_im     = {'easy_add', 'hard_add','easy_remove', 'hard_remove'};
+                p.lure_im       = {'lure01', 'lure02', 'lure03', 'lure04'};
                 
                 % Add params to struct
                 stim.ns = p;
