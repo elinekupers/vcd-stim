@@ -1,4 +1,4 @@
-function [condition_master, all_unique_im, all_cond] = vcd_makeMiniblocksAndTrials(p,varargin)
+function [p, condition_master, all_unique_im, all_cond] = vcd_makeMiniblocksAndTrials(p,varargin)
 % VCD function to define, shuffle, and organize trials into miniblocks:
 %
 %   [condition_master, all_unique_im, all_cond] = ...
