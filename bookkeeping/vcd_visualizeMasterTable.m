@@ -4,7 +4,7 @@ function fH = vcd_visualizeMasterTable(master_table,store_imgs)
 makeprettyfigures;
 
 %%
-strCols = [3,11:14,16]; % columns with names/characters (we don't want to plot)
+strCols = [3,11:14,16,22]; % columns with names/characters (we don't want to plot)
 colsToPlot = 1:size(master_table,2);
 colsToPlot = setdiff(colsToPlot,strCols);
 
@@ -25,6 +25,10 @@ for jj = 1:length(unique(master_table.stim_class))
         nsubplots = 1:ceil(length(dataToPlot)/500);
         
         if all(iscell(dataToPlot))
+            if sum(cellfun(@isnan, dataToPlot))~=length(dataToPlot)
+                
+            end
+            
             dataToPlot = cell2mat(dataToPlot);
         end
         
@@ -38,8 +42,11 @@ for jj = 1:length(unique(master_table.stim_class))
         end
         
         if  ~isequalwithequalnans(dataToPlot,NaN(size(dataToPlot)))
-            cmap = cmapturbo(length(unique(dataToPlot)));
-            
+            if jj==5 && ii==11 % ns and task class
+                cmap = cmapturbo(max(unique(dataToPlot)));
+            else
+                cmap = cmapturbo(length(unique(dataToPlot)));
+            end
             % Plot all trials
             subplot(length(nsubplots)+1,1,1) 
             imagesc(dataToPlot);

@@ -1,10 +1,13 @@
-function conds_master_reordered = create_condition_master_trials(conds_master,fix_task_flag)
-
+function conds_master_reordered = vcd_mergeUniqueImageIntoTrials(conds_master)
+% VCD function to merge unique images into stimulus epochs where there is a
+% left and right parafoveal stimulus, and add cuing direction column to
+% condition master table.
+% 
+%   conds_master_reordered = vcd_mergeUniqueImageIntoTrials(conds_master,fix_task_flag)
+% 
 % INPUTS:
-% conds_master  :       col 1 has unique stim nr (int)
-%                       col 2 has stim loc info (1=left,2=right)
-%                       col 3 has stim cue status (0=uncued, 1=cued).
-%                       col 4:end has stim feature info
+% conds_master  :       (table) with columns for stim-trial properties and 
+%                       rows with n trials. 
 % fix_task_flag :       logical flag to deal with FIX condition (thickening
 %                       on both sides)
 %
@@ -21,35 +24,35 @@ function conds_master_reordered = create_condition_master_trials(conds_master,fi
 %                               8: contrast
 %                               9: phase
 
-if nargin < 2 || ~exist('fix_task_flag','var') || isempty(fix_task_flag)
-    fix_task_flag = false;
-end
+%% Determine variables from input table 
+% Find stim locations (left or right)
+left_stim  = find(conds_master.stimloc==1);
+right_stim = find(conds_master.stimloc==2);
+n_unique_cases = numel(unique(conds_master.unique_im_nr));
 
-left_stim = find(conds_master(:,2)==1);
-right_stim = find(conds_master(:,2)==2);
-
+% Ensure we have equal left and right stim
 assert(length(left_stim)==length(right_stim))
 
-% pair left / right stimuli for each trial
+% Preallocate space: Pair left / right stimuli for each trial
 trial_vec_i = NaN(size(conds_master,1)/2,2);
 
-% add the condition master to struct
-n_unique_cases = numel(unique(conds_master(:,1)));
+% Add the condition master to struct
 trial_vec = repelem(1:size(trial_vec_i,1),2); % or     trial_vec = repelem(1:(n_unique_cases/2),2); ????
 
+nr_cueing_conds = 4; %left/right x cued/uncued
 
 % Define thickening of central cue
-if ~fix_task_flag
+if ~strcmp(unique(conds_master.task_class_name),{'fix'})
     
     thickening_dir = zeros(length(trial_vec),1);
     th_count = 1;
     
-    left_cued    = find((conds_master(:,3) == 1) & (conds_master(:,2) == 1));
-    left_uncued  = find((conds_master(:,3) == 0) & (conds_master(:,2) == 1));
-    right_cued   = find((conds_master(:,3) == 1) & (conds_master(:,2) == 2));
-    right_uncued = find((conds_master(:,3) == 0) & (conds_master(:,2) == 2));
+    left_cued    = find((conds_master.iscued == 1) & (conds_master.stimloc == 1));
+    left_uncued  = find((conds_master.iscued == 0) & (conds_master.stimloc == 1));
+    right_cued   = find((conds_master.iscued == 1) & (conds_master.stimloc == 2));
+    right_uncued = find((conds_master.iscued == 0) & (conds_master.stimloc == 2));
     
-    cond_idx = shuffle_concat([1:4],size(trial_vec_i,1)/4);  
+    cond_idx = shuffle_concat([1:nr_cueing_conds],size(trial_vec_i,1)/nr_cueing_conds);  
     
     
     for ii = 1:size(trial_vec_i,1)
@@ -116,12 +119,12 @@ if ~fix_task_flag
     
 
 
-elseif fix_task_flag
+elseif strcmp(unique(conds_master.task_class_name),{'fix'})
 
     thickening_dir = 3.*ones(size(trial_vec))'; % we thicken at both sides
 
-    for ii = 1:length(conds_master(:,3))
-        stim_loc = conds_master(ii,2);
+    for ii = 1:length(conds_master.stimloc)
+        stim_loc = conds_master.stimloc(ii);
         stim_to_allocate = find(isnan(trial_vec_i(:,stim_loc)));
         trial_vec_i(stim_to_allocate(1), stim_loc) = ii;
     end
@@ -131,8 +134,14 @@ elseif fix_task_flag
 
 end
   
-
-conds_master_reordered = [trial_vec', thickening_dir, conds_master(trial_vec_i,:)];
+if isfield(conds_master, 'unique_trial_nr')
+    trial_vec = trial_vec' + max(conds_master.trial_vec);
+else
+    trial_vec = trial_vec';
+end
+conds_master_reordered = conds_master(trial_vec_i,:);
+conds_master_reordered.unique_trial_nr = trial_vec;
+conds_master_reordered.thickening_dir = thickening_dir;
 
 end
 
