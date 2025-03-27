@@ -1,4 +1,4 @@
-function [p, condition_master] = vcd_allocateMiniblocksToRuns(p)
+function condition_master = vcd_allocateMiniblocksToRuns(p)
 
 condition_master = p.trials;
 
@@ -166,7 +166,6 @@ end % session
 
 
 
-% Insert back into params struct
-p.trials = condition_master;
+
 
 return
