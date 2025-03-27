@@ -20,7 +20,7 @@ function [fix_im, mask, info, p] = vcd_fixationDot(p)
 %               w (pixels) x h (pixels) x 3 x 5 luminance levels x 2 rim widths
 %   mask    : alpha mask for ptb: w (pixels) x h (pixels) x 2 (one gray
 %                   layer, one transparency layer)
-%   info    : table with fix image information
+%   info    : table with information about fixation dot conditions 
 %   p       : updated params struct
 %
 % Written by Eline Kupers 2025/02

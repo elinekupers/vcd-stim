@@ -1,15 +1,53 @@
+% This script processes images, dealing with grayscale, position, size, luminance, and contrast.
+%
+% We convert images to grayscale (using rgb2gray).
+% We interpret images using a squaring luminance response.
+% We center images with respect to each image's center of mass (calculated from the alpha mask).
+%   The centering is done using integral pixels (so no resampling is performed).
+%   The center of the images becomes 512.5 (for 1024 pixel images) using the 
+%   convention that 1 and 1024 are the centers of the first and last pixels.
+% Next, for each object, we compute the mean alpha mask across viewpoints. We
+%   then determine the minimal square (centered at the center of the images) that
+%   passes <squarethresh>.
+% The determined square extent is used to scale the size of the object viewpoint images
+%   such that <targetsize> is achieved. Cubic interpolation is used in this resizing.
+%   Note that some actual object content CAN extend beyond <targetsize> because
+%   the square merely covers most of the alpha masks.
+% We next proceed to mean/std (luminance/contrast) normalization.
+% We determine the additive offset to be applied to all viewpoint images such 
+%   that the grand mean of luminance of the viewpoint images is <targetmnlum>.
+%   (Each image's luminance is calculated as the mean within its alpha mask.)
+% We then perform an iterative approach to determine the single scale factor
+%   to be applied to all viewpoint images such that the grand mean of contrast of the
+%   viewpoint images is within 1% of <targetsdlum>. (Each image's contrast is
+%   calculated as the std dev within the full image. Note that we do not compute 
+%   std dev only within the alpha mask.) When scaling each image, the scaling is 
+%   performed using its mean luminance (within the mask) as the anchor point; 
+%   hence, the scaling does not affect the mean luminance of the image.
+%
+% We write visualization figures. Review these carefully!
+% We write some workspace variables to record.mat.
+% We write the final prepared images as .png files.
+%   Note that the interpretation of these files is intended for linear monitors;
+%   specifically, we use integer range 1 through 255 and these are intended
+%   to be shown on a linear display. If you look at the .png files on a
+%   standard display, they will appear darker than they actually would be
+%   on a linear display. 
+
 %% DEAL WITH CONSTANTS
 
 % define
-dir0 = '/var/fairstate-ext2/GoogleDrive/VCD/experimental_design/stimuli/workspaces/complex_objects/images_to_process';
-numrot = 22;        % number of image viewpoints
+% dir0 = '/var/fairstate-ext2/GoogleDrive/VCD/experimental_design/stimuli/workspaces/complex_objects/images_to_process';
+dir0 = fullfile(vcd_rootPath,'workspaces','stimuli','all_to_process');
+numrot = 91; %22;        % number of image viewpoints
 numobj = 16;        % number of objects
-targetsize = 354;   % number of pixels for one side of conformed square
+targetsize  = 354;   % number of pixels for one side of conformed square
 targetmnlum = 0.5;  % desired mn-luminance for grand average of one object's viewpoints
 targetsdlum = 0.03; % desired sd-luminance for grand average of one object's viewpoints
 squaresizes = 2:2:1000;  % square sizes (in pixels for one side) to evaluate
 squarethresh = .9;  % square size is chosen that includes at least 90% of the mass (of the mean mask)
-figuredir = '/var/fairstate-ext2/GoogleDrive/VCD/experimental_design/stimuli/workspaces/complex_objects/tryD_targetsdlum_0pt03';  % where diagnostic figures are written
+% figuredir = '/var/fairstate-ext2/GoogleDrive/VCD/experimental_design/stimuli/workspaces/complex_objects/tryD_targetsdlum_0pt03';  % where diagnostic figures are written
+figuredir = fullfile(vcd_rootPath,'figs','complex_objects_preproc');
 outputdir = [figuredir '/finalimages'];  % where final images are written to (this directory is REMOVED if it exists)
 
 %% LOAD IMAGES
@@ -23,7 +61,7 @@ assert(length(files0)==numrot*numobj);
 %   (alpha: convert to double. becomes 0-255.)
 allimages = zeros(1024,1024,length(files0));
 allalphas = zeros(1024,1024,length(files0));
-for p=1:length(files0), p
+for p=1:length(files0),
   [im0,~,alpha0] = imread(files0{p});
   allimages(:,:,p) = double(rgb2gray(im0));
   allalphas(:,:,p) = double(alpha0);
@@ -156,7 +194,7 @@ for zz=1:numobj
     
       % record
       imsAFTER(:,:,yy) = newim0;
-      allimages2(:,:,(zz-1)*numrot + yy) = uint8(1+254*sqrt(newim0));   %uint8(255*sqrt(newim0));
+      allimages2(:,:,(zz-1)*numrot + yy) = uint8(1+254*newim0);   %uint8(1+254*sqrt(newim0));   %uint8(255*sqrt(newim0));
       allalphas2(:,:,(zz-1)*numrot + yy) = uint8(255*als(:,:,yy));
 
     end

@@ -1,4 +1,4 @@
-function [simple_dot, mask, p] = vcd_simpledot(p)
+function [simple_dot, mask, info, p] = vcd_simpledot(p)
 %
 %  [simple_dot, p] = vcd_simpledot(p)
 %
@@ -7,12 +7,14 @@ function [simple_dot, mask, p] = vcd_simpledot(p)
 %   See vcd_setStimParams.m for gabor parameters.
 %
 % INPUTS:
-%   p       : dot params   (see vcd_setStimParams.m)
+%   p              : params struct, should contain field "p.stim.dot" 
+%                    (see vcd_setStimParams.m)
 %
 % OUTPUTS:
-%   simple_dot     : dot image 
+%   simple_dot     : dot image (w (pixels) by h (pixels) x 3 (rgb))
 %   masks          : alpha masks to crop out image edges
-%   p              : updated params
+%   info           : table with info about simple_dot image features
+%   p              : updated params struct
 
 % Written by Eline Kupers 2024/12
 %
@@ -52,8 +54,8 @@ mask0 = (Y - centerY).^2 + (X - centerX).^2 <= (p.stim.dot.alpha_mask_diam_pix).
 mask(mask0) = 255;
 mask        = uint8(mask);
 
-% Create info about dots
-bins = [1:length(p.stim.dot.loc_deg_L)];
+% Get nr of angles
+nr_angles = [1:length(p.stim.dot.loc_deg)];
 
 % Add baseline location (no delta)
 if ~isempty(p.stim.dot.delta_from_ref)
@@ -62,39 +64,41 @@ else
     dot_ref_locs = 0;
 end
 
-all_angles_deg_L  = p.stim.dot.loc_deg_L + dot_ref_locs';
-all_angles_deg_R  = p.stim.dot.loc_deg_R + dot_ref_locs';
+% Create reference angle and [x,y]-coords matrix
+all_angles_deg  = cat(1,p.stim.dot.ang_deg,p.stim.dot.ang_deg_delta);
+all_xpos_pix   = cat(1,p.stim.dot.x0_pix,p.stim.dot.x0_pix_delta);
+all_ypos_pix   = cat(1,p.stim.dot.y0_pix,p.stim.dot.y0_pix_delta);
 
 % Wrap around 360 
-all_angles_deg_L(all_angles_deg_L < 0) = 360+all_angles_deg_L(all_angles_deg_L < 0);
-all_angles_deg_R(all_angles_deg_R < 0) = 360+all_angles_deg_R(all_angles_deg_R < 0);
+all_angles_deg(all_angles_deg < 0) = 360+all_angles_deg(all_angles_deg < 0);
 
-all_angles_rad_L = deg2rad(all_angles_deg_L);
-all_angles_rad_R = deg2rad(all_angles_deg_R);
+% convert degrees to radians (pol2cart expects angle to be in radians)
+all_angles_rad = deg2rad(all_angles_deg);
 
 % add conditions to table
-stim_loc        = repmat({'left','right'},length(dot_ref_locs)*length(all_angles_deg_L),1);
-dot_angles_L    = reshape(all_angles_deg_L',1,[])';
-dot_angles_R    = reshape(all_angles_deg_R',1,[])';
-dot_eccen_L     = repmat(p.stim.dot.iso_eccen, size(stim_loc,1),1);
-dot_eccen_R     = dot_eccen_L;
-dot_radians_L   = reshape(all_angles_rad_L',1,[])';
-dot_radians_R   = reshape(all_angles_rad_R',1,[])';
-dot_ref_locs_L  = repelem(dot_ref_locs,length(p.stim.dot.loc_deg_L))';
-dot_ref_locs_R  = repelem(dot_ref_locs,length(p.stim.dot.loc_deg_R))';
-unique_im = [1:length(all_angles_deg_L), NaN(1,length(all_angles_deg_L)*length(p.stim.dot.delta_from_ref)), ...
-             1:length(all_angles_deg_R), NaN(1,length(all_angles_deg_R)*length(p.stim.dot.delta_from_ref))];
+stim_loc      = repmat({'left','right'},(length(nr_angles)/2),length(dot_ref_locs)); % stim loc refers to hemifield on display. We divide nr angles by 2, because they contain both L/R
+bin           = repmat(nr_angles,1,length(dot_ref_locs));
+dot_angle_deg = reshape(all_angles_deg',1,[])';
+dot_eccen     = repmat(p.stim.dot.iso_eccen, size(dot_angle_deg,1),1);
+dot_xpos_pix  = reshape(all_xpos_pix',1,[])';
+dot_ypos_pix   = reshape(all_ypos_pix',1,[])';
 
-info = table(unique_im(:), ...
-             repmat(bins',2*length(dot_ref_locs),1), ...
+dot_radians   = reshape(all_angles_rad',1,[])';
+dot_ref_locs  = repelem(dot_ref_locs,length(p.stim.dot.loc_deg))';
+unique_im     = [1:length(all_angles_deg), NaN(1,length(all_angles_deg)*length(p.stim.dot.delta_from_ref))];
+
+info = table(unique_im(:), ... %             repmat(nr_angles',2*length(dot_ref_locs),1), ...
+             bin(:), ...
              stim_loc(:), ...
-             cat(1, dot_angles_L(:), dot_angles_R(:)), ...
-             cat(1, dot_radians_L(:), dot_radians_R(:)), ...
-             cat(1, dot_ref_locs_L,dot_ref_locs_R), ...
-             cat(1, dot_eccen_L(:),dot_eccen_R(:)));
+             dot_angle_deg(:), ...
+             dot_eccen(:),...
+             dot_radians(:), ...
+             dot_ref_locs, ...
+             dot_xpos_pix(:), ...
+             dot_ypos_pix(:));
          
 % add column names
-info.Properties.VariableNames = {'unique_im','bin','stim_pos','ori_deg','ori_rad','delta_deg_ref','eccen_deg'};
+info.Properties.VariableNames = {'unique_im','bin','stim_pos','angle_deg','eccen_deg','angle_rad','delta_deg_ref','dot_xpos_pix','dot_ypos_pix'};
 
 % Store
 if p.stim.store_imgs
@@ -111,31 +115,32 @@ end
 
 % debug figure
 % figure(99); clf;
-% subplot(131); imagesc(simple_dot); colormap gray; axis image; set(gca, 'CLim', [1 255])
-% subplot(132); imagesc(mask(:,:,2)); colormap gray; axis image;  set(gca, 'CLim', [1 255])
-% subplot(133); imagesc(simple_dot, 'AlphaData',mask(:,:,2)); colormap gray; axis image;  set(gca, 'CLim', [1 255])
+% subplot(131); imagesc(simple_dot); colormap gray; axis image; set(gca, 'CLim', [1 255]); 
+% title('simple dot'); xlabel('pixels'); ylabel('pixels')
+% subplot(132); imagesc(mask); colormap gray; axis image;  set(gca, 'CLim', [1 255]); 
+% title('alpha mask'); xlabel('pixels'); ylabel('pixels')
+% subplot(133); imagesc(simple_dot, 'AlphaData',mask); colormap gray; axis image;  set(gca, 'CLim', [1 255]); 
+% title('dot+alpha mask'); xlabel('pixels'); ylabel('pixels')
 
-% cmap = [0,0,0; parula(4)];
-% sz = 50*ones(1,5);
-% positions = {'left','right'};
-% for pp = 1:length(positions)
-%     for ii = 1:length(unique(info.unique_im(~isnan(info.unique_im))))
-%         
-%         idx1 = find(strcmp(info.stim_pos,positions(pp)) & info.delta_deg_ref==0 & info.unique_im==ii);
-%         idx2 = find(strcmp(info.stim_pos,positions(pp)) & info.bin==info.bin(idx1) &  sum(info.delta_deg_ref==dot_ref_locs(2:end),2));
-%         
-%         figure(1); clf;
-%         pax = polaraxes;
-%         polarscatter(info.ori_rad([idx1;idx2])', info.eccen_deg([idx1;idx2])',sz,cmap,'LineWidth',3);
-%         pax.LineWidth = 3;
-%         pax.ThetaZeroLocation = 'top';
-%         pax.ThetaDir = 'clockwise';
-%         pax.FontSize = 20;
-%         
-%         title(sprintf('%s simple dot location %d + ref: [%d,%d,%d,%d,%d]', positions{pp},ii, dot_ref_locs));
-%         print(fullfile(vcd_rootPath,'figs',sprintf('%02d_simpledot_%s', ii ,positions{pp})),'-dpng');
-%     end
-% end
+cmap = [0,0,0; lines(4)];
+sz = 50*ones(1,5);
+for ii = 1:length(unique(info.unique_im(~isnan(info.unique_im))))
+    
+    idx1 = find(info.unique_im==ii);
+    idx2 = find(info.bin==info.bin(idx1) &  sum(info.delta_deg_ref==p.stim.dot.delta_from_ref,2));
+    
+    figure(1); clf;
+    pax = polaraxes;
+    polarscatter(info.angle_rad([idx1;idx2])', info.eccen_deg([idx1;idx2])',sz,cmap,'LineWidth',3);
+    pax.LineWidth = 3;
+    pax.ThetaZeroLocation = 'top';
+    pax.ThetaDir = 'clockwise';
+    pax.FontSize = 20;
+    
+    title(sprintf('Simple dot location %d + ref: [%d,%d,0,%d,%d]',ii, p.stim.dot.delta_from_ref));
+    print(fullfile(vcd_rootPath,'figs',sprintf('%02d_simpledot', ii)),'-dpng');
+end
+
 
 
 % 
@@ -159,39 +164,7 @@ end
 % ax.LineWidth = 3;
 % title('unique im dot locations')
 
-% visualize dot locations
-display = vcd_getDisplayParams;
-bckground = uint8(ones(display.h_pix,display.w_pix))*p.stim.bckgrnd_grayval;
 
-im1 = bckground;
-dot_halfsz = (size(simple_dot,1)/2)-0.5;
-cmap = varysat(parula(16),4);
-angles_to_plot = [all_angles_deg_L,all_angles_deg_R];
-
-for aa = 1:length(angles_to_plot)
-    for bb = 1:length(dot_ref_locs)
-
-        angle = deg2rad(angles_to_plot(aa) + dot_ref_locs(bb));
-        [x_pos,y_pos] = pol2cart(angle,p.stim.dot.iso_eccen);
-        
-        ys = display.yc + round(x_pos*display.ppd);
-        xs = display.xc + round(y_pos*display.ppd);
-        
-        figure(99); clf;
-        imshow(im1,[1 255]);
-        hold all;
-        h0 = drawcircle('Center',[display.xc,display.yc],'Radius',16,'color', [1 1 1]);
-        h0.InteractionsAllowed = 'none';
-        h0.HandleVisibility = 'off';
-        h1 = drawcircle('Center',[xs,ys],'Radius',dot_halfsz,'color', 'w','SelectedColor',[1 1 1]);
-        h1.InteractionsAllowed = 'none';
-        h1.FaceAlpha=1;
-        
-        title(sprintf('Angle: %02d; Delta: %02d',angles_to_plot(aa),dot_ref_locs(bb)), 'FontSize',20);
-        axis image;
-        print(fullfile(vcd_rootPath,'figs',sprintf('%02d_%02d_simpledot', aa, bb)),'-dpng','-r150','-painters');
-    end
-end
 
 
 return

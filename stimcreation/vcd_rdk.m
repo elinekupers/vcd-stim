@@ -11,8 +11,9 @@ function [rdk,info,p] = vcd_rdk(p)
 %   p.disp         : monitor display params (struct) pixels per degree in field of view (pix)
 %
 % OUTPUTS:
-%   rdk     : RDK images, 8x3 cell for each motion direction and coherence
-%               where each cell contains w (pixels) x h (pixels) x 3 x frames
+%   rdk     : RDK images, 8x3x5 cell for each motion direction, coherence
+%               level and delta offset (0, -15, -5, +5, +15)
+%               Each cell contains w (pixels) x h (pixels) x 3 x frames
 %   info    : table with rdk stimulus information (motion direction, coherence,
 %               location of dots for each individual frame), matching the rdk array
 %   p       : updated params struct
