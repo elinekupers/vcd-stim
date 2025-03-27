@@ -1,129 +1,209 @@
-function exp_session = vcd_getSessionParams(p,load_params,store_params)
+function exp_session = vcd_getSessionParams(varargin)
+% VCD function to get experimental session parameters related to block and
+% run timing, order, and condition nr's.
+%
+%   exp_session = vcd_getSessionParams(disp_name,load_params,store_params)
+%
+% Stimulus params such as size and location will depend on display params.
+%
+% INPUTS:
+%  [disp_name]           : (optional) Display name to load params (see vcd_getDisplayParams.m)
+%                           Default: '7TAS_BOLDSCREEN32'
+%  [presentationrate_hz] : (optional) Nr of stimulus frames presented per
+%                           second,as we use a frame-locked stimulus presentation protocol, 
+%                           Default: 30 frames per second
+%  [load_params]         : (optional) Load prior stored parameters or not. 
+%                           Default: true
+%  [store_params]        : (optional) Store generated parameters or not.
+%                           Will store params in fullfile(vcd_rootPath,'workspaces','info');
+%                           Default: true
+%
+% OUTPUT:
+%  exp_session           : struct with stimulus params, including:
+%                           * priority_stim_manip
+%                           * tktktkt
+%
+% Written by Eline Kupers November 2024 (kupers [at] umn [dot] edu)
 
-if ~exist('store_params','var') || isempty(store_params)
-    store_params = true;
+%% %%%%%%%%%%%%% PARSE INPUTS %%%%%%%%%%%%%
+p0 = inputParser;
+p0.addParameter('disp_name'             , '7TAS_BOLDSCREEN32', @(x) any(strcmp(x,{'7TAS_BOLDSCREEN32', 'KKOFFICE_AOCQ3277', 'PPROOM_EIZOFLEXSCAN', 'EKHOME_ASUSVE247'})));                   
+p0.addParameter('presentationrate_hz'   , 30     , @isnumeric);
+p0.addParameter('load_params'           , true   , @islogical);                    
+p0.addParameter('store_params'          , true   , @islogical); 
+
+% Parse inputs
+p0.parse(varargin{:});
+
+% Rename variables into general params struct
+rename_me = fieldnames(p0.Results);
+for ff = 1:length(rename_me)
+    eval([sprintf('%s = p0.Results.%s;', rename_me{ff},rename_me{ff})]);
 end
+clear rename_me ff p0
 
-if ~exist('load_params','var') || isempty(load_params)
-    load_params = true;
-end
-
+%% Load params if requested
 if load_params
-    if ~isfield(p,'disp')
-        warning('[%s]: Can''t find display name! Will use 7TAS_BOLDSCREEN32 instead', mfilename)
-        dispname = '7TAS_BOLDSCREEN32';
-    else
-        dispname = p.disp.name;
-    end
-    
-    d = dir(fullfile(vcd_rootPath,'workspaces','info',sprintf('exp_session_%s*.mat',dispname)));
+    d = dir(fullfile(vcd_rootPath,'workspaces','info',sprintf('exp_session_%s*.mat',disp_name)));
     if ~isempty(d)
+        fprintf('[%s]: Found %d exp params .mat file(s)\n',mfilename,length(d));
         if length(d) > 1
             warning('[%s]: Multiple .mat files! Will pick the most recent one', mfilename);
         end
+        fprintf('[%s]: Loading exp params .mat file: %s\n', mfilename, d.name);
         load(fullfile(d(end).folder,d(end).name),'exp_session');
     else
         error('[%s]: Can''t find experiment session params file!', mfilename)
     end
 else
+    fprintf('[%s]: Define exp params\n', mfilename);
     
-
-    
-    % Preallocate space
+    % We will create a big struct where we separate params based on the
+    % experimental hierarchy, i.e.: if it is at the session level, run
+    % level, miniblock, or trial level.
     exp_session = struct('session',[],'run',[],'miniblock',[],'trial', []);
     
-    %% Define big stim-task crossing table
+    % Define big stim-task crossing table
     exp_session.stimClassLabels = {'gabor','rdk','dot','cobj','ns'};
     exp_session.taskClassLabels = {'fix','cd','scc','pc','wm','ltm','img','what','where','how'};
     
+    % Define stim-task crossings (master table)
     exp_session.crossings = false(length(exp_session.stimClassLabels),length(exp_session.taskClassLabels));
     
     exp_session.stimTaskLabels = cell(length(exp_session.taskClassLabels),length(exp_session.stimClassLabels));
     for row = 1:size(exp_session.crossings,1)
         for col = 1:size(exp_session.crossings,2)
-            if strcmp(exp_session.taskClassLabels{col},'scc')
-                    exp_session.stimTaskLabels{col,row} = sprintf('%s-all',lower(exp_session.taskClassLabels{col}));
+            if strcmp(exp_session.taskClassLabels{col},'scc') % SCC will mix 4 stim classes (Gabors, RDKs, dot, cobj)
+                exp_session.stimTaskLabels{col,row} = sprintf('%s-all',lower(exp_session.taskClassLabels{col}));
             else
                 exp_session.stimTaskLabels{col,row} = sprintf('%s-%s',lower(exp_session.taskClassLabels{col}),lower(exp_session.stimClassLabels{row}));
             end
         end
     end
     
+    % Remove any empty labels
     exp_session.stimTaskLabels(cellfun(@isempty, exp_session.stimTaskLabels)) = [];
     
     % Set Classic block
     exp_session.crossings(1:5,1:7) = true; % we keep scc x gabor/rdk/dot/cobj despite that they are technically the same crossing. 
     exp_session.crossings(5,3) = false; % we remove scc form NS.
-    
 
     % Set Naturalistic tail
     exp_session.crossings(4:5,8:10) = true;
     exp_session.crossings(4,9) = false;
     
+    % Organize stim-task labels according to the crossings
     exp_session.stimTaskLabels = exp_session.stimTaskLabels(exp_session.crossings');
     
-    % General exp params
-    exp_session.n_unique_trial_repeats = 8;
-    exp_session.n_sessions             = 1;%30;
-    exp_session.n_runs_per_session     = 10;
+    %% %%%% SESSION PARAMS %%%%
+    exp_session.n_unique_trial_repeats = 8;   % 8 allows for allocation of all trials across miniblocks and runs.
+    exp_session.n_sessions             = 6; %40;   % let's do one session for now;
+    exp_session.n_runs_per_session     = 8;   % right now we have 8x 6 min runs per session
     exp_session.TR                     = 1.6; % seconds
-    exp_session.total_subjects         = 3;
+    exp_session.total_subjects         = 3;   % 3 subjects for now.. EK: we probably want to separate wide and deep subjects
     
     % %%%% SESSION %%%%
     exp_session.session.wideSessions     = [1,2]; % Sessions dedicated to wide subject sampling
     exp_session.session.baselineSessions = [1:6]; % Sessions dedicated to establish baseline
-    % response for LTM/IMAG (=2 repeats of unique image conditions)
+    
+    % Response for LTM/IMAG (= 2 repeats of unique image conditions)
     exp_session.session.task_start       = [1,1,1,1,1,7,7,1,1,1]; % When do we start sampling the tasks (LTM/IMG have later starts)
     
-    % %%%% MINIBLOCK %%%%
-    % general
-    exp_session.miniblock.n_trials_single_epoch = 8;
-    exp_session.miniblock.n_trials_double_epoch = 4;
-    exp_session.miniblock.response_ID    = 93; % 
-    exp_session.miniblock.trial_start_ID = 94; % 
-    exp_session.miniblock.spatial_cue_ID = 95; % 
-    exp_session.miniblock.delay_ID       = 96; % 
-    exp_session.miniblock.task_cue_ID    = 97; % 
-    exp_session.miniblock.ITI_ID         = 98; %
-    exp_session.miniblock.IBI_ID         = 99; %
+    % LTM stim-stim pairing will be probabilistic, with these tweaks:
+    exp_session.session.ltm.prob_new_pairing  = 0.2; % chance that LTM stim A will be match to stim C (instead of stim B), in a given session
+    exp_session.session.ltm.prob_pair_order_flip = 0.2; % chance that LTM stim A -> B will flip to B -> A in a given session
     
-    % check if these ITI/IBI IDs do not already exist
+
+    
+    %% %%%% MINIBLOCK %%%%
+    % general
+    exp_session.miniblock.n_trials_single_epoch = 8; % number of trials per block when we only have a single stimulus epoch 
+    exp_session.miniblock.n_trials_double_epoch = 4; % number of trials per block when we only have a two stimulus epochs (less trials because each trial is longer)
+    exp_session.miniblock.stim_epoch1_ID        = 91; % generic stim ID
+    exp_session.miniblock.stim_epoch2_ID        = 92; % generic stim ID
+    exp_session.miniblock.response_ID           = 93; % Time for subject to respond
+    exp_session.miniblock.trial_start_ID        = 94; % Fixation dot thickening
+    exp_session.miniblock.spatial_cue_ID        = 95; % Fixation dot turning black on L/R/both sides
+    exp_session.miniblock.delay_ID              = 96; % Delay period between two stimulus epochs
+    exp_session.miniblock.task_cue_ID           = 97; % Text on display to instruct subject
+    exp_session.miniblock.ITI_ID                = 98; % Inter-trial interval
+    exp_session.miniblock.IBI_ID                = 99; % Inter-block interval
+    
+    % Check if these IDs do not already exist in stim-task labels
+    assert(isempty(intersect([1:length(exp_session.stimTaskLabels)],exp_session.miniblock.response_ID)));
+    assert(isempty(intersect([1:length(exp_session.stimTaskLabels)],exp_session.miniblock.trial_start_ID)));
+    assert(isempty(intersect([1:length(exp_session.stimTaskLabels)],exp_session.miniblock.spatial_cue_ID)));
+    assert(isempty(intersect([1:length(exp_session.stimTaskLabels)],exp_session.miniblock.task_cue_ID)));
+    assert(isempty(intersect([1:length(exp_session.stimTaskLabels)],exp_session.miniblock.delay_ID)));
     assert(isempty(intersect([1:length(exp_session.stimTaskLabels)],exp_session.miniblock.task_cue_ID)));
     assert(isempty(intersect([1:length(exp_session.stimTaskLabels)],exp_session.miniblock.ITI_ID)));
     assert(isempty(intersect([1:length(exp_session.stimTaskLabels)],exp_session.miniblock.IBI_ID)));
     
-    % timing
-    exp_session.miniblock.task_cue_dur        = p.stim.framedur_s*60*2; % 4.0 seconds
-    exp_session.miniblock.IBI                 = p.stim.framedur_s*linspace(150,270,5); % [5:1:9] seconds Inter-block interval -- uniformly sample between [min,max]
+    % Timing
+    exp_session.miniblock.task_cue_dur        = presentationrate_hz * 2.0; % 2.0 seconds in number of presentation frames
+    exp_session.miniblock.IBI                 = presentationrate_hz * linspace(5*presentationrate_hz,9*presentationrate_hz, 5); % [5:1:9] seconds Inter-block interval -- uniformly sample between [min,max]
+    
+    % Make we have integer number of frames
+    assert(isint(exp_session.miniblock.task_cue_dur));
+    assert(all(isint(exp_session.miniblock.IBI)));
+
+    % In each run, we have manipulations that we prioritize to fully sample,
+    % otherwise it is difficult to compare conditions (e.g., we want to sample
+    % all contrast levels within the run).
+    exp_session.priority_stim_manip = struct('name',{},'priority',{},'other',{});
+    
+    exp_session.priority_stim_manip(1).name     = {'gabor'};
+    exp_session.priority_stim_manip(1).priority = {'contrast','delta_ref'}; % Priority manipulation
+    exp_session.priority_stim_manip(1).other    = {'ori_bin'};                 % Other manipulations
+    exp_session.priority_stim_manip(2).name     = {'rdk'};
+    exp_session.priority_stim_manip(2).priority = {'coherence','delta_ref'};
+    exp_session.priority_stim_manip(2).other    = {'ori_bin'};
+    exp_session.priority_stim_manip(3).name     = {'dot'};
+    exp_session.priority_stim_manip(3).priority = {'ori_bin'};
+    exp_session.priority_stim_manip(3).other    = {};
+    exp_session.priority_stim_manip(4).name     = {'cobj'};
+    exp_session.priority_stim_manip(4).priority = {'super_cat','basic_cat'};
+    exp_session.priority_stim_manip(4).other    = {'sub_cat'};
+    exp_session.priority_stim_manip(5).name     = {'ns'};
+    exp_session.priority_stim_manip(5).priority = {'super_cat','basic_cat'};
+    exp_session.priority_stim_manip(5).other    = {'sub_cat'}; % ERK: do we sample/index these or does it not matter since stim are selected to be balanced?
     
     
-    % %%%% RUN %%%%
+    %% %%%% RUN %%%%
     % general
     exp_session.run.n_single_epoch_miniblocks = 3;
     exp_session.run.n_double_epoch_miniblocks = 3;
     exp_session.run.miniblocks_per_run = exp_session.run.n_single_epoch_miniblocks + exp_session.run.n_double_epoch_miniblocks;
     
-    % timing
-    exp_session.run.pre_blank_dur     = p.stim.framedur_s*330; % 11 s
-    exp_session.run.post_blank_dur    = p.stim.framedur_s*330; % 11s
-    exp_session.run.total_run_dur     = p.stim.framedur_s*9936; % 9936 framedur_s or 207 TRs or 331.2 s
-    exp_session.run.actual_task_dur = exp_session.run.total_run_dur - exp_session.run.pre_blank_dur - exp_session.run.post_blank_dur; %s
+    % eye gaze block
+    exp_session.run.eye_gaze_fix0       = presentationrate_hz * 1.0; % start with 1 second fixation period
+    exp_session.run.eye_gaze_sac_target = presentationrate_hz * 1.2; % then 5x1.2 = 6 seconds of saccades (mimicing EL HV5 grid,±3 deg in all directions)
+    exp_session.run.eye_gaze_fix1       = presentationrate_hz * 2.0; % then a 2-seconds rest trial
+    exp_session.run.eye_gaze_pupil      = presentationrate_hz .* [3.0,1.0]; % then a 4-seconds pupil trial: 3-s black adaptation, 1-s white screen to evoke max pupil response.
 
+    % timing
+    exp_session.run.pre_blank_dur     = presentationrate_hz * 10.0; % pre-run blank period: 11 seconds in number of presentation frames
+    exp_session.run.post_blank_dur    = presentationrate_hz * 12.0; % 11 seconds in number of presentation frames
+    exp_session.run.total_run_dur     = presentationrate_hz * 331.2; % 331.2 s or 207 1.6 sTRs
     
-    % %%%% TRIAL %%%%
+    assert(isint(exp_session.run.total_run_dur/exp_session.TR)); % ensure this is an integer nr of TRs
+    
+    exp_session.run.actual_task_dur = exp_session.run.total_run_dur - exp_session.run.pre_blank_dur - exp_session.run.post_blank_dur; % nr of presentation frames we actually spend doing the experiment
+    
+    %% %%%% TRIAL %%%%
     % general
     exp_session.trial.single_epoch_tasks = logical([1 1 1 1 0 0 0 1 1 1]);
     exp_session.trial.double_epoch_tasks = ~exp_session.trial.single_epoch_tasks;
     exp_session.trial.stim_LR_loc_cue    = logical([1 1 1 1 0]);
     
     % timing
-    exp_session.trial.start_cue_dur       = p.stim.framedur_s*12; % 0.4 seconds (thickening of dot rim)
-    exp_session.trial.spatial_cue_dur     = p.stim.framedur_s*24; % 0.8 seconds
-    exp_session.trial.stim_array_dur      = p.stim.framedur_s*60; % 2.0 seconds
-    exp_session.trial.response_win_dur    = p.stim.framedur_s*30; % 1.0 seconds
-    % p.trial.end_cue_dur         = 0.4; % seconds  (thinning of dot rim)
-    exp_session.trial.ITI                 = p.stim.framedur_s.*[6:6:48]; % 0.2:0.2:1.6 seconds (thinning of dot rim)
-    exp_session.trial.delay_dur           = p.stim.framedur_s*240; % 8.0 seconds
+    exp_session.trial.start_cue_dur       = presentationrate_hz * 0.4; % 12 x 33 ms frames = 0.4 seconds (thickening of dot rim)
+    exp_session.trial.spatial_cue_dur     = presentationrate_hz * 0.8; % 24 x 33 ms frames = 0.8 seconds
+    exp_session.trial.stim_array_dur      = presentationrate_hz * 2.0; % 60 x 33 ms frames = 2.0 seconds
+    exp_session.trial.response_win_dur    = presentationrate_hz * 1.0; % 30 x 33 ms frames = 1.0 seconds
+   
+    exp_session.trial.ITI                 = presentationrate_hz.*[0.2:0.2:1.6]; % [6:6:48] frames corresponds to 0.2:0.2:1.6 seconds (thinning of dot rim)
+    exp_session.trial.delay_dur           = presentationrate_hz * 8.0 ; % 240 x 33 ms frames = 8.0 seconds
     
     exp_session.trial.single_epoch_dur   = ...
         sum([exp_session.trial.start_cue_dur,... % seconds
@@ -139,513 +219,686 @@ else
         exp_session.trial.stim_array_dur, ...
         exp_session.trial.response_win_dur]);
     
-    assert( nearZero(mod(exp_session.trial.single_epoch_dur / p.stim.framedur_s,1)))
+    assert( nearZero(mod(exp_session.trial.single_epoch_dur / presentationrate_hz,1)))
     
-    %%
-    sc_all = 1;
-    exp_session.ses_blocks = zeros(size(exp_session.crossings,1),size(exp_session.crossings,2),exp_session.n_sessions);
+    % LTM
+    exp_session.trial.ltm.prob_correct_pair                  = 0.5;  % chance of a given stim-stim pair in a trial is correct
+    exp_session.trial.ltm.prob_incorrect_pair_same_stimclass = 0.25; % these are lures
+    exp_session.trial.ltm.prob_incorrect_pair_diff_stimclass = 0.25; % these are non-lures 
+    assert(sum([exp_session.trial.ltm.prob_correct_pair, exp_session.trial.ltm.prob_incorrect_pair_same_stimclass, exp_session.trial.ltm.prob_incorrect_pair_diff_stimclass])==1)
     
-    for ses = 1:exp_session.n_sessions
-        
-        for ii = 1:size(exp_session.stimTaskLabels)
-            
-            curr_cross = exp_session.stimTaskLabels{ii};
-            if strcmp(curr_cross,'scc-all')
-                sc = sc_all; sc_all = sc_all+1;
-                tc = ~cellfun(@isempty, regexp(curr_cross,exp_session.taskClassLabels, 'match','once'));
-            else
-                sc = ~cellfun(@isempty, regexp(curr_cross,exp_session.stimClassLabels, 'match','once'));
-                tc = ~cellfun(@isempty, regexp(curr_cross,exp_session.taskClassLabels, 'match','once'));
-            end
-            switch curr_cross
-                %%% FIXATION %%%
-                case {'fix-gabor','fix-rdk','fix-dot','fix-cobj','fix-ns'}
-                    
-                    exp_session.ses_blocks(sc,tc,ses) = 1;
-                    
-                    %%%%%%%%%%%%%%%%%%%%% %%% GABORS %%%
-                case 'cd-gabor'
-                    if ses >= exp_session.session.task_start(tc)
-                        if any(ses==exp_session.session.wideSessions)
-                            exp_session.ses_blocks(sc,tc,ses) = 2;
-                        else
-                            exp_session.ses_blocks(sc,tc,ses) = 1;
-                        end
-                    else % shouldn't occur, but for completeness..
-                        exp_session.ses_blocks(sc,tc,ses) = 0;
-                    end
-                    
-                case {'scc-gabor','scc-rdk','scc-dot','scc-cobj','scc-all'}
-                    if ses >= exp_session.session.task_start(tc)
-                        if any(ses==exp_session.session.wideSessions)
-                            exp_session.ses_blocks(sc,tc,ses) = 1;
-                        else
-                            exp_session.ses_blocks(sc,tc,ses) = 1;
-                        end
-                    else % shouldn't occur, but for completeness..
-                        exp_session.ses_blocks(sc,tc,ses) = 0;
-                    end
-                    
-                case 'pc-gabor'
-                    if ses >= exp_session.session.task_start(tc)
-                        if any(ses==exp_session.session.wideSessions)
-                            exp_session.ses_blocks(sc,tc,ses) = 2;
-                        else
-                            exp_session.ses_blocks(sc,tc,ses) = 1;
-                        end
-                    else % shouldn't occur, but for completeness..
-                        exp_session.ses_blocks(sc,tc,ses) = 0;
-                    end
-                    
-                case 'wm-gabor'
-                    if ses >= exp_session.session.task_start(tc)
-                        if any(ses==exp_session.session.wideSessions)
-                            exp_session.ses_blocks(sc,tc,ses) = 3;
-                        else
-                            exp_session.ses_blocks(sc,tc,ses) = 2;
-                        end
-                    else % shouldn't occur, but for completeness..
-                        exp_session.ses_blocks(sc,tc,ses) = 0;
-                    end
-                    
-                case 'ltm-gabor'
-                    if ses >= exp_session.session.task_start(tc)
-                        if mod(ses,2)==1 % uneven sessions
-                            exp_session.ses_blocks(sc,tc,ses) = 2;
-                        elseif mod(ses,2)==0 % even sessions
-                            exp_session.ses_blocks(sc,tc,ses) = 3;
-                        end
-                    else % skip until session 7
-                        exp_session.ses_blocks(sc,tc,ses) = 0; % skip
-                    end
-                    
-                case 'img-gabor'
-                    if ses >= exp_session.session.task_start(tc)
-                        if mod(ses,2)==1 % uneven sessions
-                            exp_session.ses_blocks(sc,tc,ses) = 3;
-                        elseif mod(ses,2)==0 % even sessions
-                            exp_session.ses_blocks(sc,tc,ses) = 2;
-                        end
-                    else % skip until session 7
-                        exp_session.ses_blocks(sc,tc,ses) = 0; % skip
-                    end
-                    
-                    %%%%%%%%%%%%%%%%%%%%% %%% RDK %%%
-                case 'cd-rdk'
-                    if ses >= exp_session.session.task_start(tc)
-                        if any(ses==exp_session.session.wideSessions)
-                            exp_session.ses_blocks(sc,tc,ses) = 2;
-                        else
-                            exp_session.ses_blocks(sc,tc,ses) = 1;
-                        end
-                    else % shouldn't occur, but for completeness..
-                        exp_session.ses_blocks(sc,tc,ses) = 0;
-                    end
+    %% Nr of blocks per sessions 
+    ses_blocks = zeros(size(exp_session.crossings,1),size(exp_session.crossings,2),exp_session.n_sessions);
+    
+    % sessions 1-2 are WIDE
+    %                   fix    cd   scc   pc    wm    ltm   img   what where  how                 
+    ses_blocks(:,:,1) = [1     2     1     2     3     0     0     0     0     0; % Gabor:
+                         1     2     1     2     3     0     0     0     0     0; % RDK:
+                         1     1     1     1     2     0     0     0     0     0; % Dot:
+                         1     1     1     2     2     0     0     1     0     1; % Cobj:
+                         1     2     0     2     4     0     0     2     2     2];% NS: 
+    ses_blocks(:,:,2) = ses_blocks(:,:,1);
 
-                case 'pc-rdk'
-                    if ses >= exp_session.session.task_start(tc)
-                        if any(ses==exp_session.session.wideSessions)
-                            exp_session.ses_blocks(sc,tc,ses) = 2;
-                        else
-                            exp_session.ses_blocks(sc,tc,ses) = 1;
-                        end
-                    else % shouldn't occur, but for completeness..
-                        exp_session.ses_blocks(sc,tc,ses) = 0;
-                    end
-                    
-                case 'wm-rdk'
-                    if ses >= exp_session.session.task_start(tc)
-                        if any(ses==exp_session.session.wideSessions)
-                            exp_session.ses_blocks(sc,tc,ses) = 3;
-                        else
-                            exp_session.ses_blocks(sc,tc,ses) = 2;
-                        end
-                    else % shouldn't occur, but for completeness..
-                        exp_session.ses_blocks(sc,tc,ses) = 0;
-                    end
-                    
-                    
-                case 'ltm-rdk'
-                    if ses >= exp_session.session.task_start(tc)
-                        if mod(ses,2)==1 % uneven sessions
-                            exp_session.ses_blocks(sc,tc,ses) = 3;
-                        elseif mod(ses,2)==0 % even sessions
-                            exp_session.ses_blocks(sc,tc,ses) = 2;
-                        end
-                    else  % skip until session 7
-                        exp_session.ses_blocks(sc,tc,ses) = 0; % skip
-                    end
-                    
-                case 'img-rdk'
-                    
-                    if ses >= exp_session.session.task_start(tc)
-                        if mod(ses,2)==1 % uneven sessions
-                            exp_session.ses_blocks(sc,tc,ses) = 2;
-                        elseif mod(ses,2)==0 % even sessions
-                            exp_session.ses_blocks(sc,tc,ses) = 3;
-                        end
-                    else  % skip until session 7
-                        exp_session.ses_blocks(sc,tc,ses) = 0; % skip
-                    end
-                    
-                    %%%%%%%%%%%%%%%%%%%%% %%% SIMPLE DOT %%%
-                case 'cd-dot'
-                    if ses >= exp_session.session.task_start(tc)
-                        
-                        if any(ses==exp_session.session.wideSessions)
-                            exp_session.ses_blocks(sc,tc,ses) = 1;
-                        else
-                            if mod(ses,2)==1 % uneven sessions
-                                exp_session.ses_blocks(sc,tc,ses) = 1;
-                            elseif mod(ses,2)==0 % even sessions
-                                exp_session.ses_blocks(sc,tc,ses) = 0;
-                            end
-                        end
-                        
-                    else % shouldn't occur, but for completeness..
-                        exp_session.ses_blocks(sc,tc,ses) = 0;
-                    end
+    % sessions 3-6 have no LTM and no IMG
+    %                   fix    cd   scc   pc    wm    ltm   img   what where  how                 
+    ses_blocks(:,:,3) = [1     2     2     2     3     0     0     0     0     0; % Gabor: 3 WM
+                         1     2     2     2     3     0     0     0     0     0; % RDK: 3 WM
+                         1     1     1     1     2     0     0     0     0     0; % Dot: 2 WM
+                         1     1     1     2     2     0     0     2     0     2; % Cobj: 2 WM, 2 WHAT & 2 HOW
+                         1     2     0     2     2     0     0     1     2     1];
 
-                case 'pc-dot'
-                    if ses >= exp_session.session.task_start(tc)
-                        
-                        if any(ses==exp_session.session.wideSessions)
-                            exp_session.ses_blocks(sc,tc,ses) = 1;
-                        else
-                            if mod(ses,2)==1 % uneven sessions
-                                exp_session.ses_blocks(sc,tc,ses) = 1;
-                            elseif mod(ses,2)==0 % even sessions
-                                exp_session.ses_blocks(sc,tc,ses) = 0;
-                            end
-                        end
-                        
-                    else % shouldn't occur, but for completeness..
-                        exp_session.ses_blocks(sc,tc,ses) = 0;
-                    end
-                    
-                case 'wm-dot'
-                    if ses >= exp_session.session.task_start(tc)
-                        
-                        if any(ses==exp_session.session.wideSessions)
-                            exp_session.ses_blocks(sc,tc,ses) = 2;
-                        else
-                            exp_session.ses_blocks(sc,tc,ses) = 1;
-                        end
-                        
-                    else % shouldn't occur, but for completeness..
-                        exp_session.ses_blocks(sc,tc,ses) = 0;
-                    end
-                    
-                case 'ltm-dot'
-                    if ses >= exp_session.session.task_start(tc)
-                        doubleSessions = [10:4:exp_session.n_sessions];
-                        
-                        if any(ses == doubleSessions) % every fourth session has 2 blocks
-                            exp_session.ses_blocks(sc,tc,ses) = 2;
-                        elseif ~any(ses == doubleSessions) % otherwise it is 1
-                            exp_session.ses_blocks(sc,tc,ses) = 1;
-                        end
-                        
-                    else % skip until session 7
-                        exp_session.ses_blocks(sc,tc,ses) = 0;
-                    end
-                    
-                case 'img-dot'
-                    if ses >= exp_session.session.task_start(tc)
-                        doubleSessions = [7:4:exp_session.n_sessions];
-                        
-                        if any(ses == doubleSessions) % every fourth session has 2 blocks
-                            exp_session.ses_blocks(sc,tc,ses) = 2;
-                        elseif ~any(ses == doubleSessions) % otherwise it is 1
-                            exp_session.ses_blocks(sc,tc,ses) = 1;
-                        end
-                        
-                    else % skip until session 7
-                        exp_session.ses_blocks(sc,tc,ses) = 0;
-                    end
-                    
-                    
-                    %%%%%%%%%%%%%%%%%%%%% %%% COMPLEX OBJECTS %%%
-                case 'cd-cobj'
-                    if ses >= exp_session.session.task_start(tc)
-                        
-                        if any(ses==exp_session.session.wideSessions)
-                            exp_session.ses_blocks(sc,tc,ses) = 1;
-                        else
-                            if mod(ses,2)==1 % uneven sessions
-                                exp_session.ses_blocks(sc,tc,ses) = 1;
-                            elseif mod(ses,2)==0 % even sessions
-                                exp_session.ses_blocks(sc,tc,ses) = 0;
-                            end
-                        end
-                        
-                    else % shouldn't occur, but for completeness..
-                        exp_session.ses_blocks(sc,tc,ses) = 0;
-                    end
-                    
-                case 'pc-cobj'
-                    if ses >= exp_session.session.task_start(tc)
-                        
-                        if any(ses==exp_session.session.wideSessions)
-                            exp_session.ses_blocks(sc,tc,ses) = 2;
-                        else
-                            if mod(ses,2)==1 % uneven sessions
-                                exp_session.ses_blocks(sc,tc,ses) = 1;
-                            elseif mod(ses,2)==0 % even sessions
-                                exp_session.ses_blocks(sc,tc,ses) = 0;
-                            end
-                        end
-                        
-                    else % shouldn't occur, but for completeness..
-                        exp_session.ses_blocks(sc,tc,ses) = 0;
-                    end
-                    
-                    
-                case 'wm-cobj'
-                    if ses >= exp_session.session.task_start(tc)
-                        
-                        if any(ses==exp_session.session.wideSessions)
-                            exp_session.ses_blocks(sc,tc,ses) = 2;
-                        else
-                            exp_session.ses_blocks(sc,tc,ses) = 1;
-                        end
-                        
-                    else % shouldn't occur, but for completeness..
-                        exp_session.ses_blocks(sc,tc,ses) = 0;
-                    end
-                    
-                case 'ltm-cobj'
-                    if ses >= exp_session.session.task_start(tc)
-                        exp_session.ses_blocks(sc,tc,ses) = 1;
-                    else % skip until session 7
-                        exp_session.ses_blocks(sc,tc,ses) = 0;
-                    end
-                    
-                case 'img-cobj'
-                    if ses >= exp_session.session.task_start(tc)
-                        exp_session.ses_blocks(sc,tc,ses) = 1;
-                    else % skip until session 7
-                        exp_session.ses_blocks(sc,tc,ses) = 0;
-                    end
-                    
-                case 'what-cobj'
-                    if ses >= exp_session.session.task_start(tc)
-                        
-                        if any(ses==exp_session.session.wideSessions)
-                            exp_session.ses_blocks(sc,tc,ses) = 1;
-                        else
-                            % First 13 sesions we have 1 miniblock per
-                            % session
-                            if ses < 13
-                                exp_session.ses_blocks(sc,tc,ses) = 1;
-                            else
-                                % after that we alternate between 1/0 for even/uneven
-                                if mod(ses,2) == 1 % uneven sessions
-                                    exp_session.ses_blocks(sc,tc,ses) = 0;
-                                elseif mod(ses,2) == 0 % even sessions
-                                    exp_session.ses_blocks(sc,tc,ses) = 1;
-                                end
-                                
-                            end
-                        end
-                    else % shouldn't occur, but for completeness..
-                        exp_session.ses_blocks(sc,tc,ses) = 0;
-                    end
-                    
-                case 'how-cobj'
-                    if ses >= exp_session.session.task_start(tc)
-                        if any(ses==exp_session.session.wideSessions)
-                            exp_session.ses_blocks(sc,tc,ses) = 1;
-                        else
-                            % First 13 sesions we have 1 miniblock per
-                            % session
-                            if ses < 13
-                                exp_session.ses_blocks(sc,tc,ses) = 1;
-                            else
-                                % after that we alternate between 0/1 for even/uneven
-                                if mod(ses,2) == 1 % uneven sessions
-                                    exp_session.ses_blocks(sc,tc,ses) = 1;
-                                elseif mod(ses,2) == 0 % even sessions
-                                    exp_session.ses_blocks(sc,tc,ses) = 0;
-                                end
-                                
-                            end
-                        end
-                    else % shouldn't occur, but for completeness..
-                        exp_session.ses_blocks(sc,tc,ses) = 0;
-                    end
-                    
-                    %%%%%%%%%%%%%%%%%%%%% %%% NATURAL SCENES %%%
-                case 'cd-ns'
-                    skipSessions = [9:2:exp_session.n_sessions];
-                    
-                    if ses >= exp_session.session.task_start(tc)
-                        if any(ses==exp_session.session.wideSessions)
-                            exp_session.ses_blocks(sc,tc,ses) = 2;
-                        else
-                            if any(ses==exp_session.session.baselineSessions)
-                                exp_session.ses_blocks(sc,tc,ses) = 1;
-                            end
-                            
-                            if any(ses == skipSessions) % every third session skips a block
-                                exp_session.ses_blocks(sc,tc,ses) = 0;
-                            elseif ~any(ses == skipSessions) % otherwise it is 1 block
-                                exp_session.ses_blocks(sc,tc,ses) = 1;
-                            end
-                        end
-                    else % shouldn't occur, but for completeness..
-                        exp_session.ses_blocks(sc,tc,ses) = 0;
-                    end
-                    
-                case 'pc-ns'
-                    skipSessions = [7:2:exp_session.n_sessions];
-                    if ses >= exp_session.session.task_start(tc)
-                        if any(ses==exp_session.session.wideSessions)
-                            exp_session.ses_blocks(sc,tc,ses) = 2;
-                        else
-                            if any(ses==exp_session.session.baselineSessions)
-                                exp_session.ses_blocks(sc,tc,ses) = 1;
-                            end
-                            
-                            if any(ses == skipSessions) % every third session skips a block
-                                exp_session.ses_blocks(sc,tc,ses) = 0;
-                            elseif ~any(ses == skipSessions) % otherwise it is 1 block
-                                exp_session.ses_blocks(sc,tc,ses) = 1;
-                            end
-                        end
-                    else % shouldn't occur, but for completeness..
-                        exp_session.ses_blocks(sc,tc,ses) = 0;
-                    end
-                    
-                case 'wm-ns'
-                    doubleSessions = [9:3:exp_session.n_sessions];
-                    if ses >= exp_session.session.task_start(tc)
-                        if any(ses==exp_session.session.wideSessions)
-                            exp_session.ses_blocks(sc,tc,ses) = 4;
-                        else
-                            if any(ses == exp_session.session.baselineSessions)
-                                exp_session.ses_blocks(sc,tc,ses) = 2;
-                            end
-                            
-                            if any(ses == doubleSessions) % every fourth session adds a block
-                                exp_session.ses_blocks(sc,tc,ses) = 2;
-                            elseif ~any(ses == doubleSessions) % otherwise it is 1 block
-                                exp_session.ses_blocks(sc,tc,ses) = 1;
-                            end
-                        end
-                    else % shouldn't happen, but for completeness we add this
-                        exp_session.ses_blocks(sc,tc,ses) = 0;
-                    end
-                    
-                case 'ltm-ns'
-                    doubleSessions = [7:10, 12:2:exp_session.n_sessions];
-                    
-                    if ses >= exp_session.session.task_start(tc)
-                        
-                        if any(ses == doubleSessions) % every fourth session adds a block
-                            exp_session.ses_blocks(sc,tc,ses) = 2;
-                        elseif ~any(ses == doubleSessions) % otherwise it is 1 block
-                            exp_session.ses_blocks(sc,tc,ses) = 1;
-                        end
-                        
-                    else % skip until session 7
-                        exp_session.ses_blocks(sc,tc,ses) = 0;
-                    end
-                    
-                case 'img-ns'
-                    doubleSessions = [7:11, 13:2:exp_session.n_sessions];
-                    if ses >= exp_session.session.task_start(tc)
-                        
-                        if any(ses == doubleSessions) % every fourth session adds a block
-                            exp_session.ses_blocks(sc,tc,ses) = 2;
-                        elseif ~any(ses == doubleSessions) % otherwise it is 1 block
-                            exp_session.ses_blocks(sc,tc,ses) = 1;
-                        end
-                        
-                    else % skip until session 7
-                        exp_session.ses_blocks(sc,tc,ses) = 0;
-                    end
-                    
-                case 'what-ns'
-                    skipSessions = [7:2:exp_session.n_sessions,exp_session.n_sessions];
-                    if ses >= exp_session.session.task_start(tc)
-                        if any(ses==exp_session.session.wideSessions)
-                            exp_session.ses_blocks(sc,tc,ses) = 2;
-                        else
-                            if any(ses == exp_session.session.baselineSessions)
-                                exp_session.ses_blocks(sc,tc,ses) = 1;
-                            end
-                            
-                            if any(ses == skipSessions) % every third session skips a block
-                                exp_session.ses_blocks(sc,tc,ses) = 0;
-                            elseif ~any(ses == skipSessions) % otherwise it is 1 block
-                                exp_session.ses_blocks(sc,tc,ses) = 1;
-                            end
-                        end
-                    else % shouldn't occur, but for completeness..
-                        exp_session.ses_blocks(sc,tc,ses) = 0;
-                    end
-                    
-                case 'where-ns'
-                    skipSessions = [7,8:2:exp_session.n_sessions];
-                    if ses >= exp_session.session.task_start(tc)
-                        if any(ses==exp_session.session.wideSessions)
-                            exp_session.ses_blocks(sc,tc,ses) = 2;
-                        else
-                            if any(ses == exp_session.session.baselineSessions)
-                                exp_session.ses_blocks(sc,tc,ses) = 1;
-                            end
-                            
-                            if any(ses == skipSessions) % every third session skips a block
-                                exp_session.ses_blocks(sc,tc,ses) = 0;
-                            elseif ~any(ses == skipSessions) % otherwise it is 1 block
-                                exp_session.ses_blocks(sc,tc,ses) = 1;
-                            end
-                        end
-                    else % shouldn't occur, but for completeness..
-                        exp_session.ses_blocks(sc,tc,ses) = 0;
-                    end
-                    
-                case 'how-ns'
-                    skipSessions = [7:2:exp_session.n_sessions,exp_session.n_sessions];
-                    if ses >= exp_session.session.task_start(tc)
-                        if any(ses==exp_session.session.wideSessions)
-                            exp_session.ses_blocks(sc,tc,ses) = 2;
-                        else
-                            if any(ses == exp_session.session.baselineSessions)
-                                exp_session.ses_blocks(sc,tc,ses) = 1;
-                            end
-                            
-                            if any(ses == skipSessions) % every third session skips a block
-                                exp_session.ses_blocks(sc,tc,ses) = 0;
-                            elseif ~any(ses == skipSessions) % otherwise it is 1 block
-                                exp_session.ses_blocks(sc,tc,ses) = 1;
-                            end
-                        end
-                    else % shouldn't occur, but for completeness..
-                        exp_session.ses_blocks(sc,tc,ses) = 0;
-                    end
-            end
-            
-            
-        end
-        
-    end
+    ses_blocks(:,:,4) = [1     2     2     2     3     0     0     0     0     0; % Gabor: 
+                         1     2     2     2     3     0     0     0     0     0; % RDK: 
+                         1     1     1     1     2     0     0     0     0     0; % Dot: 
+                         1     1     1     2     2     0     0     2     0     2; % Cobj: 
+                         1     2     0     2     2     0     0     1     1     2]; % NS: 2 HOW
+                     
+    ses_blocks(:,:,5) = [1     2     2     2     3     0     0     0     0     0; % Gabor: 
+                         1     2     2     2     3     0     0     0     0     0; % RDK:
+                         1     1     1     1     2     0     0     0     0     0; % Dot: 
+                         1     1     1     2     2     0     0     2     0     2; % Cobj: 
+                         1     2     0     2     2     0     0     1     2     1]; % NS: 2 WHERE
+                     
+    ses_blocks(:,:,6) = [1     2     2     2     3     0     0     0     0     0; % Gabor:
+                         1     2     2     2     3     0     0     0     0     0; % RDK: 
+                         1     1     1     1     2     0     0     0     0     0; % Dot: 
+                         1     1     1     2     2     0     0     2     0     2; % Cobj:
+                         1     2     0     2     2     0     0     2     1     1]; % NS: 2 WHAT
+                     
+    % sessions 7- have all stim-task crossings
+    % we alternate 3 vs 2 LTM & IMG blocks for Gabor & RDK
+    % Dot: starting session 7, we have 2 IMG blocks every 3 sessions. 
+    % Dot: starting session 10, we have 2 LTM blocks every 3 sessions. 
+    %                   fix    cd   scc   pc    wm    ltm   img   what where  how                 
+    ses_blocks(:,:,7) = [1     1     0     1     2     2     2     0     0     0; % Gabor: 
+                         1     0     1     0     1     2     2     0     0     0; % RDK: 
+                         1     1     1     1     1     1     2     0     0     0; % Dot: 
+                         1     1     1     1     1     2     2     1     0     1; % Cobj: -
+                         1     1     0     0     1     2     2     1     1     1]; % NS: 
+
+    %                   fix    cd   scc   pc    wm    ltm   img   what where  how                     
+    ses_blocks(:,:,8) = [1     0     1     1     1     2     2     0     0     0; % Gabor: 
+                         1     1     0     1     2     2     2     0     0     0; % RDK: 
+                         1     1     1     1     1     2     1     0     0     0; % Dot: 
+                         1     1     1     1     1     1     1     1     0     1; % Cobj: 
+                         1     1     0     1     1     2     2     1     0     1]; % NS: 
+
+    %                   fix    cd   scc   pc    wm    ltm   img   what where  how                     
+    ses_blocks(:,:,9) = [1     1     0     1     2     2     2     0     0     0; % Gabor: 
+                         1     0     1     1     1     2     2     0     0     0; % RDK: 
+                         1     1     1     1     1     1     2     0     0     0; % Dot: -
+                         1     1     1     1     1     1     1     1     0     1; % Cobj: -
+                         1     0     0     0     2     2     2     0     1     0]; % NS: 
+
+    %                   fix    cd   scc   pc    wm    ltm   img   what where  how
+    ses_blocks(:,:,10) =[1     0     1     1     1     2     2     0     0     0; % Gabor: 3 LTM blocks
+                         1     1     0     1     2     2     2     0     0     0; % RDK: 3 IMG blocks 
+                         1     1     1     0     1     2     1     0     0     0; % Dot: 
+                         1     1     1     0     1     1     1     1     0     1; % Cobj: skip PC block
+                         1     1     0     1     1     2     2     1     0     1]; % NS: 2 IMG & 2 LTM blocks
+
+    %                   fix    cd   scc   pc    wm    ltm   img   what where  how
+    ses_blocks(:,:,11) =[1     1     0     1     1     2     2     0     0     0; % Gabor: 3 IMG blocks
+                         1     0     1     1     1     2     2     0     0     0; % RDK: 3 LTM blocks 
+                         1     1     1     1     1     1     2     0     0     0; % Dot: 2 IMG blocks
+                         1     1     1     1     1     1     1     1     0     1;
+                         1     0     0     0     1     1     2     0     1     0];
+
+    %                   fix    cd   scc   pc    wm    ltm   img   what where  how
+    ses_blocks(:,:,12) =[1     0     1     1     1     2     2     0     0     0;
+                         1     1     0     1     1     2     2     0     0     0;
+                         1     0     1     0     1     2     1     0     0     0; % Dot: skip PC block
+                         1     0     1     0     1     1     1     1     0     1;
+                         1     1     0     1     2     2     1     1     0     1];
+
+    %                   fix    cd   scc   pc    wm    ltm   img   what where  how
+    ses_blocks(:,:,13) =[1     1     0     1     1     2     2     0     0     0;
+                         1     0     1     1     1     2     2     0     0     0;
+                         1     0     1     0     1     1     1     0     0     0; % Dot: skip PC block
+                         1     0     1     0     1     1     1     1     0     1;
+                         1     1     0     1     2     2     1     1     0     1];
+
+    %                   fix    cd   scc   pc    wm    ltm   img   what where  how
+    ses_blocks(:,:,14) =[1     0     1     1     1     2     2     0     0     0;
+                         1     1     0     1     1     2     2     0     0     0;
+                         1     0     1     0     1     2     1     0     0     0; % Dot: skip PC block
+                         1     0     1     0     1     1     1     1     0     1;
+                         1     1     0     1     2     2     1     1     0     1];
+
+    %                   fix    cd   scc   pc    wm    ltm   img   what where  how
+    ses_blocks(:,:,15) =[1     1     0     1     1     2     2     0     0     0;
+                         1     0     1     1     1     2     2     0     0     0;
+                         1     0     1     0     1     1     1     0     0     0; % Dot: skip PC block
+                         1     0     1     0     1     1     1     1     0     1;
+                         1     1     0     1     2     2     1     1     0     1];
+
+    %                   fix    cd   scc   pc    wm    ltm   img   what where  how
+    ses_blocks(:,:,16) =[1     0     1     1     1     2     2     0     0     0;
+                         1     1     0     1     1     2     2     0     0     0;
+                         1     0     1     0     1     2     1     0     0     0; % Dot: skip PC block
+                         1     0     1     0     1     1     1     1     0     1;
+                         1     1     0     1     2     2     1     1     0     1];
+                     
+%                   fix    cd   scc   pc    wm    ltm   img   what where  how
+    ses_blocks(:,:,17) =[1     0     1     1     1     2     2     0     0     0;
+                         1     1     0     1     1     2     2     0     0     0;
+                         1     0     1     0     1     2     1     0     0     0; % Dot: skip PC block
+                         1     0     1     0     1     1     1     1     0     1;
+                         1     1     0     1     2     2     1     1     0     1];
+                     
+%                   fix    cd   scc   pc    wm    ltm   img   what where  how
+    ses_blocks(:,:,18) =[1     0     1     1     1     2     2     0     0     0;
+                         1     1     0     1     1     2     2     0     0     0;
+                         1     0     1     0     1     2     1     0     0     0; % Dot: skip PC block
+                         1     0     1     0     1     1     1     1     0     1;
+                         1     1     0     1     2     2     1     1     0     1];                     
+    %                   fix    cd   scc   pc    wm    ltm   img   what where  how
+    ses_blocks(:,:,19) =[1     0     1     1     1     2     2     0     0     0;
+                         1     1     0     1     1     2     2     0     0     0;
+                         1     0     1     0     1     2     1     0     0     0; % Dot: skip PC block
+                         1     0     1     0     1     1     1     1     0     1;
+                         1     1     0     1     2     2     1     1     0     1];
+                     
+%                   fix    cd   scc   pc    wm    ltm   img   what where  how
+    ses_blocks(:,:,20) =[1     0     1     1     1     2     2     0     0     0;
+                         1     1     0     1     1     2     2     0     0     0;
+                         1     0     1     0     1     2     1     0     0     0; % Dot: skip PC block
+                         1     0     1     0     1     1     1     1     0     1;
+                         1     1     0     1     2     2     1     1     0     1];
+                     
+%                   fix    cd   scc   pc    wm    ltm   img   what where  how
+    ses_blocks(:,:,21) =[1     0     1     1     1     2     2     0     0     0;
+                         1     1     0     1     1     2     2     0     0     0;
+                         1     0     1     0     1     2     1     0     0     0; % Dot: skip PC block
+                         1     0     1     0     1     1     1     1     0     1;
+                         1     1     0     1     2     2     1     1     0     1];                     
+    %                   fix    cd   scc   pc    wm    ltm   img   what where  how
+    ses_blocks(:,:,22) =[1     0     1     1     1     2     2     0     0     0;
+                         1     1     0     1     1     2     2     0     0     0;
+                         1     0     1     0     1     2     1     0     0     0; % Dot: skip PC block
+                         1     0     1     0     1     1     1     1     0     1;
+                         1     1     0     1     2     2     1     1     0     1];
+                     
+%                   fix    cd   scc   pc    wm    ltm   img   what where  how
+    ses_blocks(:,:,23) =[1     0     1     1     1     2     2     0     0     0;
+                         1     1     0     1     1     2     2     0     0     0;
+                         1     0     1     0     1     2     1     0     0     0; % Dot: skip PC block
+                         1     0     1     0     1     1     1     1     0     1;
+                         1     1     0     1     2     2     1     1     0     1];
+                     
+%                   fix    cd   scc   pc    wm    ltm   img   what where  how
+    ses_blocks(:,:,24) =[1     0     1     1     1     2     2     0     0     0;
+                         1     1     0     1     1     2     2     0     0     0;
+                         1     0     1     0     1     2     1     0     0     0; % Dot: skip PC block
+                         1     0     1     0     1     1     1     1     0     1;
+                         1     1     0     1     2     2     1     1     0     1];                     
+
+    exp_session.ses_blocks = ses_blocks;
     
     % Remove scc duplicate stim task label
-    scc_duplicates = find(~cellfun(@isempty, strfind(p.exp.stimTaskLabels,'scc-all')));
+    scc_duplicates = find(~cellfun(@isempty, strfind(exp_session.stimTaskLabels,'scc-all')));
     exp_session.stimTaskLabels(scc_duplicates(2:end)) = [];
 
     if store_params
         fprintf('[%s]:Storing session data..\n',mfilename)
-        saveDir = fileparts(fullfile(p.stim.fix.infofile));
+        saveDir = fullfile(vcd_rootPath,'workspaces','info');
         if ~exist(saveDir,'dir'), mkdir(saveDir); end
-        save(fullfile(saveDir, sprintf('exp_session_%s_%s.mat',p.disp.name, datestr(now,30))),'exp_session','-v7.3');
+        save(fullfile(saveDir, sprintf('exp_session_%s_%s.mat',disp_name, datestr(now,30))),'exp_session','-v7.3');
     end
 end
 
 
 return
+    
+    
+%     exp_session.ses_blocks = zeros(size(exp_session.crossings,1),size(exp_session.crossings,2),exp_session.n_sessions);
+%     
+%     for ses = 1:exp_session.n_sessions
+%         sc_all = 1;
+%         for ii = 1:size(exp_session.stimTaskLabels)
+%             
+%             curr_cross = exp_session.stimTaskLabels{ii};
+%             if strcmp(curr_cross,'scc-all')
+%                 sc = sc_all; sc_all = sc_all+1;
+%                 tc = ~cellfun(@isempty, regexp(curr_cross,exp_session.taskClassLabels, 'match','once'));
+%             else
+%                 sc = ~cellfun(@isempty, regexp(curr_cross,exp_session.stimClassLabels, 'match','once'));
+%                 tc = ~cellfun(@isempty, regexp(curr_cross,exp_session.taskClassLabels, 'match','once'));
+%             end
+%             
+%             switch curr_cross
+%                 %%% FIXATION %%%
+%                 case {'fix-gabor','fix-rdk','fix-dot','fix-cobj','fix-ns'}
+%                     
+%                     exp_session.ses_blocks(sc,tc,ses) = 1;
+%                     
+%                     %%%%%%%%%%%%%%%%%%%%% %%% GABORS %%%
+%                 case 'cd-gabor'
+%                     if ses >= exp_session.session.task_start(tc)
+%                         if any(ses==exp_session.session.wideSessions)
+%                             exp_session.ses_blocks(sc,tc,ses) = 2;
+%                         else
+%                             exp_session.ses_blocks(sc,tc,ses) = 1;
+%                         end
+%                     else % shouldn't occur, but for completeness..
+%                         exp_session.ses_blocks(sc,tc,ses) = 0;
+%                     end
+%                     
+%                 case {'scc-gabor','scc-rdk','scc-dot','scc-cobj','scc-all'}
+%                     if ses >= exp_session.session.task_start(tc)
+%                         if any(ses==exp_session.session.wideSessions)
+%                             exp_session.ses_blocks(sc,tc,ses) = 1;
+%                         else
+%                             exp_session.ses_blocks(sc,tc,ses) = 1;
+%                         end
+%                     else % shouldn't occur, but for completeness..
+%                         exp_session.ses_blocks(sc,tc,ses) = 0;
+%                     end
+%                     
+%                 case 'pc-gabor'
+%                     if ses >= exp_session.session.task_start(tc)
+%                         if any(ses==exp_session.session.wideSessions)
+%                             exp_session.ses_blocks(sc,tc,ses) = 2;
+%                         else
+%                             exp_session.ses_blocks(sc,tc,ses) = 1;
+%                         end
+%                     else % shouldn't occur, but for completeness..
+%                         exp_session.ses_blocks(sc,tc,ses) = 0;
+%                     end
+%                     
+%                 case 'wm-gabor'
+%                     if ses >= exp_session.session.task_start(tc)
+%                         if any(ses==exp_session.session.wideSessions)
+%                             exp_session.ses_blocks(sc,tc,ses) = 3;
+%                         else
+%                             exp_session.ses_blocks(sc,tc,ses) = 2;
+%                         end
+%                     else % shouldn't occur, but for completeness..
+%                         exp_session.ses_blocks(sc,tc,ses) = 0;
+%                     end
+%                     
+%                 case 'ltm-gabor'
+%                     if ses >= exp_session.session.task_start(tc)
+%                         if mod(ses,2)==1 % uneven sessions
+%                             exp_session.ses_blocks(sc,tc,ses) = 2;
+%                         elseif mod(ses,2)==0 % even sessions
+%                             exp_session.ses_blocks(sc,tc,ses) = 3;
+%                         end
+%                     else % skip until session 7
+%                         exp_session.ses_blocks(sc,tc,ses) = 0; % skip
+%                     end
+%                     
+%                 case 'img-gabor'
+%                     if ses >= exp_session.session.task_start(tc)
+%                         if mod(ses,2)==1 % uneven sessions
+%                             exp_session.ses_blocks(sc,tc,ses) = 3;
+%                         elseif mod(ses,2)==0 % even sessions
+%                             exp_session.ses_blocks(sc,tc,ses) = 2;
+%                         end
+%                     else % skip until session 7
+%                         exp_session.ses_blocks(sc,tc,ses) = 0; % skip
+%                     end
+%                     
+%                     %%%%%%%%%%%%%%%%%%%%% %%% RDK %%%
+%                 case 'cd-rdk'
+%                     if ses >= exp_session.session.task_start(tc)
+%                         if any(ses==exp_session.session.wideSessions)
+%                             exp_session.ses_blocks(sc,tc,ses) = 2;
+%                         else
+%                             exp_session.ses_blocks(sc,tc,ses) = 1;
+%                         end
+%                     else % shouldn't occur, but for completeness..
+%                         exp_session.ses_blocks(sc,tc,ses) = 0;
+%                     end
+% 
+%                 case 'pc-rdk'
+%                     if ses >= exp_session.session.task_start(tc)
+%                         if any(ses==exp_session.session.wideSessions)
+%                             exp_session.ses_blocks(sc,tc,ses) = 2;
+%                         else
+%                             exp_session.ses_blocks(sc,tc,ses) = 1;
+%                         end
+%                     else % shouldn't occur, but for completeness..
+%                         exp_session.ses_blocks(sc,tc,ses) = 0;
+%                     end
+%                     
+%                 case 'wm-rdk'
+%                     if ses >= exp_session.session.task_start(tc)
+%                         if any(ses==exp_session.session.wideSessions)
+%                             exp_session.ses_blocks(sc,tc,ses) = 3;
+%                         else
+%                             exp_session.ses_blocks(sc,tc,ses) = 2;
+%                         end
+%                     else % shouldn't occur, but for completeness..
+%                         exp_session.ses_blocks(sc,tc,ses) = 0;
+%                     end
+%                     
+%                     
+%                 case 'ltm-rdk'
+%                     if ses >= exp_session.session.task_start(tc)
+%                         if mod(ses,2)==1 % uneven sessions
+%                             exp_session.ses_blocks(sc,tc,ses) = 3;
+%                         elseif mod(ses,2)==0 % even sessions
+%                             exp_session.ses_blocks(sc,tc,ses) = 2;
+%                         end
+%                     else  % skip until session 7
+%                         exp_session.ses_blocks(sc,tc,ses) = 0; % skip
+%                     end
+%                     
+%                 case 'img-rdk'
+%                     
+%                     if ses >= exp_session.session.task_start(tc)
+%                         if mod(ses,2)==1 % uneven sessions
+%                             exp_session.ses_blocks(sc,tc,ses) = 2;
+%                         elseif mod(ses,2)==0 % even sessions
+%                             exp_session.ses_blocks(sc,tc,ses) = 3;
+%                         end
+%                     else  % skip until session 7
+%                         exp_session.ses_blocks(sc,tc,ses) = 0; % skip
+%                     end
+%                     
+%                     %%%%%%%%%%%%%%%%%%%%% %%% SIMPLE DOT %%%
+%                 case 'cd-dot'
+%                     if ses >= exp_session.session.task_start(tc)
+%                         
+%                         if any(ses==exp_session.session.wideSessions)
+%                             exp_session.ses_blocks(sc,tc,ses) = 1;
+%                         else
+%                             if mod(ses,2)==1 % uneven sessions
+%                                 exp_session.ses_blocks(sc,tc,ses) = 1;
+%                             elseif mod(ses,2)==0 % even sessions
+%                                 exp_session.ses_blocks(sc,tc,ses) = 0;
+%                             end
+%                         end
+%                         
+%                     else % shouldn't occur, but for completeness..
+%                         exp_session.ses_blocks(sc,tc,ses) = 0;
+%                     end
+% 
+%                 case 'pc-dot'
+%                     if ses >= exp_session.session.task_start(tc)
+%                         
+%                         if any(ses==exp_session.session.wideSessions)
+%                             exp_session.ses_blocks(sc,tc,ses) = 1;
+%                         else
+%                             if mod(ses,2)==1 % uneven sessions
+%                                 exp_session.ses_blocks(sc,tc,ses) = 1;
+%                             elseif mod(ses,2)==0 % even sessions
+%                                 exp_session.ses_blocks(sc,tc,ses) = 0;
+%                             end
+%                         end
+%                         
+%                     else % shouldn't occur, but for completeness..
+%                         exp_session.ses_blocks(sc,tc,ses) = 0;
+%                     end
+%                     
+%                 case 'wm-dot'
+%                     if ses >= exp_session.session.task_start(tc)
+%                         
+%                         if any(ses==exp_session.session.wideSessions)
+%                             exp_session.ses_blocks(sc,tc,ses) = 2;
+%                         else
+%                             exp_session.ses_blocks(sc,tc,ses) = 1;
+%                         end
+%                         
+%                     else % shouldn't occur, but for completeness..
+%                         exp_session.ses_blocks(sc,tc,ses) = 0;
+%                     end
+%                     
+%                 case 'ltm-dot'
+%                     if ses >= exp_session.session.task_start(tc)
+%                         doubleSessions = [10:4:exp_session.n_sessions];
+%                         
+%                         if any(ses == doubleSessions) % every fourth session has 2 blocks
+%                             exp_session.ses_blocks(sc,tc,ses) = 2;
+%                         elseif ~any(ses == doubleSessions) % otherwise it is 1
+%                             exp_session.ses_blocks(sc,tc,ses) = 1;
+%                         end
+%                         
+%                     else % skip until session 7
+%                         exp_session.ses_blocks(sc,tc,ses) = 0;
+%                     end
+%                     
+%                 case 'img-dot'
+%                     if ses >= exp_session.session.task_start(tc)
+%                         doubleSessions = [7:4:exp_session.n_sessions];
+%                         
+%                         if any(ses == doubleSessions) % every fourth session has 2 blocks
+%                             exp_session.ses_blocks(sc,tc,ses) = 2;
+%                         elseif ~any(ses == doubleSessions) % otherwise it is 1
+%                             exp_session.ses_blocks(sc,tc,ses) = 1;
+%                         end
+%                         
+%                     else % skip until session 7
+%                         exp_session.ses_blocks(sc,tc,ses) = 0;
+%                     end
+%                     
+%                     
+%                     %%%%%%%%%%%%%%%%%%%%% %%% COMPLEX OBJECTS %%%
+%                 case 'cd-cobj'
+%                     if ses >= exp_session.session.task_start(tc)
+%                         
+%                         if any(ses==exp_session.session.wideSessions)
+%                             exp_session.ses_blocks(sc,tc,ses) = 1;
+%                         else
+%                             if mod(ses,2)==1 % uneven sessions
+%                                 exp_session.ses_blocks(sc,tc,ses) = 1;
+%                             elseif mod(ses,2)==0 % even sessions
+%                                 exp_session.ses_blocks(sc,tc,ses) = 0;
+%                             end
+%                         end
+%                         
+%                     else % shouldn't occur, but for completeness..
+%                         exp_session.ses_blocks(sc,tc,ses) = 0;
+%                     end
+%                     
+%                 case 'pc-cobj'
+%                     if ses >= exp_session.session.task_start(tc)
+%                         
+%                         if any(ses==exp_session.session.wideSessions)
+%                             exp_session.ses_blocks(sc,tc,ses) = 2;
+%                         else
+%                             if mod(ses,2)==1 % uneven sessions
+%                                 exp_session.ses_blocks(sc,tc,ses) = 1;
+%                             elseif mod(ses,2)==0 % even sessions
+%                                 exp_session.ses_blocks(sc,tc,ses) = 0;
+%                             end
+%                         end
+%                         
+%                     else % shouldn't occur, but for completeness..
+%                         exp_session.ses_blocks(sc,tc,ses) = 0;
+%                     end
+%                     
+%                     
+%                 case 'wm-cobj'
+%                     if ses >= exp_session.session.task_start(tc)
+%                         
+%                         if any(ses==exp_session.session.wideSessions)
+%                             exp_session.ses_blocks(sc,tc,ses) = 2;
+%                         else
+%                             exp_session.ses_blocks(sc,tc,ses) = 1;
+%                         end
+%                         
+%                     else % shouldn't occur, but for completeness..
+%                         exp_session.ses_blocks(sc,tc,ses) = 0;
+%                     end
+%                     
+%                 case 'ltm-cobj'
+%                     if ses >= exp_session.session.task_start(tc)
+%                         exp_session.ses_blocks(sc,tc,ses) = 1;
+%                     else % skip until session 7
+%                         exp_session.ses_blocks(sc,tc,ses) = 0;
+%                     end
+%                     
+%                 case 'img-cobj'
+%                     if ses >= exp_session.session.task_start(tc)
+%                         exp_session.ses_blocks(sc,tc,ses) = 1;
+%                     else % skip until session 7
+%                         exp_session.ses_blocks(sc,tc,ses) = 0;
+%                     end
+%                     
+%                 case 'what-cobj'
+%                     if ses >= exp_session.session.task_start(tc)
+%                         
+%                         if any(ses==exp_session.session.wideSessions)
+%                             exp_session.ses_blocks(sc,tc,ses) = 1;
+%                         else
+%                             % First 13 sesions we have 1 miniblock per
+%                             % session
+%                             if ses < 13
+%                                 exp_session.ses_blocks(sc,tc,ses) = 1;
+%                             else
+%                                 % after that we alternate between 1/0 for even/uneven
+%                                 if mod(ses,2) == 1 % uneven sessions
+%                                     exp_session.ses_blocks(sc,tc,ses) = 0;
+%                                 elseif mod(ses,2) == 0 % even sessions
+%                                     exp_session.ses_blocks(sc,tc,ses) = 1;
+%                                 end
+%                                 
+%                             end
+%                         end
+%                     else % shouldn't occur, but for completeness..
+%                         exp_session.ses_blocks(sc,tc,ses) = 0;
+%                     end
+%                     
+%                 case 'how-cobj'
+%                     if ses >= exp_session.session.task_start(tc)
+%                         if any(ses==exp_session.session.wideSessions)
+%                             exp_session.ses_blocks(sc,tc,ses) = 1;
+%                         else
+%                             % First 13 sesions we have 1 miniblock per
+%                             % session
+%                             if ses < 13
+%                                 exp_session.ses_blocks(sc,tc,ses) = 1;
+%                             else
+%                                 % after that we alternate between 0/1 for even/uneven
+%                                 if mod(ses,2) == 1 % uneven sessions
+%                                     exp_session.ses_blocks(sc,tc,ses) = 1;
+%                                 elseif mod(ses,2) == 0 % even sessions
+%                                     exp_session.ses_blocks(sc,tc,ses) = 0;
+%                                 end
+%                                 
+%                             end
+%                         end
+%                     else % shouldn't occur, but for completeness..
+%                         exp_session.ses_blocks(sc,tc,ses) = 0;
+%                     end
+%                     
+%                     %%%%%%%%%%%%%%%%%%%%% %%% NATURAL SCENES %%%
+%                 case 'cd-ns'
+%                     skipSessions = [9:2:exp_session.n_sessions];
+%                     
+%                     if ses >= exp_session.session.task_start(tc)
+%                         if any(ses==exp_session.session.wideSessions)
+%                             exp_session.ses_blocks(sc,tc,ses) = 2;
+%                         else
+%                             if any(ses==exp_session.session.baselineSessions)
+%                                 exp_session.ses_blocks(sc,tc,ses) = 1;
+%                             end
+%                             
+%                             if any(ses == skipSessions) % every third session skips a block
+%                                 exp_session.ses_blocks(sc,tc,ses) = 0;
+%                             elseif ~any(ses == skipSessions) % otherwise it is 1 block
+%                                 exp_session.ses_blocks(sc,tc,ses) = 1;
+%                             end
+%                         end
+%                     else % shouldn't occur, but for completeness..
+%                         exp_session.ses_blocks(sc,tc,ses) = 0;
+%                     end
+%                     
+%                 case 'pc-ns'
+%                     skipSessions = [7:2:exp_session.n_sessions];
+%                     if ses >= exp_session.session.task_start(tc)
+%                         if any(ses==exp_session.session.wideSessions)
+%                             exp_session.ses_blocks(sc,tc,ses) = 2;
+%                         else
+%                             if any(ses==exp_session.session.baselineSessions)
+%                                 exp_session.ses_blocks(sc,tc,ses) = 1;
+%                             end
+%                             
+%                             if any(ses == skipSessions) % every third session skips a block
+%                                 exp_session.ses_blocks(sc,tc,ses) = 0;
+%                             elseif ~any(ses == skipSessions) % otherwise it is 1 block
+%                                 exp_session.ses_blocks(sc,tc,ses) = 1;
+%                             end
+%                         end
+%                     else % shouldn't occur, but for completeness..
+%                         exp_session.ses_blocks(sc,tc,ses) = 0;
+%                     end
+%                     
+%                 case 'wm-ns'
+%                     doubleSessions = [9:3:exp_session.n_sessions];
+%                     if ses >= exp_session.session.task_start(tc)
+%                         if any(ses==exp_session.session.wideSessions)
+%                             exp_session.ses_blocks(sc,tc,ses) = 4;
+%                         else
+%                             if any(ses == exp_session.session.baselineSessions)
+%                                 exp_session.ses_blocks(sc,tc,ses) = 2;
+%                             end
+%                             
+%                             if any(ses == doubleSessions) % every fourth session adds a block
+%                                 exp_session.ses_blocks(sc,tc,ses) = 2;
+%                             elseif ~any(ses == doubleSessions) % otherwise it is 1 block
+%                                 exp_session.ses_blocks(sc,tc,ses) = 1;
+%                             end
+%                         end
+%                     else % shouldn't happen, but for completeness we add this
+%                         exp_session.ses_blocks(sc,tc,ses) = 0;
+%                     end
+%                     
+%                 case 'ltm-ns'
+%                     doubleSessions = [7:10, 12:2:exp_session.n_sessions];
+%                     
+%                     if ses >= exp_session.session.task_start(tc)
+%                         
+%                         if any(ses == doubleSessions) % every fourth session adds a block
+%                             exp_session.ses_blocks(sc,tc,ses) = 2;
+%                         elseif ~any(ses == doubleSessions) % otherwise it is 1 block
+%                             exp_session.ses_blocks(sc,tc,ses) = 1;
+%                         end
+%                         
+%                     else % skip until session 7
+%                         exp_session.ses_blocks(sc,tc,ses) = 0;
+%                     end
+%                     
+%                 case 'img-ns'
+%                     doubleSessions = [7:11, 13:2:exp_session.n_sessions];
+%                     if ses >= exp_session.session.task_start(tc)
+%                         
+%                         if any(ses == doubleSessions) % every fourth session adds a block
+%                             exp_session.ses_blocks(sc,tc,ses) = 2;
+%                         elseif ~any(ses == doubleSessions) % otherwise it is 1 block
+%                             exp_session.ses_blocks(sc,tc,ses) = 1;
+%                         end
+%                         
+%                     else % skip until session 7
+%                         exp_session.ses_blocks(sc,tc,ses) = 0;
+%                     end
+%                     
+%                 case 'what-ns'
+%                     skipSessions = [7:2:exp_session.n_sessions,exp_session.n_sessions];
+%                     if ses >= exp_session.session.task_start(tc)
+%                         if any(ses==exp_session.session.wideSessions)
+%                             exp_session.ses_blocks(sc,tc,ses) = 2;
+%                         else
+%                             if any(ses == exp_session.session.baselineSessions)
+%                                 exp_session.ses_blocks(sc,tc,ses) = 1;
+%                             end
+%                             
+%                             if any(ses == skipSessions) % every third session skips a block
+%                                 exp_session.ses_blocks(sc,tc,ses) = 0;
+%                             elseif ~any(ses == skipSessions) % otherwise it is 1 block
+%                                 exp_session.ses_blocks(sc,tc,ses) = 1;
+%                             end
+%                         end
+%                     else % shouldn't occur, but for completeness..
+%                         exp_session.ses_blocks(sc,tc,ses) = 0;
+%                     end
+%                     
+%                 case 'where-ns'
+%                     skipSessions = [7,8:2:exp_session.n_sessions];
+%                     if ses >= exp_session.session.task_start(tc)
+%                         if any(ses==exp_session.session.wideSessions)
+%                             exp_session.ses_blocks(sc,tc,ses) = 2;
+%                         else
+%                             if any(ses == exp_session.session.baselineSessions)
+%                                 exp_session.ses_blocks(sc,tc,ses) = 1;
+%                             end
+%                             
+%                             if any(ses == skipSessions) % every third session skips a block
+%                                 exp_session.ses_blocks(sc,tc,ses) = 0;
+%                             elseif ~any(ses == skipSessions) % otherwise it is 1 block
+%                                 exp_session.ses_blocks(sc,tc,ses) = 1;
+%                             end
+%                         end
+%                     else % shouldn't occur, but for completeness..
+%                         exp_session.ses_blocks(sc,tc,ses) = 0;
+%                     end
+%                     
+%                 case 'how-ns'
+%                     skipSessions = [7:2:exp_session.n_sessions,exp_session.n_sessions];
+%                     if ses >= exp_session.session.task_start(tc)
+%                         if any(ses==exp_session.session.wideSessions)
+%                             exp_session.ses_blocks(sc,tc,ses) = 2;
+%                         else
+%                             if any(ses == exp_session.session.baselineSessions)
+%                                 exp_session.ses_blocks(sc,tc,ses) = 1;
+%                             end
+%                             
+%                             if any(ses == skipSessions) % every third session skips a block
+%                                 exp_session.ses_blocks(sc,tc,ses) = 0;
+%                             elseif ~any(ses == skipSessions) % otherwise it is 1 block
+%                                 exp_session.ses_blocks(sc,tc,ses) = 1;
+%                             end
+%                         end
+%                     else % shouldn't occur, but for completeness..
+%                         exp_session.ses_blocks(sc,tc,ses) = 0;
+%                     end
+%             end
+%         end
+%         
+%     end
+    
 
 
 
