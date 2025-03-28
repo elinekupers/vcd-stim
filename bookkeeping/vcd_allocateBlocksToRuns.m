@@ -1,20 +1,19 @@
-function condition_master = vcd_allocateMiniblocksToRuns(p)
+function condition_master = vcd_allocateBlocksToRuns(p)
 
 condition_master = p.trials;
 
-t_session = table( NaN(size(condition_master,1),1), NaN(size(condition_master,1),1),...
-                   NaN(size(condition_master,1),1), NaN(size(condition_master,1),p.exp.total_subjects), ... 
-                   NaN(size(condition_master,1),1), num2cell(NaN(size(condition_master,1),1)), ...
-                   NaN(size(condition_master,1),1), NaN(size(condition_master,1),1));
-t_session.Properties.VariableNames = {'session_nr','run_nr',...
-                                      'within_ses_block_nr','subj_within_run_block_nr',...
-                                      'miniblock_ID','miniblock_name','trial_type','across_session_miniblock_nr'};
+if sum(strcmp(condition_master.Properties.VariableNames,'session_nr'))==0
+    t_session = table( NaN(size(condition_master,1),1), NaN(size(condition_master,1),1),...
+        NaN(size(condition_master,1),1), NaN(size(condition_master,1),p.exp.total_subjects), ...
+        NaN(size(condition_master,1),1), num2cell(NaN(size(condition_master,1),1)), ...
+        NaN(size(condition_master,1),1), NaN(size(condition_master,1),1));
+    t_session.Properties.VariableNames = {'session_nr','run_nr',...
+        'within_ses_block_nr','subj_within_run_block_nr',...
+        'block_ID','block_name','trial_type','across_session_block_nr'};
+    
+    condition_master = cat(2,condition_master, t_session);
+end
 
-condition_master = cat(2,condition_master, t_session);
-
-% EK HACK: ---update name to make it less confusing
-condition_master.Properties.VariableNames(strcmp(condition_master.Properties.VariableNames,'miniblock_nr'))={'stim_class_unique_miniblock_nr'};
-% EK HACK: ---end
 
 %%
 stimtask_tracker = ones(length(p.exp.stimClassLabels), length(p.exp.taskClassLabels));
@@ -27,7 +26,7 @@ for ses = 1:p.exp.n_sessions
     fprintf('\nSESSION %d:',ses)
     
     % Same blocks / same trials / same retinal image per subject
-    miniblock_distr = p.exp.ses_blocks(:,:,ses);
+    block_distr = p.exp.ses_blocks(:,:,ses);
     
     bb = 1; % block tracker
     scc_bb = 1; % separate counter for scc task, because it is spread across stimulus classes
@@ -37,39 +36,39 @@ for ses = 1:p.exp.n_sessions
             
             if ses >= p.exp.session.task_start(tc)
                 
-                n_blocks = miniblock_distr(sc,tc);
+                n_blocks = block_distr(sc,tc);
                 
                 if (n_blocks > 0)
                     
-                    curr_miniblocks = [stimtask_tracker(sc,tc) : (stimtask_tracker(sc,tc)+n_blocks-1)];
+                    curr_blocks = [stimtask_tracker(sc,tc) : (stimtask_tracker(sc,tc)+n_blocks-1)];
                     
-                    for ii = 1:length(curr_miniblocks)
+                    for ii = 1:length(curr_blocks)
 
                         if strcmp(p.exp.taskClassLabels{tc},'scc')
                             % we can't sort on stim class name for SCC,
                             % otherwise stim will be allocated to different
-                            % miniblocks
-                            idx = ((condition_master.task_class==tc) & (condition_master.stim_class_unique_miniblock_nr==scc_bb));
+                            % blocks
+                            idx = ((condition_master.task_class==tc) & (condition_master.stim_class_unique_block_nr==scc_bb));
                             condition_master.session_nr(idx)        = ses;
-                            condition_master.miniblock_name(idx)    = {sprintf('%s-all',p.exp.taskClassLabels{tc})};
-                            cond_name                               = condition_master.miniblock_name(idx); 
+                            condition_master.block_name(idx)        = {sprintf('%s-all',p.exp.taskClassLabels{tc})};
+                            cond_name                               = condition_master.block_name(idx); 
                             cond_name = cond_name(1);
-                            condition_master.miniblock_ID(idx)      = find(strcmp(cond_name,p.exp.stimTaskLabels));
-                            condition_master.across_session_miniblock_nr(idx) = global_block_counter;
+                            condition_master.block_ID(idx)      = find(strcmp(cond_name,p.exp.stimTaskLabels));
                             condition_master.within_ses_block_nr(idx) = bb;
+                            condition_master.across_session_block_nr(idx) = global_block_counter;
                             scc_bb = scc_bb+1;
                         else
-                            idx = ((condition_master.stim_class==sc) & (condition_master.task_class==tc) & (condition_master.stim_class_unique_miniblock_nr==curr_miniblocks(ii)));
-                            condition_master.session_nr(idx)        = ses;
-                            condition_master.within_ses_block_nr(idx)      = bb;
-                            condition_master.miniblock_name(idx)    = {sprintf('%s-%s',p.exp.taskClassLabels{tc},p.exp.stimClassLabels{sc})};
-                            cond_name                               = condition_master.miniblock_name(idx); 
-                            cond_name                               = cond_name(1);
-                            condition_master.miniblock_ID(idx)      = find(strcmp(cond_name,p.exp.stimTaskLabels));
-                            condition_master.across_session_miniblock_nr(idx) = global_block_counter;
+                            idx = ((condition_master.stim_class==sc) & (condition_master.task_class==tc) & (condition_master.stim_class_unique_block_nr==curr_blocks(ii)));
+                            condition_master.session_nr(idx)          = ses;
+                            condition_master.block_name(idx)          = {sprintf('%s-%s',p.exp.taskClassLabels{tc},p.exp.stimClassLabels{sc})};
+                            cond_name                                 = condition_master.block_name(idx); 
+                            cond_name                                 = cond_name(1);
+                            condition_master.block_ID(idx)            = find(strcmp(cond_name,p.exp.stimTaskLabels));
+                            condition_master.within_ses_block_nr(idx) = bb;
+                            condition_master.across_session_block_nr(idx) = global_block_counter;
                         end
                         
-%                         condition_master.within_session_repeat(idx) = curr_miniblocks(ii);
+%                         condition_master.within_session_repeat(idx) = curr_blocks(ii);
 
                         if p.exp.trial.double_epoch_tasks(tc)
                            condition_master.trial_type(idx) = 2; % double epoch;
@@ -89,19 +88,20 @@ for ses = 1:p.exp.n_sessions
     end
     fprintf('\nTOTAL MINIBLOCKS: %d',bb-1)
     
-    % the number of miniblocks in the table should be equal to the number of
+    % the number of blocks in the table should be equal to the number of
     % tracked stim-task-crossings allocated
-    tmp = max(condition_master.across_session_miniblock_nr(~isnan(condition_master.across_session_miniblock_nr)));
+    tmp = max(condition_master.across_session_block_nr(~isnan(condition_master.across_session_block_nr)));
     assert(isequal(tmp,sum(sum(stimtask_tracker-1))))
     
     %% Check runs for block order
-    % We want to make sure that runs have at least 2 miniblocks that use 
+    % We want to make sure that runs have at least 2 blocks that use 
     % double-epoch trials, otherwise some runs will be much longer than others..
     ses_blocks = condition_master.within_ses_block_nr((condition_master.session_nr==ses),:);
     trial_type = condition_master.trial_type((condition_master.session_nr==ses),:);
-
-    miniblocks_nrs = condition_master.stim_class_unique_miniblock_nr((condition_master.session_nr==ses),:);
-    miniblock_IDs = condition_master.miniblock_ID((condition_master.session_nr==ses),:);
+    assert(isequal(unique(ses_blocks),[1:length(unique(ses_blocks))]'))
+    
+%     blocks_nrs = condition_master.stim_class_unique_block_nr((condition_master.session_nr==ses),:);
+%     block_IDs = condition_master.block_ID((condition_master.session_nr==ses),:);
     
     while 1
         run_ok = 0;
@@ -111,7 +111,7 @@ for ses = 1:p.exp.n_sessions
         shuffle_idx = randperm(length(unique(ses_blocks)),length(unique(ses_blocks)));
         ses_blocks_new_order = [];
 
-        % Find the corresponding miniblocks for each shuffle idx and
+        % Find the corresponding blocks for each shuffle idx and
         % reorder blocks defined for this sesesion
         for ii = 1:length(shuffle_idx)
             ses_block_idx = find(ses_blocks==shuffle_idx(ii));
@@ -122,8 +122,8 @@ for ses = 1:p.exp.n_sessions
 
         % Divide single vector of session blocks into runs
         [bo, bi] = unique(ses_blocks_new_order(:,1),'stable');
-        rz_ses_blocks1 = reshape(bo, p.exp.run.miniblocks_per_run, []);
-        rz_ses_blocks2 = reshape(ses_blocks_new_order(bi,2), p.exp.run.miniblocks_per_run, []);
+        rz_ses_blocks1 = reshape(bo, p.exp.run.blocks_per_run, []);
+        rz_ses_blocks2 = reshape(ses_blocks_new_order(bi,2), p.exp.run.blocks_per_run, []);
 
         for jj = 1:size(rz_ses_blocks2,2)
                 if sum(rz_ses_blocks2(:,jj)==2)>2
@@ -142,22 +142,23 @@ for ses = 1:p.exp.n_sessions
     end
 
     assert(sum(sum(rz_ses_blocks2==2,1)>0) >= (size(rz_ses_blocks2,2)-2))
-    
-    % Once we are happy, we want to shuffle the order ofr miniblocks within 
+    %% EK CHECK BLOCK NR ALLOCATION ACROSS SUBJECTS
+    % Once we are happy, we want to shuffle the order of blocks within 
     % a run for each subject
-    for kk = 1:size(rz_ses_blocks1,2)
+    for run_idx = 1:size(rz_ses_blocks1,2)
         
         for sj = 1:p.exp.total_subjects
-            fprintf('\n[%s]: Subject %03d, run %02d, block order: ',mfilename, sj, kk)
-            subj_ses_block_shuffle = shuffle_concat(rz_ses_blocks1(:,kk),1);
-        
-            for ll = 1:length(subj_ses_block_shuffle)
             
-                idx = find(condition_master.session_nr==ses & condition_master.within_ses_block_nr == subj_ses_block_shuffle(ll));
-
-                condition_master.subj_within_run_block_nr(idx,sj) = ll;
-                condition_master.run_nr(idx) = kk;
-                fprintf('%d ',subj_ses_block_shuffle(ll))
+            fprintf('\n[%s]: Subject %03d, run %02d, block order: ',mfilename, sj, run_idx)
+            subj_ses_block_shuffle = shuffle_concat(rz_ses_blocks1(:,run_idx),1);
+        
+            for block_idx = 1:length(subj_ses_block_shuffle)
+            
+                image_idx = find(condition_master.session_nr==ses & condition_master.within_ses_block_nr == subj_ses_block_shuffle(block_idx));
+                
+                condition_master.subj_within_run_block_nr(image_idx,sj) = block_idx;
+                condition_master.run_nr(image_idx) = run_idx;
+                fprintf('%d ',subj_ses_block_shuffle(block_idx))
             end
         end % subject 
     end
