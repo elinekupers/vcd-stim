@@ -14,7 +14,7 @@ function stim = vcd_getStimParams(varargin)
 %
 % INPUTS:
 %  stim_class                  : Stimulus class to load params, choose from 
-%                                 'gabor','rdk','dot','cobj','ns','all' (default is 'all') 
+%                                 'gabor','rdk','dot','obj','ns','all' (default is 'all') 
 %  disp_name                   : Display name to load params (see vcd_getDisplayParams.m)
 %                                 Default: '7TAS_BOLDSCREEN32'
 %  load_params                 : Load prior stored parameters or not. Default: true
@@ -32,14 +32,14 @@ function stim = vcd_getStimParams(varargin)
 %                                  * gabor
 %                                  * rdk (random dot motion kinetograms)
 %                                  * dot (single, simple dot)
-%                                  * cobj (complex objects)
+%                                  * obj (complex objects)
 %                                  % ns (natural scenes)
 %
 % Written by Eline Kupers November 2024 (kupers [at] umn [dot] edu)
 
 %% %%%%%%%%%%%%% PARSE INPUTS %%%%%%%%%%%%%
 p0 = inputParser;
-p0.addParameter('stim_class'                 , {'all'}, @(x) ischar(x) || any(strcmp(x, {'all','gabor','rdk','dot','cobj','ns'})));
+p0.addParameter('stim_class'                 , {'all'}, @(x) ischar(x) || any(strcmp(x, {'all','gabor','rdk','dot','obj','ns'})));
 p0.addParameter('disp_name'                  , '7TAS_BOLDSCREEN32', @(x) any(strcmp(x,{'7TAS_BOLDSCREEN32', 'KKOFFICE_AOCQ3277', 'PPROOM_EIZOFLEXSCAN', 'EKHOME_ASUSVE247'})));                   
 p0.addParameter('load_params'                , true   , @islogical);                    
 p0.addParameter('store_params'               , true   , @islogical); 
@@ -60,7 +60,7 @@ if ischar(stim_class)
 end
 
 if any(strcmp(stim_class{:},'all'))
-    stim_class = {'gabor','rdk','dot','cobj','ns'};
+    stim_class = {'gabor','rdk','dot','obj','ns'};
 end
 
 % Retrieve display params
@@ -108,7 +108,7 @@ else
     x0_pix                   = round((x0_deg.*disp_params.ppd)/2)*2;       % 354 pixels (4.0059 deg) for BOLD screen, empirical x-center location for left right stim apertures (pixels)
     y0_pix                   = round((y0_deg.*disp_params.ppd)/2)*2;       % 354 pixels (4.0059 deg) for BOLD screen, empirical y-center location for left right stim apertures (pixels)
     
-    % Parafoveal circular aperture (for gabors, rdk, and cobj)
+    % Parafoveal circular aperture (for gabors, rdk, and obj)
     parafov_circle_diam_deg  = 4;                                          % desired  parafoveal circular diameter aperture (empirical is 4.0059 degrees)
     parafov_circle_diam_pix  = round((parafov_circle_diam_deg*disp_params.ppd)/2)*2;  % parafoveal circular diameter aperture (pixels), 354 pixels
     
@@ -147,7 +147,8 @@ else
     stim.fix.lumminmaxstep          = [42,212,5];                          % min, max, and nr of dot luminance values [1-255],
     stim.fix.dotlum                 = uint8(linspace(stim.fix.lumminmaxstep(1),stim.fix.lumminmaxstep(2),stim.fix.lumminmaxstep(3))); % dot gray levels
     stim.fix.dotopacity             = 0.5;                                 % dot and border have 50% opacity
-    
+    stim.fix.color                  = [255, 255, 255; 255 0 0];            % white and red (for spatial cue)
+        
     fprintf('*** FIXATION MARK: fixation center diam = %d, thick rim = %d, thick rim = %d pixels ***\n', ...
         stim.fix.dotcenterdiam_pix,stim.fix.dotthinborderdiam_pix,stim.fix.dotthickborderdiam_pix);
     
@@ -373,7 +374,7 @@ else
                 % Add params to struct
                 stim.dot = p;
                 
-            case {'cobj',4}
+            case {'obj',4}
                 % GENERAL
                 p.indivobjectfile = fullfile(vcd_rootPath,'workspaces','stimuli','vcd_complex_objects_2degstep_lumcorrected');
                 p.stimfile = fullfile(vcd_rootPath,'workspaces','stimuli',sprintf('object_%s',disp_params.name)); % mat-file where to store stimulus images?
@@ -420,7 +421,7 @@ else
                 p.delta_from_ref     = [-8, -4, 4, 8];                        % how much should stim pose rotate from reference (WM: for double epochs)
                 % the bigger the delta, the easier the trial. Negative is counter-clockwise, positive is clockwise
                 % Add params to struct
-                stim.cobj = p;
+                stim.obj = p;
                 
             case {'ns',5}
                 % GENERAL
