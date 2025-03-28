@@ -17,7 +17,7 @@ function [t,unique_im,n_unique_cases] = vcd_defineUniqueImageNr(p, stimClass)
 %
 % INPUTS:
 %  p            : (struct) params
-%  stimClass    : (str) name of the super stimulus class: 'gabor','rdk','dot','cobj', 'ns')
+%  stimClass    : (str) name of the super stimulus class: 'gabor','rdk','dot','obj', 'ns')
 %  use_fix_flag : (bool) logical param to indicate if we deal with fixation
 %                   task or not
 % OUTPUTS:
@@ -35,7 +35,7 @@ function [t,unique_im,n_unique_cases] = vcd_defineUniqueImageNr(p, stimClass)
 % where 4 gabor phases (0, 90, 180, 270) and 2 stimulus location
 % (left/right) are assigned across the 24 gabors. Contrast levels are
 % prioritized, such that all 3 levels are shown at least once within a
-% miniblock.
+% block.
 % 
 % -- 24 RDKs --
 %  3 coherence levels: (Priority 1)
@@ -44,7 +44,7 @@ function [t,unique_im,n_unique_cases] = vcd_defineUniqueImageNr(p, stimClass)
 %                   [18 62 98 152 192 236 282 326] deg
 % where RDKs are distributed across 2 stimulus location (left/right). 
 % Coherence levels are prioritized, such that all 3 lecels are shown at 
-% least once within a miniblock.
+% least once within a block.
 %
 % -- 16 dots --
 %  32 angles:
@@ -231,22 +231,22 @@ switch stimClass
         t.basic_cat_name = num2cell(nan_vec);
         t.sub_cat_name   = num2cell(nan_vec);
         
-    case 'cobj'
+    case 'obj'
         
         % Get stim manipulations
-        n_super_cat = length(p.stim.cobj.super_cat);
+        n_super_cat = length(p.stim.obj.super_cat);
         loc_stim = [1,2];%{'L','R'};
         n_stim_loc = length(loc_stim);
         
         % UNIQUE COBJ array dims: 8 basic categories
         basic_cat_vec = []; basic_cat_name = {}; 
         for ni = 1:n_super_cat
-            tmp = unique(p.stim.cobj.basic_cat{ni}, 'stable');
+            tmp = unique(p.stim.obj.basic_cat{ni}, 'stable');
             n_basic_cat(ni) = length(tmp);
             
             basic_tmp = [];
             for nj = 1:length(tmp)
-                basic_tmp = cat(1,basic_tmp,nj.*(arrayfun(@(x) strcmp(x, tmp(nj)),p.stim.cobj.basic_cat{ni})));
+                basic_tmp = cat(1,basic_tmp,nj.*(arrayfun(@(x) strcmp(x, tmp(nj)),p.stim.obj.basic_cat{ni})));
                 
                 basic_cat_name = cat(2, basic_cat_name, repmat(tmp(nj), 1, sum(basic_tmp(nj,:)>0))); 
             end
@@ -256,10 +256,10 @@ switch stimClass
         % Get super and sub category info
         super_cat_vec = []; sub_cat_vec = []; sub_cat_name = [];
         for ii = 1:length(n_basic_cat)
-            n_sub_cat(ii) = length(p.stim.cobj.sub_cat{ii});
+            n_sub_cat(ii) = length(p.stim.obj.sub_cat{ii});
             super_cat_vec = cat(2, super_cat_vec, repelem(ii,n_sub_cat(ii)));
             sub_cat_vec = cat(2, sub_cat_vec, 1:n_sub_cat(ii));
-            sub_cat_name = cat(2, sub_cat_name, p.stim.cobj.sub_cat{ii});
+            sub_cat_name = cat(2, sub_cat_name, p.stim.obj.sub_cat{ii});
         end
 
         % 
@@ -269,7 +269,7 @@ switch stimClass
         % are repeated and cross-combined
         stimloc_vec      = repmat(loc_stim,         n_unique_cases/n_stim_loc, 1);
         stimloc_name_vec = repmat({'left','right'}, n_unique_cases/n_stim_loc, 1);
-        facing_dir_vec   = p.stim.cobj.facing_dir_deg;
+        facing_dir_vec   = p.stim.obj.facing_dir_deg;
         
         % flatten and transpose
         stimloc_vec = stimloc_vec(:)';
@@ -282,7 +282,7 @@ switch stimClass
         % give each unique image a nr, define it's properties
         unique_im = cat(1, 1:length(stimloc_vec), stimloc_vec, super_cat_vec, basic_cat_vec, sub_cat_vec, facing_dir_vec)';
         
-        super_cat_name = p.stim.cobj.super_cat(super_cat_vec);
+        super_cat_name = p.stim.obj.super_cat(super_cat_vec);
         
         % Add info to table
         tmp = NaN(n_unique_cases,size(varNames,2));
