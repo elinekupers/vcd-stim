@@ -142,7 +142,7 @@ for ses = 1:p.exp.n_sessions
     end
 
     assert(sum(sum(rz_ses_blocks2==2,1)>0) >= (size(rz_ses_blocks2,2)-2))
-    %% EK CHECK BLOCK NR ALLOCATION ACROSS SUBJECTS
+    %% CHECK BLOCK NR ALLOCATION ACROSS SUBJECTS
     % Once we are happy, we want to shuffle the order of blocks within 
     % a run for each subject
     for run_idx = 1:size(rz_ses_blocks1,2)
