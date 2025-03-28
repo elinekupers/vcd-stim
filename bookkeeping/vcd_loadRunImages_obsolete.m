@@ -1,4 +1,4 @@
-function [run_images, run_alpha_masks, images] = vcd_loadRunImages(run_image_order, block, params)
+function [run_images, run_alpha_masks, images] = vcd_loadRunImages_obsolete(run_image_order, block, params)
 
 %% %%%%%%%%%%%%% PRE-LOAD STIMULI %%%%%%%%%%%%%
 if isfield(params, 'images')
@@ -6,7 +6,7 @@ if isfield(params, 'images')
 end
 
 if ~exist('images','var') || isempty(fieldnames(images))
-    images = struct('gabor',[],'rdk',[],'dot',[],'cobj',[],'ns',[],...
+    images = struct('gabor',[],'rdk',[],'dot',[],'obj',[],'ns',[],...
         'fix',[], 'info',[], 'image_order',[],'alpha',[]);
 end
 
@@ -161,7 +161,7 @@ for ii = 1:length(run_image_order)
                     end
                 end
                 
-            case 'cobj'
+            case 'obj'
                 sz = size(block(ii).trial);
                 if sz(1)>sz(2) && any(sz~=1)
                     numTrials = sz(1);
@@ -171,27 +171,27 @@ for ii = 1:length(run_image_order)
                     numSides = sz(1);
                 end
                 
-                if isempty(images.cobj)
+                if isempty(images.obj)
                     % Complex objects: 4D array: [x,y,16 object, og + 10 rotation]
-                    d = dir(sprintf('%s*.mat', params.stim.cobj.stimfile));
+                    d = dir(sprintf('%s*.mat', params.stim.obj.stimfile));
                     load(fullfile(d(end).folder,d(end).name), 'objects','masks','info','im_order');
-                    images.cobj = objects; clear objects;
-                    images.alpha.cobj = masks; clear masks;
-                    images.info.cobj = info; clear info;
-                    images.image_order.cobj = im_order; clear im_order;
+                    images.obj = objects; clear objects;
+                    images.alpha.obj = masks; clear masks;
+                    images.info.obj = info; clear info;
+                    images.image_order.obj = im_order; clear im_order;
                 end
                 
                 for jj = 1:numTrials
                     for nn = 1:numSides
-                        [i4,i5] = ind2sub([size(images.cobj,4),size(images.cobj,5)],run_image_order{ii}{jj,1}(nn));
+                        [i4,i5] = ind2sub([size(images.obj,4),size(images.obj,5)],run_image_order{ii}{jj,1}(nn));
                         
-                        run_images{ii,jj,nn,1} = images.cobj(:,:,:,i4,i5);
-                        run_alpha_masks{ii,jj,nn,1} = images.alpha.cobj(:,:,i4,i5);
+                        run_images{ii,jj,nn,1} = images.obj(:,:,:,i4,i5);
+                        run_alpha_masks{ii,jj,nn,1} = images.alpha.obj(:,:,i4,i5);
                         
                         if strcmp(taskClass,'wm')
-                            [i4,i5] = ind2sub([size(images.cobj,4),size(images.cobj,5)],run_image_order{ii}{jj,2}(nn));
-                            run_images{ii,jj,nn,2} = images.cobj(:,:,:,i4,i5);
-                            run_alpha_masks{ii,jj,nn,2} = images.alpha.cobj(:,:,i4,i5);
+                            [i4,i5] = ind2sub([size(images.obj,4),size(images.obj,5)],run_image_order{ii}{jj,2}(nn));
+                            run_images{ii,jj,nn,2} = images.obj(:,:,:,i4,i5);
+                            run_alpha_masks{ii,jj,nn,2} = images.alpha.obj(:,:,i4,i5);
                         end
                         %                 if strcmp(taskClass,'ltm')
                         %
@@ -346,7 +346,7 @@ for ii = 1:length(run_image_order)
     % scenes
     if strcmp(params.disp.name,'7TAS_BOLDSCREEN32') && ...
             ~any(strcmp(taskClass,{'pre','post'}))  && ...
-        any(strcmp(stimClass,{'cobj','ns'}))
+        any(strcmp(stimClass,{'obj','ns'}))
         
         assert(params.stim.(stimClass).square_pix_val==true)
         
