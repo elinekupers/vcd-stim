@@ -1,5 +1,5 @@
-function [objects, masks, im_order, info, p] = vcd_complexobjects(p)
-% VCD function to generate complex object images:
+function [objects, masks, im_order, info, p] = vcd_objects(p)
+% VCD function to generate object images:
 % 
 %   [objects, masks, im_order, info, p] = vcd_complexobjects(p)
 %
@@ -7,16 +7,16 @@ function [objects, masks, im_order, info, p] = vcd_complexobjects(p)
 %   Load complex object images for VCD experimental display.
 %   Requires two files:
 %    1. a set of individual object image files, where the folder is defined
-%       by p.stim.cobj.indivobjfile, e.g.:
+%       by p.stim.obj.indivobjfile, e.g.:
 %       fullfile(vcd_rootPath,'workspaces/stimuli/vcd_complex_objects/*_rot*.png)
-%    2. A csv file defined in p.stim.cobj.infofile, e.g.: 
+%    2. A csv file defined in p.stim.obj.infofile, e.g.: 
 %       fullfile(vcd_rootPath,'workspaces/objects_info.csv')
 %
 %   This function will store generated object images as a single mat file 
-%   in p.stim.cobj.stimfile (e.g.: fullfile(vcd_rootPath,'workspaces','stimuli','objects.mat')
+%   in p.stim.obj.stimfile (e.g.: fullfile(vcd_rootPath,'workspaces','stimuli','objects.mat')
 %   when p.store_params = true;
 %
-%   We reorder and select unique object images from all_unique_im.cobj:
+%   We reorder and select unique object images from all_unique_im.obj:
 %   unique_im loc  super  basic  sub  facing_dir
 %      1     1     1     1     1    56
 %      2     2     1     2     2   124
@@ -54,8 +54,12 @@ function [objects, masks, im_order, info, p] = vcd_complexobjects(p)
 %
 % Written by Eline Kupers 2024/12
 
-%% load images
-d = dir(sprintf('%s*',fullfile(p.stim.cobj.infofile)));
+%% If you haven't done so yet, first preprocess object images:
+% s_preprocessObjects.m
+
+
+%% load and sort preprocessed images
+d = dir(sprintf('%s*',fullfile(p.stim.obj.infofile)));
 info = readtable(fullfile(d(end).folder,d(end).name));
 
 % Define superordinate and basic categories, and number of exemplars per basic category
@@ -82,7 +86,7 @@ im_order = table(cell(n_cols,1),NaN(n_cols,1),NaN(n_cols,1),cell(n_cols,1),NaN(n
 im_order.Properties.VariableNames = {'object_name','abs_rot','rel_rot','rot_name','unique_im'};
 
 % Get (rescaled) image extent
-extent   = p.stim.cobj.og_res_stim.*p.stim.cobj.dres;
+extent   = p.stim.obj.og_res_stim.*p.stim.obj.dres;
 
 % Preallocate space
 objects = uint8(ones(extent, extent,3,...
@@ -98,21 +102,21 @@ for sub = 1:length(subordinate)
         
         % Get file name
         rot = (canonical_view(sub)/2) + mod(rotations(rr),2);
-        d = dir(fullfile(p.stim.cobj.indivobjfile,sprintf('*%s*_rot%02d.png', subordinate{sub},rot)));
+        d = dir(fullfile(p.stim.obj.indivobjfile,sprintf('*%s*_rot%02d.png', subordinate{sub},rot)));
         
         % Load image
         [im0, ~, alpha0] = imread(fullfile(d.folder,d.name),'BackgroundColor','none');
         
         % convert to double, [0-1] lum range (assume range is 1-255),
         % and square as images were made with gamma = 2.
-        if ~isequal(p.stim.cobj.dres,1) && ~isempty(p.stim.cobj.dres)
+        if ~isequal(p.stim.obj.dres,1) && ~isempty(p.stim.obj.dres)
             fprintf('[%s]: Resampling the stimuli..',mfilename);
             
             im0     = (double(im0-1)./254).^2; % convert to [0-1] and square
             alpha0  = (double(alpha0./255)).^2; % convert to [0-1] and square
             
-            im1     = imresize(im0, p.stim.cobj.dres); % scale if needed
-            alpha1  = imresize(alpha0,p.stim.cobj.dres); % scale if needed
+            im1     = imresize(im0, p.stim.obj.dres); % scale if needed
+            alpha1  = imresize(alpha0,p.stim.obj.dres); % scale if needed
             
             im = uint8(1+(sqrt(im1)*254));
             alpha_im = uint8((sqrt(alpha1)*255));
@@ -142,9 +146,9 @@ end
 
 if p.stim.store_imgs
     fprintf('\nStoring images..')
-    saveDir = fileparts(fullfile(p.stim.cobj.stimfile));
+    saveDir = fileparts(fullfile(p.stim.obj.stimfile));
     if ~exist(saveDir,'dir'), mkdir(saveDir); end
-    save(fullfile(sprintf('%s_%s.mat',p.stim.cobj.stimfile,datestr(now,30))),'objects','masks','info','im_order','-v7.3');
+    save(fullfile(sprintf('%s_%s.mat',p.stim.obj.stimfile,datestr(now,30))),'objects','masks','info','im_order','-v7.3');
 end
 
 %

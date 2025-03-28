@@ -1,5 +1,7 @@
 % This script processes images, dealing with grayscale, position, size, luminance, and contrast.
 %
+% This script relies on KNK utils functions.
+%
 % We convert images to grayscale (using rgb2gray).
 % We interpret images using a squaring luminance response.
 % We center images with respect to each image's center of mass (calculated from the alpha mask).
@@ -43,7 +45,7 @@ numrot = 91; %22;        % number of image viewpoints
 numobj = 16;        % number of objects
 targetsize  = 354;   % number of pixels for one side of conformed square
 targetmnlum = 0.5;  % desired mn-luminance for grand average of one object's viewpoints
-targetsdlum = 0.03; % desired sd-luminance for grand average of one object's viewpoints
+targetsdlum = 0.06; % 0.03; % desired sd-luminance for grand average of one object's viewpoints
 squaresizes = 2:2:1000;  % square sizes (in pixels for one side) to evaluate
 squarethresh = .9;  % square size is chosen that includes at least 90% of the mass (of the mean mask)
 % figuredir = '/var/fairstate-ext2/GoogleDrive/VCD/experimental_design/stimuli/workspaces/complex_objects/tryD_targetsdlum_0pt03';  % where diagnostic figures are written
@@ -211,7 +213,7 @@ for zz=1:numobj
     end
 
     % if we are off, apply guess for the update
-    fprintf('**** ANOTHER (%d) ****\n',zz);
+    fprintf('**** file %d: target lum = %1.4f, est mn sd %1.4f ****\n',zz,targetsdlum,mean(estds));
     SC(zz) = SC(zz) * (targetsdlum / mean(estds));
 
   end

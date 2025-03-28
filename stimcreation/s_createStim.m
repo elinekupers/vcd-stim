@@ -39,7 +39,7 @@ p.rng.randn_seed  = rng; % store
 % If you do want regenerate probabilistic params, set the fifth argument to
 % true and some stimulus values will change.
 %
-% Input 1: Stimulus class, choose from 'gabor','rdk','dot','cobj','ns','all' (default is 'all')
+% Input 1: Stimulus class, choose from 'gabor','rdk','dot','obj','ns','all' (default is 'all')
 % Input 2: Display params struct (see vcd_getDisplayParams.m)
 % Input 3: Load prior stored parameters or not. 
 % Input 4: Store generated parameters or not. 
@@ -90,14 +90,14 @@ bckgrnd_im  = vcd_pinknoisebackground(p, ...
 % * simple_dot (uint8) is a single matrix: w (pixels) by h (pixels).
 [simple_dot, dot_masks, dot_info, p] = vcd_simpledot(p);
 
-%% Complex objects
+%% Objects
 % Output images:
 % * objects (uint8) dimensions are: width (pixels) x height (pixels) x 3
 %   (rgb) x 16 object categories (subordinate level) x 22 rotations
 % * alpha transparency mask: cobj_masks (uint8) dimensions are: width
 %   (pixels) x height (pixels) x 16 object categories (subordinate level) x
 %   22 rotations
-[objects, cobj_masks, cobj_order, cobj_info, p] = vcd_complexobjects(p);
+[objects, cobj_masks, cobj_order, cobj_info, p] = vcd_objects(p);
 
 %% Natural scenes
 % Output images:
