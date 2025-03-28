@@ -45,7 +45,7 @@ for sj = 1:p.exp.total_subjects
             % this particular subject, run, and session. The t_trial table
             % will be inserted into a bigger time table that includes other
             % event types, like iti, cues, etc.
-            idx0      = find((p.trials.session_nr==ses) & (p.trials.run_nr==rr));
+            idx0      = (p.trials.session_nr==ses & p.trials.run_nr==rr);
             t_trial   = p.trials(idx0,:);
             block_nrs = p.trials.subj_within_run_block_nr(idx0,sj);
             
@@ -101,9 +101,9 @@ for sj = 1:p.exp.total_subjects
                 
                 % get current block nr
                 curr_block = block_nrs(block_vec_idx);
-                curr_across_session_block_nr = t_trial.across_session_block_nr(1);
-                curr_within_ses_block_nr = t_trial.within_ses_block_nr(1);
-                curr_subj_within_run_block_nr = t_trial.subj_within_run_block_nr(1);
+                curr_global_session_block_nr  = t_trial.global_block_nr_across_ses(1);
+                curr_local_session_block_nr   = t_trial.local_block_nr_within_ses(1);
+                curr_subj_within_run_block_nr = t_trial.subj_within_run_block_nr(1,sj);
                 
                 % first trial of the block has a task cue
                 if t_trial.block_local_trial_nr(1) == 1 || ...
@@ -118,9 +118,9 @@ for sj = 1:p.exp.total_subjects
                     time_table.session_nr(table_idx) = ses;
                     time_table.run_nr(table_idx) = rr;
                     total_run_frames = time_table.event_end(table_idx);
-                    time_table.across_session_block_nr(table_idx) = curr_across_session_block_nr;
-                    time_table.within_ses_block_nr(table_idx)         = curr_within_ses_block_nr;
-                    time_table.subj_within_run_block_nr(table_idx) = curr_subj_within_run_block_nr;
+                    time_table.global_block_nr_across_ses(table_idx) = curr_global_session_block_nr;
+                    time_table.local_block_nr_within_ses(table_idx)  = curr_local_session_block_nr;
+                    time_table.subj_within_run_block_nr(table_idx)   = curr_subj_within_run_block_nr;
                     
                     table_idx = table_idx+1;
                 end
@@ -141,9 +141,9 @@ for sj = 1:p.exp.total_subjects
                     % add ses, run nr
                     time_table.session_nr(table_idx) = ses; 
                     time_table.run_nr(table_idx) = rr;
-                    time_table.across_session_block_nr(table_idx) = curr_across_session_block_nr;
-                    time_table.within_ses_block_nr(table_idx)         = curr_within_ses_block_nr;
-                    time_table.subj_within_run_block_nr(table_idx) = curr_subj_within_run_block_nr;
+                    time_table.global_block_nr_across_ses(table_idx) = curr_global_session_block_nr;
+                    time_table.local_block_nr_within_ses(table_idx)  = curr_local_session_block_nr;
+                    time_table.subj_within_run_block_nr(table_idx)  = curr_subj_within_run_block_nr;
                     
                     % Add individual trial events
                     switch trial_IDs(id)
@@ -394,11 +394,34 @@ for sj = 1:p.exp.total_subjects
             
                 % add run to master
                 subj_time_table = cat(1, subj_time_table, time_table2);
+               
+                if p.verbose
+                    time_table2.run_nr(isnan(time_table2.run_nr))=0;
+                    time_table2.subj_within_run_block_nr(isnan(time_table2.subj_within_run_block_nr))=0;
+                    time_table2.block_local_trial_nr(isnan(time_table2.block_local_trial_nr))=0;
+                    time_table2.block_ID(isnan(time_table2.block_ID))=0;
+                    
+                    figure(99); clf; set(gcf, 'Position', [1 1 1200 500])
+                    subplot(211); imagesc([time_table2.run_nr,time_table2.subj_within_run_block_nr,time_table2.block_local_trial_nr]')
+                    set(gca,'YTick',[1:3],'YTickLabel',{'run nr','block nr', 'trial nr'})
+                    subplot(212); imagesc(time_table2.block_ID')
+                    set(gca,'YTick',[1],'YTickLabel',{'block ID'})
+                    colormap(cmapturbo(40))
+                    xlabel('events (in time)')
+                    sgtitle(sprintf('subj %03d, ses %02d',sj,ses))
+                    
+                    if p.store_imgs
+                        saveFigsFolder = fullfile(vcd_rootPath,'figs');
+                        filename = sprintf('vcd_session%02d_subj%03d_run%02d_event_table.png', ses,sj,rr);
+                        print(gcf,'-dpng','-r300',fullfile(saveFigsFolder,filename));
+                    end
+                end
                 clear time_table2
             end
         end
         
         session_time_table = cat(1, session_time_table, subj_time_table);
+
     end
     time_table_master = cat(1,time_table_master,session_time_table);
 end

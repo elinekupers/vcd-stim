@@ -94,47 +94,19 @@ else
     % Different trial order per block (already accomplished in vcd_makeTrials.m)
     % Across a single session, each subject will experience the same
     % blocks and unique images
-    if isempty(find(strcmp(params.trials.Properties.VariableNames,'session_nr')))
-        params.trials = vcd_allocateBlocksToRuns(params);
-    end
+    params.trials = vcd_allocateBlocksToRuns(params);
+
     %% We expand the condition master table and add all trial events (in units of presentationrate_hz frames), 
     % We also shuffle blocks within a run for each subject session
     time_table_master = vcd_createRunTimeTables(params);
     
     params.time_table = time_table_master;
     
-    %% 
+
     
     
 end
 
-% if p.verbose
-%     for sj = 1:length(p.exp.total_subjects)
-%         
-%         for ses = 1:length(p.exp.n_sessions)
-%             
-%             figure(ses); clf; set(gcf,'Position',[1,1,1920,1080])
-%             for rr = 1:p.exp.n_runs_per_session
-%                 
-%                 %                 run_data = subj_master_time_table.subj
-%                 
-%                 %                 timepoints = 0:
-%                 
-%                 subplot(ceil(p.exp.n_runs_per_session/2),2,rr)
-%                 stem(timepoints,conditions); hold all;
-%                 stem(imID(:,1),imID(:,2),'r');
-%                 xlabel('time (s)')
-%                 ylabel('stim-task crossing')
-%                 set(gca,'YTick',[0:length(p.exp.stimTaskLabels)+2],'YTickLabel',[{'blank'}; p.exp.stimTaskLabels;{'taskcue'};{'IBI'}])
-%                 set(gca,'TickDir', 'out')
-%                 title(sprintf('run %d',ii))
-%             end
-%             %         if p.store_imgs
-%             %             print(gcf,'-dpng','-r300',fullfile(vcd_rootPath,'figs',sprintf('ses%02d_run_order_master',ses)));
-%             %         end
-%         end
-%     end
-% end
 
 return
  
