@@ -1,5 +1,5 @@
-function [p, condition_master, all_unique_im, all_cond] = vcd_makeMiniblocksAndTrials(p,varargin)
-% VCD function to define, shuffle, and organize trials into miniblocks:
+function [p, condition_master, all_unique_im, all_cond] = vcd_createBlocksAndTrials(p,varargin)
+% VCD function to define, shuffle, and organize trials into blocks:
 %
 %   [condition_master, all_unique_im, all_cond] = ...
 %       vcd_makeMiniblocksAndTrials(p,'load_params',<load_params>,'store_params',<store_params>)
@@ -15,7 +15,7 @@ function [p, condition_master, all_unique_im, all_cond] = vcd_makeMiniblocksAndT
 %   4. Merge unique stimuli with left/right parafoveal stimulus locations
 %       into a single trial, pseudo-randomly assign covert spatial
 %       attention cue and fixation dot rim thickening direction.
-%   5. Allocate trials to miniblocks
+%   5. Allocate trials to blocks
 %
 % INPUTS:
 %  p              : (required) Struct with stimulus and session params
@@ -36,18 +36,34 @@ function [p, condition_master, all_unique_im, all_cond] = vcd_makeMiniblocksAndT
 %                    define a unique trial. For NS, there is only 1 row per
 %                    unique trial, as there is only one central image.
 %
-%                    N rows: nr unique trials/2 * nr of repeats * nr of tasks.
-%                    M columns:
-%                       1: unique im nr (integer)
-%                       2: trial nr (every trial occupies two rows)
-%                       2: thickening_dir (1=left, 2=right, 3=both)
-%                       3:
-%                       4: stim loc (1=left, 2=right, 3=central)
-%                       5: cue status (0=uncued, 1 =cued)
-%                       ... rows 6 to M-3 are stimClass specific
-%                       M-2: paired_stim (learned associate for LTM)
-%                       M-1: lure (for LTM)
-%                       M: repeat nr
+%   Columns contains the following information:
+%   1: {'unique_im_nr'   } unique images (parafoveal stimulus patches: 1 trial occupies 2 rows)
+%   2: {'stimloc'        } stimulus location relative to fixation dot: 1 = left, 2 = right, 3 = central
+%   3: {'stimloc_name'   } same as column two but then in text 
+%   4: {'orient_dir'     } orientation (gabor), motion direction (rdk), or angle (dot), or facing direction (obj) in deg
+%   5: {'contrast'       } stimulus contrast (Michelson fraction)
+%   6: {'gbr_phase'      } gabor stimulus phase  (NaN for non gabor stim)
+%   7: {'rdk_coherence'  } rdk stimulus dot coherence (fraction of dots, NaN for non rdk stim)
+%   8: {'super_cat'      } superordinate object category level (for obj and ns) 
+%   9: {'basic_cat'      } basic object category level (for obj and ns)
+%   10: {'sub_cat'        } subordinate object category level (for obj and ns)
+%   11: {'super_cat_name' } same as 8, but then in text
+%   12: {'basic_cat_name' } same as 9, but then in text
+%   13: {'sub_cat_name'   } same as 10, but then in text
+%   14: {'stim_class_name'} stimulus class name (gabor, rdk, dot, obj, ns)
+%   15: {'stim_class'     } stim class nr (1:5)
+%   16: {'task_class_name'} task class name (fix/cd/scc/pc/wm/ltm/img/what/where/how)
+%   17: {'task_class'     } task class nr (1:10)
+%   18: {'iscued'         } cue status: 0 = uncued, 1 = cued
+%   19: {'unique_trial_nr'} unique trial nr
+%   20: {'thickening_dir' } thickening direction of fixation dot rim (for spatial attention cue) 1 = left, 2 = right, 3 = both/neutral
+%   21: {'stim2_delta'    } for double epoch tasks, what predefined delta between stim 1 and stim 2 did we choose from p.stim.(<stim_class_name>).delta_ref
+%   22: {'stim2'          } same as 21, but then update stim feature of stim2 (e.g., 80 deg orientation for a stim1: 95 - 15 deg)
+%   23: {'ltm_stim_pair'  } for LTM task: each unique image nr is associated with
+%                           another stimulus
+%   24: {'islure'         } for LTM task: whether we use lure stimulus or not
+%   25: {'repeat_nr'      } Keep track how many times has this unique image has
+%                           been repeated thusfar in the experiment
 %
 %  There are two hierarchical structs, which are the building blocks of
 %  the condition master table, listing the unique images and unique 
@@ -56,35 +72,7 @@ function [p, condition_master, all_unique_im, all_cond] = vcd_makeMiniblocksAndT
 %  * all_conds      : stimulus "condition master" matrix describing the
 %                    pseudo-random shuffled order of trials for one
 %                    stimulus class, across all sessions.
-% [TODO: document what the abbreviatio is, what the range is, what the units are, if it is an index or not]
-% [TODO: Consider using a table instead of column]
-%    * gabor : N trials x 12 cols matrix with the following stim columns
-%       6: angle
-%       7: contrast
-%       8: phase
-%       9: ref_delta (query stim for WM)
-%
-%   * rdk: N trials x 11 cols matrix with the following stim columns
-%       6: motion_dir
-%       7: coherence
-%       8: ref_delta (query stim for WM)
-%
-%   * dot: N trials x 10 cols matrix with the following stim columns
-%       6: dot_angle
-%       7: ref_delta (query stim for WM)
-%
-%   * cobj: N trials x 13 cols matrix with the following stim columns
-%       6: super_cat
-%       7: basic_cat
-%       8: sub_cat
-%       9: facing_dir
-%       10: ref_delta (query stim for WM)
-%
-%   *  ns: N trials x 12 cols matrix with the following stim columns
-%       6: super_cat
-%       7: basic_cat
-%       8: sub_cat
-%       9: change_blindness scenes (query stim for WM)
+
 %
 %
 % Written by Eline Kupers November 2024 (kupers [at] umn [dot] edu)
@@ -119,7 +107,7 @@ if load_params
     else
         error('[%s]: Can''t find trial params file!', mfilename)
     end
-else % Recreate conditions and miniblocks and trials
+else % Recreate conditions and blocks and trials
     
     % Bookkeeping structs
     all_unique_im     = struct();
@@ -127,7 +115,7 @@ else % Recreate conditions and miniblocks and trials
     condition_master  = table();
     
     
-    %% Define miniblock content for each stimulus class
+    %% Define block content for each stimulus class
     for stimClass_idx = 1:length(p.exp.stimClassLabels)
         
         stim_table = table();
@@ -160,51 +148,52 @@ else % Recreate conditions and miniblocks and trials
             % of unique trials
             use_fix_flag = strcmp(taskClass_name,'fix');
             
-            % Get the number of trials and miniblocks, which depend on task
+            % Get the number of trials and blocks, which depend on task
             if p.exp.trial.single_epoch_tasks(task_crossings(curr_task))
-                n_trials_per_block    = p.exp.miniblock.n_trials_single_epoch;
-                n_miniblocks_per_task = ceil(n_unique_cases/n_trials_per_block);
+                n_trials_per_block    = p.exp.block.n_trials_single_epoch;
+                n_blocks_per_task = ceil(n_unique_cases/n_trials_per_block);
             else
-                n_trials_per_block    = p.exp.miniblock.n_trials_double_epoch;
-                n_miniblocks_per_task = ceil(n_unique_cases/n_trials_per_block);
+                n_trials_per_block    = p.exp.block.n_trials_double_epoch;
+                n_blocks_per_task = ceil(n_unique_cases/n_trials_per_block);
             end
             
+            %% ---- IMPORTANT FUNCTION: Create condition master table ---- %%
             % Create condition master table, where unique images are
-            % shuffled and distributed across miniblocks according to the
+            % shuffled and distributed across blocks according to the
             % stimulus feature of interest that receive priority. For
             % example, we want to make sure we present all 3 gabor
-            % contrasts within a miniblock at least once.
+            % contrasts within a block at least once.
             tbl = vcd_createConditionMaster(p, t_cond, n_trials_per_block);
             
-            %% Allocate trials to miniblocks
+            %% --- Allocate trials to blocks ---
             if unique(tbl.stim_class)<5
-                miniblock_trials = reshape(1:2:size(tbl,1),n_trials_per_block,[]);
+                block_trials = reshape(1:2:size(tbl,1),n_trials_per_block,[]);
             
                 % preallocate space
-                tbl.miniblock_nr = NaN(size(tbl,1),1);
-                tbl.miniblock_local_trial_nr = NaN(size(tbl,1),1);
+                tbl.stim_class_unique_block_nr = NaN(size(tbl,1),1);
+                tbl.block_local_trial_nr = NaN(size(tbl,1),1);
             
-                % assign miniblock nr
-                for mm = 1:size(miniblock_trials,2)
-                    selected_trials = miniblock_trials(:,mm);
+                % assign block nr
+                for mm = 1:size(block_trials,2)
+                    selected_trials = block_trials(:,mm);
 
-                        tbl.miniblock_nr(selected_trials)   = mm;
-                        tbl.miniblock_nr(selected_trials+1) = mm;
-                        tbl.miniblock_local_trial_nr(selected_trials) = 1:length(selected_trials);
-                        tbl.miniblock_local_trial_nr(selected_trials+1) = 1:length(selected_trials);
+                        tbl.stim_class_unique_block_nr(selected_trials)   = mm;
+                        tbl.stim_class_unique_block_nr(selected_trials+1) = mm;
+                        tbl.block_local_trial_nr(selected_trials) = 1:length(selected_trials);
+                        tbl.block_local_trial_nr(selected_trials+1) = 1:length(selected_trials);
                 end
             else
-                 miniblock_trials = reshape(1:size(tbl,1),n_trials_per_block,[]);
+                 block_trials = reshape(1:size(tbl,1),n_trials_per_block,[]);
                  
-                 tbl.miniblock_nr = NaN(size(tbl,1),1);
-                 tbl.miniblock_local_trial_nr = NaN(size(tbl,1),1);
+                 tbl.stim_class_unique_block_nr = NaN(size(tbl,1),1);
+                 tbl.block_local_trial_nr = NaN(size(tbl,1),1);
                  
-                 % assign miniblock nr
-                 for mm = 1:size(miniblock_trials,2)
-                     selected_trials = miniblock_trials(:,mm);
+                 % assign block nr
+                 for mm = 1:size(block_trials,2)
+                     selected_trials = block_trials(:,mm);
                      
-                     tbl.miniblock_nr(selected_trials)   = mm;
-                     tbl.miniblock_local_trial_nr(selected_trials) = 1:length(selected_trials);
+                     tbl.stim_class_unique_block_nr(selected_trials)   = mm;
+                     tbl.block_local_trial_nr(selected_trials) = 1:length(selected_trials);
                  end
             end
             
@@ -220,8 +209,18 @@ else % Recreate conditions and miniblocks and trials
     end % stim idx
     
     
-    %% Shuffle stimuli for SCC task
-    condition_master = vcd_shuffleStimForSCC(condition_master, p.exp.miniblock.n_trials_single_epoch);
+    %% ---- IMPORTANT FUNCTION: Shuffle stimuli for SCC task ----
+    condition_master = vcd_shuffleStimForSCC(condition_master, p.exp.block.n_trials_single_epoch);
+    
+    
+    
+    %% Store structs if requested
+    if p.store_params
+        fprintf('[%s]:Storing trial data..\n',mfilename)
+        saveDir = fullfile(vcd_rootPath,'workspaces','info');
+        if ~exist(saveDir,'dir'), mkdir(saveDir); end
+        save(fullfile(saveDir,sprintf('trials_%s_%s.mat',p.disp.name,datestr(now,30))),'condition_master','all_unique_im','all_cond')
+    end
     
     
     %% At last, do some checks:
@@ -268,13 +267,7 @@ else % Recreate conditions and miniblocks and trials
         M_tbl(ii,1:length(M)) = M;
     end
     
-    % Store structs if requested
-    if p.store_params
-        fprintf('[%s]:Storing trial data..\n',mfilename)
-        saveDir = fullfile(vcd_rootPath,'workspaces','info');
-        if ~exist(saveDir,'dir'), mkdir(saveDir); end
-        save(fullfile(saveDir,sprintf('trials_%s_%s.mat',p.disp.name,datestr(now,30))),'condition_master','all_unique_im','all_cond')
-    end
+
     
     
     % Plot figures to check stimulus order
@@ -324,12 +317,12 @@ else % Recreate conditions and miniblocks and trials
         
         foo = condition_master.stim_class((condition_master.task_class==3),:);
         figure; set(gcf,'Position',[1,1,1200,300])
-        imagesc(reshape(foo,p.exp.miniblock.n_trials_single_epoch,[]))
-        xlabel('SCC miniblock nr'); ylabel('Trial nr within miniblock');
+        imagesc(reshape(foo,p.exp.block.n_trials_single_epoch,[]))
+        xlabel('SCC block nr'); ylabel('Trial nr within block');
         C = parula(4); colormap(C); set(gca,'CLim',[min(foo),max(foo)])
         cb = colorbar; cb.Label.String = 'stim class nr';
         cb.Ticks = [1:max(foo)];
-        set(gca,'YTick',[1:p.exp.miniblock.n_trials_single_epoch]); title('SCC stimulus class distribution')
+        set(gca,'YTick',[1:p.exp.block.n_trials_single_epoch]); title('SCC stimulus class distribution')
         box off;
         if p.store_imgs
             saveFigsFolder = fullfile(vcd_rootPath,'figs');
