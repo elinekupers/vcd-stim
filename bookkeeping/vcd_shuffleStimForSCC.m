@@ -1,9 +1,9 @@
-function master_table_out = vcd_shuffleStimForSCC(master_table, nr_of_trials_per_miniblock)
+function master_table_out = vcd_shuffleStimForSCC(master_table, nr_of_trials_per_block)
 %% VCD function to combine and shuffle stimulus classes for SCC trials
-%   master_table_out = vcd_shuffleStimForSCC(master_table, nr_of_trials_per_miniblock)
+%   master_table_out = vcd_shuffleStimForSCC(master_table, nr_of_trials_per_block)
 %
 % Purpose: SCC blocks ask subjects to judge the stimulus class of the shown
-% image. This requires each miniblock to have a (balanced) mixture of
+% image. This requires each block to have a (balanced) mixture of
 % images from different classes. This function will do so, while making
 % sure that we comply to even/uneven left/right trial order, as well as
 % showing each stimulus class at least once per block. NOTE: true balance
@@ -12,12 +12,12 @@ function master_table_out = vcd_shuffleStimForSCC(master_table, nr_of_trials_per
 %
 % INPUTS:
 % * master_table                : (table) giant table with stimulus and trial definitions
-% * nr_of_trials_per_miniblock  : (int) nr of trials for each scc miniblock
+% * nr_of_trials_per_block  : (int) nr of trials for each scc block
 %
 % OUTPUTS:
-% * master_table_out            : (table) giant table, where scc miniblocks 
+% * master_table_out            : (table) giant table, where scc blocks 
 %                                  contain a mixture of gabor,rdk,dot, and
-%                                  cobj stimuli.
+%                                  obj stimuli.
 %
 %
 %% Get scc trials for left-cued, left-uncued, right-cued, right-uncued
@@ -40,11 +40,11 @@ for jj = 1:length(scc_stim_loc) % two stim locations
         
         % shape into an 8 trials x m blocks matrix, such that the
         % columns contain different stimulus classes
-        tmp_sub    = reshape(scc_sub(count,:),[],nr_of_trials_per_miniblock);
+        tmp_sub    = reshape(scc_sub(count,:),[],nr_of_trials_per_block);
         
-        % shuffle the order across columns such that gabors, rdks, dots, cobj's get mixed
-        ind        = nr_of_trials_per_miniblock*[0:(size(tmp_sub,1)-1)]' ...
-            + reshape(shuffle_concat([1:nr_of_trials_per_miniblock],size(tmp_sub,1)),nr_of_trials_per_miniblock,[])';
+        % shuffle the order across columns such that gabors, rdks, dots, obj's get mixed
+        ind        = nr_of_trials_per_block*[0:(size(tmp_sub,1)-1)]' ...
+            + reshape(shuffle_concat([1:nr_of_trials_per_block],size(tmp_sub,1)),nr_of_trials_per_block,[])';
         
         % transpose as matlab indexes over cols first
         tmp_sub1   = tmp_sub';
@@ -71,9 +71,9 @@ combined_scc_shuffleAB1 = permute(combined_scc_shuffleAB0,[3,1,2]);
 combined_scc_shuffleAB2 = reshape(combined_scc_shuffleAB1, [], size(combined_scc_shuffleAB1,3));
 
 % shuffle order of uncued/cued
-shuffle_vec = shuffle_concat(1:nr_of_trials_per_miniblock,size(combined_scc_shuffleAB2,1)/nr_of_trials_per_miniblock);
-shuffle_vec = reshape(shuffle_vec, nr_of_trials_per_miniblock,[]);
-shuffle_vec = shuffle_vec + [[0:(size(shuffle_vec,2)-1)].*nr_of_trials_per_miniblock];
+shuffle_vec = shuffle_concat(1:nr_of_trials_per_block,size(combined_scc_shuffleAB2,1)/nr_of_trials_per_block);
+shuffle_vec = reshape(shuffle_vec, nr_of_trials_per_block,[]);
+shuffle_vec = shuffle_vec + [[0:(size(shuffle_vec,2)-1)].*nr_of_trials_per_block];
 shuffle_vec = shuffle_vec(:);
 combined_scc_shuffleAB3 = combined_scc_shuffleAB2(shuffle_vec,:);
 
@@ -85,16 +85,16 @@ for ii = 1:size(combined_scc_shuffleAB3,1)
 end
 assert(isequal(shuffled_SCC_table.stimloc, repmat([1,2]',size(shuffled_SCC_table,1)/2,1)))
 
-% keep just n case
-old_scc_miniblock_nr = shuffled_SCC_table.miniblock_nr;
-old_scc_local_trial_nr = shuffled_SCC_table.miniblock_local_trial_nr;
-old_scc_repeat_nr = shuffled_SCC_table.repeat_nr;
-old_scc_stimloc_nr = shuffled_SCC_table.stimloc;
+% for debugging: keep just n case
+% old_scc_block_nr = shuffled_SCC_table.block_nr;
+% old_scc_local_trial_nr = shuffled_SCC_table.block_local_trial_nr;
+% old_scc_repeat_nr = shuffled_SCC_table.repeat_nr;
+% old_scc_stimloc_nr = shuffled_SCC_table.stimloc;
 
-% update miniblock_nr, miniblock_local_trial_nr and repeat nr according to
+% update block_nr, block_local_trial_nr and repeat nr according to
 % new image/trial order
-shuffled_SCC_table.miniblock_nr = repelem(1:(size(shuffled_SCC_table,1)/(nr_of_trials_per_miniblock*2)),(nr_of_trials_per_miniblock*2))';
-shuffled_SCC_table.miniblock_local_trial_nr = repmat(repelem(1:nr_of_trials_per_miniblock,2)',size(shuffled_SCC_table,1)/(nr_of_trials_per_miniblock*2),1);
+shuffled_SCC_table.stim_class_unique_block_nr = repelem(1:(size(shuffled_SCC_table,1)/(nr_of_trials_per_block*2)),(nr_of_trials_per_block*2))';
+shuffled_SCC_table.block_local_trial_nr = repmat(repelem(1:nr_of_trials_per_block,2)',size(shuffled_SCC_table,1)/(nr_of_trials_per_block*2),1);
 
 for ss = unique(shuffled_SCC_table.stim_class)'
     for ii = unique(shuffled_SCC_table.unique_im_nr(shuffled_SCC_table.stim_class==ss))'
@@ -113,3 +113,5 @@ master_table2 = cat(1,master_table2,shuffled_SCC_table);
 
 % Give the new master table to the output var
 master_table_out = master_table2;
+
+return
