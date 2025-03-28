@@ -1,8 +1,8 @@
 function time_table_master = vcd_createRunTimeTables(p)
 
 % Define event ID within trial for single and double epoch trial types
-trial_ID_single_epoch = [p.exp.miniblock.trial_start_ID, p.exp.miniblock.spatial_cue_ID, p.exp.miniblock.stim_epoch1_ID, p.exp.miniblock.response_ID];
-trial_ID_double_epoch = [p.exp.miniblock.trial_start_ID, p.exp.miniblock.spatial_cue_ID, p.exp.miniblock.stim_epoch1_ID, p.exp.miniblock.delay_ID, p.exp.miniblock.stim_epoch2_ID, p.exp.miniblock.response_ID];
+trial_ID_single_epoch = [p.exp.block.trial_start_ID, p.exp.block.spatial_cue_ID, p.exp.block.stim_epoch1_ID, p.exp.block.response_ID];
+trial_ID_double_epoch = [p.exp.block.trial_start_ID, p.exp.block.spatial_cue_ID, p.exp.block.stim_epoch1_ID, p.exp.block.delay_ID, p.exp.block.stim_epoch2_ID, p.exp.block.response_ID];
 
 % Preallocate space
 time_table_master = [];
@@ -38,7 +38,7 @@ for sj = 1:p.exp.total_subjects
             time_table.event_id    = NaN(tbl_nrows,1);
             time_table.event_name  = repmat({''},tbl_nrows,1);
             time_table.subj_nr     = sj.*ones(tbl_nrows,1);
-            time_table.subj_within_run_block_nr = NaN(tbl_nrows,p.exp.total_subjects);
+            time_table.subj_within_run_block_nr = NaN(tbl_nrows,1);
             
             
             % Find corresponding trials (rows in table) and block nrs for
@@ -49,7 +49,11 @@ for sj = 1:p.exp.total_subjects
             t_trial   = p.trials(idx0,:);
             block_nrs = p.trials.subj_within_run_block_nr(idx0,sj);
             
-            % shuffle ITIs prior to allocating them after a trial
+            % Reorder trials according to subject's specific order
+            [block_nrs,block_nrs_idx] = sort(block_nrs,'ascend');
+            t_trial = t_trial(block_nrs_idx,:);
+            
+            % Reset shuffled ITIs prior to allocating them after a trial
             itis      = shuffle_concat(p.exp.trial.ITI,1);
             
             % reset counter
@@ -95,28 +99,28 @@ for sj = 1:p.exp.total_subjects
                     single_stim_flag = 0;
                 end
                 
-                % get current miniblock nr
+                % get current block nr
                 curr_block = block_nrs(block_vec_idx);
-                curr_across_session_miniblock_nr = t_trial.across_session_miniblock_nr(1);
+                curr_across_session_block_nr = t_trial.across_session_block_nr(1);
                 curr_within_ses_block_nr = t_trial.within_ses_block_nr(1);
-                curr_subj_within_run_block_nr = t_trial.subj_within_run_block_nr(1,sj);
+                curr_subj_within_run_block_nr = t_trial.subj_within_run_block_nr(1);
                 
                 % first trial of the block has a task cue
-                if t_trial.miniblock_local_trial_nr(1) == 1 || ...
+                if t_trial.block_local_trial_nr(1) == 1 || ...
                         (block_vec_idx == 1) || (curr_block ~= block_nrs(block_vec_idx-1)) % new block
                     time_table.event_start(table_idx)    = total_run_frames;
-                    time_table.event_dur(table_idx)      = p.exp.miniblock.task_cue_dur;
+                    time_table.event_dur(table_idx)      = p.exp.block.task_cue_dur;
                     time_table.event_end(table_idx)      = time_table.event_start(table_idx) + time_table.event_dur(table_idx);
-                    time_table.event_id(table_idx)       = p.exp.miniblock.task_cue_ID;
+                    time_table.event_id(table_idx)       = p.exp.block.task_cue_ID;
                     time_table.event_name(table_idx)     = {'task-cue'};
                     
                     % add ses, run nr
                     time_table.session_nr(table_idx) = ses;
                     time_table.run_nr(table_idx) = rr;
                     total_run_frames = time_table.event_end(table_idx);
-                    time_table.across_session_miniblock_nr(table_idx) = curr_across_session_miniblock_nr;
+                    time_table.across_session_block_nr(table_idx) = curr_across_session_block_nr;
                     time_table.within_ses_block_nr(table_idx)         = curr_within_ses_block_nr;
-                    time_table.subj_within_run_block_nr(table_idx,sj) = curr_subj_within_run_block_nr;
+                    time_table.subj_within_run_block_nr(table_idx) = curr_subj_within_run_block_nr;
                     
                     table_idx = table_idx+1;
                 end
@@ -137,14 +141,14 @@ for sj = 1:p.exp.total_subjects
                     % add ses, run nr
                     time_table.session_nr(table_idx) = ses; 
                     time_table.run_nr(table_idx) = rr;
-                    time_table.across_session_miniblock_nr(table_idx) = curr_across_session_miniblock_nr;
+                    time_table.across_session_block_nr(table_idx) = curr_across_session_block_nr;
                     time_table.within_ses_block_nr(table_idx)         = curr_within_ses_block_nr;
-                    time_table.subj_within_run_block_nr(table_idx,sj) = curr_subj_within_run_block_nr;
+                    time_table.subj_within_run_block_nr(table_idx) = curr_subj_within_run_block_nr;
                     
                     % Add individual trial events
                     switch trial_IDs(id)
                         
-                        case p.exp.miniblock.trial_start_ID % trial start (dot thickening)
+                        case p.exp.block.trial_start_ID % trial start (dot thickening)
                             time_table.event_dur(table_idx)      = p.exp.trial.start_cue_dur;
                             time_table.event_end(table_idx)      = time_table.event_start(table_idx) + time_table.event_dur(table_idx);
                             time_table.event_id(table_idx)       = trial_IDs(id);
@@ -152,7 +156,7 @@ for sj = 1:p.exp.total_subjects
                             total_run_frames = time_table.event_end(table_idx);
                             table_idx   = table_idx+1;
                             
-                        case p.exp.miniblock.spatial_cue_ID  % spatial cue
+                        case p.exp.block.spatial_cue_ID  % spatial cue
                             time_table.event_dur(table_idx)      = p.exp.trial.spatial_cue_dur;
                             time_table.event_end(table_idx)      = time_table.event_start(table_idx) + time_table.event_dur(table_idx);
                             time_table.event_id(table_idx)       = trial_IDs(id);
@@ -160,7 +164,7 @@ for sj = 1:p.exp.total_subjects
                             total_run_frames = time_table.event_end(table_idx);
                             table_idx   = table_idx+1;
                             
-                        case p.exp.miniblock.stim_epoch1_ID % stim epoch 1 - left&right
+                        case p.exp.block.stim_epoch1_ID % stim epoch 1 - left&right
                             if ~single_stim_flag
                                 tmp1 = t_trial([1,2],:);
                                 tmp1.event_start    = repmat(total_run_frames,2,1);
@@ -169,6 +173,7 @@ for sj = 1:p.exp.total_subjects
                                 tmp1.event_id       = repmat(trial_IDs(id),2,1);
                                 tmp1.event_name     = repmat({'stim1'},2,1);
                                 tmp1.subj_nr        = repmat(sj,2,1);
+                                tmp1.subj_within_run_block_nr = repmat(curr_block,2,1);
                                 
                                 % replace time table with trial table
                                 time_table([table_idx,table_idx+1],:) = tmp1;
@@ -188,6 +193,7 @@ for sj = 1:p.exp.total_subjects
                                 tmp1.event_id       = trial_IDs(id);
                                 tmp1.event_name     = {'stim1'};
                                 tmp1.subj_nr        = sj;
+                                tmp1.subj_within_run_block_nr = curr_block;
                                 
                                 time_table(table_idx,:) = tmp1;
                                 total_run_frames = time_table.event_end(table_idx);
@@ -199,7 +205,7 @@ for sj = 1:p.exp.total_subjects
                                 end
                             end
                             
-                        case p.exp.miniblock.stim_epoch2_ID % stim epoch 2 (after delay) - left&right
+                        case p.exp.block.stim_epoch2_ID % stim epoch 2 (after delay) - left&right
                             
                             if ~single_stim_flag
                                 tmp2 = tmp1;
@@ -210,8 +216,8 @@ for sj = 1:p.exp.total_subjects
                                 tmp2.event_id       = repmat(trial_IDs(id),2,1);
                                 tmp2.event_name     = repmat({'stim2'},2,1);
                                 tmp2.unique_im_nr   = NaN(2,1);
-                                tmp2.orient_dir     = cell2mat(tmp2.stim2_delta);
-                                tmp2.stim2_delta    = cell(2,1);
+                                tmp2.orient_dir     = cell2mat(tmp2.stim2);
+                                tmp2.stim2          = cell(2,1);
                                 
                                 time_table([table_idx, table_idx+1],:) = tmp2;
                                 
@@ -230,7 +236,7 @@ for sj = 1:p.exp.total_subjects
                                 tmp2.event_id       = trial_IDs(id);
                                 tmp2.event_name     = {'stim2'};
                                 tmp2.unique_im_nr   = NaN;
-                                tmp2.stim2_delta     = tmp2.stim2_delta{1};
+                                tmp2.stim2          = tmp2.stim2{1};
 
                                 time_table(table_idx,:) = tmp2;
                                 total_run_frames = time_table.event_end(table_idx);
@@ -241,16 +247,16 @@ for sj = 1:p.exp.total_subjects
                                 t_trial(1,:) = [];
                             end
                             
-                        case p.exp.miniblock.response_ID % response
+                        case p.exp.block.response_ID % response
                             time_table.event_dur(table_idx)      = p.exp.trial.response_win_dur;
                             time_table.event_end(table_idx)      = time_table.event_start(table_idx) + time_table.event_dur(table_idx);
-                            time_table.event_id(table_idx)       = p.exp.miniblock.response_ID;
+                            time_table.event_id(table_idx)       = p.exp.block.response_ID;
                             time_table.event_name(table_idx)     = {'response-cue'};
                             total_run_frames = time_table.event_end(table_idx);
                             
                             table_idx = table_idx+1;
                             
-                        case p.exp.miniblock.delay_ID % delay
+                        case p.exp.block.delay_ID % delay
                             time_table.event_dur(table_idx)      = p.exp.trial.response_win_dur;
                             time_table.event_end(table_idx)      = time_table.event_start(table_idx) + time_table.event_dur(table_idx);
                             time_table.event_id(table_idx)       = trial_IDs(id);
@@ -270,7 +276,7 @@ for sj = 1:p.exp.total_subjects
                     time_table.event_start(table_idx)  = total_run_frames;
                     time_table.event_dur(table_idx)    = ITI;
                     time_table.event_name(table_idx)   = {'ITI'};
-                    time_table.event_id(table_idx)     = p.exp.miniblock.ITI_ID;
+                    time_table.event_id(table_idx)     = p.exp.block.ITI_ID;
                     time_table.event_end(table_idx)    = time_table.event_start(table_idx) + time_table.event_dur(table_idx);
                     
                     % add ses, run nr
@@ -306,13 +312,13 @@ for sj = 1:p.exp.total_subjects
                         % add IBI
                         time_table.event_start(table_idx)  = total_run_frames;
                         
-                        sampled_IBI = p.exp.miniblock.IBI(randi(length(p.exp.miniblock.IBI),1));
+                        sampled_IBI = p.exp.block.IBI(randi(length(p.exp.block.IBI),1));
                         IBI =  sampled_IBI + (1 - mod(time_table.event_start(table_idx)+sampled_IBI,1)); % round out to a full second
                         
                         time_table.event_start(table_idx)  = total_run_frames;
                         time_table.event_dur(table_idx)    = IBI;
                         time_table.event_name(table_idx)   = {'IBI'};
-                        time_table.event_id(table_idx)     = p.exp.miniblock.IBI_ID;
+                        time_table.event_id(table_idx)     = p.exp.block.IBI_ID;
                         time_table.event_end(table_idx)    = time_table.event_start(table_idx) + time_table.event_dur(table_idx);
                         % add ses, run nr
                         time_table.session_nr(table_idx) = ses;
@@ -329,7 +335,7 @@ for sj = 1:p.exp.total_subjects
                         time_table.event_start(table_idx)  = total_run_frames;
                         time_table.event_dur(table_idx)    = ITI;
                         time_table.event_name(table_idx)   = {'ITI'};
-                        time_table.event_id(table_idx)     = p.exp.miniblock.ITI_ID;
+                        time_table.event_id(table_idx)     = p.exp.block.ITI_ID;
                         time_table.event_end(table_idx)    = time_table.event_start(table_idx) + time_table.event_dur(table_idx);
                         % add ses, run nr
                         time_table.session_nr(table_idx) = ses;
@@ -401,7 +407,7 @@ if p.store_params
     fprintf('\n[%s]:Storing subject session data..\n',mfilename)
     saveDir = fileparts(fullfile(p.stim.fix.infofile));
     if ~exist(saveDir,'dir'), mkdir(saveDir); end
-    save(fullfile(saveDir,sprintf('subject_sessions_%s_%s.mat',p.disp.name, datestr(now,30))),'time_table_master')
+    save(fullfile(saveDir,sprintf('time_table_master_%s_%s.mat',p.disp.name, datestr(now,30))),'time_table_master')
 end
 
 return
