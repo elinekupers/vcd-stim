@@ -4,13 +4,13 @@
 % the order in which VCD-core stimuli and tasks are shown across subject 
 % at 4 levels of the experiment:
 %  1: subject session (1.5 hrs), contains multiple runs (highest level) 
-%  2: runs (6 mins), contains multiple miniblocks, interspersed with rest
+%  2: runs (6 mins), contains multiple blocks, interspersed with rest
 %     periods 
-%  3: miniblock (1-1.5 mins), contains multiple trials of a single 
-%     stimulus-task crossing. Miniblocks are interspersed with variable
+%  3: block (1-1.5 mins), contains multiple trials of a single 
+%     stimulus-task crossing. blocks are interspersed with variable
 %     (5-9 sec) Inter-Block-Intervals (IBIs), which are "rest" periods where
 %     subject is presented with background+fixation dot (and continues to 
-%     fixate). Number of trials per miniblock depends on the trial type (8 
+%     fixate). Number of trials per block depends on the trial type (8 
 %     trials for single epoch trials, 4 trials for double epoch trials). 
 %     Trials within a block are interspersed with variable (0.2-1.6 sec)
 %     Inter-Trial-Intervals (ITIs).
@@ -74,7 +74,7 @@ randn('seed', params.rng.randn_seed);
 % true and some stimulus values will change.
 %
 % Input 1: Stimulus class, choose from
-% 'gabor','rdk','dot','cobj','ns','all' (default is 'all') 
+% 'gabor','rdk','dot','obj','ns','all' (default is 'all') 
 % Input 2: Display name to load disp params struct (see vcd_getDisplayParams.m) 
 % Input 3: Load prior stored parameters or not? (logical)
 % Input 4: Store generated parameters or not? (logical)
@@ -82,48 +82,55 @@ randn('seed', params.rng.randn_seed);
 % (logical)
 params.stim   = vcd_getStimParams('stim_class','all',...
                             'disp_name', params.disp.name, ...
-                            'load_params',params.load_params, ...
+                            'load_params', params.load_params, ...
                             'store_params', params.store_params, ...
                             'overwrite_randomized_params', params.overwrite_randomized_params); 
 
 %% Define/Load experiment session params
 params.exp    = vcd_getSessionParams('disp_name', params.disp.name, ...
                                 'presentationrate_hz',params.stim.presentationrate_hz, ...
-                                'load_params',params.load_params, ...
+                                'load_params', params.load_params, ...
                                 'store_params', params.store_params);
 
-%% Make/Load miniblocks with trials that sample unique stimuli from each class
+%% Make/Load blocks with trials that sample unique stimuli from each class
 % !!WARNING!! There is a randomization component involved in creating the 
-% trial sequence (e.g., order of unique images within a miniblock). If you
+% trial sequence (e.g., order of unique images within a block). If you
 % don't want this, set second input (load_params) to true.
-[condition_master,all_unique_im, all_cond] = ...
-            vcd_makeMiniblocksAndTrials(params,'load_params',params.load_params, ...
+[params, condition_master, all_unique_im, all_cond] = ...
+            vcd_createBlocksAndTrials(params,'load_params', false, ...params.load_params, ...
                                           'store_params', params.store_params);
 params.trials =  condition_master;
 
 %% Create/Load miniblocks into runs and sessions, shuffle blocks within a run for each subject's run
 % !!WARNING!! There is a randomization component involved in creating the
-% miniblock order within a run. If you don't want this, set second input
+% block order within a run. If you don't want this, set second input
 % (load_params) to true.
-subject_sessions = vcd_createSessions(params,false,params.store_params);
-
+[params,time_table_master] = vcd_createSessions(params,'load_params',false, ...
+                                          'store_params', params.store_params);
+                                      
+                                      
 %% Select unique image for a given subject run
 
 % test on subject 1, run 1 for now
-subj_run = time_table_master((time_table_master.subj_nr==1 & time_table_master.run_nr==1 & time_table_master.session_nr==1),:);
-
-[run_image_order,im_seq_order] = vcd_getImageOrder(subj_run.block, image_info, params);
-
-if ~exist('scan','var') || ~isfield(scan,'exp_im') || isempty(scan.exp_im)
-    % LOAD AND RESIZE IMAGES etc
-    
-    % exp_im is a cell with dims:
-    % blocks x trials x locations (1:l, 2:r) x stim epoch (first or second)
-    [exp_im, alpha_masks, images] = vcd_loadRunImages(run_image_order, subj_run.block, params);
-    
-    scan.exp_im = exp_im; clear exp_im
-    scan.exp_im_masks = alpha_masks; clear alpha masks;
+for sj = 1:params.exp.total_subjects
+    for ses = 1:params.exp.n_sessions
+        for rr = 1:params.exp.n_runs_per_session
+        
+            subj_run = time_table_master((time_table_master.subj_nr==sj & time_table_master.run_nr==rr & time_table_master.session_nr==ses),:);
+            
+            % run_images is a cell matrix with trials x locations (1:l, 2:r)
+            [run_images, run_alpha_masks] = vcd_getImageOrderSingleRun(params, subj_run, sj, ses, rr, ...
+                'load_params',false,'store_params', true);
+            
+            % run_images is a cell matrix with trials x locations (1:l, 2:r)
+            [run_images, run_alpha_masks] = vcd_expandImageOrderSingleRun_30Hz(params, subj_run, sj, ses, rr, ...
+                'load_params',false,'store_params', true);
+            
+        end
+    end
 end
+    
+
 
 
 
