@@ -499,7 +499,7 @@ switch stimClass{:}
                 facing_dir2   = NaN(size(conds_single_rep_merged,1),1);
             end
             conds_single_rep_merged.stim2_delta = delta_vec;
-            conds_single_rep_merged.stim2     = num2cell(facing_dir2);
+            conds_single_rep_merged.stim2       = num2cell(facing_dir2);
             
             % Add ltm pair.
             %                         if strcmp(tasks(task_crossings(curr_task)).name,'ltm')
