@@ -105,31 +105,40 @@ params.trials =  condition_master;
 % !!WARNING!! There is a randomization component involved in creating the
 % block order within a run. If you don't want this, set second input
 % (load_params) to true.
-[params,time_table_master] = vcd_createSessions(params,'load_params',false, ...
+[params,time_table_master] = vcd_createSessions(params,'load_params', params.load_params, ...
                                           'store_params', params.store_params);
                                       
                                       
 %% Select unique image for a given subject run
 
-% test on subject 1, run 1 for now
-for sj = 1:params.exp.total_subjects
-    for ses = 1:params.exp.n_sessions
-        for rr = 1:params.exp.n_runs_per_session
-        
-            subj_run = time_table_master((time_table_master.subj_nr==sj & time_table_master.run_nr==rr & time_table_master.session_nr==ses),:);
-            
-            % run_images is a cell matrix with trials x locations (1:l, 2:r)
-            [run_images, run_alpha_masks] = vcd_getImageOrderSingleRun(params, subj_run, sj, ses, rr, ...
-                'load_params',false,'store_params', true);
-            
-            % run_images is a cell matrix with trials x locations (1:l, 2:r)
-            [run_images, run_alpha_masks] = vcd_expandImageOrderSingleRun_30Hz(params, subj_run, sj, ses, rr, ...
-                'load_params',false,'store_params', true);
-            
-        end
-    end
-end
-    
+% define the subjects, sessions, and run nrs that we want to load the
+% specific stimuli for..
+subject_nrs = 1;%:params.exp.total_subjects;
+session_nrs = 1;%:params.exp.n_sessions;
+run_nrs     = 1;%:params.exp.n_runs_per_session;
+
+% all_run_images is a cell array: subjects x sessions x runs
+% Within each cell, there is run_images:  a cell matrix with trials x locations (1:l, 2:r)
+% Same structure holds for all_run_alpha_masks.
+% The input 'images' refers the to the BIG stimulus matfile that is
+% outputted by the individual stimulus creation functions called by
+% "s_createStim.".
+[all_run_images, all_run_alpha_masks] = vcd_getImageOrderSingleRun(params, time_table_master, ...
+     subject_nrs, session_nrs, run_nrs, 'images',struct(), 'load_params',false,'store_params', true);
+ 
+
+%% Define onset functions for fixation change and contrast decrement
+% Fixation order and fixation
+fixsoafun = @() round(params.stim.fix.dotmeanchange + (params.stim.fix.dotchangeplusminus*(2*(rand-.5))));
+
+% Contrast decrement gaussian time window onset
+cdsoafun = @() round(params.stim.cd.meanchange + params.stim.cd.changeplusminus*(2*(rand-.5)));
+
+% Expand time table with images that are a 30 Hz framelocked sequence. 
+[subj_run_frames] = vcd_expandImageOrderSingleRun_30Hz(...
+    params, time_table_master, subject_nrs, session_nrs, run_nrs, ...
+    'all_run_images',all_run_images, 'all_run_alpha_masks', all_run_alpha_masks,...
+    'fixsoafun', fixsoafun, 'cdsoafun', cdsoafun, 'load_params',false,'store_params', true);
 
 
 
