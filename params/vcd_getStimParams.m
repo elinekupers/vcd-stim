@@ -74,7 +74,7 @@ if load_params
         if length(d) > 1
             warning('[%s]: Multiple .mat files! Will pick the most recent one\n', mfilename);
         end
-        fprintf('[%s]: Loading stim params .mat file: %s\n', mfilename, d.name);
+        fprintf('[%s]: Loading stim params .mat file: %s\n', mfilename, d(end).name);
         load(fullfile(d(end).folder,d(end).name),'stim');
     else
         error('[%s]: Can''t find stim params file!\n', mfilename)
@@ -166,7 +166,8 @@ else
     stim.cd.t_gausswin_std          = 3;                                    % standard devation of gaussian window in time (presentation frames)
     stim.cd.meanchange              = stim.presentationrate_hz * 1.0;       % mean of gaussian window in time (30 frames = 1 sec)  
     stim.cd.changeplusminus         = (0.5/stim.framedur_s)-1;              % plus or minus this amount (14 frames = 0.46 sec)  
-    stim.cd.max_cd                  = 0.5;                                  % we reduce contrast by 50% of mean luminance
+    stim.cd.max_cd                  = 0.25;                                 % we reduce contrast by 25% of mean luminance
+    stim.cd.prob                    = 0.5;                                  % 50% probability that a trial will have a luminance change
     
     % Create 1D gaussian
     t_support           = linspace(-stim.cd.t_gausswin_N / 2, stim.cd.t_gausswin_N / 2, stim.cd.t_gausswin_N);
@@ -404,7 +405,17 @@ else
                 
                 
                 p.num_unique_objects = 16;                                      % orientation "bins" from which we create final gabor orientations (deg), 0 = 12 o'clock
-                p.facing_dir_deg     = repmat(90 + [-34, 34],1,p.num_unique_objects/2); % rotate 10 deg away from canonical view
+                p.canonical_facing_dir_deg = repmat(90 + [-45, 45],1,p.num_unique_objects/2); % rotate 10 deg away from canonical view
+                p.rot_jitter_sd = 2;                                           % std of normal distribution to sample rotation jitter
+                p.rot_jitter_mu = 3;                                           % mean of normal distribution to sample rotation jitter
+                
+                if overwrite_randomized_params 
+                    p.rot_jitter       = p.rot_jitter_mu + (p.rot_jitter_sd.*randn(1,p.canonical_facing_dir_deg)); % add a small amount of jitter around the rotation
+                    p.facing_dir_deg   = round(p.motdir_bins + p.motdir_jitter);     % final facing direction for all objects
+                else
+                    p.rot_jitter       = [8.1568 6.5389 -1.6998 7.0698 2.4508 0.8739 2.4295 0.5901]; 
+                    p.facing_dir_deg   = [18 62 98 152 192 236 282 326];
+                end    
                 p.super_cat          = {'human','animal','object','place'};     % 4 superordinate categories
                 
                 p.basic_cat{1}       = {'facemale','facefemale','facefemale'};
@@ -417,6 +428,11 @@ else
                 p.sub_cat{3}         = {'drill','brush','pizza','banana','bus','suv'};
                 p.sub_cat{4}         = {'church','house','watertower'};
                 
+                p.affordance{1}       = {'greet','greet','greet'};
+                p.affordance{2}       = {'greet','greet','observe','observe'};
+                p.affordance{3}       = {'grasp','grasp','grasp','grasp','enter','enter'};
+                p.affordance{4}       = {'enter','enter','observe'};
+
                 p.square_pix_val     = true;
                 p.delta_from_ref     = [-8, -4, 4, 8];                        % how much should stim pose rotate from reference (WM: for double epochs)
                 % the bigger the delta, the easier the trial. Negative is counter-clockwise, positive is clockwise
@@ -472,6 +488,18 @@ else
                 
                 p.sub_cat{5,1}  = {'bathroom1_left','bathroom2_center','bathroom3_right'};
                 p.sub_cat{5,2}  = {'building1_left','building2_center','building3_right'};
+                
+                p.affordance{1,1} = {'walk','greet','greet'};
+                p.affordance{1,2} = {'greet','observe','observe'};
+                p.affordance{2,1} = {'greet','greet','greet'};
+                p.affordance{2,2} = {'observe','observe','observe'};
+                p.affordance{3,1} = {'grasp','grasp','grasp'};
+                p.affordance{3,2} = {'grasp','grasp','observe'};
+                p.affordance{4,1} = {'grasp','grasp','grasp'};
+                p.affordance{4,2} = {'walk','observe','walk'};
+                p.affordance{5,1} = {'walk','walk','walk'};
+                p.affordance{5,2} = {'observe','walk','walk'};
+                
                 
                 p.change_im     = {'easy_add', 'hard_add','easy_remove', 'hard_remove'};
                 p.lure_im       = {'lure01', 'lure02', 'lure03', 'lure04'};
