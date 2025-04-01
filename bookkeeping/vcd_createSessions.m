@@ -29,10 +29,10 @@ if load_params
         % load trial info
         d = dir(fullfile(vcd_rootPath,'workspaces','info','trials*.mat'));
         if isempty(d)
-            error('[%s]: Can''t find trial.mat files! Please check or run vcd_makeTrials.m', mfilename);
+            error('[%s]: Can''t find trial.mat files! Please check or run vcd_makeTrials.m\n', mfilename);
         elseif ~isempty(d(end).name)
             if length(d) > 1
-                warning('[%s]: Multiple trial.mat files! Will pick the most recent one', mfilename);
+                warning('[%s]: Multiple trial.mat files! Will pick the most recent one.\n', mfilename);
             end
             load(fullfile(d(end).folder,d(end).name),'condition_master');
             params.trials = condition_master;
@@ -41,10 +41,10 @@ if load_params
     
     d = dir(fullfile(vcd_rootPath,'workspaces','info',sprintf('time_table*.mat')));
     if isempty(d)
-        error('[%s]: Can''t find time table file with subject session!', mfilename)
+        error('[%s]: Can''t find time table file with subject session!\n', mfilename)
     elseif ~isempty(d(end).name)
         if length(d) > 1
-            warning('[%s]: Multiple trial.mat files! Will pick the most recent one', mfilename);
+            warning('[%s]: Multiple trial .mat files! Will pick the most recent one.\n', mfilename);
         end
         load(fullfile(d(end).folder,d(end).name),'time_table_master');
         params.time_table = time_table_master;   
