@@ -48,12 +48,12 @@ if load_params
     if ~isempty(d)
         fprintf('[%s]: Found %d exp params .mat file(s)\n',mfilename,length(d));
         if length(d) > 1
-            warning('[%s]: Multiple .mat files! Will pick the most recent one', mfilename);
+            warning('[%s]: Multiple .mat files! Will pick the most recent one\n', mfilename);
         end
         fprintf('[%s]: Loading exp params .mat file: %s\n', mfilename, d.name);
         load(fullfile(d(end).folder,d(end).name),'exp_session');
     else
-        error('[%s]: Can''t find experiment session params file!', mfilename)
+        error('[%s]: Can''t find experiment session params file!\n', mfilename)
     end
 else
     fprintf('[%s]: Define exp params\n', mfilename);
