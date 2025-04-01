@@ -1,0 +1,42 @@
+function [fix_timing,fix_abs_lum,fix_rel_lum,button_response_fix] = vcd_createFixationSequence(params,fixsoafun,run_dur)
+
+% %%%% Get fixation timing
+fix_seq = []; f_fix = 0;
+while f_fix(end) < run_dur
+    fix_seq = [fix_seq, fixsoafun()];
+    f_fix = cumsum(fix_seq);
+end
+
+% trim in case we accidentally went overtime
+f_fix = f_fix(f_fix<run_dur);
+
+% Update luminance of fixation dot randomly (WITH replacement)
+lum_shuffled_idx = datasample(double(params.stim.fix.dotlum),length(f_fix)+1,'Replace',true);
+
+% figure out when dot is brighter, dimmer or the same
+% relative to previous time point
+dimmer   = find(diff([0, lum_shuffled_idx])<0);
+nochange = find(diff([0, lum_shuffled_idx])==0);
+brighter = find(diff([0, lum_shuffled_idx])>0);
+
+[r_sort,r_ai] = sort([dimmer, nochange,brighter]);
+response_fix_vex = [-1.*ones(size(dimmer)), zeros(size(nochange)),1.*ones(size(brighter))];
+response_fix_vex = response_fix_vex(r_ai);
+response_fix_vex(1) = 0; % set first lum to no response;
+
+% Add pre and post fixation sequence duration
+dur_fix_frames = [f_fix(1), diff(f_fix), (run_dur-f_fix(end)+1)];
+fix_timing = []; fix_abs_lum = []; fix_rel_lum = [];
+for ff = 1:length(dur_fix_frames)
+    fix_timing = cat(1, fix_timing, Expand(ff, 1, dur_fix_frames(ff)));
+    fix_abs_lum = cat(1, fix_abs_lum, Expand(lum_shuffled_idx(ff), 1, dur_fix_frames(ff)));
+    fix_rel_lum = cat(1,fix_rel_lum, [response_fix_vex(ff); zeros(dur_fix_frames(ff)-1,1)]);
+end
+% translate changes in luminance into button responses
+button_response_fix = fix_rel_lum;
+button_response_fix(button_response_fix==1)  = 1; % brighter
+button_response_fix(button_response_fix==-1) = 2; % dimmer
+
+
+
+end
