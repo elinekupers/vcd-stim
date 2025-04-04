@@ -140,9 +140,9 @@ else
         
     % SPATIAL
     stim.fix.dotcenterdiam_pix      = 12;                                   % dot diameter in pixels (18 pixels)
-    stim.fix.dotcenterdiam_deg      = stim.fix.dotcenterdiam_pix/disp_params.ppd; % 0.2037 deg, dot diameter
-    stim.fix.dotthinborderdiam_pix  = stim.fix.dotcenterdiam_pix+6;         % pixel-width for dot thin border (during ITI/IBI)
-    stim.fix.dotthickborderdiam_pix = stim.fix.dotcenterdiam_pix+10;       % pixel-width for dot border (during trial)
+    stim.fix.dotcenterdiam_deg      = stim.fix.dotcenterdiam_pix/disp_params.ppd; % 0.14 deg, center circle diameter
+    stim.fix.dotthinborderdiam_pix  = stim.fix.dotcenterdiam_pix+6;         % pixel-width for dot thin border (during ITI/IBI) (0.2037 deg)
+    stim.fix.dotthickborderdiam_pix = stim.fix.dotcenterdiam_pix+10;       % pixel-width for dot border (during trial) (0.249 deg)
     
     stim.fix.lumminmaxstep          = [42,212,5];                          % min, max, and nr of dot luminance values [1-255],
     stim.fix.dotlum                 = uint8(linspace(stim.fix.lumminmaxstep(1),stim.fix.lumminmaxstep(2),stim.fix.lumminmaxstep(3))); % dot gray levels
@@ -342,7 +342,7 @@ else
 
                 end
                 
-                p.iso_eccen           = 4.5;                                       % idealized iso-eccentric dot location (for all angles)
+                p.iso_eccen           = 4.0;                                       % idealized iso-eccentric dot location (for all angles)
                 p.ang_deg             = p.loc_deg;                                 % idealized angle of center dot loc in deg (translation from center screen 0,0)
                 p.eccen_deg           = repmat(p.iso_eccen,1,length(p.loc_deg));   % idealized eccen of center dot loc in deg (translation from center screen 0,0)
                 
@@ -405,17 +405,21 @@ else
                 
                 
                 p.num_unique_objects = 16;                                      % orientation "bins" from which we create final gabor orientations (deg), 0 = 12 o'clock
-                p.canonical_facing_dir_deg = repmat(90 + [-45, 45],1,p.num_unique_objects/2); % rotate 10 deg away from canonical view
-                p.rot_jitter_sd = 2;                                           % std of normal distribution to sample rotation jitter
-                p.rot_jitter_mu = 3;                                           % mean of normal distribution to sample rotation jitter
+%                 p.canonical_facing_dir_deg = repmat(90 + [-45, 45],1,p.num_unique_objects/2); % rotate 10 deg away from canonical view
+                p.rot_bins      = linspace(10,170,p.num_unique_objects);
+                p.rot_jitter_sd = 1;                                           % std of normal distribution to sample rotation jitter
+                p.rot_jitter_mu = 1;                                           % mean of normal distribution to sample rotation jitter
                 
                 if overwrite_randomized_params 
-                    p.rot_jitter       = p.rot_jitter_mu + (p.rot_jitter_sd.*randn(1,p.canonical_facing_dir_deg)); % add a small amount of jitter around the rotation
-                    p.facing_dir_deg   = round(p.motdir_bins + p.motdir_jitter);     % final facing direction for all objects
+                    p.rot_jitter       = p.rot_jitter_mu + (p.rot_jitter_sd.*randn(1,p.num_unique_objects)); % add a small amount of jitter around the rotation
+                    p.facing_dir_deg   = round(p.rot_bins + p.rot_jitter);     % final facing direction for all objects
+                    p.facing_dir_deg   = ceil(p.facing_dir_deg/2)*2;
                 else
-                    p.rot_jitter       = [8.1568 6.5389 -1.6998 7.0698 2.4508 0.8739 2.4295 0.5901]; 
-                    p.facing_dir_deg   = [18 62 98 152 192 236 282 326];
-                end    
+                    p.rot_jitter       = [0.2280    0.7061    2.8998    0.5255    1.2055    0.8602   -0.1122  -0.6935    0.8379    2.1032    1.0862   -0.3847    1.5598    0.6225  0.2114  0.1853]; 
+                    p.facing_dir_deg   = [10    22    34    44    54    64    74    84    96   108   118   128   140   150   160   170];
+                end
+                
+                
                 p.super_cat          = {'human','animal','object','place'};     % 4 superordinate categories
                 
                 p.basic_cat{1}       = {'facemale','facefemale','facefemale'};
