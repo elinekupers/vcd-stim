@@ -48,6 +48,9 @@ simple_dot = uint8(simple_dot);
 simple_dot(simple_dot==0) = p.stim.bckgrnd_grayval;
 simple_dot(simple_dot==1) = p.stim.dot.color(1);
 
+% add RGB copy in third dim
+simple_dot = repmat(simple_dot, [1 1 3]);
+
 % Create alpha mask (same for all dots)
 mask  = uint8(zeros(size(simple_dot,1),size(simple_dot,2)));
 mask0 = (Y - centerY).^2 + (X - centerX).^2 <= (p.stim.dot.alpha_mask_diam_pix).^2;
