@@ -63,6 +63,8 @@ else
     % level, block, or trial level.
     exp_session = struct('session',[],'run',[],'block',[],'trial', []);
     
+    %% %%%% STIMULUS - TASK CROSSINGS %%%%
+    
     % Define big stim-task crossing table
     exp_session.stimClassLabels = {'gabor','rdk','dot','obj','ns'};
     exp_session.taskClassLabels = {'fix','cd','scc','pc','wm','ltm','img','what','where','how'};
@@ -97,8 +99,8 @@ else
     
     %% %%%% SESSION PARAMS %%%%
     exp_session.n_unique_trial_repeats = 8;   % 8 allows for allocation of all trials across blocks and runs.
-    exp_session.n_sessions             = 6; %40;   % let's do one session for now;
-    exp_session.n_runs_per_session     = 8;   % right now we have 8x 6 min runs per session
+    exp_session.n_sessions             = 6;   % 40; 
+    exp_session.n_runs_per_session     = 10;  % right now we have 11x 5.5 min runs per session
     exp_session.TR                     = 1.6; % seconds
     exp_session.total_subjects         = 3;   % 3 subjects for now.. EK: we probably want to separate wide and deep subjects
     
@@ -109,16 +111,36 @@ else
     % Response for LTM/IMAG (= 2 repeats of unique image conditions)
     exp_session.session.task_start       = [1,1,1,1,1,7,7,1,1,1]; % When do we start sampling the tasks (LTM/IMG have later starts)
     
-    % LTM stim-stim pairing will be probabilistic, with these tweaks:
-    exp_session.session.ltm.prob_new_pairing  = 0.2; % chance that LTM stim A will be match to stim C (instead of stim B), in a given session
-    exp_session.session.ltm.prob_pair_order_flip = 0.2; % chance that LTM stim A -> B will flip to B -> A in a given session
+     
+    %% %%%% RUN %%%%
+    % general
+    exp_session.run.n_single_epoch_blocks = [6, 3, 0]; % runtype 1, 2 or 3
+    exp_session.run.n_double_epoch_blocks = [0, 2, 4]; % runtype 1, 2 or 3
+    exp_session.run.blocks_per_run = exp_session.run.n_single_epoch_blocks + exp_session.run.n_double_epoch_blocks;
     
-
+    % eye gaze block
+    exp_session.run.eye_gaze_fix0       = presentationrate_hz * 1.0; % start with 1 second fixation period
+    exp_session.run.eye_gaze_sac_target = presentationrate_hz * 1.2; % then 5x1.2 = 6 seconds of saccades (mimicing EL HV5 grid,±3 deg in all directions)
+    exp_session.run.eye_gaze_fix1       = presentationrate_hz * 2.0; % then a 2-seconds rest trial
+    exp_session.run.eye_gaze_pupil      = presentationrate_hz .* [3.0,1.0]; % then a 4-seconds pupil trial: 3-s black adaptation, 1-s white screen to evoke max pupil response.
     
-    %% %%%% MINIBLOCK %%%%
+    % timing
+    exp_session.run.pre_blank_dur     = presentationrate_hz * 4.0; % pre-run blank period: 11 seconds in number of presentation frames
+    exp_session.run.post_blank_dur    = presentationrate_hz * 12.0; % 11 seconds in number of presentation frames
+    exp_session.run.total_run_dur     = presentationrate_hz * 282.2; % 282.2 s or 197 volumes x 1.6 sTRs
+    
+    assert(isint(exp_session.run.total_run_dur/exp_session.TR)); % ensure this is an integer nr of TRs
+    
+    exp_session.run.actual_task_dur = exp_session.run.total_run_dur - exp_session.run.pre_blank_dur - exp_session.run.post_blank_dur; % nr of presentation frames we actually spend doing the experiment
+    
+    
+    %% %%%% BLOCK PARAMS %%%%
+    
     % general
     exp_session.block.n_trials_single_epoch = 8; % number of trials per block when we only have a single stimulus epoch 
     exp_session.block.n_trials_double_epoch = 4; % number of trials per block when we only have a two stimulus epochs (less trials because each trial is longer)
+    
+    % event IDs
     exp_session.block.stim_epoch1_ID        = 91; % generic stim ID
     exp_session.block.stim_epoch2_ID        = 92; % generic stim ID
     exp_session.block.response_ID           = 93; % Time for subject to respond
@@ -139,9 +161,13 @@ else
     assert(isempty(intersect([1:length(exp_session.stimTaskLabels)],exp_session.block.ITI_ID)));
     assert(isempty(intersect([1:length(exp_session.stimTaskLabels)],exp_session.block.IBI_ID)));
     
+    
     % Timing
     exp_session.block.task_cue_dur        = presentationrate_hz * 2.0; % 2.0 seconds in number of presentation frames
-    exp_session.block.IBI                 = presentationrate_hz * linspace(5*presentationrate_hz,9*presentationrate_hz, 5); % [5:1:9] seconds Inter-block interval -- uniformly sample between [min,max]
+    exp_session.block.IBI                 = presentationrate_hz * linspace(5,7,3); % [5:1:7] seconds Inter-block interval -- uniformly sample between [min,max]
+    
+    exp_session.block.total_single_epoch_dur =  presentationrate_hz * 42.0;  % 42.0 seconds in number of presentation frames (excl. IBI)
+    exp_session.block.total_double_epoch_dur =  presentationrate_hz * 62.0;  % 62.0 seconds in number of presentation frames (excl. IBI)
     
     % Make we have integer number of frames
     assert(isint(exp_session.block.task_cue_dur));
@@ -169,26 +195,6 @@ else
     exp_session.priority_stim_manip(5).other    = {'sub_cat'}; % ERK: do we sample/index these or does it not matter since stim are selected to be balanced?
     
     
-    %% %%%% RUN %%%%
-    % general
-    exp_session.run.n_single_epoch_blocks = 3;
-    exp_session.run.n_double_epoch_blocks = 3;
-    exp_session.run.blocks_per_run = exp_session.run.n_single_epoch_blocks + exp_session.run.n_double_epoch_blocks;
-    
-    % eye gaze block
-    exp_session.run.eye_gaze_fix0       = presentationrate_hz * 1.0; % start with 1 second fixation period
-    exp_session.run.eye_gaze_sac_target = presentationrate_hz * 1.2; % then 5x1.2 = 6 seconds of saccades (mimicing EL HV5 grid,±3 deg in all directions)
-    exp_session.run.eye_gaze_fix1       = presentationrate_hz * 2.0; % then a 2-seconds rest trial
-    exp_session.run.eye_gaze_pupil      = presentationrate_hz .* [3.0,1.0]; % then a 4-seconds pupil trial: 3-s black adaptation, 1-s white screen to evoke max pupil response.
-
-    % timing
-    exp_session.run.pre_blank_dur     = presentationrate_hz * 10.0; % pre-run blank period: 11 seconds in number of presentation frames
-    exp_session.run.post_blank_dur    = presentationrate_hz * 12.0; % 11 seconds in number of presentation frames
-    exp_session.run.total_run_dur     = presentationrate_hz * 331.2; % 331.2 s or 207 1.6 sTRs
-    
-    assert(isint(exp_session.run.total_run_dur/exp_session.TR)); % ensure this is an integer nr of TRs
-    
-    exp_session.run.actual_task_dur = exp_session.run.total_run_dur - exp_session.run.pre_blank_dur - exp_session.run.post_blank_dur; % nr of presentation frames we actually spend doing the experiment
     
     %% %%%% TRIAL %%%%
     % general
@@ -202,7 +208,8 @@ else
     exp_session.trial.stim_array_dur      = presentationrate_hz * 2.0; % 60 x 33 ms frames = 2.0 seconds
     exp_session.trial.response_win_dur    = presentationrate_hz * 1.0; % 30 x 33 ms frames = 1.0 seconds
    
-    exp_session.trial.ITI                 = presentationrate_hz.*[0.2:0.2:1.6]; % [6:6:48] frames corresponds to 0.2:0.2:1.6 seconds (thinning of dot rim)
+    exp_session.trial.totalITI            = presentationrate_hz .* [6.4, 3.2];
+    exp_session.trial.ITI                 = presentationrate_hz .* [0.2:0.1:1.6]; % [6:2:48] frames corresponds to 0.2:0.1:1.6 seconds (thinning of dot rim)
     exp_session.trial.delay_dur           = presentationrate_hz * 8.0 ; % 240 x 33 ms frames = 8.0 seconds
     
     exp_session.trial.single_epoch_dur   = ...
@@ -221,10 +228,10 @@ else
     
     assert( nearZero(mod(exp_session.trial.single_epoch_dur / presentationrate_hz,1)))
     
-    %% TASK PROBABILITY
+    %% TASK SPECIFIC PROBABILITY
     
     % CD
-    exp_session.trial.cd.prob_change                        = 0.5;  % chance of a contrast change
+    exp_session.trial.cd.prob_change                         = 0.5;  % chance of a contrast change
     
     % LTM
     exp_session.trial.ltm.prob_correct_pair                  = 0.5;  % chance of a given stim-stim pair in a trial is correct
@@ -232,46 +239,62 @@ else
     exp_session.trial.ltm.prob_incorrect_pair_diff_stimclass = 0.25; % these are non-lures 
     assert(sum([exp_session.trial.ltm.prob_correct_pair, exp_session.trial.ltm.prob_incorrect_pair_same_stimclass, exp_session.trial.ltm.prob_incorrect_pair_diff_stimclass])==1)
 
-    % IMG
-    exp_session.trial.img.test_task                        = 0.5;  % chance of a contrast change
-
-
+    exp_session.session.ltm.prob_new_pairing                = 0.2;   % chance that LTM stim A will be match to stim C (instead of stim B), in a given session
+    exp_session.session.ltm.prob_pair_order_flip            = 0.2;   % chance that LTM stim A -> B will flip to B -> A in a given session
     
+    % IMG
+    exp_session.trial.img.test_task                         = 0.5;  % chance of a contrast change
+
+
+
     
     %% Nr of blocks per sessions 
+    exp_session.session.nr_of_type1_runs([1,2])  = 3; % 6 single-stim blocks / 0 double-stim blocks 
+    exp_session.session.nr_of_type2_runs([1,2])  = 7; % 3 single-stim blocks / 2 double-stim blocks
+    exp_session.session.nr_of_type3_runs([1,2])  = 0; % 0 single-stim blocks / 4 double-stim blocks
+
+    exp_session.session.nr_of_type1_runs([3:exp_session.n_sessions])  = 4;
+    exp_session.session.nr_of_type2_runs([3:exp_session.n_sessions])  = 6;
+    exp_session.session.nr_of_type3_runs([3:exp_session.n_sessions])  = 0;
+    
     ses_blocks = zeros(size(exp_session.crossings,1),size(exp_session.crossings,2),exp_session.n_sessions);
     
     % sessions 1-2 are WIDE
     %                   fix    cd   scc   pc    wm    ltm   img   what where  how                 
-    ses_blocks(:,:,1) = [1     2     1     2     3     0     0     0     0     0; % Gabor:
-                         1     2     1     2     3     0     0     0     0     0; % RDK:
+    ses_blocks(:,:,1) = [2     2     2     2     3     0     0     0     0     0; % Gabor:
+                         1     2     2     2     3     0     0     0     0     0; % RDK:
+                         1     1     1     1     2     0     0     0     0     0; % Dot:
+                         1     1     2     2     2     0     0     1     0     1; % Obj:
+                         2     2     0     2     4     0     0     2     2     2];% NS: 
+    %                   fix    cd   scc   pc    wm    ltm   img   what where  how                 
+    ses_blocks(:,:,2) = [2     2     2     2     3     0     0     0     0     0; % Gabor:
+                         1     2     2     2     3     0     0     0     0     0; % RDK:
                          1     1     1     1     2     0     0     0     0     0; % Dot:
                          1     1     1     2     2     0     0     1     0     1; % Obj:
-                         1     2     0     2     4     0     0     2     2     2];% NS: 
-    ses_blocks(:,:,2) = ses_blocks(:,:,1);
+                         2     2     0     2     4     0     0     2     2     2];% NS: 
 
     % sessions 3-6 have no LTM and no IMG
     %                   fix    cd   scc   pc    wm    ltm   img   what where  how                 
-    ses_blocks(:,:,3) = [1     2     2     2     3     0     0     0     0     0; % Gabor: 3 WM
-                         1     2     2     2     3     0     0     0     0     0; % RDK: 3 WM
+    ses_blocks(:,:,3) = [1     2     1     2     3     0     0     0     0     0; % Gabor: 3 WM
+                         1     2     1     2     3     0     0     0     0     0; % RDK: 3 WM
                          1     1     1     1     2     0     0     0     0     0; % Dot: 2 WM
                          1     1     1     2     2     0     0     2     0     2; % Obj: 2 WM, 2 WHAT & 2 HOW
                          1     2     0     2     2     0     0     1     2     1];
 
-    ses_blocks(:,:,4) = [1     2     2     2     3     0     0     0     0     0; % Gabor: 
-                         1     2     2     2     3     0     0     0     0     0; % RDK: 
+    ses_blocks(:,:,4) = [1     2     1     2     3     0     0     0     0     0; % Gabor: 
+                         1     2     1     2     3     0     0     0     0     0; % RDK: 
                          1     1     1     1     2     0     0     0     0     0; % Dot
                          1     1     1     2     2     0     0     2     0     2; % Obj
                          1     2     0     2     2     0     0     1     1     2]; % NS
                      
-    ses_blocks(:,:,5) = [1     2     2     2     3     0     0     0     0     0; % Gabor: 
-                         1     2     2     2     3     0     0     0     0     0; % RDK:
+    ses_blocks(:,:,5) = [1     2     1     2     3     0     0     0     0     0; % Gabor: 
+                         1     2     1     2     3     0     0     0     0     0; % RDK:
                          1     1     1     1     2     0     0     0     0     0; % Dot: 
                          1     1     1     2     2     0     0     2     0     2; % Obj: 
                          1     2     0     2     2     0     0     1     2     1]; % NS: 
                      
-    ses_blocks(:,:,6) = [1     2     2     2     3     0     0     0     0     0; % Gabor:
-                         1     2     2     2     3     0     0     0     0     0; % RDK: 
+    ses_blocks(:,:,6) = [1     2     1     2     3     0     0     0     0     0; % Gabor:
+                         1     2     1     2     3     0     0     0     0     0; % RDK: 
                          1     1     1     1     2     0     0     0     0     0; % Dot: 
                          1     1     1     2     2     0     0     2     0     2; % Obj:
                          1     2     0     2     2     0     0     2     1     1]; % NS: 
@@ -281,127 +304,127 @@ else
     % Dot: starting session 7, we have 2 IMG blocks every 3 sessions. 
     % Dot: starting session 10, we have 2 LTM blocks every 3 sessions. 
     %                   fix    cd   scc   pc    wm    ltm   img   what where  how                 
-    ses_blocks(:,:,7) = [1     1     0     1     2     2     2     0     0     0; % Gabor: 
+    ses_blocks(:,:,7) = [1     1     1     1     2     2     2     0     0     0; % Gabor: 
                          1     0     1     0     1     2     2     0     0     0; % RDK: 
-                         1     1     1     1     1     1     2     0     0     0; % Dot: 
+                         1     1     1     1     1     2     2     0     0     0; % Dot: 
                          1     1     1     1     1     2     2     1     0     1; % Obj: -
                          1     1     0     0     1     2     2     1     1     1]; % NS: 
 
     %                   fix    cd   scc   pc    wm    ltm   img   what where  how                     
     ses_blocks(:,:,8) = [1     0     1     1     1     2     2     0     0     0; % Gabor: 
-                         1     1     0     1     2     2     2     0     0     0; % RDK: 
+                         1     1     1     1     2     2     2     0     0     0; % RDK: 
                          1     1     1     1     1     2     1     0     0     0; % Dot: 
-                         1     1     1     1     1     1     1     1     0     1; % Obj: 
+                         1     1     1     1     1     2     1     1     0     1; % Obj: 
                          1     1     0     1     1     2     2     1     0     1]; % NS: 
 
     %                   fix    cd   scc   pc    wm    ltm   img   what where  how                     
-    ses_blocks(:,:,9) = [1     1     0     1     2     2     2     0     0     0; % Gabor: 
+    ses_blocks(:,:,9) = [1     1     1     1     2     2     2     0     0     0; % Gabor: 
                          1     0     1     1     1     2     2     0     0     0; % RDK: 
-                         1     1     1     1     1     1     2     0     0     0; % Dot: -
-                         1     1     1     1     1     1     1     1     0     1; % Obj: -
+                         1     1     1     1     1     2     2     0     0     0; % Dot: -
+                         1     1     1     1     1     2     1     1     0     1; % Obj: -
                          1     0     0     0     2     2     2     0     1     0]; % NS: 
 
     %                   fix    cd   scc   pc    wm    ltm   img   what where  how
     ses_blocks(:,:,10) =[1     0     1     1     1     2     2     0     0     0; % Gabor: 3 LTM blocks
-                         1     1     0     1     2     2     2     0     0     0; % RDK: 3 IMG blocks 
+                         1     1     1     1     2     2     2     0     0     0; % RDK: 3 IMG blocks 
                          1     1     1     0     1     2     1     0     0     0; % Dot: 
-                         1     1     1     0     1     1     1     1     0     1; % Obj: skip PC block
+                         1     1     1     0     1     2     1     1     0     1; % Obj: skip PC block
                          1     1     0     1     1     2     2     1     0     1]; % NS: 2 IMG & 2 LTM blocks
 
     %                   fix    cd   scc   pc    wm    ltm   img   what where  how
-    ses_blocks(:,:,11) =[1     1     0     1     1     2     2     0     0     0; % Gabor: 3 IMG blocks
+    ses_blocks(:,:,11) =[1     1     1     1     1     2     2     0     0     0; % Gabor: 3 IMG blocks
                          1     0     1     1     1     2     2     0     0     0; % RDK: 3 LTM blocks 
-                         1     1     1     1     1     1     2     0     0     0; % Dot: 2 IMG blocks
-                         1     1     1     1     1     1     1     1     0     1;
-                         1     0     0     0     1     1     2     0     1     0];
+                         1     1     1     1     1     2     2     0     0     0; % Dot: 2 IMG blocks
+                         1     1     1     1     1     2     1     1     0     1;
+                         1     0     0     0     1     2     2     0     1     0];
 
     %                   fix    cd   scc   pc    wm    ltm   img   what where  how
     ses_blocks(:,:,12) =[1     0     1     1     1     2     2     0     0     0;
-                         1     1     0     1     1     2     2     0     0     0;
+                         1     1     1     1     1     2     2     0     0     0;
                          1     0     1     0     1     2     1     0     0     0; % Dot: skip PC block
-                         1     0     1     0     1     1     1     1     0     1;
+                         1     0     1     0     1     2     1     1     0     1;
                          1     1     0     1     2     2     1     1     0     1];
 
     %                   fix    cd   scc   pc    wm    ltm   img   what where  how
-    ses_blocks(:,:,13) =[1     1     0     1     1     2     2     0     0     0;
+    ses_blocks(:,:,13) =[1     1     1     1     1     2     2     0     0     0;
                          1     0     1     1     1     2     2     0     0     0;
-                         1     0     1     0     1     1     1     0     0     0; % Dot: skip PC block
-                         1     0     1     0     1     1     1     1     0     1;
+                         1     0     1     0     1     2     1     0     0     0; % Dot: skip PC block
+                         1     0     1     0     1     2     1     1     0     1;
                          1     1     0     1     2     2     1     1     0     1];
 
     %                   fix    cd   scc   pc    wm    ltm   img   what where  how
     ses_blocks(:,:,14) =[1     0     1     1     1     2     2     0     0     0;
-                         1     1     0     1     1     2     2     0     0     0;
+                         1     1     1     1     1     2     2     0     0     0;
                          1     0     1     0     1     2     1     0     0     0; % Dot: skip PC block
                          1     0     1     0     1     1     1     1     0     1;
                          1     1     0     1     2     2     1     1     0     1];
 
     %                   fix    cd   scc   pc    wm    ltm   img   what where  how
-    ses_blocks(:,:,15) =[1     1     0     1     1     2     2     0     0     0;
+    ses_blocks(:,:,15) =[1     1     1     1     1     2     2     0     0     0;
                          1     0     1     1     1     2     2     0     0     0;
-                         1     0     1     0     1     1     1     0     0     0; % Dot: skip PC block
-                         1     0     1     0     1     1     1     1     0     1;
+                         1     0     1     0     1     2     1     0     0     0; % Dot: skip PC block
+                         1     0     1     0     1     2     1     1     0     1;
                          1     1     0     1     2     2     1     1     0     1];
 
     %                   fix    cd   scc   pc    wm    ltm   img   what where  how
     ses_blocks(:,:,16) =[1     0     1     1     1     2     2     0     0     0;
-                         1     1     0     1     1     2     2     0     0     0;
+                         1     1     1     1     1     2     2     0     0     0;
                          1     0     1     0     1     2     1     0     0     0; % Dot: skip PC block
-                         1     0     1     0     1     1     1     1     0     1;
+                         1     0     1     0     1     2     1     1     0     1;
                          1     1     0     1     2     2     1     1     0     1];
                      
     %                   fix    cd   scc   pc    wm    ltm   img   what where  how
     ses_blocks(:,:,17) =[1     0     1     1     1     2     2     0     0     0;
-                         1     1     0     1     1     2     2     0     0     0;
+                         1     1     1     1     1     2     2     0     0     0;
                          1     0     1     0     1     2     1     0     0     0; % Dot: skip PC block
-                         1     0     1     0     1     1     1     1     0     1;
+                         1     0     1     0     1     2     1     1     0     1;
                          1     1     0     1     2     2     1     1     0     1];
                      
     %                   fix    cd   scc   pc    wm    ltm   img   what where  how
     ses_blocks(:,:,18) =[1     0     1     1     1     2     2     0     0     0;
-                         1     1     0     1     1     2     2     0     0     0;
+                         1     1     1     1     1     2     2     0     0     0;
                          1     0     1     0     1     2     1     0     0     0; % Dot: skip PC block
-                         1     0     1     0     1     1     1     1     0     1;
+                         1     0     1     0     1     2     1     1     0     1;
                          1     1     0     1     2     2     1     1     0     1];                     
     %                   fix    cd   scc   pc    wm    ltm   img   what where  how
     ses_blocks(:,:,19) =[1     0     1     1     1     2     2     0     0     0;
-                         1     1     0     1     1     2     2     0     0     0;
+                         1     1     1     1     1     2     2     0     0     0;
                          1     0     1     0     1     2     1     0     0     0; % Dot: skip PC block
-                         1     0     1     0     1     1     1     1     0     1;
+                         1     0     1     0     1     2     1     1     0     1;
                          1     1     0     1     2     2     1     1     0     1];
                      
     %                   fix    cd   scc   pc    wm    ltm   img   what where  how
     ses_blocks(:,:,20) =[1     0     1     1     1     2     2     0     0     0;
-                         1     1     0     1     1     2     2     0     0     0;
+                         1     1     1     1     1     2     2     0     0     0;
                          1     0     1     0     1     2     1     0     0     0; % Dot: skip PC block
-                         1     0     1     0     1     1     1     1     0     1;
+                         1     0     1     0     1     2     1     1     0     1;
                          1     1     0     1     2     2     1     1     0     1];
                      
     %                   fix    cd   scc   pc    wm    ltm   img   what where  how
     ses_blocks(:,:,21) =[1     0     1     1     1     2     2     0     0     0;
-                         1     1     0     1     1     2     2     0     0     0;
+                         1     1     1     1     1     2     2     0     0     0;
                          1     0     1     0     1     2     1     0     0     0; % Dot: skip PC block
-                         1     0     1     0     1     1     1     1     0     1;
+                         1     0     1     0     1     2     1     1     0     1;
                          1     1     0     1     2     2     1     1     0     1];                     
     %                   fix    cd   scc   pc    wm    ltm   img   what where  how
     ses_blocks(:,:,22) =[1     0     1     1     1     2     2     0     0     0;
-                         1     1     0     1     1     2     2     0     0     0;
+                         1     1     1     1     1     2     2     0     0     0;
                          1     0     1     0     1     2     1     0     0     0; % Dot: skip PC block
-                         1     0     1     0     1     1     1     1     0     1;
+                         1     0     1     0     1     2     1     1     0     1;
                          1     1     0     1     2     2     1     1     0     1];
                      
     %                   fix    cd   scc   pc    wm    ltm   img   what where  how
     ses_blocks(:,:,23) =[1     0     1     1     1     2     2     0     0     0;
-                         1     1     0     1     1     2     2     0     0     0;
+                         1     1     1     1     1     2     2     0     0     0;
                          1     0     1     0     1     2     1     0     0     0; % Dot: skip PC block
-                         1     0     1     0     1     1     1     1     0     1;
+                         1     0     1     0     1     2     1     1     0     1;
                          1     1     0     1     2     2     1     1     0     1];
                      
     %                   fix    cd   scc   pc    wm    ltm   img   what where  how
     ses_blocks(:,:,24) =[1     0     1     1     1     2     2     0     0     0;
-                         1     1     0     1     1     2     2     0     0     0;
+                         1     1     1     1     1     2     2     0     0     0;
                          1     0     1     0     1     2     1     0     0     0; % Dot: skip PC block
-                         1     0     1     0     1     1     1     1     0     1;
+                         1     0     1     0     1     2     1     1     0     1;
                          1     1     0     1     2     2     1     1     0     1];                     
 
     exp_session.ses_blocks = ses_blocks;
@@ -410,6 +433,10 @@ else
     scc_duplicates = find(~cellfun(@isempty, strfind(exp_session.stimTaskLabels,'scc-all')));
     exp_session.stimTaskLabels(scc_duplicates(2:end)) = [];
 
+    % Remove scc duplicate stim task label
+    ltm_duplicates = find(~cellfun(@isempty, strfind(exp_session.stimTaskLabels,'ltm-all')));
+    exp_session.stimTaskLabels(ltm_duplicates(2:end)) = [];
+    
     if store_params
         fprintf('[%s]:Storing session data..\n',mfilename)
         saveDir = fullfile(vcd_rootPath,'workspaces','info');
