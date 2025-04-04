@@ -1,4 +1,4 @@
-function conds_master_reordered = vcd_mergeUniqueImageIntoTrials(conds_master)
+function conds_master_reordered_merged = vcd_mergeUniqueImageIntoTrials(conds_master)
 % VCD function to merge unique images into stimulus epochs where there is a
 % left and right parafoveal stimulus, and add cuing direction column to
 % condition master table.
@@ -28,7 +28,6 @@ function conds_master_reordered = vcd_mergeUniqueImageIntoTrials(conds_master)
 % Find stim locations (left or right)
 left_stim  = find(conds_master.stimloc==1);
 right_stim = find(conds_master.stimloc==2);
-n_unique_cases = numel(unique(conds_master.unique_im_nr));
 
 % Ensure we have equal left and right stim
 assert(length(left_stim)==length(right_stim))
@@ -143,168 +142,80 @@ conds_master_reordered = conds_master(trial_vec_i,:);
 conds_master_reordered.unique_trial_nr = trial_vec;
 conds_master_reordered.thickening_dir = thickening_dir;
 
+
+% copy condition order table headers and scrub content
+sz = [sum(conds_master_reordered.stimloc==3) + sum(sum(conds_master_reordered.stimloc==[1,2],2))/2, size(conds_master_reordered,2)];
+conds_master_reordered_merged = vcd_preallocateNaNTable(sz(1), sz(2), conds_master_reordered(1,:), 2);
+varTypes = varfun(@class,conds_master_reordered(1,:),'OutputFormat','cell');
+
+
+% Loop over columns
+for vt = 1:sz(2)
+    % Reset trial nr (what row are we allocating)
+    trial_nr = 1;
+    
+    % Merge left/right for each trial
+    for tt = 1:sz(1)
+
+        if conds_master_reordered.stimloc == 3
+            if strcmp(varTypes(vt),'double')
+                conds_master_reordered_merged.(conds_master_reordered.Properties.VariableNames{vt})(tt,:) = ...
+                    [table2array(conds_master_reordered(trial_nr,vt)), NaN];
+            elseif strcmp(varTypes(vt),'cell')
+                conds_master_reordered_merged.(conds_master_reordered.Properties.VariableNames{vt})(tt,:) = ...
+                    [{table2array(conds_master_reordered(trial_nr,vt))}, {NaN}];
+            end
+            trial_nr = trial_nr + 1;
+            
+        else
+            if strcmp(varTypes(vt),'double')
+                conds_master_reordered_merged.(conds_master_reordered.Properties.VariableNames{vt})(tt,:) = ...
+                    [table2array(conds_master_reordered(trial_nr,vt)), table2array(conds_master_reordered(trial_nr+1,vt))];
+            elseif strcmp(varTypes(vt),'cell')
+                conds_master_reordered_merged.(conds_master_reordered.Properties.VariableNames{vt})(tt,:) = ...
+                    [table2cell(conds_master_reordered(trial_nr,vt)), table2cell(conds_master_reordered(trial_nr+1,vt))];
+            end
+            
+            trial_nr = trial_nr + 2;
+        end
+    end
 end
 
 
-%     
-%     for tt = 1:2:length(trial_vec)
-%         curr_trial = trial_vec(tt);
-%         
-%         if curr_trial == 1 % if first trial
-%             leading_im = 1; % just pick the first one from the list of unique images
-%         else
-%             [leading_im,leading_im_i] = min([left_stim(1),right_stim(1)]); % or the first one that comes next
-%         end
-%         
-%         if conds_master(leading_im,2) == 1 % if leading unique stim happens on the left
-%             trial_vec_i(curr_trial,1) = leading_im; % set it left
-%             assert(leading_im==left_stim(1))
-%             left_stim(1) = [];
-%         elseif conds_master(leading_im,2) == 2 % if leading unique  stim happens on the right
-%             trial_vec_i(curr_trial,2) = leading_im; % set right
-%             assert(leading_im==right_stim(1))
-%             right_stim(1) = [];
-%         end
-%         
-%         trial_im = trial_vec_i(curr_trial,:);
-%         defined_side = ~isnan(trial_vec_i(curr_trial,:));
-%         side_to_fill = isnan(trial_vec_i(curr_trial,:));
-%         
-%         if conds_master(trial_im(defined_side),2) == 1 % if stim is on the left
-%             
-%             if conds_master(trial_im(defined_side),3) == 1 % and if stim is cued
-%                 thickening_dir(tt) = 1; % left
-%                 
-%                 counter = 1;
-%                 while 1
-%                     
-%                     % then we want a right stim, that is uncued
-%                     tmp = right_stim(counter);
-%                     
-%                     if conds_master(tmp,3) == 0
-%                         trial_vec_i(curr_trial,find(side_to_fill)) = tmp;
-%                         right_stim(counter) = [];
-%                         break;
-%                     else
-%                         counter = counter+1;
-%                     end
-%                 end
-%                 
-%             elseif conds_master(trial_im(defined_side),3) == 0 %  if stim is uncued
-%                 thickening_dir(tt) = 2; % If stim is uncued, the opposite rim side thickens (here right)
-%                 
-%                 counter = 1;
-%                 while 1
-%                     
-%                     % then we want a right stim, that is cued
-%                     tmp = right_stim(counter);
-%                     
-%                     if conds_master(tmp,3) == 1
-%                         trial_vec_i(curr_trial,find(side_to_fill)) = tmp;
-%                         right_stim(counter) = [];
-%                         break;
-%                     else
-%                         counter = counter+1;
-%                     end
-%                 end
-%                 
-%             end
-%             
-%         elseif conds_master(trial_im(defined_side),2) == 2 % if stim is on the right
-%             
-%             if conds_master(trial_im(defined_side),3) == 1 % and if stim is cued
-%                 thickening_dir(tt) = 2; % right
-%                 
-%                 counter = 1;
-%                 while 1
-%                     
-%                     % then we want a left stim, that is uncued
-%                     tmp = left_stim(counter);
-%                     
-%                     if conds_master(tmp,3) == 0 % if considered stim is uncued
-%                         trial_vec_i(curr_trial,find(side_to_fill)) = tmp; % then we pair it
-%                         left_stim(counter) = []; % and remove it from the list
-%                         break;
-%                     else
-%                         counter = counter+1; % otherwise we go to the next
-%                     end
-%                 end
-%                 
-%             elseif conds_master(trial_im(defined_side),3) == 0 %  if stim is uncued
-%                 thickening_dir(tt) = 1; % left
-%                 
-%                 counter = 1;
-%                 while 1
-%                     
-%                     % then we want a right stim, that is cued
-%                     tmp = left_stim(counter);
-%                     
-%                     if conds_master(tmp,3) == 1 % if  considered stim is cued
-%                         trial_vec_i(curr_trial,find(side_to_fill)) = tmp;
-%                         left_stim(counter) = [];
-%                         break;
-%                     else % if not cued, let's look at the next stim
-%                         counter = counter+1;
-%                     end
-%                 end
-%                 
-%             end
-%             
-%         end
-%         thickening_dir(tt+1) = thickening_dir(tt); % copy for completeness
-%     end
-%     clear counter
-%     
-% elseif fix_task_flag
-%     thickening_dir = 3.*ones(size(trial_vec))'; % we thicken at both sides
-% 
-%     for tt = 1:2:length(trial_vec)
-%         counter = 1;
-%         curr_trial = trial_vec(tt);
-%         
-%         if curr_trial == 1 % if first trial
-%             leading_im = 1; % just pick the first one from the list of unique images
-%         else
-%             [leading_im,leading_im_i] = min([left_stim(1),right_stim(1)]); % or the first one that comes next
-%         end
-%         
-%         if conds_master(leading_im,2) == 1 % if leading unique stim happens on the left
-%             trial_vec_i(curr_trial,1) = leading_im; % set it left
-%             assert(leading_im==left_stim(1))
-%             left_stim(1) = [];
-%             
-%         elseif conds_master(leading_im,2) == 2 % if leading unique  stim happens on the right
-%             trial_vec_i(curr_trial,2) = leading_im; % set right
-%             assert(leading_im==right_stim(1))
-%             right_stim(1) = [];
-%             
-%         end
-%         
-%         trial_im = trial_vec_i(curr_trial,:);
-%         defined_side = ~isnan(trial_vec_i(curr_trial,:));
-%         side_to_fill = isnan(trial_vec_i(curr_trial,:));
-%         
-%         if conds_master(trial_im(defined_side),2) == 1 % if stim is on the left
-%             
-%             % then we want a right stim, that is uncued
-%             trial_vec_i(curr_trial,find(side_to_fill))  = right_stim(counter);
-%             right_stim(counter) = [];
-%             
-%         elseif conds_master(trial_im(defined_side),2) == 2 % if stim is on the right
-%             
-%             trial_vec_i(curr_trial,find(side_to_fill))  = left_stim(counter);
-%             left_stim(counter) = []; % and remove it from the list
-%             
-%         end
-%     end
-%     clear counter
-%     
-% end
-% 
-% % Check if we used all stimuli
-% assert(isempty(left_stim));
-% assert(isempty(right_stim));
+% Randomize catch trial loc
+sz = size(conds_master_reordered_merged);
+catch_trials = find(conds_master_reordered_merged.iscatch(:,1)==true);
+if ~isempty(catch_trials)
+    
+    while 1
+        shuffle_trial_idx = randi(size(conds_master_reordered_merged,1),length(catch_trials));
+        if shuffle_trial_idx ~= catch_trials
+            break;
+        end
+    end
+    
+    for cc = 1:length(shuffle_trial_idx) % 11
+        tmp = conds_master_reordered_merged;
+            
+        curr_catch_trial   = tmp(catch_trials(cc),:);  % 13 (will become 6)
+        
+        if shuffle_trial_idx(cc) < catch_trials(cc)
+            conds_shuffle1_pre1  = tmp(1:(shuffle_trial_idx(cc)-1),:);  % 1-5 
+            conds_shuffle1_post1 = tmp(shuffle_trial_idx(cc):(catch_trials(cc)-1),:); % 6-12
+            conds_shuffle1_post2 = tmp((catch_trials(cc)+1):end,:); %post catch trial -end
 
+           conds_master_reordered_merged = cat(1,conds_shuffle1_pre1,curr_catch_trial,conds_shuffle1_post1,conds_shuffle1_post2);
 
+        elseif shuffle_trial_idx(cc) > catch_trials(cc)
+            conds_shuffle1_pre1   = tmp(1:(catch_trials(cc)-1),:);  % 1-12
+            conds_shuffle1_pre2   = tmp((catch_trials(cc)+1):shuffle_trial_idx(cc),:);
+            conds_shuffle1_post1  = tmp((shuffle_trial_idx(cc)+1):end,:); %14-end
+            conds_master_reordered_merged = cat(1,conds_shuffle1_pre1,conds_shuffle1_pre2,curr_catch_trial,conds_shuffle1_post1);
+        end
+        
+        
+    end
+    assert(isequal(size(conds_master_reordered_merged),sz))
+end
 
 

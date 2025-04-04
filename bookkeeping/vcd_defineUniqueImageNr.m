@@ -70,9 +70,9 @@ function [t,unique_im,n_unique_cases] = vcd_defineUniqueImageNr(p, stimClass)
 %                   object > food: 'pizza','banana'
 %                   object > vehicle: 'bus','suv'
 %                   place > building: 'church','house','watertower'
-% where 2 canonical view facing directions (±34 degrees from facing you)
-% and 2 stimulus location (left/right) are evenly distributed amongst the 
-% 16 complex objects.
+% where objects facing direction (10-170 degrees, where 90 deg is facing
+% you and 0 and 180 deg are sideways) and 2 stimulus location (left/right)
+% are evenly distributed amongst the 16 complex objects.
 %
 % -- 30 natural scenes --
 %  5 superordinate category: (Priority 1)
@@ -269,7 +269,7 @@ switch stimClass
         % are repeated and cross-combined
         stimloc_vec      = repmat(loc_stim,         n_unique_cases/n_stim_loc, 1);
         stimloc_name_vec = repmat({'left','right'}, n_unique_cases/n_stim_loc, 1);
-        facing_dir_vec   = p.stim.obj.facing_dir_deg;
+        facing_dir_vec   = shuffle_concat(p.stim.obj.facing_dir_deg,1);
         
         % flatten and transpose
         stimloc_vec = stimloc_vec(:)';

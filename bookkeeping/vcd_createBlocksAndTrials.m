@@ -144,17 +144,11 @@ else % Recreate conditions and blocks and trials
             t_cond.task_class_name = repmat({taskClass_name},size(t_cond,1),1);
             t_cond.task_class      = repmat(task_crossings(curr_task),size(t_cond,1),1);
             
-            % Is this a fixation task? if so, we need to double nr
-            % of unique trials
-            use_fix_flag = strcmp(taskClass_name,'fix');
-            
             % Get the number of trials and blocks, which depend on task
             if p.exp.trial.single_epoch_tasks(task_crossings(curr_task))
                 n_trials_per_block    = p.exp.block.n_trials_single_epoch;
-                n_blocks_per_task = ceil(n_unique_cases/n_trials_per_block);
             else
                 n_trials_per_block    = p.exp.block.n_trials_double_epoch;
-                n_blocks_per_task = ceil(n_unique_cases/n_trials_per_block);
             end
             
             %% ---- IMPORTANT FUNCTION: Create condition master table ---- %%
@@ -166,37 +160,19 @@ else % Recreate conditions and blocks and trials
             tbl = vcd_createConditionMaster(p, t_cond, n_trials_per_block);
             
             %% --- Allocate trials to blocks ---
-            if unique(tbl.stim_class)<5
-                block_trials = reshape(1:2:size(tbl,1),n_trials_per_block,[]);
+            block_trials = reshape(1:size(tbl,1),n_trials_per_block,[]);
             
-                % preallocate space
-                tbl.stim_class_unique_block_nr = NaN(size(tbl,1),1);
-                tbl.block_local_trial_nr = NaN(size(tbl,1),1);
+            tbl.stim_class_unique_block_nr = NaN(size(tbl,1),1);
+            tbl.block_local_trial_nr = NaN(size(tbl,1),1);
             
-                % assign block nr
-                for mm = 1:size(block_trials,2)
-                    selected_trials = block_trials(:,mm);
-
-                        tbl.stim_class_unique_block_nr(selected_trials)   = mm;
-                        tbl.stim_class_unique_block_nr(selected_trials+1) = mm;
-                        tbl.block_local_trial_nr(selected_trials) = 1:length(selected_trials);
-                        tbl.block_local_trial_nr(selected_trials+1) = 1:length(selected_trials);
-                end
-            else
-                 block_trials = reshape(1:size(tbl,1),n_trials_per_block,[]);
-                 
-                 tbl.stim_class_unique_block_nr = NaN(size(tbl,1),1);
-                 tbl.block_local_trial_nr = NaN(size(tbl,1),1);
-                 
-                 % assign block nr
-                 for mm = 1:size(block_trials,2)
-                     selected_trials = block_trials(:,mm);
-                     
-                     tbl.stim_class_unique_block_nr(selected_trials)   = mm;
-                     tbl.block_local_trial_nr(selected_trials) = 1:length(selected_trials);
-                 end
+            % assign block nr
+            for mm = 1:size(block_trials,2)
+                selected_trials = block_trials(:,mm);
+                
+                tbl.stim_class_unique_block_nr(selected_trials)   = mm;
+                tbl.block_local_trial_nr(selected_trials) = 1:length(selected_trials);
             end
-            
+
             % Concatete single stim-task crossing table to master table
             stim_table = cat(1,stim_table,tbl);
             
@@ -211,8 +187,9 @@ else % Recreate conditions and blocks and trials
     
     %% ---- IMPORTANT FUNCTION: Shuffle stimuli for SCC task ----
     condition_master = vcd_shuffleStimForSCC(condition_master, p.exp.block.n_trials_single_epoch);
-    
-    
+%     
+%     condition_master = vcd_shuffleStimForLTM(condition_master, p.exp.block.n_trials_double_epoch);
+
     
     %% Store structs if requested
     if p.store_params

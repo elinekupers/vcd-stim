@@ -153,10 +153,19 @@ for ses = 1:p.exp.n_sessions
     [unique_blocks, ia] = unique(ses_blocks);
     unique_trialtypes = ses_trialtype(ia);
     
+    n_type1 = sum(unique_trialtypes==1);
+    n_type2 = sum(unique_trialtypes==2);
+    
     assert(isequal(unique_blocks,[1:length(unique_blocks)]'))
-    assert(isequal(length(unique_blocks),p.exp.n_runs_per_session*p.exp.run.blocks_per_run))
+    assert(isequal(length(unique_blocks), sum([p.exp.session.nr_of_type1_runs(ses),p.exp.session.nr_of_type2_runs(ses),p.exp.session.nr_of_type3_runs(ses)].* p.exp.run.blocks_per_run)))
+    assert(isequal(n_type2 , p.exp.session.nr_of_type2_runs(ses) * p.exp.run.n_double_epoch_blocks(2)))
+    assert(isequal(n_type1 , p.exp.session.nr_of_type2_runs(ses) * p.exp.run.n_single_epoch_blocks(2) + p.exp.session.nr_of_type1_runs(ses) * p.exp.run.n_single_epoch_blocks(1)))
+    
+    runs_to_fill = [ones(1, p.exp.session.nr_of_type1_runs(ses)), 2*ones(1,p.exp.session.nr_of_type2_runs(ses)),3*ones(1,p.exp.session.nr_of_type3_runs(ses))];
     
     while 1
+        curr_run_type1 = []; curr_run_type2 = [];
+        all_runs = {};
         run_ok = 0;
         run_not_ok = false;
 
@@ -165,30 +174,43 @@ for ses = 1:p.exp.n_sessions
         
         unique_blocks_rnd = unique_blocks(shuffle_idx);
         unique_trialtypes_rnd = unique_trialtypes(shuffle_idx);
-        
+
         % reshape blocks into runs
         rz_ses_blocks1 = reshape(unique_blocks_rnd, p.exp.run.blocks_per_run, []);
         rz_ses_blocks2 = reshape(unique_trialtypes_rnd, p.exp.run.blocks_per_run, []);
         
+        % EK START HERE
         % Double check if we have at least two double-epoch trial types per run
-        for jj = 1:size(rz_ses_blocks2,2)
-                if sum(rz_ses_blocks2(:,jj)==2)>2
-                    run_not_ok = true;
-                else
-                    run_ok = run_ok + 1;
-                end
-
-                if run_not_ok
-                    break;
-                end
+        for jj = 1:length(unique_blocks_rnd)
+            
+            if unique_trialtypes_rnd(jj)==1 % single-stim block
+                curr_run_type1 = cat(2,curr_run_type1,unique_blocks_rnd(jj));
+            
+            elseif unique_trialtypes_rnd(jj)==2 % double-stim block   
+                curr_run_type2 = cat(2,curr_run_type2,unique_blocks_rnd(jj));
+            end
+            
+            if length(curr_run_type1)==p.exp.run.n_single_epoch_blocks(1)
+                all_runs = cat(2, all_runs, {curr_run_type1});
+                curr_run_type1 = [];
+            end
+            
+            if length(curr_run_type2)==(p.exp.run.n_single_epoch_blocks(1)+p.exp.run.n_double_epoch_blocks(2))
+                all_runs = cat(2, all_runs, {curr_run_type2});
+                curr_run_type2 = [];
+            end
+            
+            
+            
+            if run_not_ok
+                break;
+            end
         end
-        if run_ok == p.exp.n_runs_per_session
+        if sort(run_counter) == runs_to_fill
             break;
         end
     end
         
-    assert(sum(sum(rz_ses_blocks2==2,1)>0) >= (size(rz_ses_blocks2,2)-2))
-
 
     
     for run_idx = 1:size(rz_ses_blocks1,2)

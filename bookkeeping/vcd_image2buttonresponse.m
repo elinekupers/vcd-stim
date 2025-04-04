@@ -1,4 +1,4 @@
-function button_response = vcd_image2buttonresponse(table_row)
+function button_response = vcd_image2buttonresponse(params, table_row)
 
 
 switch table_row.block_name{:}
@@ -18,7 +18,7 @@ switch table_row.block_name{:}
         % 3-RING   = MOVING DOTS
         % 4-PINKY  = OBJECT
 
-        button_response = strcmp(table_row.stim_class_name(table_row.thickening_dir),{'gabor','dot','rdk','object'});
+        button_response = strcmp(table_row.stim_class_name(table_row.thickening_dir(1)),{'gabor','dot','rdk','object'});
             
     case {'pc-gabor' }
         %         Tilt task - Gabors
@@ -30,7 +30,7 @@ switch table_row.block_name{:}
         answer_options = NaN(1,length(params.stim.gabor.ori_deg));
         answer_options(idx(1:4)) = 1; % closer to horizontal
         answer_options(idx(5:end)) = 2; % closer to vertical
-        button_response = answer_options(table_row.orient_dir(table_row.thickening_dir)==params.stim.gabor.ori_deg);
+        button_response = answer_options(table_row.orient_dir(table_row.thickening_dir(1))==params.stim.gabor.ori_deg);
         
     case {'wm-gabor' }
         %         Tilt memory task - Gabors
@@ -39,9 +39,9 @@ switch table_row.block_name{:}
         % 
         % 1-INDEX  = CCW
         % 2-MIDDLE = CW
-        if table_row.stim2_delta(table_row.thickening_dir) < 0
+        if table_row.stim2_delta(table_row.thickening_dir(1)) < 0
             button_response = 1; % CCW
-        elseif table_row.stim2_delta(table_row.thickening_dir) > 0
+        elseif table_row.stim2_delta(table_row.thickening_dir(1)) > 0
             button_response = 2; % CW
         end
         
@@ -52,8 +52,8 @@ switch table_row.block_name{:}
         % 
         % 1-INDEX  = YES
         % 2-MIDDLE = NO
-        if table_row.thickening_dir <= 2
-            idx = table_row.thickening_dir;
+        if table_row.thickening_dir(1) <= 2
+            idx = table_row.thickening_dir(1);
         else
             idx = 1; % center scene stimulus
         end
@@ -86,7 +86,7 @@ switch table_row.block_name{:}
         answer_options = NaN(1,length(params.stim.rdk.dots_direction));
         answer_options(idx(1:4)) = 1; % closer to horizontal
         answer_options(idx(5:end)) = 2; % closer to vertical
-        button_response = answer_options(table_row.orient_dir(table_row.thickening_dir)==params.stim.rdk.dots_direction);
+        button_response = answer_options(table_row.orient_dir(table_row.thickening_dir(1))==params.stim.rdk.dots_direction);
         
     case {'wm-rdk'   }
         %         Motion direction memory task - Moving dots
@@ -95,9 +95,9 @@ switch table_row.block_name{:}
         % 
         % 1-INDEX  = CCW
         % 2-MIDDLE = CW
-        if table_row.stim2_delta(table_row.thickening_dir) < 0
+        if table_row.stim2_delta(table_row.thickening_dir(1)) < 0
             button_response = 1; % CCW
-        elseif table_row.stim2_delta(table_row.thickening_dir) > 0
+        elseif table_row.stim2_delta(table_row.thickening_dir(1)) > 0
             button_response = 2; % CW
         end
 
@@ -111,7 +111,7 @@ switch table_row.block_name{:}
         answer_options = NaN(1,length(params.stim.dot.ang_deg));
         answer_options(idx(1:4)) = 1; % closer to horizontal
         answer_options(idx(5:end)) = 2; % closer to vertical
-        button_response = answer_options(table_row.orient_dir(table_row.thickening_dir)==params.stim.dot.ang_deg);
+        button_response = answer_options(table_row.orient_dir(table_row.thickening_dir(1))==params.stim.dot.ang_deg);
         
     case {'wm-dot'   }
         %         Position memory task - Single dots
@@ -120,9 +120,9 @@ switch table_row.block_name{:}
         % 
         % 1-INDEX  = CCW
         % 2-MIDDLE = CW
-        if table_row.stim2_delta(table_row.thickening_dir) < 0
+        if table_row.stim2_delta(table_row.thickening_dir(1)) < 0
             button_response = 1; % CCW
-        elseif table_row.stim2_delta(table_row.thickening_dir) > 0
+        elseif table_row.stim2_delta(table_row.thickening_dir(1)) > 0
             button_response = 2; % CW
         end
 
@@ -132,11 +132,15 @@ switch table_row.block_name{:}
         % 
         % 1-INDEX  = FORWARD
         % 2-MIDDLE = SIDEWAYS
-        [~,idx] = sort(abs(params.stim.obj.facing_dir_deg-90));
+        if table_row.orient_dir(table_row.thickening_dir(1)) < 180 
+            [~,idx] = sort(abs(params.stim.obj.facing_dir_deg(1:4)-90));
+        elseif table_row.orient_dir(table_row.thickening_dir(1)) > 180 
+            [~,idx] = sort(abs(params.stim.obj.facing_dir_deg(5:8)-270));
+        end
         answer_options = NaN(1,length(params.stim.obj.facing_dir_deg));
         answer_options(idx(1:4)) = 1; % closer to horizontal
         answer_options(idx(5:end)) = 2; % closer to vertical
-        button_response = answer_options(table_row.orient_dir(table_row.thickening_dir)==params.stim.obj.facing_dir_deg);
+        button_response = answer_options(table_row.orient_dir(table_row.thickening_dir(1))==params.stim.obj.facing_dir_deg);
         
     case {'wm-obj'   }
         %         Rotation memory task - Objects
@@ -145,9 +149,9 @@ switch table_row.block_name{:}
         % 
         % 1-INDEX  = LEFTWARDS
         % 2-MIDDLE = RIGHTWARDS
-        if table_row.stim2_delta(table_row.thickening_dir) < 0
+        if table_row.stim2_delta(table_row.thickening_dir(1)) < 0
             button_response = 1; % LEFTWARDS
-        elseif table_row.stim2_delta(table_row.thickening_dir) > 0
+        elseif table_row.stim2_delta(table_row.thickening_dir(1)) > 0
             button_response = 2; % RIGHTWARDS
         end
         
@@ -159,15 +163,15 @@ switch table_row.block_name{:}
         % 2-MIDDLE = OBJECT
         % 3-RING   = FOOD
         % 4-PINKY  = PLACE/BUILDING
-        if strcmp(table_row.super_cat_name(table_row.thickening_dir),params.stim.obj.super_cat{1,2})
+        if strcmp(table_row.super_cat_name(table_row.thickening_dir(1)),params.stim.obj.super_cat{1,2})
             button_response = 1; %  HUMAN/ANIMAL
-        elseif strcmp(table_row.super_cat_name(table_row.thickening_dir),params.stim.obj.super_cat{3})
-            if strcmp(table_row.basic_cat_name(table_row.thickening_dir),'food')
+        elseif strcmp(table_row.super_cat_name(table_row.thickening_dir(1)),params.stim.obj.super_cat{3})
+            if strcmp(table_row.basic_cat_name(table_row.thickening_dir(1)),'food')
                 button_response = 3; %  FOOD
             else
                 button_response = 2; %  OBJECT
             end
-        elseif strcmp(table_row.super_cat_name(table_row.thickening_dir),params.stim.obj.super_cat{4})
+        elseif strcmp(table_row.super_cat_name(table_row.thickening_dir(1)),params.stim.obj.super_cat{4})
             button_response = 4; % PLACE/BUILDING
         end
 
@@ -180,8 +184,8 @@ switch table_row.block_name{:}
         % 3-RING   = ENTER
         % 4-PINKY  = OBSERVE/DO NOTHING
         curr_affordance = params.stim.obj.affordance( ...
-            strcmp(table_row.super_cat(table_row.thickening_dir)), ...
-            strcmp(table_row.super_sub(table_row.thickening_dir)));
+            strcmp(table_row.super_cat(table_row.thickening_dir(1))), ...
+            strcmp(table_row.super_sub(table_row.thickening_dir(1))));
         if strcmp(curr_affordance,'greet')
             button_response = 1;
         elseif strcmp(curr_affordance,'grasp')

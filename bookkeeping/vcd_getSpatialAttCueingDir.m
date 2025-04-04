@@ -14,6 +14,7 @@ n_stimloc_cues = length(stimloc_cues);
 if strcmp(taskClass{:},'fix')
     % we don't have spatial cues in fixation condition
     cue_vec = repmat(stimloc_cues,size(conds_shuffle0,1),1);
+    
 else
     
     if loc == 1 % left stim
