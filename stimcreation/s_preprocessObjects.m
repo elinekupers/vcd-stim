@@ -45,7 +45,7 @@ numrot = 91; %22;        % number of image viewpoints
 numobj = 16;        % number of objects
 targetsize  = 354;   % number of pixels for one side of conformed square
 targetmnlum = 0.5;  % desired mn-luminance for grand average of one object's viewpoints
-targetsdlum = 0.06; % 0.03; % desired sd-luminance for grand average of one object's viewpoints
+targetsdlum = 0.03; % 0.03; % desired sd-luminance for grand average of one object's viewpoints
 squaresizes = 2:2:1000;  % square sizes (in pixels for one side) to evaluate
 squarethresh = .9;  % square size is chosen that includes at least 90% of the mass (of the mean mask)
 % figuredir = '/var/fairstate-ext2/GoogleDrive/VCD/experimental_design/stimuli/workspaces/complex_objects/tryD_targetsdlum_0pt03';  % where diagnostic figures are written
@@ -63,7 +63,7 @@ assert(length(files0)==numrot*numobj);
 %   (alpha: convert to double. becomes 0-255.)
 allimages = zeros(1024,1024,length(files0));
 allalphas = zeros(1024,1024,length(files0));
-for p=1:length(files0),
+for p=1:length(files0), p
   [im0,~,alpha0] = imread(files0{p});
   allimages(:,:,p) = double(rgb2gray(im0));
   allalphas(:,:,p) = double(alpha0);
@@ -143,7 +143,7 @@ for zz=1:numobj
   assert(allzero(flatten(als([1 end],:,yy))));
   assert(allzero(flatten(als(:,[1 end],yy))));
   
-  %% DEAL WITH MEAN AND SD OF LUMINANCE
+ %% DEAL WITH MEAN AND SD OF LUMINANCE
   
   % compute mean of each image (within the alpha mask)
   mns = [];
@@ -172,6 +172,9 @@ for zz=1:numobj
 
   end
 
+  % figure out initial guess for adjustment factor for std
+  SC(zz) = targetsdlum / mean(sds);  % what scale to apply to ensure grand mean of std-luminance meets the target
+  
   % figure out initial guess for adjustment factor for std
   SC(zz) = targetsdlum / mean(sds);  % what scale to apply to ensure grand mean of std-luminance meets the target
   
@@ -204,7 +207,7 @@ for zz=1:numobj
     % compute empirical std devs
     imtemp = allimages2(:,:,(zz-1)*numrot + (1:numrot));
     altemp = allalphas2(:,:,(zz-1)*numrot + (1:numrot));
-    temp = ((double(imtemp)-1)/254).^2 .* double(altemp)/255 + targetmnlum * (1-double(altemp)/255);
+    temp = ((double(imtemp)-1)/254) .* double(altemp)/255 + targetmnlum * (1-double(altemp)/255);  % NOTE that uint8 is already luminance (no squaring necessary)!
     estds = std(squish(temp,2),[],1);
     
     % if mean is within 1% of targetsdlum, we are done
@@ -213,8 +216,8 @@ for zz=1:numobj
     end
 
     % if we are off, apply guess for the update
-    fprintf('**** file %d: target lum = %1.4f, est mn sd %1.4f ****\n',zz,targetsdlum,mean(estds));
     SC(zz) = SC(zz) * (targetsdlum / mean(estds));
+    fprintf('**** ANOTHER (%d): sd lum target %1.3f vs mn empirical: %1.4f. SC(zz) is %.4f ****\n',zz, targetsdlum, mean(estds), SC(zz));
 
   end
 
@@ -247,7 +250,7 @@ plot(validpct,'r.-');
 figurewrite('validpct',[],[],figuredir);
 
 % visualize
-temp = ((double(allimages2)-1)/254).^2 .* double(allalphas2)/255 + targetmnlum * (1-double(allalphas2)/255);
+temp = ((double(allimages2)-1)/254) .* double(allalphas2)/255 + targetmnlum * (1-double(allalphas2)/255);  % NOTE that uint8 is already luminance (no squaring necessary)!
 emeans = mean(squish(temp,2),1);
 estds = std(squish(temp,2),[],1);
 figureprep([100 100 800 400]);
