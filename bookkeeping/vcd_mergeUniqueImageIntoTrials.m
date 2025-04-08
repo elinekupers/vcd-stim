@@ -50,12 +50,17 @@ if ~strcmp(unique(conds_master.task_class_name),{'fix'})
     left_uncued  = find((conds_master.iscued == 0) & (conds_master.stimloc == 1));
     right_cued   = find((conds_master.iscued == 1) & (conds_master.stimloc == 2));
     right_uncued = find((conds_master.iscued == 0) & (conds_master.stimloc == 2));
+    cuing_conditions = [ones(1,length(left_cued)), 2.*ones(1,length(left_uncued)), ... 
+                        3.*ones(1,length(right_cued)), 4.*ones(1,length(right_uncued))];
+    cond_idx = shuffle_concat([1:nr_cueing_conds],size(trial_vec_i,1)/nr_cueing_conds);
     
-    cond_idx = shuffle_concat([1:nr_cueing_conds],size(trial_vec_i,1)/nr_cueing_conds);  
-    
+    if length(cond_idx) < length(cuing_conditions)
+        cond_idx = cat(2,cond_idx, shuffle_concat(1:diff([length(cond_idx),size(trial_vec_i,1)]),1));
+    end
     
     for ii = 1:size(trial_vec_i,1)
 
+            
         if cond_idx(ii) == 1 % left cued;
             leading_cue_status  = 1; 
             leading_stim_loc    = 1;
@@ -107,7 +112,7 @@ if ~strcmp(unique(conds_master.task_class_name),{'fix'})
             right_uncued(1) = [];
             
         elseif leading_cue_status == 0 || isnan(leading_cue_status)
-            thickening_dir(th_count) = 3;  % both sides thickening
+            thickening_dir(th_count)   = 3;  % both sides thickening
             thickening_dir(th_count+1) = 3;  % both sides thickening
         end
         th_count = th_count +2;
@@ -142,6 +147,8 @@ conds_master_reordered = conds_master(trial_vec_i,:);
 conds_master_reordered.unique_trial_nr = trial_vec;
 conds_master_reordered.thickening_dir = thickening_dir;
 
+% check that stim loc is left/right/left/right,etc
+assert(isequal(conds_master_reordered.stimloc,repmat([1;2],size(conds_master_reordered.stimloc,1)/2,1)))
 
 % copy condition order table headers and scrub content
 sz = [sum(conds_master_reordered.stimloc==3) + sum(sum(conds_master_reordered.stimloc==[1,2],2))/2, size(conds_master_reordered,2)];
@@ -151,6 +158,8 @@ varTypes = varfun(@class,conds_master_reordered(1,:),'OutputFormat','cell');
 
 % Loop over columns
 for vt = 1:sz(2)
+    
+    colName =  conds_master_reordered.Properties.VariableNames{vt};
     % Reset trial nr (what row are we allocating)
     trial_nr = 1;
     
@@ -159,20 +168,20 @@ for vt = 1:sz(2)
 
         if conds_master_reordered.stimloc == 3
             if strcmp(varTypes(vt),'double')
-                conds_master_reordered_merged.(conds_master_reordered.Properties.VariableNames{vt})(tt,:) = ...
+                conds_master_reordered_merged.(colName)(tt,:) = ...
                     [table2array(conds_master_reordered(trial_nr,vt)), NaN];
             elseif strcmp(varTypes(vt),'cell')
-                conds_master_reordered_merged.(conds_master_reordered.Properties.VariableNames{vt})(tt,:) = ...
+                conds_master_reordered_merged.(colName)(tt,:) = ...
                     [{table2array(conds_master_reordered(trial_nr,vt))}, {NaN}];
             end
             trial_nr = trial_nr + 1;
             
         else
             if strcmp(varTypes(vt),'double')
-                conds_master_reordered_merged.(conds_master_reordered.Properties.VariableNames{vt})(tt,:) = ...
+                conds_master_reordered_merged.(colName)(tt,:) = ...
                     [table2array(conds_master_reordered(trial_nr,vt)), table2array(conds_master_reordered(trial_nr+1,vt))];
             elseif strcmp(varTypes(vt),'cell')
-                conds_master_reordered_merged.(conds_master_reordered.Properties.VariableNames{vt})(tt,:) = ...
+                conds_master_reordered_merged.(colName)(tt,:) = ...
                     [table2cell(conds_master_reordered(trial_nr,vt)), table2cell(conds_master_reordered(trial_nr+1,vt))];
             end
             
@@ -188,20 +197,23 @@ catch_trials = find(conds_master_reordered_merged.iscatch(:,1)==true);
 if ~isempty(catch_trials)
     
     while 1
-        shuffle_trial_idx = randi(size(conds_master_reordered_merged,1),length(catch_trials));
-        if shuffle_trial_idx ~= catch_trials
+        shuffle_trial_idx = randi(size(conds_master_reordered_merged,1),length(catch_trials)); % get a new trial number
+        if abs(diff(shuffle_trial_idx)) ~= 1
+            break;
+        end
+        if shuffle_trial_idx ~= catch_trials % we don't want to place it back in the same position
             break;
         end
     end
     
     for cc = 1:length(shuffle_trial_idx) % 11
         tmp = conds_master_reordered_merged;
-            
-        curr_catch_trial   = tmp(catch_trials(cc),:);  % 13 (will become 6)
+        % grab catch trial    
+        curr_catch_trial   = tmp(catch_trials(cc),:);  %  13 will become new number, e.g., 6
         
         if shuffle_trial_idx(cc) < catch_trials(cc)
-            conds_shuffle1_pre1  = tmp(1:(shuffle_trial_idx(cc)-1),:);  % 1-5 
-            conds_shuffle1_post1 = tmp(shuffle_trial_idx(cc):(catch_trials(cc)-1),:); % 6-12
+            conds_shuffle1_pre1  = tmp(1:(shuffle_trial_idx(cc)-1),:);  % e.g., 1-5 
+            conds_shuffle1_post1 = tmp(shuffle_trial_idx(cc):(catch_trials(cc)-1),:); % e.g., 6-12
             conds_shuffle1_post2 = tmp((catch_trials(cc)+1):end,:); %post catch trial -end
 
            conds_master_reordered_merged = cat(1,conds_shuffle1_pre1,curr_catch_trial,conds_shuffle1_post1,conds_shuffle1_post2);
@@ -217,5 +229,10 @@ if ~isempty(catch_trials)
     end
     assert(isequal(size(conds_master_reordered_merged),sz))
 end
+
+% update trial nr
+assert(isequal(sort(conds_master_reordered_merged.unique_trial_nr,1), repmat([1:size(conds_master_reordered_merged.unique_trial_nr,1)]',1,2)))
+conds_master_reordered_merged.unique_trial_nr = sort(conds_master_reordered_merged.unique_trial_nr,1);
+
 
 
