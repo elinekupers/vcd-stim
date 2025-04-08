@@ -109,16 +109,15 @@ switch stimClass{:}
             n_cued_stimlocs = length(stimloc_cues);
         end
         
-        % Create pseudorandomized stim loc cuing vector for catch trials.
-        cue_dir_for_catch_trial = shuffle_concat([1,2],p.exp.n_unique_trial_repeats/2);
-               
+
         % loop over repeats of unique trials
         for rep = 1:p.exp.n_unique_trial_repeats
             
             % allocate space for single repetition
-            conds_single_rep = [];
-            cue_vec = []; 
-            im_cue_vec_loc1 = [];
+            conds_single_rep              = [];
+            cue_vec                       = []; 
+            im_cue_vec_loc1               = [];
+            prior_cue_dir_for_catch_trial = [];
             
             % Loop over stimulus locations being cued 
             for loc = 1:n_cued_stimlocs % cued vs uncued
@@ -162,8 +161,26 @@ switch stimClass{:}
                 assert(isequal(sort(reshape(conds_shuffle0.contrast,n_contrasts,[])),repmat(p.stim.gabor.contrast',1,n_ori_bins))); % Check contrast order
                 
                 % Add catch trials
-                conds_shuffle1 = vcd_addCatchTrials(conds_shuffle0, 1, cue_dir_for_catch_trial(rep));
+                if sum(isnan(cue_vec)) == size(conds_shuffle0.stimloc,1)
+                    cue_dir_for_catch_trial = [];
+                elseif sum(conds_shuffle0.stimloc==3)==size(conds_shuffle0.stimloc,1)
+                    cue_dir_for_catch_trial = [];
+                elseif sum(conds_shuffle0.stimloc==1 & conds_shuffle0.iscued==1) > sum(conds_shuffle0.stimloc==2 & conds_shuffle0.iscued==1)  % if we have more lefts than rights
+                    cue_dir_for_catch_trial = 2; % catch trial will cue right
+                elseif sum(conds_shuffle0.stimloc==2 & conds_shuffle0.iscued==1) > sum(conds_shuffle0.stimloc==1 & conds_shuffle0.iscued==1)   % if we have more rights than lefts
+                    cue_dir_for_catch_trial = 1; % catch trial will cue right
+                elseif sum(conds_shuffle0.stimloc==2 & conds_shuffle0.iscued==1) == sum(conds_shuffle0.stimloc==1 & conds_shuffle0.iscued==1) 
+                    if ~isempty(prior_cue_dir_for_catch_trial)
+                        cue_dir_for_catch_trial = setdiff([1,2],prior_cue_dir_for_catch_trial); % do the opposite of previous trial
+                    else
+                        cue_dir_for_catch_trial = shuffle_concat([1,2],1); % Define catch trial stim loc cue dir
+                        cue_dir_for_catch_trial = cue_dir_for_catch_trial(1);
+                    end
+                end
                 
+                conds_shuffle1 = vcd_addCatchTrials(conds_shuffle0, 1, cue_dir_for_catch_trial);
+                prior_cue_dir_for_catch_trial = cue_dir_for_catch_trial;
+
                 % Vertcat single repeat to create this master table
                 conds_single_rep = [conds_single_rep;conds_shuffle1];
                 
@@ -180,15 +197,17 @@ switch stimClass{:}
             if strcmp(taskClass{:},'wm')
                 n_deltas      = length(p.stim.gabor.delta_from_ref);
                 shuffle_delta = shuffle_concat(1:length(p.stim.gabor.delta_from_ref), (n_unique_cases/(n_deltas/2)));
-                delta_vec     = reshape(p.stim.gabor.delta_from_ref(shuffle_delta)',[],2);
-                orient2_vec   = reshape(conds_single_rep_merged.orient_dir + delta_vec, [],2);
+                noncatch_trials_idx = ~isnan(conds_single_rep_merged.orient_dir(:,1));
+                delta_vec     = NaN(size(conds_single_rep_merged.orient_dir));
+                delta_vec(noncatch_trials_idx,:) = reshape(p.stim.gabor.delta_from_ref(shuffle_delta)',[],2);
+                orient2_vec = conds_single_rep_merged.orient_dir + delta_vec;
             else
                 delta_vec   = NaN(size(conds_single_rep_merged.orient_dir));
                 orient2_vec = NaN(size(conds_single_rep_merged.orient_dir));
             end
             
             conds_single_rep_merged.stim2_delta = delta_vec;
-            conds_single_rep_merged.stim2       = orient2_vec;
+            conds_single_rep_merged.stim2       = num2cell(orient2_vec);
                         
             %% TODO Preallocate space for LTM pairing (we'll do this later)
             pair_vec = NaN(size(conds_single_rep_merged.stim2));
@@ -229,8 +248,8 @@ switch stimClass{:}
             n_cued_stimlocs = length(stimloc_cues);
         end
         
-        % Create pseudorandomized stim loc cuing vector for catch trials.
-        cue_dir_for_catch_trial = shuffle_concat([1,2],p.exp.n_unique_trial_repeats/2);
+        % Keep track of stim loc cue loc for catch trials.
+        prior_cue_dir_for_catch_trial = [];
         
         for rep = 1:p.exp.n_unique_trial_repeats
             
@@ -261,8 +280,11 @@ switch stimClass{:}
                 % get covert spatial attention cuing direction vector
                 [cue_vec,im_cue_vec_loc1] = vcd_getSpatialAttCueingDir(loc,cue_vec,im_cue_vec_loc1,conds_shuffle0, stimloc_cues, taskClass);
                 
-                % Ass cue vec  column
+                % Add cue vec column
                 conds_shuffle0.iscued = cue_vec;
+                
+                % Add catch trial vector
+                conds_shuffle0.iscatch = false(size(conds_shuffle0,1),1);
 
                 % Do some checks:
                 assert(isequal(sort(conds_shuffle0.unique_im_nr,'ascend'),[1:n_unique_cases]')); % Check unique image nr
@@ -272,8 +294,27 @@ switch stimClass{:}
                 assert(isequal(sort(conds_shuffle0.rdk_coherence,'ascend'),repelem(p.stim.rdk.dots_coherence,n_motdir)')); % Check coherence
                 assert(isequal(sort(reshape(conds_shuffle0.rdk_coherence,n_coh,[])),repmat(p.stim.rdk.dots_coherence',1,n_motdir))); % Check coh order
                 
+                % Add catch trials
+                if sum(isnan(cue_vec)) == size(conds_shuffle0.stimloc,1)
+                    cue_dir_for_catch_trial = [];
+                elseif sum(conds_shuffle0.stimloc==3)==size(conds_shuffle0.stimloc,1)
+                    cue_dir_for_catch_trial = [];
+                elseif sum(conds_shuffle0.stimloc==1 & conds_shuffle0.iscued==1) > sum(conds_shuffle0.stimloc==2 & conds_shuffle0.iscued==1)  % if we have more lefts than rights
+                    cue_dir_for_catch_trial = 2; % catch trial will cue right
+                elseif sum(conds_shuffle0.stimloc==2 & conds_shuffle0.iscued==1) > sum(conds_shuffle0.stimloc==1 & conds_shuffle0.iscued==1)   % if we have more rights than lefts
+                    cue_dir_for_catch_trial = 1; % catch trial will cue right
+                elseif sum(conds_shuffle0.stimloc==2 & conds_shuffle0.iscued==1) == sum(conds_shuffle0.stimloc==1 & conds_shuffle0.iscued==1) 
+                    if ~isempty(prior_cue_dir_for_catch_trial)
+                        cue_dir_for_catch_trial = setdiff([1,2],prior_cue_dir_for_catch_trial); % do the opposite of previous trial
+                    else
+                        cue_dir_for_catch_trial = shuffle_concat([1,2],1); % Define catch trial stim loc cue dir
+                        cue_dir_for_catch_trial = cue_dir_for_catch_trial(1);
+                    end
+                end
+                
                 % Create catch trial
-                conds_shuffle1 = vcd_addCatchTrials(conds_shuffle0, 1, cue_dir_for_catch_trial(rep));
+                conds_shuffle1 = vcd_addCatchTrials(conds_shuffle0, 1, cue_dir_for_catch_trial);
+                prior_cue_dir_for_catch_trial = cue_dir_for_catch_trial;
                 
                 conds_master_single_rep = [conds_master_single_rep;conds_shuffle1];
 
@@ -288,11 +329,13 @@ switch stimClass{:}
             if strcmp(taskClass,'wm')
                 n_deltas      = length(p.stim.rdk.delta_from_ref);
                 shuffle_delta = shuffle_concat(1:length(p.stim.rdk.delta_from_ref), (n_unique_cases/(n_deltas/2)));
-                delta_vec     = reshape(p.stim.rdk.delta_from_ref(shuffle_delta)',[],2);
-                motdir2       = reshape(conds_single_rep_merged.orient_dir + delta_vec, [],2);
+                noncatch_trials_idx = ~isnan(conds_single_rep_merged.orient_dir(:,1));
+                delta_vec     = NaN(size(conds_single_rep_merged.orient_dir));
+                delta_vec(noncatch_trials_idx,:) = reshape(p.stim.rdk.delta_from_ref(shuffle_delta)',[],2);
+                motdir2       = conds_single_rep_merged.orient_dir + delta_vec;
             else
-                delta_vec     = NaN(size(conds_single_rep_merged));
-                motdir2       = NaN(size(conds_single_rep_merged));
+                delta_vec     = NaN(size(conds_single_rep_merged.orient_dir));
+                motdir2       = NaN(size(conds_single_rep_merged.orient_dir));
             end
             conds_single_rep_merged.stim2_delta = delta_vec;
             conds_single_rep_merged.stim2 = num2cell(motdir2);
@@ -335,8 +378,8 @@ switch stimClass{:}
         
         n_unique_cases = n_dot_loc;
         
-        % Create pseudorandomized stim loc cuing vector for catch trials.
-        cue_dir_for_catch_trial = shuffle_concat([1,2],p.exp.n_unique_trial_repeats/2);
+        % Keep track of stim loc cue loc for catch trials.
+        prior_cue_dir_for_catch_trial = [];
         
         for rep = 1:p.exp.n_unique_trial_repeats
             
@@ -357,6 +400,9 @@ switch stimClass{:}
                 % Add cue vec
                 conds_shuffle0.iscued = cue_vec;
                 
+                % Add catch trial vector
+                conds_shuffle0.iscatch = false(size(conds_shuffle0,1),1);
+                
                 % Do some checks:
                 assert(isequal(sort(conds_shuffle0.unique_im_nr,'ascend'),[1:n_unique_cases]')); % Check unique image nr
                 assert(isequal(sum(conds_shuffle0.stimloc==1),n_unique_cases/2));  % Check left stim loc
@@ -364,26 +410,47 @@ switch stimClass{:}
                 assert(isequal(sort(conds_shuffle0.orient_dir,'ascend'),repelem(p.stim.dot.ang_deg,1)')); % Check dot angle
                 
                 % Add catch trials
-                conds_shuffle1 = vcd_addCatchTrials(conds_shuffle0, 1, cue_dir_for_catch_trial(rep));
+                if sum(isnan(cue_vec)) == size(conds_shuffle0.stimloc,1)
+                    cue_dir_for_catch_trial = [];
+                elseif sum(conds_shuffle0.stimloc==3)==size(conds_shuffle0.stimloc,1)
+                    cue_dir_for_catch_trial = [];
+                elseif sum(conds_shuffle0.stimloc==1 & conds_shuffle0.iscued==1) > sum(conds_shuffle0.stimloc==2 & conds_shuffle0.iscued==1)  % if we have more lefts than rights
+                    cue_dir_for_catch_trial = 2; % catch trial will cue right
+                elseif sum(conds_shuffle0.stimloc==2 & conds_shuffle0.iscued==1) > sum(conds_shuffle0.stimloc==1 & conds_shuffle0.iscued==1)   % if we have more rights than lefts
+                    cue_dir_for_catch_trial = 1; % catch trial will cue right
+                elseif sum(conds_shuffle0.stimloc==2 & conds_shuffle0.iscued==1) == sum(conds_shuffle0.stimloc==1 & conds_shuffle0.iscued==1) 
+                    if ~isempty(prior_cue_dir_for_catch_trial)
+                        cue_dir_for_catch_trial = setdiff([1,2],prior_cue_dir_for_catch_trial); % do the opposite of previous trial
+                    else
+                        cue_dir_for_catch_trial = shuffle_concat([1,2],1); % Define catch trial stim loc cue dir
+                        cue_dir_for_catch_trial = cue_dir_for_catch_trial(1);
+                    end
+                end
                 
+                conds_shuffle1 = vcd_addCatchTrials(conds_shuffle0, 1, cue_dir_for_catch_trial);
+                prior_cue_dir_for_catch_trial = cue_dir_for_catch_trial;
+
+                % Vert cat tables
                 conds_master_single_rep = [conds_master_single_rep;conds_shuffle1];
                 
                 clear conds_shuffle0 conds_shuffle1
             end
             
             % Merge trials and add fix cue thickening direction
-            conds_single_rep_merged = vcd_mergeUniqueImageIntoTrials(conds_master_single_rep(rep));
+            conds_single_rep_merged = vcd_mergeUniqueImageIntoTrials(conds_master_single_rep);
             clear conds_master_single_rep
             
             % Add WM change.
             if strcmp(taskClass{:},'wm')
                 n_deltas     = length(p.stim.dot.delta_from_ref);
-                shuffle_deta = shuffle_concat(1:length(p.stim.dot.delta_from_ref), (n_unique_cases/(n_deltas/2)));
-                delta_vec    = reshape(p.stim.dot.delta_from_ref(shuffle_deta)',[],2);
-                loc_deg2     = reshape(conds_single_rep_merged.orient_dir + delta_vec,[],2);
+                shuffle_delta = shuffle_concat(1:length(p.stim.dot.delta_from_ref), (n_unique_cases/(n_deltas/2)));
+                noncatch_trials_idx = ~isnan(conds_single_rep_merged.orient_dir(:,1));
+                delta_vec     = NaN(size(conds_single_rep_merged.orient_dir));
+                delta_vec(noncatch_trials_idx,:) = reshape(p.stim.dot.delta_from_ref(shuffle_delta)',[],2);
+                loc_deg2       = conds_single_rep_merged.orient_dir + delta_vec;
             else
-                delta_vec   = NaN(size(conds_single_rep_merged));
-                loc_deg2    = NaN(size(conds_single_rep_merged));
+                delta_vec   = NaN(size(conds_single_rep_merged.orient_dir));
+                loc_deg2    = NaN(size(conds_single_rep_merged.orient_dir));
             end
             conds_single_rep_merged.stim2_delta = delta_vec;
             conds_single_rep_merged.stim2       = num2cell(loc_deg2);
@@ -447,8 +514,8 @@ switch stimClass{:}
             n_cued_stimlocs = length(stimloc_cues);
         end
         
-        % Create pseudorandomized stim loc cuing vector for catch trials.
-        cue_dir_for_catch_trial = shuffle_concat([1,2],p.exp.n_unique_trial_repeats/2);
+        % Keep track of stim loc cue loc for catch trials.
+        prior_cue_dir_for_catch_trial = [];
         
         % Shuffle trials for each repeat
         for rep = 1:p.exp.n_unique_trial_repeats
@@ -498,6 +565,9 @@ switch stimClass{:}
                 
                 % Add cue vec
                 conds_shuffle1.iscued = cue_vec;
+                
+                % Add catch trial vector
+                conds_shuffle1.iscatch = false(size(conds_shuffle1,1),1);
 
                 % Do some checks:
                 assert(isequal(sort(conds_shuffle1.unique_im_nr,'ascend'),[1:n_unique_cases]')); % Check unique image nr
@@ -505,9 +575,28 @@ switch stimClass{:}
                 assert(isequal(sum(conds_shuffle1.stimloc==2),n_unique_cases/2));  % Check right stim loc
                 assert(isequal(sort(conds_shuffle1.super_cat_name),sort(repelem(p.stim.obj.super_cat,n_sub_cat)'))); % Check supercat
                 
-                % Add catch trials
-                conds_shuffle2 = vcd_addCatchTrials(conds_shuffle1, 1, cue_dir_for_catch_trial(rep));
+                 % Add catch trials
+                if sum(isnan(cue_vec)) == size(conds_shuffle1.stimloc,1)
+                    cue_dir_for_catch_trial = [];
+                elseif sum(conds_shuffle1.stimloc==3)==size(conds_shuffle1.stimloc,1)
+                    cue_dir_for_catch_trial = [];
+                elseif sum(conds_shuffle1.stimloc==1 & conds_shuffle1.iscued==1) > sum(conds_shuffle1.stimloc==2 & conds_shuffle1.iscued==1)  % if we have more lefts than rights
+                    cue_dir_for_catch_trial = 2; % catch trial will cue right
+                elseif sum(conds_shuffle1.stimloc==2 & conds_shuffle1.iscued==1) > sum(conds_shuffle1.stimloc==1 & conds_shuffle1.iscued==1)   % if we have more rights than lefts
+                    cue_dir_for_catch_trial = 1; % catch trial will cue right
+                elseif sum(conds_shuffle1.stimloc==2 & conds_shuffle1.iscued==1) == sum(conds_shuffle1.stimloc==1 & conds_shuffle1.iscued==1) 
+                    if ~isempty(prior_cue_dir_for_catch_trial)
+                        cue_dir_for_catch_trial = setdiff([1,2],prior_cue_dir_for_catch_trial); % do the opposite of previous trial
+                    else
+                        cue_dir_for_catch_trial = shuffle_concat([1,2],1); % Define catch trial stim loc cue dir
+                        cue_dir_for_catch_trial = cue_dir_for_catch_trial(1);
+                    end
+                end
                 
+                conds_shuffle2 = vcd_addCatchTrials(conds_shuffle1, 1, cue_dir_for_catch_trial);
+                prior_cue_dir_for_catch_trial = cue_dir_for_catch_trial;
+
+                % Vert cat tables
                 conds_master_single_rep = [conds_master_single_rep;conds_shuffle2];
                 
                 clear conds_shuffle0 conds_shuffle1 conds_shuffle2
@@ -521,11 +610,13 @@ switch stimClass{:}
             if strcmp(taskClass{:},'wm')
                 n_deltas      = length(p.stim.obj.delta_from_ref);
                 shuffle_delta = shuffle_concat(1:length(p.stim.obj.delta_from_ref), (n_unique_cases/(n_deltas/2)));
-                delta_vec     = reshape(p.stim.obj.delta_from_ref(shuffle_delta)',[],2);
-                facing_dir2   = reshape(conds_single_rep_merged.orient_dir + delta_vec,[],2);
+                noncatch_trials_idx = ~isnan(conds_single_rep_merged.orient_dir(:,1));
+                delta_vec     = NaN(size(conds_single_rep_merged.orient_dir));
+                delta_vec(noncatch_trials_idx,:) = reshape(p.stim.obj.delta_from_ref(shuffle_delta)',[],2);
+                facing_dir2   = conds_single_rep_merged.orient_dir + delta_vec;
             else
-                delta_vec     = NaN(size(conds_single_rep_merged));
-                facing_dir2   = NaN(size(conds_single_rep_merged));
+                delta_vec     = NaN(size(conds_single_rep_merged.orient_dir));
+                facing_dir2   = NaN(size(conds_single_rep_merged.orient_dir));
             end
             conds_single_rep_merged.stim2_delta = delta_vec;
             conds_single_rep_merged.stim2       = num2cell(facing_dir2);
@@ -635,35 +726,61 @@ switch stimClass{:}
 
             % No need for cued vs uncued status
             conds_master_single_rep.iscued = NaN(size(conds_master_single_rep,1),1);
+            
+            % Add catch trial vector
+            conds_master_single_rep.iscatch = false(size(conds_master_single_rep,1),1);
 
             % Single stim loc
             conds_master_single_rep.stimloc = 3.*ones(size(conds_master_single_rep,1),1);
-
-            % No need to merge unique im into trials because there is only one
-            % stim.
-            conds_master_single_rep.unique_trial_nr = [1:size(conds_master_single_rep,1)]';
             
             % Add catch trials
             conds_master_single_rep2 = vcd_addCatchTrials(conds_master_single_rep, 1, []);
             
-            % Both sides will be thickened given single central image
-            conds_master_single_rep.thickening_dir = repmat(stimloc_cues,1,size(conds_master_single_rep,1)/n_cued_stimlocs)';
+            % No need to merge unique im into trials because there is only one
+            % stim.
+            conds_master_single_rep2.unique_trial_nr = cat(2,[1:size(conds_master_single_rep2,1)]',NaN(size(conds_master_single_rep2,1),1));
             
-
+            % Both sides will be thickened given single central image
+            conds_master_single_rep2.thickening_dir = repmat(stimloc_cues,1,size(conds_master_single_rep2,1)/n_cued_stimlocs)';
+           
+            % fill second column with nans, so we can merge across stim
+            % classes
+            conds_master_single_rep2.unique_im_nr    = [conds_master_single_rep2.unique_im_nr, NaN(size(conds_master_single_rep2,1),1)];
+            conds_master_single_rep2.stimloc         = [conds_master_single_rep2.stimloc, NaN(size(conds_master_single_rep2,1),1)];
+            conds_master_single_rep2.stimloc_name    = [conds_master_single_rep2.stimloc_name, num2cell(NaN(size(conds_master_single_rep2,1),1))];
+            conds_master_single_rep2.orient_dir      = [conds_master_single_rep2.orient_dir, NaN(size(conds_master_single_rep2,1),1)];
+            conds_master_single_rep2.gbr_phase       = [conds_master_single_rep2.gbr_phase, NaN(size(conds_master_single_rep2,1),1)];
+            conds_master_single_rep2.rdk_coherence   = [conds_master_single_rep2.rdk_coherence, NaN(size(conds_master_single_rep2,1),1)];
+            conds_master_single_rep2.contrast        = [conds_master_single_rep2.contrast, NaN(size(conds_master_single_rep2,1),1)];
+            conds_master_single_rep2.super_cat       = [conds_master_single_rep2.super_cat, NaN(size(conds_master_single_rep2,1),1)];
+            conds_master_single_rep2.basic_cat       = [conds_master_single_rep2.basic_cat, NaN(size(conds_master_single_rep2,1),1)];
+            conds_master_single_rep2.sub_cat         = [conds_master_single_rep2.sub_cat, NaN(size(conds_master_single_rep2,1),1)];
+            conds_master_single_rep2.super_cat_name  = [conds_master_single_rep2.super_cat_name, num2cell(NaN(size(conds_master_single_rep2,1),1))];
+            conds_master_single_rep2.basic_cat_name  = [conds_master_single_rep2.basic_cat_name, num2cell(NaN(size(conds_master_single_rep2,1),1))];
+            conds_master_single_rep2.sub_cat_name    = [conds_master_single_rep2.sub_cat_name, num2cell(NaN(size(conds_master_single_rep2,1),1))];
+            conds_master_single_rep2.stim_class_name = [conds_master_single_rep2.stim_class_name, num2cell(NaN(size(conds_master_single_rep2,1),1))];
+            conds_master_single_rep2.stim_class      = [conds_master_single_rep2.stim_class, NaN(size(conds_master_single_rep2,1),1)];
+            conds_master_single_rep2.task_class_name = [conds_master_single_rep2.task_class_name, num2cell(NaN(size(conds_master_single_rep2,1),1))];
+            conds_master_single_rep2.task_class      = [conds_master_single_rep2.task_class, NaN(size(conds_master_single_rep2,1),1)];
+            conds_master_single_rep2.iscued          = [conds_master_single_rep2.iscued, NaN(size(conds_master_single_rep2,1),1)];
+            conds_master_single_rep2.iscatch         = [conds_master_single_rep2.iscatch, NaN(size(conds_master_single_rep2,1),1)];
+            conds_master_single_rep2.thickening_dir  = [conds_master_single_rep2.thickening_dir, NaN(size(conds_master_single_rep2,1),1)];
            
             % add WM change
             if strcmp(taskClass{:},'wm')
                 n_changes = length(p.stim.ns.change_im);
                 change_blindness_vec = shuffle_concat(1:length(p.stim.ns.change_im), ceil(size(conds_master_single_rep2.unique_trial_nr,1)/n_changes))';
-                change_blindness_vec = change_blindness_vec(1:size(conds_master_single_rep2.unique_trial_nr,1)); % check length
-                change_blindness_vec = [change_blindness_vec; NaN(size(change_blindness_vec))]; % add column of nans to match with l/r stim trials
-                cblind_im_name       = p.stim.ns.change_im(change_blindness_vec)';
-                cblind_im_name       = catcell(2,cblind_im_name, {NaN(size(change_blindness_vec))}); % add column of nans to match with l/r stim trials
+                noncatch_trials_idx  = ~conds_master_single_rep2.iscatch(:,1);
+                delta_vec            = NaN(length(noncatch_trials_idx),2);
+                change_blindness_vec = change_blindness_vec(1:sum(noncatch_trials_idx)); % check length 
+                delta_vec(noncatch_trials_idx,1) = change_blindness_vec;
+                cblind_im_name       = num2cell(NaN(length(noncatch_trials_idx),2)); % add column of nans to match with l/r stim trials
+                cblind_im_name(noncatch_trials_idx,1) = p.stim.ns.change_im(change_blindness_vec)';
             else
-                change_blindness_vec = NaN(size(conds_master_single_rep2));
-                cblind_im_name       = change_blindness_vec;
+                delta_vec            = NaN(size(conds_master_single_rep2,1),2);
+                cblind_im_name       = delta_vec;
             end
-            conds_master_single_rep2.stim2_delta = change_blindness_vec;
+            conds_master_single_rep2.stim2_delta = delta_vec;
             conds_master_single_rep2.stim2 = num2cell(cblind_im_name);
             
             % add ltm change
@@ -679,7 +796,7 @@ switch stimClass{:}
             conds_master_single_rep2.islure = false(size(conds_master_single_rep2.ltm_stim_pair));
             
             % Keep track of repeat
-            conds_master_single_rep2.repeat_nr = rep.*ones(size(conds_master_single_rep2));
+            conds_master_single_rep2.repeat_nr = rep.*ones(size(conds_master_single_rep2,1));
             
             % Accummulate
             cond_master = [cond_master; conds_master_single_rep2];
