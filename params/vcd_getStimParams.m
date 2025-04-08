@@ -166,7 +166,7 @@ else
     stim.cd.t_gausswin_std          = 3;                                    % standard devation of gaussian window in time (presentation frames)
     stim.cd.meanchange              = stim.presentationrate_hz * 1.0;       % mean of gaussian window in time (30 frames = 1 sec)  
     stim.cd.changeplusminus         = (0.5/stim.framedur_s)-1;              % plus or minus this amount (14 frames = 0.46 sec)  
-    stim.cd.max_cd                  = 0.25;                                 % we reduce contrast by 25% of mean luminance
+    stim.cd.max_cd                  = 0.2;                                  % stimulus contrast is reduced by 20% of mean luminance at lowest point of temporal gaussian window (note: this corresponds to subtracting a contrast fraction of 10.^(log10(c)-0.1))
     stim.cd.prob                    = 0.5;                                  % 50% probability that a trial will have a luminance change
     
     % Create 1D gaussian
@@ -257,7 +257,7 @@ else
                 % TEMPORAL
                 p.duration        = stimdur_frames;                            % frames (nr of monitor refreshes)
                 p.dots_coherence  = [0.064, 0.128, 0.512];                     % fraction of dots. Kiani lab uses usually one of these [0 0.032 0.064 0.128 0.256 0.512]
-                p.dots_speed      = 5;                                         % pixels/frame? Kiani lab uses usually 5 to 10
+                p.dots_speed      = 5;                                         % pixels/s?   Kiani lab uses usually 5 to 10
                 p.dots_interval   = 1;                                         % framedur_s interval by which dots update (so 30 disp.framedur_s / 1 interval = 30 frames/sec) 
                                                                                % currently set to 30 frames per second to approx Kiani's 75 hz refresh rate / 3 interval = 25 frames/sec
                 
@@ -282,6 +282,8 @@ else
                     p.motdir_jitter    = [8.1568 6.5389 -1.6998 7.0698 2.4508 0.8739 2.4295 0.5901]; 
                     p.dots_direction   = [18 62 98 152 192 236 282 326];
                 end
+                
+                p.dots_direction = p.dots_direction-90;                         % subtract 90 deg to ensure 0 deg is now 12 o'clock in x,y-pixel space  
                 
                 % RDK specific
                 p.dots_density     = 16.7;                                      % dots/deg??
