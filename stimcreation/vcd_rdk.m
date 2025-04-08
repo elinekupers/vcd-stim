@@ -1,6 +1,6 @@
-function [rdk,info,p] = vcd_rdk(p)
+function [rdk, mask, info, p] = vcd_rdk(p)
 % VCD function:
-%  [rdk,info,p] = vcd_rdk(p)
+%  [rdk, mask, info, p] = vcd_rdk(p)
 %
 % Purpose:
 %   Create a random dot motion kinetograms for  experimental display. 
@@ -115,27 +115,40 @@ for cc = 1:length(p.stim.rdk.dots_coherence)
                 curr_motdir_deg = 360+curr_motdir_deg;
             end
         
-            %find the xy displacement of coherent
-            dxdy = repmat(p.stim.rdk.dots_speed * (p.stim.framedur_s / p.stim.rdk.dots_interval) * ... %% same as dots_speed * disp.framedur_s
-                [cos(curr_motdir_deg) -sin(curr_motdir_deg)], ndots, 1) * p.disp.ppd;  
-            
-            d_ppd = repmat(ap_radius, ndots, 1);
-            dot_pos = (rand(ndots,2,num_frames)-0.5)*2;  % prior code said: dot_pos = (rand(ndots,2,p.stim.rdk.dots_interval)-0.5)*2;
-
             % Initialize and reset rng
             RandStream.setGlobalStream(RandStream('mt19937ar','seed',prod(rseed)));
             RandStream.setGlobalStream(RandStream('mt19937ar','seed',sum(100*clock)));
             
+            %find the xy displacement of coherent
+            dxdy = repmat(p.stim.rdk.dots_speed * ((1/p.stim.presentationrate_hz) / p.stim.rdk.dots_interval) * ... %% 
+                [cosd(curr_motdir_deg) -sind(curr_motdir_deg)], ndots, 1) * p.disp.ppd;  
+            
+            % create dots with random locations within aperture
+            d_ppd   = repmat(ap_radius, ndots, 1);
+            dot_pos = (rand(ndots,2,num_frames)-0.5)*2;  % number of dots, [x,y] pos, nr of frames, -0.5 shift to center around 0, x2 to make it [-1 1].
+
+            % convert dot deg 2 pix
             for jj = 1:num_frames
                 dot_pos(:,:,jj) = dot_pos(:,:,jj) .* d_ppd;
             end
+            
+            % debug figure of dot motion vectors
+%             saveDir = fileparts(fullfile(p.stim.rdk.stimfile));
+%             figure(100);
+%             for ii = 1:60; clf;
+%                 quiver(dot_pos(:,1,ii),dot_pos(:,2,ii),dxdy(:,1),dxdy(:,2));
+%                 title(sprintf('frame %d: coh%03d dir%02d delta%02d',...
+%                     ii, p.stim.rdk.dots_coherence(cc)*100,p.stim.rdk.dots_direction(bb), dd)); axis square;
+%                 filename = sprintf('vcd_rdk_coh%03d_dir%02d_delta%02d_motionvec%d.png',p.stim.rdk.dots_coherence(cc)*100,bb,dd,ii);
+%                 print(gcf,'-dpng','-r300',fullfile(saveDir,'rdk_20250407',filename));
+%             end
             
             %store dot pos
             stored_coh_dot_pos = NaN(size(dot_pos,1),size(dot_pos,2),num_frames);
             
             % reset frames
             frames = [];
-
+            
             % Select color (50:50 black:white)
             colori = ([0 randperm(ndots-1)]) < ceil(ndots/num_col);
             dot_pos_col = p.stim.rdk.dots_color(colori+1,:);
@@ -153,22 +166,33 @@ for cc = 1:length(p.stim.rdk.dots_coherence)
                 % replace the other
                 dot_pos(~L,:,loopi) = (rand(sum(~L),2)-0.5)*2 .* d_ppd(~L,:);
                 
+                % round dot_pos as we deal with pixels
+                dot_pos(:,:,loopi) = round(dot_pos(:,:,loopi));
+                
                 % wrap
-                L = dot_pos(:,1,loopi) > d_ppd(:,1);
-                dot_pos(L,1,loopi) = dot_pos(L,1,loopi) - 2*d_ppd(L,1);
-                L = dot_pos(:,1,loopi) < -d_ppd(:,1);
-                dot_pos(L,1,loopi) = 2*d_ppd(L,1) - dot_pos(L,1,loopi);
-                L = dot_pos(:,2,loopi) > d_ppd(:,2);
-                dot_pos(L,2,loopi) = dot_pos(L,2,loopi) - 2*d_ppd(L,2);
-                L = dot_pos(:,2,loopi) < -d_ppd(:,2);
-                dot_pos(L,2,loopi) = 2*d_ppd(L,2) - dot_pos(L,2,loopi);
+                Lx1 = dot_pos(:,1,loopi) > d_ppd(:,1);
+                dot_pos(Lx1,1,loopi) = dot_pos(Lx1,1,loopi) - 2*d_ppd(Lx1,1);
+                Lx2 = dot_pos(:,1,loopi) < -d_ppd(:,1);
+                dot_pos(Lx2,1,loopi) = 2*d_ppd(Lx2,1) - dot_pos(Lx2,1,loopi);
+                Ly1 = dot_pos(:,2,loopi) > d_ppd(:,2);
+                dot_pos(Ly1,2,loopi) = dot_pos(Ly1,2,loopi) - 2*d_ppd(Ly1,2);
+                Ly2 = dot_pos(:,2,loopi) < -d_ppd(:,2);
+                dot_pos(Ly2,2,loopi) = 2*d_ppd(Ly2,2) - dot_pos(Ly2,2,loopi);
+                
+                clear Lx1 Lx2 Ly1 Ly2
                 
                 % Find the dots that will be shown in the aperture. note that
                 %is calculated relative to the center of the aperture.
-                L = isInsideAperture(dot_pos(:,:,loopi), ap_center, ap_radius-1);
+                L2 = isInsideAperture(dot_pos(:,:,loopi), ap_center, ap_radius-1);
+                pos_idx = find(L2);
                 
-                pos_idx = find(L);
+                % Determine dot color
+                col = dot_pos_col(L2,:);
+                % final dots to plot
+                pos = dot_pos(L2,:,loopi);
                 
+                % Create frame with gray background
+                figure(fH);
                 clf; hold all;
                 ax = gca;
                 ax.Units = 'pixels';
@@ -178,13 +202,11 @@ for cc = 1:length(p.stim.rdk.dots_coherence)
                 colormap gray; axis square; axis off; axis tight; axis manual; axis image
                 set(gca, 'CLim',[0 1]);
                 
-                %round dot_pos and transpose it because Screen wants positions in row
-                pos = round(dot_pos(L,:,loopi));
-                col = dot_pos_col(L,:);
-
+                % draw dots
                 for ii = 1:size(pos,1)
                     drawcircle('Parent',ax,'Center',pos(ii,:),'Radius',p.stim.rdk.dots_size,...
                         'Color',col(ii,:), 'InteractionsAllowed', 'none', 'FaceAlpha', 1, 'LineWidth', 1);
+                    % store location in case we want to use it
                     stored_coh_dot_pos(pos_idx(ii),:,loopi) = pos(ii,:);
                 end
                                 
@@ -195,8 +217,15 @@ for cc = 1:length(p.stim.rdk.dots_coherence)
                 frames = cat(4,frames,im);
                 clear f im
             end
-   
+            
+            % debug video
+%             vcd_createStimVideo(frames, 1/p.stim.presentationrate_hz, ...
+%                 fullfile(saveDir,'rdk_20250407'), ...
+%                 sprintf('vcd_rdk_coh%03d_dir%02d_delta%02d',...
+%                 p.stim.rdk.dots_coherence(cc)*100,bb,dd));
+
             rdk{bb,cc,dd+1} = frames;
+            dotlocs{bb,cc,dd+1} = stored_coh_dot_pos;
             
             info.dot_dir(counter) = curr_motdir_deg;
             info.dot_coh(counter) = p.stim.rdk.dots_coherence(cc);
@@ -218,9 +247,9 @@ for cc = 1:length(p.stim.rdk.dots_coherence)
             
             % save intermediate stage in case matlab crashes 
             rdk_info = info(counter,:);
-            save(fullfile(tmpDir, sprintf('%d_rdk_ori%d_coh%d_delta%d.mat', im_name, bb,cc,dd)),'frames','rdk_info','mask','-v7.3');
+            save(fullfile(tmpDir, sprintf('%d_rdk_ori%d_coh%d_delta%d.mat', im_name, bb,cc,dd)),'frames','rdk_info','mask','stored_coh_dot_pos','-v7.3');
 
-            clear frames
+             clear frames
             counter = counter +1;
         end
     end
@@ -231,7 +260,7 @@ if p.store_imgs
     % in addition to storing separate conditions, also store ginormous file 
     saveDir = fileparts(fullfile(p.stim.rdk.stimfile));
     if ~exist(saveDir,'dir'), mkdir(saveDir); end
-    save(fullfile(sprintf('%s_%s.mat',p.stim.rdk.stimfile,datestr(now,30))),'rdk','info','mask','-v7.3');
+    save(fullfile(sprintf('%s_%s.mat',p.stim.rdk.stimfile,datestr(now,30))),'rdk','info','mask','dotlocs','-v7.3');
     
     saveDir = fileparts(fullfile(p.stim.rdk.infofile));
     if ~exist(saveDir,'dir'), mkdir(saveDir); end
