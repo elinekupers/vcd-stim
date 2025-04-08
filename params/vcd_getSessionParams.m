@@ -99,7 +99,7 @@ else
     
     %% %%%% SESSION PARAMS %%%%
     exp_session.n_unique_trial_repeats = 8;   % 8 allows for allocation of all trials across blocks and runs.
-    exp_session.n_sessions             = 6;   % 40; 
+    exp_session.n_sessions             = 5;   % 40; 
     exp_session.n_runs_per_session     = 10;  % right now we have 11x 5.5 min runs per session
     exp_session.TR                     = 1.6; % seconds
     exp_session.total_subjects         = 3;   % 3 subjects for now.. EK: we probably want to separate wide and deep subjects
@@ -114,9 +114,10 @@ else
      
     %% %%%% RUN %%%%
     % general
-    exp_session.run.n_single_epoch_blocks = [6, 3, 0]; % runtype 1, 2 or 3
-    exp_session.run.n_double_epoch_blocks = [0, 2, 4]; % runtype 1, 2 or 3
-    exp_session.run.blocks_per_run = exp_session.run.n_single_epoch_blocks + exp_session.run.n_double_epoch_blocks;
+    exp_session.run.run_typeA = [7; 0]; % single-stim, double-stim blocks within a run --> counts to ~ 330 s
+    exp_session.run.run_typeB = [4; 2];
+    exp_session.run.run_typeC = [1; 4];
+    exp_session.run.run_typeD = [0; 5]; 
     
     % eye gaze block
     exp_session.run.eye_gaze_fix0       = presentationrate_hz * 1.0; % start with 1 second fixation period
@@ -249,60 +250,63 @@ else
 
     
     %% Nr of blocks per sessions 
-    exp_session.session.nr_of_type1_runs([1,2])  = 3; % 6 single-stim blocks / 0 double-stim blocks 
-    exp_session.session.nr_of_type2_runs([1,2])  = 7; % 3 single-stim blocks / 2 double-stim blocks
-    exp_session.session.nr_of_type3_runs([1,2])  = 0; % 0 single-stim blocks / 4 double-stim blocks
+    exp_session.session.nr_of_typeA_runs([1:7])  = 7; % 7 single-stim blocks / 0 double-stim blocks 
+    exp_session.session.nr_of_typeB_runs([1:7])  = 0; % 4 single-stim blocks / 2 double-stim blocks
+    exp_session.session.nr_of_typeC_runs([1:7])  = 3; % 1 single-stim blocks / 4 double-stim blocks
+    exp_session.session.nr_of_typeD_runs([1:7])  = 0; % 0 single-stim blocks / 5 double-stim blocks
 
-    exp_session.session.nr_of_type1_runs([3:exp_session.n_sessions])  = 4;
-    exp_session.session.nr_of_type2_runs([3:exp_session.n_sessions])  = 6;
-    exp_session.session.nr_of_type3_runs([3:exp_session.n_sessions])  = 0;
+    exp_session.session.nr_of_typeA_runs([3:exp_session.n_sessions])  = 3;
+    exp_session.session.nr_of_typeB_runs([3:exp_session.n_sessions])  = 0;
+    exp_session.session.nr_of_typeC_runs([3:exp_session.n_sessions])  = 0;
+    exp_session.session.nr_of_typeD_runs([3:exp_session.n_sessions])  = 7;
     
     ses_blocks = zeros(size(exp_session.crossings,1),size(exp_session.crossings,2),exp_session.n_sessions);
     
     % sessions 1-2 are WIDE
     %                   fix    cd   scc   pc    wm    ltm   img   what where  how                 
-    ses_blocks(:,:,1) = [2     2     2     2     3     0     0     0     0     0; % Gabor:
-                         1     2     2     2     3     0     0     0     0     0; % RDK:
-                         1     1     1     1     2     0     0     0     0     0; % Dot:
-                         1     1     2     2     2     0     0     1     0     1; % Obj:
-                         2     2     0     2     4     0     0     2     2     2];% NS: 
+    ses_blocks(:,:,1) = [1     2     3     3     2     0     0     0     0     0; % Gabor:
+                         1     2     3     2     3     0     0     0     0     0; % RDK:
+                         1     2     2     2     2     0     0     0     0     0; % Dot:
+                         1     2     2     2     2     0     0     2     0     2; % Obj:
+                         2     2     0     2     3     0     0     3     3     3];% NS: 
     %                   fix    cd   scc   pc    wm    ltm   img   what where  how                 
-    ses_blocks(:,:,2) = [2     2     2     2     3     0     0     0     0     0; % Gabor:
-                         1     2     2     2     3     0     0     0     0     0; % RDK:
-                         1     1     1     1     2     0     0     0     0     0; % Dot:
-                         1     1     1     2     2     0     0     1     0     1; % Obj:
-                         2     2     0     2     4     0     0     2     2     2];% NS: 
+    ses_blocks(:,:,2) = [1     3     2     2     3     0     0     0     0     0; % Gabor:
+                         1     3     2     3     2     0     0     0     0     0; % RDK:
+                         1     2     2     2     2     0     0     0     0     0; % Dot:
+                         1     2     2     2     2     0     0     2     0     2; % Obj:
+                         2     3     0     3     3     0     0     3     3     3];% NS: 
 
     % sessions 3-6 have no LTM and no IMG
     %                   fix    cd   scc   pc    wm    ltm   img   what where  how                 
-    ses_blocks(:,:,3) = [1     2     1     2     3     0     0     0     0     0; % Gabor: 3 WM
-                         1     2     1     2     3     0     0     0     0     0; % RDK: 3 WM
-                         1     1     1     1     2     0     0     0     0     0; % Dot: 2 WM
-                         1     1     1     2     2     0     0     2     0     2; % Obj: 2 WM, 2 WHAT & 2 HOW
-                         1     2     0     2     2     0     0     1     2     1];
+    ses_blocks(:,:,3) = [1     3     2     3     3     0     0     0     0     0; % Gabor: 3 WM
+                         1     3     2     2     2     0     0     0     0     0; % RDK: 3 WM
+                         1     1     2     2     2     0     0     0     0     0; % Dot: 2 WM
+                         1     1     2     2     2     0     0     2     0     2; % Obj: 2 WM, 2 WHAT & 2 HOW
+                         3     3     0     4     3     0     0     3     3     3];
 
-    ses_blocks(:,:,4) = [1     2     1     2     3     0     0     0     0     0; % Gabor: 
-                         1     2     1     2     3     0     0     0     0     0; % RDK: 
-                         1     1     1     1     2     0     0     0     0     0; % Dot
-                         1     1     1     2     2     0     0     2     0     2; % Obj
-                         1     2     0     2     2     0     0     1     1     2]; % NS
+    ses_blocks(:,:,4) = [1     3     2     3     2     0     0     0     0     0; % Gabor: 
+                         1     3     3     3     3     0     0     0     0     0; % RDK: 
+                         1     1     2     2     2     0     0     0     0     0; % Dot
+                         1     1     2     2     2     0     0     2     0     2; % Obj
+                         3     3     0     3     3     0     0     3     3     3]; % NS
                      
-    ses_blocks(:,:,5) = [1     2     1     2     3     0     0     0     0     0; % Gabor: 
-                         1     2     1     2     3     0     0     0     0     0; % RDK:
-                         1     1     1     1     2     0     0     0     0     0; % Dot: 
-                         1     1     1     2     2     0     0     2     0     2; % Obj: 
-                         1     2     0     2     2     0     0     1     2     1]; % NS: 
+    ses_blocks(:,:,5) = [1     3     2     3     2     0     0     0     0     0; % Gabor: 
+                         1     3     3     3     3     0     0     0     0     0; % RDK:
+                         1     1     2     2     2     0     0     0     0     0; % Dot: 
+                         1     1     2     2     2     0     0     2     0     2; % Obj: 
+                         3     3     0     3     3     0     0     3     3     3]; % NS: 
                      
-    ses_blocks(:,:,6) = [1     2     1     2     3     0     0     0     0     0; % Gabor:
-                         1     2     1     2     3     0     0     0     0     0; % RDK: 
-                         1     1     1     1     2     0     0     0     0     0; % Dot: 
-                         1     1     1     2     2     0     0     2     0     2; % Obj:
-                         1     2     0     2     2     0     0     2     1     1]; % NS: 
+
                      
-    % sessions 7- have all stim-task crossings
+    % sessions 6- have all stim-task crossings
     % we alternate 3 vs 2 LTM & IMG blocks for Gabor & RDK
     % Dot: starting session 7, we have 2 IMG blocks every 3 sessions. 
     % Dot: starting session 10, we have 2 LTM blocks every 3 sessions. 
+    ses_blocks(:,:,6) = [1     2     1     2     3     0     0     0     0     0; % Gabor:
+                         1     2     1     2     3     0     0     0     0     0; % RDK:
+                         1     1     1     1     2     0     0     0     0     0; % Dot:
+                         1     1     1     2     2     0     0     2     0     2; % Obj:
+                         1     2     0     2     2     0     0     2     1     1]; % NS:
     %                   fix    cd   scc   pc    wm    ltm   img   what where  how                 
     ses_blocks(:,:,7) = [1     1     1     1     2     2     2     0     0     0; % Gabor: 
                          1     0     1     0     1     2     2     0     0     0; % RDK: 
