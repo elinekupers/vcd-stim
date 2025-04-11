@@ -1,7 +1,9 @@
-% This script processes images, dealing with grayscale, position, size, luminance, and contrast.
+%% s_preprocessObjects.m
+% This script processes 'raw' object images, dealing with grayscale, position, size, luminance, and contrast.
 %
-% This script relies on KNK utils functions.
+% This script relies on KNK utils functions (github.com/cvnlab/knkutils).
 %
+% *** Order of operations ***
 % We convert images to grayscale (using rgb2gray).
 % We interpret images using a squaring luminance response.
 % We center images with respect to each image's center of mass (calculated from the alpha mask).
@@ -38,19 +40,53 @@
 
 %% DEAL WITH CONSTANTS
 
-% define
+% Get display params
+dispname = 'PPROOM_EIZOFLEXSCAN'; % Choose from: '7TAS_BOLDSCREEN32';'KKOFFICE_AOCQ3277';'EKHOME_ASUSVE247';'PPROOM_EIZOFLEXSCAN'
+disp_params   = vcd_getDisplayParams(dispname);
+
+%% Define/Load stimulus params
+% !!WARNING!! There is a randomization component involved in creating some
+% stimuli (e.g., orientation of gabor stimuli or dot locations). If you
+% don't want this, this leave the fifth argument:
+% "overwrite_randomized_params" empty (default is set to false) or set to
+% false.
+%
+% If you do want regenerate probabilistic params, set the fifth argument to
+% true and some stimulus values will change.
+load_stim_params                 = false; % if false, re-create params.
+                                          % if true, we load stored mat file
+store_stim_params                = false; % if false, we don't store params. 
+                                          % if true, we store mat file in fullfile(vcd_rootPath,'workspaces','info')
+overwrite_randomized_stim_params = false; % if false, we will use now hardcoded (once probabilistic) stimulus/experimental design params. Use this for reproducible results.
+                                          % if true, we do redefine all stimulus/experimental design params, including probabilistic params
+                                       
+% Input 1: Stimulus class, choose from 'gabor','rdk','dot','obj','ns','all' (default is 'all')
+% Input 2: Display params struct (see vcd_getDisplayParams.m)
+% Input 3: Load prior stored parameters or not. 
+% Input 4: Store generated parameters or not. 
+% Input 5: Overwrite stored parameters and regenerate probabilistic params
+stim_params   = vcd_getStimParams('stim_class','all', ...
+                             'disp_name', dispname, ...
+                             'load_params', load_stim_params,...
+                             'store_params', store_stim_params, ...
+                             'overwrite_randomized_params', overwrite_randomized_stim_params); 
+
+% define folders and params
 % dir0 = '/var/fairstate-ext2/GoogleDrive/VCD/experimental_design/stimuli/workspaces/complex_objects/images_to_process';
-dir0 = fullfile(vcd_rootPath,'workspaces','stimuli','all_to_process');
-numrot = 91; %22;        % number of image viewpoints
-numobj = 16;        % number of objects
-targetsize  = 354;   % number of pixels for one side of conformed square
-targetmnlum = 0.5;  % desired mn-luminance for grand average of one object's viewpoints
-targetsdlum = 0.03; % 0.03; % desired sd-luminance for grand average of one object's viewpoints
-squaresizes = 2:2:1000;  % square sizes (in pixels for one side) to evaluate
-squarethresh = .9;  % square size is chosen that includes at least 90% of the mass (of the mean mask)
-% figuredir = '/var/fairstate-ext2/GoogleDrive/VCD/experimental_design/stimuli/workspaces/complex_objects/tryD_targetsdlum_0pt03';  % where diagnostic figures are written
-figuredir = fullfile(vcd_rootPath,'figs','complex_objects_preproc');
-outputdir = [figuredir '/finalimages'];  % where final images are written to (this directory is REMOVED if it exists)
+dir0         = fullfile(vcd_rootPath,'workspaces','stimuli','all_to_process'); % where 'raw' images live
+% figuredir  = '/var/fairstate-ext2/GoogleDrive/VCD/experimental_design/stimuli/workspaces/complex_objects/tryD_targetsdlum_0pt03';  % where diagnostic figures are written
+figuredir    = fullfile(vcd_rootPath,'figs',dispname, 'objects_preproc_lummn0pt5_sd0pt15_sz99pct');
+outputdir    = [figuredir '/finalimages'];  % where final images are written to (this directory is REMOVED if it exists)
+
+% Parameters (CHANGE ONLY THESE SETTINGS)
+numrot       = 91;      	% number of image viewpoints
+numobj       = 16;          % number of objects
+ogsize       = 1024;        % original pixel size of object stimuli
+targetsize   = stim_params.obj.og_res_stim_target_sz;         % number of pixels for one side of conformed square (354 for BOLD screen, 258 for PP room)
+targetmnlum  = 0.5;         % desired mn-luminance for grand average of one object's viewpoints
+targetsdlum  = 0.015;       % desired sd-luminance for grand average of one object's viewpoints
+squaresizes  = 2:2:1000;    % square sizes (in pixels for one side) to evaluate
+squarethresh = 0.99;        % previously 0.9; square size is chosen that includes at least 90% of the mass (of the mean mask)
 
 %% LOAD IMAGES
 
@@ -61,8 +97,8 @@ assert(length(files0)==numrot*numobj);
 % load all images
 %   (images: convert to grayscale and then double. becomes 0-255.)
 %   (alpha: convert to double. becomes 0-255.)
-allimages = zeros(1024,1024,length(files0));
-allalphas = zeros(1024,1024,length(files0));
+allimages = zeros(ogsize,ogsize,length(files0));
+allalphas = zeros(ogsize,ogsize,length(files0));
 for p=1:length(files0), p
   [im0,~,alpha0] = imread(files0{p});
   allimages(:,:,p) = double(rgb2gray(im0));
@@ -70,8 +106,8 @@ for p=1:length(files0), p
 end
 
 % initialize final output
-allimages2 = zeros(1024,1024,length(files0),'uint8');
-allalphas2 = zeros(1024,1024,length(files0),'uint8');
+allimages2 = zeros(ogsize,ogsize,length(files0),'uint8');
+allalphas2 = zeros(ogsize,ogsize,length(files0),'uint8');
 validpct = zeros(1,length(files0));
 OF = zeros(1,numobj);
 SC = zeros(1,numobj);
@@ -100,8 +136,8 @@ for zz=1:numobj
   % note the rounding (hence, image pixel values don't actually get perturbed).
   for yy=1:size(als,3)
     com = centerofmass(als(:,:,yy),[1 2]);  % [row; col] in decimal matrix coordinates
-    ims(:,:,yy) = circshift(ims(:,:,yy),round(512.5-com)');  % be careful about the signs!!!
-    als(:,:,yy) = circshift(als(:,:,yy),round(512.5-com)');
+    ims(:,:,yy) = circshift(ims(:,:,yy),round(((ogsize+1)/2)-com)');  % 512.5 be careful about the signs!!!
+    als(:,:,yy) = circshift(als(:,:,yy),round(((ogsize+1)/2)-com)');
   end
   
   %% FIGURE OUT SQUARE SIZE
@@ -113,13 +149,13 @@ for zz=1:numobj
   % determine conformed square size
   rec = [];
   for ss=1:length(squaresizes)
-    crop = 513-squaresizes(ss)/2 : 512+squaresizes(ss)/2;
+    crop = ceil((ogsize+1)/2)-squaresizes(ss)/2 : floor((ogsize+1)/2)+squaresizes(ss)/2; % 513 vs 512
     rec(ss) = sum(flatten(meanmask(crop,crop)));
   end
   finalsqsz = squaresizes(firstel(find(rec/tot0 > squarethresh)));  % number of pixels on a side
   
   % visualize the results!!
-  crop = 513-finalsqsz/2 : 512+finalsqsz/2;
+  crop = ceil((ogsize+1)/2)-finalsqsz/2 : floor((ogsize+1)/2)+finalsqsz/2;   % 513 vs 512 pixels
   figureprep([100 100 800 800]); hold on;
   imagesc(meanmask); axis image tight;
   plotrectangle([crop(1)-0.5 crop(end)+0.5 crop(1)-0.5 crop(end)+0.5],'r-');
@@ -135,8 +171,8 @@ for zz=1:numobj
   for yy=1:size(ims,3)
     im0 = normalizerange(imresize(ims(:,:,yy),S,'bicubic'),0,1,0,1);
     al0 = normalizerange(imresize(als(:,:,yy),S,'bicubic'),0,1,0,1);
-    ims(:,:,yy) = placematrix(zeros(1024,1024),im0,[]);
-    als(:,:,yy) = placematrix(zeros(1024,1024),al0,[]);
+    ims(:,:,yy) = placematrix(zeros(ogsize,ogsize),im0,[]);
+    als(:,:,yy) = placematrix(zeros(ogsize,ogsize),al0,[]);
   end
   
   % check that we didn't enlarge too much
