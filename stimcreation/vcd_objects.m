@@ -11,7 +11,12 @@ function [objects, masks, im_order, info, p] = vcd_objects(p)
 %       fullfile(vcd_rootPath,'workspaces/stimuli/vcd_complex_objects/*_rot*.png)
 %    2. A csv file defined in p.stim.obj.infofile, e.g.: 
 %       fullfile(vcd_rootPath,'workspaces/objects_info.csv')
-%
+%   Given that 0, 90, and 180 degrees are right, forwards, and left facing, 
+%   respectively. Filenames with rotations:
+%       * 1-23 (0-44 deg): face sideways
+%       * 24-46 (46-90 deg): face forward
+%       * 47-68 (92-134 deg): face forward
+%       * 69-91 (136-180 deg): face sideways
 %   This function will store generated object images as a single mat file 
 %   in p.stim.obj.stimfile (e.g.: fullfile(vcd_rootPath,'workspaces','stimuli','objects.mat')
 %   when p.store_params = true;
@@ -64,8 +69,8 @@ info = readtable(fullfile(d(end).folder,d(end).name));
 
 % Define superordinate and basic categories, and number of exemplars per basic category
 mask            = info.unique_im>0;
-subordinate     = unique(info.subordinate,'stable');
-canonical_view  = info.rot_abs(mask);                % alternating 2 canonical view ± 5 2-deg steps
+subordinate     = info.subordinate;
+base_rot        = info.rot_abs(mask);                % alternating 2 view ± 4 steps spaced 2 deg apart
 
 rotation_names  = [info.Properties.VariableNames(~cellfun(@isempty, regexp(info.Properties.VariableNames, 'rot_minus*'))), ...
     info.Properties.VariableNames(~cellfun(@isempty, regexp(info.Properties.VariableNames, 'rot_plus*')))];
@@ -75,18 +80,15 @@ for ii = 1:length(rotation_names)
     rotations = [rotations, choose(regexp(rotation_names{ii}, 'rot_minus'),-1,1).*str2num(cell2mat(regexp(rotation_names{ii}, '\d+','match')))];
 end
 
-%% EK HACK --> process more images to delete this line
-rotations = rotations([1, 3:end-1]);
-rotation_names2 = catcell(2,{{'none'}, rotation_names(2:end-1)});
-%% EK HACK END
+rotation_names2 = catcell(2,{{'none'}, rotation_names});
 
 % Preallocate info table
-n_cols   = length(canonical_view)*length(rotations);
-im_order = table(cell(n_cols,1),NaN(n_cols,1),NaN(n_cols,1),cell(n_cols,1),NaN(n_cols,1));
-im_order.Properties.VariableNames = {'object_name','abs_rot','rel_rot','rot_name','unique_im'};
+n_cols   = length(base_rot)*length(rotations);
+im_order = table(NaN(n_cols,1),cell(n_cols,1),NaN(n_cols,1),NaN(n_cols,1),cell(n_cols,1),NaN(n_cols,1),cell(n_cols,1),cell(n_cols,1));
+im_order.Properties.VariableNames = {'unique_im_nr','object_name','abs_rot','rel_rot','rot_name','base_rot','facing_dir','rel_rot_name'};
 
 % Get (rescaled) image extent
-extent   = p.stim.obj.og_res_stim.*p.stim.obj.dres;
+extent   = p.stim.obj.img_sz_pix.*p.stim.obj.dres;
 
 % Preallocate space
 objects = uint8(ones(extent, extent,3,...
@@ -101,8 +103,17 @@ for sub = 1:length(subordinate)
     for rr = 1:length(rotations)
         
         % Get file name
-        rot = (canonical_view(sub)/2) + mod(rotations(rr),2);
-        d = dir(fullfile(p.stim.obj.indivobjfile,sprintf('*%s*_rot%02d.png', subordinate{sub},rot)));
+        rot = 1+((base_rot(sub) + rotations(rr))/2);
+        fname = sprintf('*%s*_rot%02d.png', subordinate{sub},rot);
+        d = dir(fullfile(p.stim.obj.indivobjfile,fname));
+        if isempty(d)
+            error('[%s]: Can''t find image file!')
+        end
+        if rr==1
+            assert(strcmp(info.filename{sub},d.name))
+        else
+            assert(strcmp(info.(rotation_names2{rr}){sub},d.name));
+        end
         
         % Load image
         [im0, ~, alpha0] = imread(fullfile(d.folder,d.name),'BackgroundColor','none');
@@ -133,12 +144,39 @@ for sub = 1:length(subordinate)
         
         % Keep track of image order
         im_order.object_name(counter)    = subordinate(sub);
-        im_order.canonical_view(counter) = canonical_view(sub);
-        im_order.abs_rot(counter)        = canonical_view(sub)+rotations(rr);
+        im_order.base_rot(counter)       = base_rot(sub);
+        im_order.abs_rot(counter)        = base_rot(sub)+rotations(rr);
         im_order.rel_rot(counter)        = rotations(rr);
         im_order.rot_name(counter)       = rotation_names2(rr);
-        im_order.unique_im(counter)      = sub;
+        im_order.unique_im_nr(counter)   = sub;
         
+        % check facing direction        
+        if (im_order.abs_rot(counter) < 45) || (im_order.abs_rot(counter) > 135)
+            facing_dir = {'sideways'};
+        elseif (im_order.abs_rot(counter) > 45) || (im_order.abs_rot(counter) < 135)
+            facing_dir = {'forward'};
+        end
+        im_order.facing_dir(counter)     = facing_dir;
+        
+        if (im_order.abs_rot(counter)-90) < 0 && im_order.rel_rot(counter) < 0
+            im_order.rel_rot_name(counter) = {'rightward'};
+        elseif (im_order.abs_rot(counter)-90) < 0 && im_order.rel_rot(counter) > 0
+            im_order.rel_rot_name(counter) = {'leftward'};
+        elseif (im_order.abs_rot(counter)-90) > 0 && im_order.rel_rot(counter) > 0
+            im_order.rel_rot_name(counter) = {'rightward'};
+        elseif (im_order.abs_rot(counter)-90) > 0 && im_order.rel_rot(counter) < 0
+            im_order.rel_rot_name(counter) = {'leftward'};
+        elseif (im_order.abs_rot(counter)-90) == 0 && im_order.base_rot(counter) < 0 && im_order.rel_rot(counter) < 0
+            im_order.rel_rot_name(counter) = {'rightward'};
+        elseif (im_order.abs_rot(counter)-90) == 0 && im_order.base_rot(counter) < 0 && im_order.rel_rot(counter) > 0
+            im_order.rel_rot_name(counter) = {'leftward'};
+        elseif (im_order.abs_rot(counter)-90) == 0 && im_order.base_rot(counter) > 0 && im_order.rel_rot(counter) > 0
+            im_order.rel_rot_name(counter) = {'rightward'};
+        elseif (im_order.abs_rot(counter)-90) == 0 && im_order.base_rot(counter) > 0 && im_order.rel_rot(counter) < 0
+            im_order.rel_rot_name(counter) = {'leftward'};
+        elseif im_order.rel_rot(counter) == 0
+            im_order.rel_rot_name(counter) = {'none'};
+        end
         % Update counter
         counter = counter+1;
     end
@@ -158,16 +196,24 @@ end
 %     figure(4); clf;
 %     for ii = 1:size(objects,5)
 %         figure(1); subplot(3,3,ii); hold all;
-%         imshow(objects(:,:,1,1,ii),[1 255]);
-%
+%         I = imshow(objects(:,:,:,1,ii),[1 255]);
+%         I.AlphaData = masks(:,:,1,ii)>0;
+%         axis image
+%         
 %         figure(2); subplot(3,3,ii); hold all;
-%         imshow(objects(:,:,1,2,ii),[1 255]);
-%
+%         I = imshow(objects(:,:,:,2,ii),[1 255]);
+%         I.AlphaData = masks(:,:,2,ii)>0;
+%         axis image
+%         
 %         figure(3); subplot(3,3,ii); hold all;
-%         imshow(objects(:,:,1,3,ii),[1 255]);
-%
+%         I = imshow(objects(:,:,:,3,ii),[1 255]);
+%         I.AlphaData = masks(:,:,3,ii)>0;
+%         axis image
+%         
 %         figure(4); subplot(3,3,ii); hold all;
-%         imshow(objects(:,:,1,4,ii),[1 255]);
+%         I = imshow(objects(:,:,:,4,ii),[1 255]);
+%         I.AlphaData = masks(:,:,4,ii)>0;
+%         axis image
 %     end
 return
 
