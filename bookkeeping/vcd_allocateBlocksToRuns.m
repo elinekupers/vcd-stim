@@ -155,13 +155,15 @@ for ses = 1:p.exp.n_sessions
     
     n_type1 = sum(unique_trialtypes==1);
     n_type2 = sum(unique_trialtypes==2);
+    nr_blocks_per_run_type = sum([p.exp.session.nr_of_typeA_runs(ses),p.exp.session.nr_of_typeB_runs(ses),p.exp.session.nr_of_typeC_runs(ses),p.exp.session.nr_of_typeD_runs(ses)].* p.exp.run.blocks_per_run);
+    block_type_allocation = [params.exp.run.run_typeA,params.exp.run.run_typeB,params.exp.run.run_typeC,params.exp.run.run_typeD];
     
     assert(isequal(unique_blocks,[1:length(unique_blocks)]'))
-    assert(isequal(length(unique_blocks), sum([p.exp.session.nr_of_type1_runs(ses),p.exp.session.nr_of_type2_runs(ses),p.exp.session.nr_of_type3_runs(ses)].* p.exp.run.blocks_per_run)))
-    assert(isequal(n_type2 , p.exp.session.nr_of_type2_runs(ses) * p.exp.run.n_double_epoch_blocks(2)))
-    assert(isequal(n_type1 , p.exp.session.nr_of_type2_runs(ses) * p.exp.run.n_single_epoch_blocks(2) + p.exp.session.nr_of_type1_runs(ses) * p.exp.run.n_single_epoch_blocks(1)))
+    assert(isequal(length(unique_blocks), nr_blocks_per_run_type))
+    assert(isequal(n_type2 , block_type_allocation(2,:) * nr_blocks_per_run_type))
+    assert(isequal(n_type1 , block_type_allocation(1,:) * nr_blocks_per_run_type))
     
-    runs_to_fill = [ones(1, p.exp.session.nr_of_type1_runs(ses)), 2*ones(1,p.exp.session.nr_of_type2_runs(ses)),3*ones(1,p.exp.session.nr_of_type3_runs(ses))];
+    runs_to_fill = [ones(1, p.exp.session.nr_of_typeA_runs(ses)), 2*ones(1,p.exp.session.nr_of_typeB_runs(ses)),3*ones(1,p.exp.session.nr_of_typeC_runs(ses)),3*ones(1,p.exp.session.nr_of_typeD_runs(ses))];
     
     while 1
         curr_run_type1 = []; curr_run_type2 = [];
