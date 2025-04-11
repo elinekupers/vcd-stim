@@ -285,33 +285,38 @@ end
 %% Visualize resized images
 makeprettyfigures;
 figure; set(gcf,'Position', [156    91   881   706],'color','w');
-for ss = 1:size(scenes_rz,4)
+scenes0 = reshape(scenes,size(scenes,1),size(scenes,2),size(scenes,3),size(scenes,4)*size(scenes,5)*size(scenes,6));
+lures0  = reshape(lures,size(lures,1),size(lures,2),size(lures,3),size(lures,4)*size(lures,5)*size(lures,6),size(lures,7));
+cblind0 = reshape(cblind,size(cblind,1),size(cblind,2),size(cblind,3),size(cblind,4)*size(cblind,5)*size(cblind,6),size(cblind,7));
+
+for ss = 1:size(scenes0,4)
+    
     clf;
-    imagesc(scenes_rz(:,:,:,ss));
+    imagesc(scenes0(:,:,:,ss));
     title(sprintf('Im %02d resized',ss), 'FontSize',20);
     axis image; box off
-    
+    set(gca,'CLim',[1 255]);
     if p.stim.store_imgs
-        saveDir = fullfile(vcd_rootPath,'figs','ns','resized');
+        saveDir = fullfile(vcd_rootPath,'figs',p.disp.name,'ns','resized');
         if ~exist(saveDir,'dir'), mkdir(saveDir); end
         print(fullfile(saveDir, sprintf('ns_%02d', ss)),'-dpng','-r150');
     end
     
-    for ll = 1:size(lures_rz,5)
+    for ll = 1:size(lures0,5)
         clf;
-        imagesc(lures_rz(:,:,:,ss,ll));
+        imagesc(lures0(:,:,:,ss,ll));
         title(sprintf('Im %02d, lure %02d resized ',ss,ll), 'FontSize',20);
         axis image; box off
-        
+        set(gca,'CLim',[1 255]);
         if p.stim.store_imgs
             print(fullfile(saveDir, sprintf('ns_%02d_lure%02d', ss,ll)),'-dpng','-r150');
         end
         
         clf;
-        imagesc(cblind_rz(:,:,:,ss,ll)); 
+        imagesc(cblind0(:,:,:,ss,ll)); 
         title(sprintf('Im %02d, cblindness %02d resized',ss,ll), 'FontSize',20);
         axis image; box off
-        
+        set(gca,'CLim',[1 255]);
         if p.stim.store_imgs
             print(fullfile(saveDir, sprintf('ns_%02d_cblind%02d', ss,ll)),'-dpng','-r150');
         end
@@ -341,11 +346,46 @@ if any(strcmp(p.disp.name, {'7TAS_BOLDSCREEN32', 'PPROOM_EIZOFLEXSCAN'}))
     
     for ss = 1:size(scenes_sq,4)
         
-        temp_s(:,:,:,ss) = uint(double(scenes_sq(:,:,:,ss)).^2);
+        temp_s(:,:,:,ss) = uint8(255.*((double(scenes_sq(:,:,:,ss))./255).^2));
         
         for ll = 1:size(lures_sq,5)
-            temp_l(:,:,:,ss,ll) = uint(double(lures_sq(:,:,:,ss,ll)).^2);
-            temp_c(:,:,:,ss,ll) = uint(double(cblind_sq(:,:,:,ss,ll)).^2);
+            temp_l(:,:,:,ss,ll) = uint8(255.*((double(lures_sq(:,:,:,ss,ll))./255).^2));
+            temp_c(:,:,:,ss,ll) = uint8(255.*((double(cblind_sq(:,:,:,ss,ll))./255).^2));
+        end
+    end
+    
+    figure; set(gcf,'Position', [156    91   881   706],'color','w');
+    for ss = 1:size(scenes,4)
+        clf;
+        imagesc(temp_s(:,:,:,ss));
+        title(sprintf('Im %02d resized & squared',ss), 'FontSize',20);
+        axis image; box off
+        set(gca,'CLim',[1 255]);
+        if p.stim.store_imgs
+            saveDir = fullfile(vcd_rootPath,'figs',p.disp.name,'ns','resized_and_squared');
+            if ~exist(saveDir,'dir'), mkdir(saveDir); end
+            print(fullfile(saveDir, sprintf('ns_%02d', ss)),'-dpng','-r150');
+        end
+        
+        for ll = 1:size(lures,5)
+            clf;
+            imagesc(temp_l(:,:,:,ss,ll));
+            title(sprintf('Im %02d, lure %02d resized & squared',ss,ll), 'FontSize',20);
+            axis image; box off
+            set(gca,'CLim',[1 255]);
+            if p.stim.store_imgs
+                print(fullfile(saveDir, sprintf('ns_%02d_lure%02d', ss,ll)),'-dpng','-r150');
+            end
+            
+            clf;
+            imagesc(temp_c(:,:,:,ss,ll));
+            title(sprintf('Im %02d, cblindness %02d resized & squared',ss,ll), 'FontSize',20);
+            axis image; box off
+            set(gca,'CLim',[1 255]);
+            
+            if p.stim.store_imgs
+                print(fullfile(saveDir, sprintf('ns_%02d_cblind%02d', ss,ll)),'-dpng','-r150');
+            end
         end
     end
 
