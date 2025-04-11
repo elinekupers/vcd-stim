@@ -201,14 +201,33 @@ switch stimClass{:}
                 delta_vec     = NaN(size(conds_single_rep_merged.orient_dir));
                 delta_vec(noncatch_trials_idx,:) = reshape(p.stim.gabor.delta_from_ref(shuffle_delta)',[],2);
                 orient2_vec = conds_single_rep_merged.orient_dir + delta_vec;
+                conds_single_rep_merged.stim2_delta = delta_vec;
+                conds_single_rep_merged.stim2       = num2cell(orient2_vec);
             else
                 delta_vec   = NaN(size(conds_single_rep_merged.orient_dir));
                 orient2_vec = NaN(size(conds_single_rep_merged.orient_dir));
+                conds_single_rep_merged.stim2_delta = delta_vec;
+                conds_single_rep_merged.stim2       = num2cell(orient2_vec);
             end
             
-            conds_single_rep_merged.stim2_delta = delta_vec;
-            conds_single_rep_merged.stim2       = num2cell(orient2_vec);
-                        
+            % Add IMG text prompt and quiz dots
+            if strcmp(taskClass{:},'img')
+                [~,img_stim]     = ismember(conds_single_rep_merged.unique_im_nr,p.stim.gabor.img_im_nr,'legacy');
+                n_quiz_images    = length(unique(p.exp.trial.img.quiz_images));
+                quiz_img_type_shuffle = [shuffle_concat(1:n_quiz_images, (length(find(img_stim(:,1)))/n_quiz_images)); ...
+                                         shuffle_concat(1:n_quiz_images, (length(find(img_stim(:,2)))/n_quiz_images))]';
+                img_quiz_im_vec  = NaN(size(img_stim));
+                img_quiz_im_vec(img_stim>0) = quiz_img_type_shuffle;
+                img_quiz_txt_vec  = NaN(size(img_stim));
+                conds_single_rep_merged.img_txt_prompt = num2cell(img_quiz_txt_vec);
+                conds_single_rep_merged.stim2          = num2cell(img_quiz_im_vec);
+            else
+                img_quiz_im_vec   = NaN(size(conds_single_rep_merged.orient_dir));
+                img_quiz_txt_vec  = NaN(size(img_quiz_im_vec));
+                conds_single_rep_merged.stim2          = num2cell(img_quiz_txt_vec);
+                conds_single_rep_merged.img_txt_prompt = num2cell(img_quiz_im_vec);
+            end
+ 
             %% TODO Preallocate space for LTM pairing (we'll do this later)
             pair_vec = NaN(size(conds_single_rep_merged.stim2));
             lure_vec = false(size(pair_vec)); % should be boolean
@@ -333,13 +352,35 @@ switch stimClass{:}
                 delta_vec     = NaN(size(conds_single_rep_merged.orient_dir));
                 delta_vec(noncatch_trials_idx,:) = reshape(p.stim.rdk.delta_from_ref(shuffle_delta)',[],2);
                 motdir2       = conds_single_rep_merged.orient_dir + delta_vec;
+                conds_single_rep_merged.stim2_delta = delta_vec;
+                conds_single_rep_merged.stim2 = num2cell(motdir2);
             else
                 delta_vec     = NaN(size(conds_single_rep_merged.orient_dir));
                 motdir2       = NaN(size(conds_single_rep_merged.orient_dir));
+                conds_single_rep_merged.stim2_delta = delta_vec;
+                conds_single_rep_merged.stim2 = num2cell(motdir2);
             end
-            conds_single_rep_merged.stim2_delta = delta_vec;
-            conds_single_rep_merged.stim2 = num2cell(motdir2);
 
+            
+            % Add IMG text prompt and quiz dots
+            if strcmp(taskClass{:},'img')
+                [~,img_stim]     = ismember(conds_single_rep_merged.unique_im_nr,p.stim.rdk.img_im_nr,'legacy');
+                n_quiz_images    = length(unique(p.exp.trial.img.quiz_images));
+                quiz_img_type_shuffle = [shuffle_concat(1:n_quiz_images, (length(find(img_stim(:,1)))/n_quiz_images)); ...
+                    shuffle_concat(1:n_quiz_images, (length(find(img_stim(:,2)))/n_quiz_images))]';
+                img_quiz_im_vec  = NaN(size(img_stim));
+                img_quiz_im_vec(img_stim>0) = quiz_img_type_shuffle;
+                img_quiz_txt_vec  = NaN(size(img_stim));
+                conds_single_rep_merged.img_txt_prompt = num2cell(img_quiz_txt_vec);
+                conds_single_rep_merged.stim2          = num2cell(img_quiz_im_vec);
+            else
+                img_quiz_im_vec   = NaN(size(conds_single_rep_merged.orient_dir));
+                img_quiz_txt_vec  = NaN(size(img_quiz_im_vec));
+                conds_single_rep_merged.stim2          = num2cell(img_quiz_txt_vec);
+                conds_single_rep_merged.img_txt_prompt = num2cell(img_quiz_im_vec);
+            end
+
+            
             % Add ltm pair.
             %                         if strcmp(tasks(task_crossings(curr_task)).name,'ltm')
             % %                             pair_match = [];
@@ -454,6 +495,25 @@ switch stimClass{:}
             end
             conds_single_rep_merged.stim2_delta = delta_vec;
             conds_single_rep_merged.stim2       = num2cell(loc_deg2);
+
+            % Add IMG text prompt and quiz dots
+            if strcmp(taskClass{:},'img')
+                [~,img_stim]     = ismember(conds_single_rep_merged.unique_im_nr,p.stim.dot.img_im_nr,'legacy');
+                n_quiz_images    = length(unique(p.exp.trial.img.quiz_images));
+                quiz_img_type_shuffle = [shuffle_concat(1:n_quiz_images, (length(find(img_stim(:,1)))/n_quiz_images)); ...
+                    shuffle_concat(1:n_quiz_images, (length(find(img_stim(:,2)))/n_quiz_images))]';
+                img_quiz_im_vec  = NaN(size(img_stim));
+                img_quiz_im_vec(img_stim>0) = quiz_img_type_shuffle;
+                img_quiz_txt_vec  = NaN(size(img_stim));
+                conds_single_rep_merged.img_txt_prompt = num2cell(img_quiz_txt_vec);
+                conds_single_rep_merged.stim2          = num2cell(img_quiz_im_vec);
+            else
+                img_quiz_im_vec   = NaN(size(conds_single_rep_merged.orient_dir));
+                img_quiz_txt_vec  = NaN(size(img_quiz_im_vec));
+                conds_single_rep_merged.stim2          = num2cell(img_quiz_txt_vec);
+                conds_single_rep_merged.img_txt_prompt = num2cell(img_quiz_im_vec);
+            end
+
             
             % Add ltm pair.
             %                         if strcmp(tasks(task_crossings(curr_task)).name,'ltm')
@@ -614,12 +674,33 @@ switch stimClass{:}
                 delta_vec     = NaN(size(conds_single_rep_merged.orient_dir));
                 delta_vec(noncatch_trials_idx,:) = reshape(p.stim.obj.delta_from_ref(shuffle_delta)',[],2);
                 facing_dir2   = conds_single_rep_merged.orient_dir + delta_vec;
+                conds_single_rep_merged.stim2_delta = delta_vec;
+                conds_single_rep_merged.stim2       = num2cell(facing_dir2);
             else
                 delta_vec     = NaN(size(conds_single_rep_merged.orient_dir));
                 facing_dir2   = NaN(size(conds_single_rep_merged.orient_dir));
+                conds_single_rep_merged.stim2_delta = delta_vec;
+                conds_single_rep_merged.stim2       = num2cell(facing_dir2);
             end
-            conds_single_rep_merged.stim2_delta = delta_vec;
-            conds_single_rep_merged.stim2       = num2cell(facing_dir2);
+
+            
+            % Add IMG text prompt and quiz dots
+            if strcmp(taskClass{:},'img')
+                [~,img_stim]     = ismember(conds_single_rep_merged.unique_im_nr,p.stim.obj.img_im_nr,'legacy');
+                n_quiz_images    = length(unique(p.exp.trial.img.quiz_images));
+                quiz_img_type_shuffle = [shuffle_concat(1:n_quiz_images, (length(find(img_stim(:,1)))/n_quiz_images)); ...
+                    shuffle_concat(1:n_quiz_images, (length(find(img_stim(:,2)))/n_quiz_images))]';
+                img_quiz_im_vec  = NaN(size(img_stim));
+                img_quiz_im_vec(img_stim>0) = quiz_img_type_shuffle;
+                img_quiz_txt_vec  = NaN(size(img_stim));
+                conds_single_rep_merged.img_txt_prompt = num2cell(img_quiz_txt_vec);
+                conds_single_rep_merged.stim2          = num2cell(img_quiz_im_vec);
+            else
+                img_quiz_im_vec   = NaN(size(conds_single_rep_merged.orient_dir));
+                img_quiz_txt_vec  = NaN(size(img_quiz_im_vec));
+                conds_single_rep_merged.img_txt_prompt = num2cell(img_quiz_txt_vec);
+                conds_single_rep_merged.stim2          = num2cell(img_quiz_im_vec);
+            end
             
             % Add ltm pair.
             %                         if strcmp(tasks(task_crossings(curr_task)).name,'ltm')
@@ -783,12 +864,31 @@ switch stimClass{:}
                 delta_vec(noncatch_trials_idx,1) = change_blindness_vec;
                 cblind_im_name       = num2cell(NaN(length(noncatch_trials_idx),2)); % add column of nans to match with l/r stim trials
                 cblind_im_name(noncatch_trials_idx,1) = p.stim.ns.change_im(change_blindness_vec)';
+                conds_master_single_rep2.stim2_delta = delta_vec;
+                conds_master_single_rep2.stim2 = num2cell(cblind_im_name);
             else
                 delta_vec            = NaN(size(conds_master_single_rep2,1),2);
                 cblind_im_name       = delta_vec;
+                conds_master_single_rep2.stim2_delta = delta_vec;
+                conds_master_single_rep2.stim2 = num2cell(cblind_im_name);
             end
-            conds_master_single_rep2.stim2_delta = delta_vec;
-            conds_master_single_rep2.stim2 = num2cell(cblind_im_name);
+
+            
+            % Add IMG text prompt and quiz dots
+            if strcmp(taskClass{:},'img')
+                img_stim              = find(conds_single_rep_merged.unique_im_nr == p.stim.ns.img_im_nr);
+                n_quiz_images         = length(unique(p.exp.trial.img.quiz_images));
+                quiz_img_type_shuffle = shuffle_concat(1:n_quiz_images, (length(img_stim)/n_quiz_images));
+                img_quiz_im_vec       = NaN(size(conds_single_rep_merged.thickening_dir));
+                img_quiz_im_vec(img_stim,:) = quiz_img_type_shuffle;
+                img_quiz_txt_vec  = NaN(size(img_quiz_im_vec),2);
+                conds_single_rep_merged.img_txt_prompt = num2cell(img_quiz_txt_vec);
+                conds_single_rep_merged.stim2          = num2cell(img_quiz_im_vec);
+
+            else
+                conds_single_rep_merged.stim2           = num2cell(NaN(size(conds_single_rep_merged.orient_dir)));
+                conds_single_rep_merged.img_txt_prompt  = num2cell(conds_single_rep_merged.stim2);
+            end
             
             % add ltm change
             %                         if strcmp(tasks(task_crossings(curr_task)).name,'ltm')
