@@ -245,7 +245,7 @@ else
     
     % IMG
     exp_session.trial.img.test_task                         = 0.5;  % chance of a contrast change
-
+    exp_session.trial.img.quiz_images                       = [ones(1,20),2.*ones(1,20)];  % quiz dots overlap (1) or not (2)
 
 
     

@@ -291,6 +291,9 @@ else
                 
                 p.delta_from_ref  = [-15, -5, 5, 15];                           % how much should stim iso-eccen loc deviate from reference (WM: double epochs)
                                                                                 % the bigger the delta, the easier the judgement in a trial
+                % IMG SUBSET
+                p.img_im_nr       = [17:24];                                    % numbers refer to unique image nr (only high contrast)
+
                 
                 % Add params to struct
                 stim.gabor = p;
@@ -345,6 +348,10 @@ else
                 p.y0_pix          = y0_pix;                                     % y-center loc in pix (translation from 0,0)
                 
                 p.delta_from_ref  = [-15, -5, 5, 15];                           % how much should stim iso-eccen loc deviate from reference (WM: double epochs)
+ 
+                % IMG SUBSET
+                p.img_im_nr             = [17:24];                                 % numbers refer to unique image nr (only high coherence)
+
                 
                 % Add params to struct
                 stim.rdk = p;
@@ -400,18 +407,24 @@ else
                 p.x0_pix        = disp_params.xc - round(x * disp_params.ppd);     % idealized x-center loc in pix (translation from upper left corner [0,0])
                 p.y0_pix        = disp_params.yc - round(y * disp_params.ppd);     % idealized y-center loc in pix (translation from upper left corner [0,0])
                 
-                p.delta_from_ref  = [-15, -5, 5, 15];                               % how much should stim iso-eccen loc deviate from reference (WM: double epochs)
-                                                                                    % the bigger the delta, the easier the trial
+                % WM delta
+                p.delta_from_ref  = [-15, -5, 5, 15];                              % how much should stim iso-eccen loc deviate from reference (WM: double epochs)
+                                                                                   % the bigger the delta, the easier the trial
                 % Convert delta offset from polar angle coords to cartesian coords
                 for dd = 1:length(p.delta_from_ref)
-                    p.ang_deg_delta(dd,:)   = p.ang_deg + p.delta_from_ref(dd);  % idealized angle offset for dot loc in deg (translation from center screen 0,0)
-                    p.eccen_deg_delta(dd,:) = p.eccen_deg;                       % idealized eccen for dot loc in deg (translation from center screen 0,0)
+                    p.ang_deg_delta(dd,:)   = p.ang_deg + p.delta_from_ref(dd);    % idealized angle offset for dot loc in deg (translation from center screen 0,0)
+                    p.eccen_deg_delta(dd,:) = p.eccen_deg;                         % idealized eccen for dot loc in deg (translation from center screen 0,0)
                     
                     [x_d,y_d] = pol2cart(deg2rad(p.ang_deg_delta(dd,:)+90),p.eccen_deg_delta(dd,:)); % again, note the +90
-                    p.x0_pix_delta(dd,:) = disp_params.xc - round(x_d * disp_params.ppd);      % idealized x-center ref dot loc in pix (translation from upper left corner [0,0])
-                    p.y0_pix_delta(dd,:) = disp_params.yc - round(y_d * disp_params.ppd);      % idealized y-center ref dot loc in pix (translation from upper left corner [0,0])
-                    
+                    p.x0_pix_delta(dd,:) = disp_params.xc - round(x_d * disp_params.ppd);  % x-center ref dot loc in pix (translation from upper left corner [0,0])
+                    p.y0_pix_delta(dd,:) = disp_params.yc - round(y_d * disp_params.ppd);  % y-center ref dot loc in pix (translation from upper left corner [0,0])
                 end
+
+                % LTM PAIR
+                p.ltm_pairs          = [];                                       %%
+                
+                % IMG SUBSET
+                p.img_im_nr             = [1:2:p.num_loc];                          % numbers refer to unique image nr
 
                 % Add params to struct
                 stim.dot = p;
@@ -419,13 +432,14 @@ else
             case {'obj',4}
                 
                 % GENERAL
-                p.indivobjfile  = fullfile(vcd_rootPath,'workspaces','stimuli',disp_params.name,'vcd_objects_2degstep_lumcorrected');
-                p.stimfile      = fullfile(vcd_rootPath,'workspaces','stimuli',sprintf('object_%s',disp_params.name)); % mat-file where to store stimulus images?
-                p.infofile      = fullfile(vcd_rootPath,'workspaces','info',sprintf('object_info_%s',disp_params.name));  % csv-file Where to find stimulus info?
-                p.iscolor       = false;                                        % use color or not [[[IF WE USE COLOR: MAKE SURE TO SQUARE IMAGE VALS FOR CLUT]]
+                p.indivobjfile   = fullfile(vcd_rootPath,'workspaces','stimuli',disp_params.name,'vcd_objects_2degstep_lumcorrected');
+                p.stimfile       = fullfile(vcd_rootPath,'workspaces','stimuli',sprintf('object_%s',disp_params.name)); % mat-file where to store stimulus images?
+                p.infofile       = fullfile(vcd_rootPath,'workspaces','info',sprintf('object_info_%s',disp_params.name));  % csv-file Where to find stimulus info?
+                p.iscolor        = false;                                        % use color or not [[[IF WE USE COLOR: MAKE SURE TO SQUARE IMAGE VALS FOR CLUT]]
+                p.square_pix_val = false;
                 
                 % TEMPORAL
-                p.duration      = stimdur_frames;                               % frames (nr of monitor refreshes)
+                p.duration       = stimdur_frames;                               % frames (nr of monitor refreshes)
                 
                 % SPATIAL
                 p.contrast      = 1;                                            % Michelson [0-1] (fraction) 
@@ -475,16 +489,22 @@ else
                 p.sub_cat{4}         = {'church','house','watertower'};
                 
                 % Define the affordances for each object subcategory (for HOW task) 
-                p.affordance{1}       = {'greet','greet','greet'};
-                p.affordance{2}       = {'greet','greet','observe','observe'};
-                p.affordance{3}       = {'grasp','grasp','grasp','grasp','enter','enter'};
-                p.affordance{4}       = {'enter','enter','observe'};
+                p.affordance{1}      = {'greet','greet','greet'};
+                p.affordance{2}      = {'greet','greet','observe','observe'};
+                p.affordance{3}      = {'grasp','grasp','grasp','grasp','enter','enter'};
+                p.affordance{4}      = {'enter','enter','observe'};
 
-                p.square_pix_val      = false;
-                p.delta_from_ref      = [-8, -4, 4, 8];                       % Relative rotation from reference image for WM test image
-                                                                              % the bigger the delta, the easier the trial. 
-                                                                              % for 1-89 deg rotations: Negative values are leftwards, positive values is rightwards
-                                                                              % for 91-180 deg rotations: Negative values are rightward, positive values is leftward
+                % WM DELTA
+                p.delta_from_ref     = [-8, -4, 4, 8];                      % Relative rotation from reference image for WM test image
+                                                                            %  the bigger the delta, the easier the trial. 
+                                                                            % for 1-89 deg rotations: Negative values are leftwards, positive values is rightwards
+                                                                            % for 91-180 deg rotations: Negative values are rightward, positive values is leftward
+                % IMG SUBSET
+                p.img_im_nr             = [1,3,5,7,8,10,12,14];                % unique im numbers we will use for IMG
+
+                % LTM PAIR
+                p.ltm_pairs          = [];                                       %%
+                
                 % Add params to struct
                 stim.obj = p;
                 
@@ -551,9 +571,6 @@ else
                 p.affordance{5,1} = {'walk','walk','walk'};
                 p.affordance{5,2} = {'observe','walk','walk'};
                 
-                % Half of the images will be used for IMG/LTM pairing
-                p.ltm_im        = [2,4,5,8,10,11,13,15,18,20,21,23,26,27,30]; % numbers refer to unique image nr
-                
                 % FOR WM task crossing, we have manipulated the original
                 % NSD image by adding or removing something in the image.
                 % These changes can be obvious (easy) or subtle (hard) to
@@ -562,6 +579,12 @@ else
                 
                 % FOR LTM incorrect trials, we have very similar looking images called "lures":
                 p.lure_im       = {'lure01', 'lure02', 'lure03', 'lure04'};
+                
+                % LTM PAIR
+                p.ltm_pairs     = [];                                       %%
+                
+                % Half of the images will be used for IMG/LTM pairing
+                p.img_im_nr        = [2,4,5,8,10,11,13,15,18,20,21,23,26,27,30]; % numbers refer to unique image nr (see scene_info csv file)
                 
                 % Add params to struct
                 stim.ns = p;
