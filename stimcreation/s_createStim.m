@@ -11,7 +11,7 @@ verbose        = true; % visualize stimuli or not
 p.store_imgs   = true; % store visualization figures
 
 % Get display params
-dispname = 'PPROOM_EIZOFLEXSCAN'; % Choose from: '7TAS_BOLDSCREEN32';'KKOFFICE_AOCQ3277';'EKHOME_ASUSVE247';'PPROOM_EIZOFLEXSCAN'
+dispname = '7TAS_BOLDSCREEN32'; % Choose from: '7TAS_BOLDSCREEN32';'KKOFFICE_AOCQ3277';'EKHOME_ASUSVE247';'PPROOM_EIZOFLEXSCAN'
 p.disp   = vcd_getDisplayParams(dispname);
 
 
@@ -19,7 +19,7 @@ saveFigsFolder = fullfile(vcd_rootPath,'figs',dispname); % where to store visual
 if ~exist(saveFigsFolder,'dir'); mkdir(saveFigsFolder); end
 
 % Get stimulus parameters
-p.load_params                 = false; % if false, re-create params.
+p.load_params                 = true; % if false, re-create params.
                                       % if true, we load stored mat file
 p.store_params                = true; % if false, we don't store params. 
                                       % if true, we store mat file in fullfile(vcd_rootPath,'workspaces','info')
@@ -269,10 +269,34 @@ if verbose
     for dl = 1:length(deltalabels)
         for cc = 1:length(p.stim.rdk.dots_coherence)
             for dd = 1:length(p.stim.rdk.dots_direction)
-                vcd_createStimVideo(rdk{dd,cc,dl}, 1/p.stim.presentationrate_hz, ...
-                    fullfile(saveDir), ...
-                    sprintf('vcd_rdk_coh%s_dir%02d_delta%s',...
-                    cohlabels{cc},p.stim.rdk.dots_direction(dd),deltalabels{dl}));
+                
+%                 % create movie
+%                 vcd_createStimVideo(rdk{dd,cc,dl}, 1/p.stim.presentationrate_hz, ...
+%                     fullfile(saveDir), ...
+%                     sprintf('vcd_rdk_coh%s_dir%02d_delta%s',...
+%                     cohlabels{cc},p.stim.rdk.dots_direction(dd),deltalabels{dl}));
+
+                % plot dot position & motion vector
+                dot_pos = dotlocs{dd,cc, dl};
+                dxdy    = dot_pos(:,:,2:end)-dot_pos(:,:,1:end-1);
+                dxdy    = cat(3,zeros(size(dot_pos,1),size(dot_pos,2)),dxdy);
+                if p.store_imgs
+                    saveDir = fullfile(vcd_rootPath,'figs',dispname,'rdk','motion_vecs',sprintf('dir%02d',dd));
+                    if ~exist(saveDir,'dir'); mkdir(saveDir); end
+                end
+                for ii = 1:size(dot_pos,3) % loop over time
+                    cla;
+                    xlim([-250, 250]); ylim([-250, 250]); box off;
+                    plot(dot_pos(~isnan(dot_pos(:,1,ii)),1,ii),dot_pos(~isnan(dot_pos(:,2,ii)),2,ii),'o'); hold on;
+                    quiver(dot_pos(~isnan(dot_pos(:,1,ii)),1,ii),dot_pos(~isnan(dot_pos(:,2,ii)),2,ii), ...
+                        dxdy(~isnan(dot_pos(:,1,ii)),1,ii),dxdy(~isnan(dot_pos(:,2,ii)),2,ii));
+                    title(sprintf('frame %02d: coh: %3.2f%% dir:%02d delta: %s',...
+                    ii, p.stim.rdk.dots_coherence(cc)*100,p.stim.rdk.dots_direction(dd), deltalabels{dl})); axis square;
+                    filename = sprintf('vcd_rdk_coh%03d_dir%02d_delta%02d_motionvec%d.png',p.stim.rdk.dots_coherence(cc)*100,dd,dl,ii);
+                    if p.store_imgs
+                        print(gcf,'-dpng','-r300',fullfile(saveDir,filename));
+                    end
+                end
             end
         end
     end
@@ -280,14 +304,9 @@ if verbose
     % ek start here, check dot post vs coherence..
     figure(100);
     for ii = 1:60; clf;
-        quiver(dot_pos(:,1,ii),dot_pos(:,2,ii),dxdy(:,1),dxdy(:,2));
-        title(sprintf('frame %d: coh%03d dir%02d delta%02d',...
-            ii, p.stim.rdk.dots_coherence(cc)*100,p.stim.rdk.dots_direction(bb), dd)); axis square;
-        filename = sprintf('vcd_rdk_coh%03d_dir%02d_delta%02d_motionvec%d.png',p.stim.rdk.dots_coherence(cc)*100,bb,dd,ii);
         
-        saveDir = fullfile(vcd_rootPath,'figs',dispname,'rdk',sprintf('dir%02d',);
-        if ~exist(saveDir,'dir'); mkdir(saveDir); end
-        print(gcf,'-dpng','-r300',fullfile(saveDir,'rdk_20250407',filename));
+        
+
     end
     
     %% Simple dot: Main dot locations per hemifield
