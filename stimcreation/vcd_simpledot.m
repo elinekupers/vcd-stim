@@ -27,8 +27,8 @@ if mod(p.stim.dot.img_sz_pix,2)~=0
 end
 
 % Create spatial support
-x = (0:(p.stim.dot.img_sz_pix - 1));
-y = (0:(p.stim.dot.img_sz_pix - 1));
+x = (0:(p.stim.dot.img_sz_pix - 1) + 6); % add 6 pixels for spatial support
+y = (0:(p.stim.dot.img_sz_pix - 1) + 6); % add 6 pixels for spatial support
 x = x - x(end) / 2;
 y = y - y(end) / 2;
 [X, Y] = meshgrid(x, y);
@@ -40,16 +40,28 @@ clear x y
 centerY = 0;
 centerX = 0;
 
-simple_dot = (Y - centerY).^2 ...
+simple_dot_mask = (Y - centerY).^2 ...
     + (X - centerX).^2 <= p.stim.dot.radius_pix.^2;
 
-% convert to uint8 
-simple_dot = uint8(simple_dot);
-simple_dot(simple_dot==0) = p.stim.bckgrnd_grayval;
-simple_dot(simple_dot==1) = p.stim.dot.color(1);
+% convert logical to double
+simple_dot_mask_inv = (~simple_dot_mask);
+
+% Smooth circle edge (anti alias) with a Savitzky-Golay sliding polynomial filter
+smooth_dot = dealias(double(simple_dot_mask), 0.4, 0.4, 2, 6);
+
+% rescale range to [1 255]
+pixelrange = [1 255]; % pixel range
+scale_image = @(x) uint8((x - min(x(:))) / (max(x(:)) - min(x(:))) * diff(pixelrange) + min(pixelrange));
+smooth_dot2 = scale_image(smooth_dot);
+
+% correct colors
+smooth_dot2(simple_dot_mask_inv) = p.stim.bckgrnd_grayval(1); % grayval is double
+
+idx = smooth_dot2 > 230;
+smooth_dot2(idx) = p.stim.dot.color(1); % grayval is double
 
 % add RGB copy in third dim
-simple_dot = repmat(simple_dot, [1 1 3]);
+simple_dot = repmat(smooth_dot2, [1 1 3]);
 
 % Create alpha mask (same for all dots)
 mask  = uint8(zeros(size(simple_dot,1),size(simple_dot,2)));
@@ -117,13 +129,16 @@ end
 
 
 % debug figure
-% figure(99); clf;
-% subplot(131); imagesc(simple_dot); colormap gray; axis image; set(gca, 'CLim', [1 255]); 
-% title('simple dot'); xlabel('pixels'); ylabel('pixels')
-% subplot(132); imagesc(mask); colormap gray; axis image;  set(gca, 'CLim', [1 255]); 
-% title('alpha mask'); xlabel('pixels'); ylabel('pixels')
-% subplot(133); imagesc(simple_dot, 'AlphaData',mask); colormap gray; axis image;  set(gca, 'CLim', [1 255]); 
-% title('dot+alpha mask'); xlabel('pixels'); ylabel('pixels')
+figure(99); clf;
+subplot(131); imagesc(simple_dot); colormap gray; axis image; set(gca, 'CLim', [1 255]); 
+title('simple dot'); xlabel('pixels'); ylabel('pixels')
+subplot(132); imagesc(mask); colormap gray; axis image;  set(gca, 'CLim', [1 255]); 
+title('alpha mask'); xlabel('pixels'); ylabel('pixels')
+subplot(133); imagesc(simple_dot, 'AlphaData',mask); colormap gray; axis image;  set(gca, 'CLim', [1 255]); 
+title('dot+alpha mask'); xlabel('pixels'); ylabel('pixels')
+
+saveDir = fullfile(vcd_rootPath,'figs',p.disp.name,'simple_dot');
+if ~exist(saveDir,'dir'), mkdir(saveDir); end;
 
 cmap = [0,0,0; lines(4)];
 sz = 50*ones(1,5);
@@ -141,7 +156,7 @@ for ii = 1:length(unique(info.unique_im(~isnan(info.unique_im))))
     pax.FontSize = 20;
     
     title(sprintf('Simple dot location %d + ref: [%d,%d,0,%d,%d]',ii, p.stim.dot.delta_from_ref));
-    print(fullfile(vcd_rootPath,'figs',sprintf('%02d_simpledot', ii)),'-dpng');
+    print(fullfile(saveDir,sprintf('%02d_simpledot', ii)),'-dpng','-r150');
 end
 
 
