@@ -80,7 +80,7 @@ rseed = [1000 2010];
 num_col = size(p.stim.rdk.dots_color,1);
 counter = 1;
 
-tmpDir = fullfile(vcd_rootPath, 'workspaces','stimuli',['rdk_' datestr(now,'yyyymmdd')]);
+tmpDir = fullfile(vcd_rootPath, 'workspaces','stimuli',p.disp.name,['rdk_' datestr(now,'yyyymmdd')]);
 if ~exist('tmpDir','dir'), mkdir(tmpDir); end
 
 % Create circle alpha mask for image
