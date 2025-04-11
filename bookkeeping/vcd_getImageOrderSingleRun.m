@@ -209,10 +209,12 @@ else
                                 assert(isequal( delta_deg, images.info.gabor.delta_deg(idx0)));
                                 
                                 delta_idx = 1+ find(delta_deg == params.stim.gabor.delta_from_ref);
-                                run_images{trial_nr,side} = images.gabor(:,:,:,unique_im, delta_idx);
+                                
+                                run_images{trial_nr,side}      = images.gabor(:,:,:,unique_im, delta_idx);
                                 run_alpha_masks{trial_nr,side} = images.alpha.gabor(:,:,unique_im, delta_idx);
                                 
                             elseif strcmp(subj_time_table.event_name(stim_sub(ii)),'stim2') && strcmp(subj_time_table.task_class_name(stim_sub(ii)),'ltm')
+                                
                                 
                                 if subj_time_table.islure(stim_sub(ii)) % same stim class
                                     pair_im = [];
@@ -224,6 +226,20 @@ else
                                     run_images{trial_nr,side} = [];
                                     run_alpha_masks{trial_nr,side} = [];
                                 end
+                                
+                            elseif strcmp(subj_time_table.event_name(stim_sub(ii)),'stim2') && strcmp(subj_time_table.task_class_name(stim_sub(ii)),'img')
+                                
+                                if subj_time_table.response(stim_sub(ii)) % yes -- dots overlap
+                                    text_prompt{trial,side}        = {''};
+                                    run_images{trial_nr,side}      = [];
+                                    run_alpha_masks{trial_nr,side} = [];
+                                    
+                                else % no -- dots overlap
+                                    text_prompt{trial,side}        = {''};
+                                    run_images{trial_nr,side}      = [];
+                                    run_alpha_masks{trial_nr,side} = [];
+                                end    
+                                
                             end
                             
                         case 'rdk'
