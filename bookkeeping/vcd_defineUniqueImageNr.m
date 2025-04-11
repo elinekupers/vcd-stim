@@ -326,7 +326,7 @@ switch stimClass
         for ii = 1:length(n_basic_cat)
             super_cat_vec = cat(2, super_cat_vec, repelem(ii,sum(n_sub_cat(ii,:))));
             basic_cat_vec = cat(2, basic_cat_vec, repmat(1:n_basic_cat(ii),1,n_sub_cat(ii,1)));
-            sub_cat_vec   = cat(2, sub_cat_vec, [1:n_sub_cat(ii,1), 1:n_sub_cat(ii,2)]);
+            sub_cat_vec   = cat(2, sub_cat_vec, repelem(1:n_sub_cat(ii,1), length(n_sub_cat(ii,:))));
         end
         stimloc_vec      = repmat(loc_stim, 1, n_unique_cases);
         stimloc_name_vec = repmat({'center'}, 1, n_unique_cases);
@@ -336,10 +336,17 @@ switch stimClass
         
         super_cat_name = p.stim.ns.super_cat(super_cat_vec);
         basic_cat_name = {}; sub_cat_name ={};
+        
         for ii = 1:length(basic_cat_vec)
-            basic_cat_name(ii) = p.stim.ns.basic_cat{super_cat_vec(ii)}(basic_cat_vec(ii));
-            sub_cat_name(ii)  = p.stim.ns.sub_cat{super_cat_vec(ii)}(sub_cat_vec(ii));
+            basic_cat_name = cat(2, basic_cat_name, p.stim.ns.basic_cat{super_cat_vec(ii)}(basic_cat_vec(ii)));
         end
+        
+        sub_cat_name ={};
+        for ii = 1:size(p.stim.ns.sub_cat,1)
+            tmp = reshape(cat(1,p.stim.ns.sub_cat{ii,:}),1,[]);
+            sub_cat_name = cat(2, sub_cat_name, tmp);
+        end
+            
         % create filler vectors
         contrast_vec = ones(size(stimloc_vec))';
         nan_vec      = NaN(size(stimloc_vec))';
@@ -363,6 +370,19 @@ switch stimClass
         t.super_cat_name = super_cat_name';
         t.basic_cat_name = basic_cat_name';
         t.sub_cat_name   = sub_cat_name';
+        
+        assert(isequal(t.unique_im_nr,[1:size(t,1)]'))
+        assert(isequal(n_unique_cases,size(t,1)))
+        assert(isequal(unique(t.super_cat)',1:length(p.stim.ns.super_cat)))
+        assert(isequal(unique(t.basic_cat)',1:length(p.stim.ns.basic_cat{1})))
+        assert(isequal(unique(t.sub_cat)',1:length(p.stim.ns.sub_cat{1})))
+        assert(isequal(unique(t.super_cat_name)',sort(p.stim.ns.super_cat)))
+        assert(isequal(t.basic_cat_name,repmat(reshape(cat(2,p.stim.ns.basic_cat{:}),[],1),length(p.stim.ns.sub_cat{1}),1)))
+        assert(isequal(t.sub_cat_name', cat(2, reshape(cat(1,p.stim.ns.sub_cat{1,:}),1,[]), ...
+                                                       reshape(cat(1,p.stim.ns.sub_cat{2,:}),1,[]), ...
+                                                       reshape(cat(1,p.stim.ns.sub_cat{3,:}),1,[]), ...
+                                                       reshape(cat(1,p.stim.ns.sub_cat{4,:}),1,[]), ...
+                                                       reshape(cat(1,p.stim.ns.sub_cat{5,:}),1,[]))))
 end
 
 

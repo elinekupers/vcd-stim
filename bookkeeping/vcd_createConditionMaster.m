@@ -646,23 +646,29 @@ switch stimClass{:}
     case 'ns'
         
         % Get stim manipulations
-        stimloc_cues   = 3; %{1:'cued',0:'uncued',3:'bothcued'}; % should we make bothcued=2?
+        stimloc_cues    = 3; %{1:'cued',0:'uncued',3:'bothcued'}; % should we make bothcued=2?
         n_cued_stimlocs = length(stimloc_cues);
-        n_super_cat    = length(p.stim.ns.super_cat);
-        n_basic_cat = []; n_sub_cat = [];
+        n_super_cat     = length(p.stim.ns.super_cat);
+        
        
+        % Get super and sub category info
+        n_basic_cat = [];   n_sub_cat = [];
+        super_cat_vec = []; sub_cat_vec = [];
         for ni = 1:n_super_cat
             n_basic_cat(ni) = length(p.stim.ns.basic_cat{ni});
+            
             for nj = 1:n_basic_cat(ni)
+
                 n_sub_cat(ni,nj) = length(p.stim.ns.sub_cat{ni,nj});
+                
+                super_cat_vec = cat(2, super_cat_vec, repelem(ni,n_sub_cat(ni,nj)));
+%                 basic_cat_vec0 = cat(2, basic_cat_vec0, repelem(nj, n_sub_cat(ni,nj)));
+                sub_cat_vec   = cat(2, sub_cat_vec, [1:n_sub_cat(ni,nj)]);
+
             end
         end
         
-        % Get super and sub category info
-        super_cat_vec = []; sub_cat_vec = [];
-        for ii = 1:length(n_basic_cat)
-            super_cat_vec = cat(2, super_cat_vec, repelem(ii,sum(n_sub_cat(ii,:))));
-        end
+
         
         for rep = 1:p.exp.n_unique_trial_repeats
             
@@ -711,11 +717,12 @@ switch stimClass{:}
             assert(isequal(histcounts(shuffled_super_cat),sum(n_sub_cat,2)'))
             
             % shuffle basic category (so shuffle every other image)
-            basic_cat_vec = cond_table.basic_cat;
-            
+%             basic_cat_vec = cond_table.basic_cat;
             basic_cat_shuffle_idx = [];
             for ii = 1:length(n_basic_cat)
+                % create [ 0 0 2 2 4 4 ] vector
                 curr_im = repelem(length(basic_cat_shuffle_idx): 2 : length(basic_cat_shuffle_idx)+2*n_basic_cat(ii),n_basic_cat(ii));
+                % add shuffled [1,2,1,2,1,2] vector
                 basic_cat_shuffle_idx = cat(2, basic_cat_shuffle_idx, curr_im + shuffle_concat([1:n_basic_cat(ii)],n_sub_cat(ii,1)));
             end
 
@@ -796,7 +803,7 @@ switch stimClass{:}
             conds_master_single_rep2.islure = false(size(conds_master_single_rep2.ltm_stim_pair));
             
             % Keep track of repeat
-            conds_master_single_rep2.repeat_nr = rep.*ones(size(conds_master_single_rep2,1));
+            conds_master_single_rep2.repeat_nr = [rep.*ones(size(conds_master_single_rep2,1),1), NaN(size(conds_master_single_rep2,1),1)];
             
             % Accummulate
             cond_master = [cond_master; conds_master_single_rep2];
