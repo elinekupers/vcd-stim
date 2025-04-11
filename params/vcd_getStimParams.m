@@ -96,17 +96,17 @@ else
     % ensure we have a round number of monitor refreshes to achieve 30 Hz presentation rate  
     assert(isint(disp_params.refresh_hz/stim.presentationrate_hz));
     
-    stim.framedur_s          = stim.f2f*disp_params.refresh_hz;            % duration for each presentation frame (should be 33 ms)
+    stim.framedur_s          = stim.f2f*(1/disp_params.refresh_hz);        % duration for each presentation frame (should be 33 ms)
     stim.bckgrnd_grayval     = ceil(255/2);                                % background color (middle of 1-255 pixel lum)
     stim.scfactor            = 1;                                          % no scaling
     
     % Default params to inherit (or overwrite)
-    stimdur_frames           = stim.presentationrate_hz * 2.0;             % nr of (33 ms) presentation frames (60 frames = 2 sec)
+    stimdur_frames           = stim.presentationrate_hz * 2.0;             % 2 s nr of (33 ms) presentation frames (60 frames = 2 sec)
     x0_deg                   = [-4 4];                                     % desired x-center location for left right stim apertures (degrees)
     y0_deg                   = [0 0];                                      % desired y-center location for left right stim apertures (degrees)
     
-    x0_pix                   = round((x0_deg.*disp_params.ppd)/2)*2;       % 354 pixels (4.0059 deg) for BOLD screen, empirical x-center location for left right stim apertures (pixels)
-    y0_pix                   = round((y0_deg.*disp_params.ppd)/2)*2;       % 354 pixels (4.0059 deg) for BOLD screen, empirical y-center location for left right stim apertures (pixels)
+    x0_pix                   = round((x0_deg.*disp_params.ppd)/2)*2;       % Empirical x-center location for left right stim apertures (pixels): 354 pixels (4.0059 deg) for BOLD screen, 258 pixels for PP room EIZO screen. 
+    y0_pix                   = round((y0_deg.*disp_params.ppd)/2)*2;       % Empirical y-center location for left right stim apertures (pixels): 354 pixels (4.0059 deg) for BOLD screen, 258 pixels for PP room EIZO screen.
     
     % Parafoveal circular aperture (for gabors, rdk, and obj)
     parafov_circle_diam_deg  = 4;                                          % desired  parafoveal circular diameter aperture (empirical is 4.0059 degrees)
@@ -127,6 +127,8 @@ else
     stim.bckground.mode             = 0;                                    % mode of pinknoise function, 0 means fixed amplitude spectrum + random phase
     stim.bckground.std_clip_range   = 3.5;                                  % when converting pixel values to 1-255 range, how many std's of image values do we allow before clipping the range
     
+    fprintf('*** %s SCREEN SIZE (hxw): FoV: [%2.2f,%2.2f] degrees visual angle. Resolution = [%02d,%02d] pixels.***\n', disp_params.name, disp_params.h_deg,disp_params.w_deg ,disp_params.h_pix,disp_params.w_pix);
+ 
     %% FIXATION DOT
     
     % General
@@ -139,18 +141,24 @@ else
     stim.fix.dres                   = [];                                   % rescale factor (fraction)
         
     % SPATIAL
-    stim.fix.dotcenterdiam_pix      = 12;                                   % dot diameter in pixels (18 pixels)
-    stim.fix.dotcenterdiam_deg      = stim.fix.dotcenterdiam_pix/disp_params.ppd; % 0.14 deg, center circle diameter
-    stim.fix.dotthinborderdiam_pix  = stim.fix.dotcenterdiam_pix+6;         % pixel-width for dot thin border (during ITI/IBI) (0.2037 deg)
-    stim.fix.dotthickborderdiam_pix = stim.fix.dotcenterdiam_pix+10;       % pixel-width for dot border (during trial) (0.249 deg)
+    stim.fix.dotcenterdiam_deg      = 0.14;                                 % (deg) idealized diameter of inner fixation circle
+    stim.fix.dotthinborderdiam_deg  = 0.20;                                 % (deg) idealized diameter of thick fixation circle rim
+    stim.fix.dotthickborderdiam_deg = 0.25;                                 % (deg) idealized diameter of thin fixation circle rim
+    % empirical diameters are boldscreen 12+6 pixels = 18 ~ 0.2037 deg. pproom eizo screen = 9+4 pixels = 13 ~ 0.2020 deg
+    % empirical diameters are boldscreen 12+10 pixels = 22 ~ 0.249 deg. pproom eizo screen = 9+7 pixels = 16 pixels ~ 0.2486 deg
+    stim.fix.dotcenterdiam_pix      = round(stim.fix.dotcenterdiam_deg * disp_params.ppd);      % inner fixaton cirle diameter in pixels (boldscreen: 12 pixels, pproom: 9 pixels)
+    stim.fix.dotthinborderdiam_pix  = round(stim.fix.dotthinborderdiam_deg * disp_params.ppd);  % total fixation circle diameter with thin border in pixels (during ITI/IBI) 
+    stim.fix.dotthickborderdiam_pix = round(stim.fix.dotthickborderdiam_deg * disp_params.ppd); % total fixation circle diameter with thick border in pixels (during trial)
     
-    stim.fix.lumminmaxstep          = [42,212,5];                          % min, max, and nr of dot luminance values [1-255],
-    stim.fix.dotlum                 = uint8(linspace(stim.fix.lumminmaxstep(1),stim.fix.lumminmaxstep(2),stim.fix.lumminmaxstep(3))); % dot gray levels
+
+    stim.fix.lumminmaxstep          = [41,213,5];                          % min, max, and nr of dot luminance values [1-255],
+    stim.fix.dotlum                 = linspace(stim.fix.lumminmaxstep(1),stim.fix.lumminmaxstep(2),stim.fix.lumminmaxstep(3)); % dot gray luminance levels (1-255): 41 84 127 170 213
     stim.fix.dotopacity             = 0.5;                                 % dot and border have 50% opacity
     stim.fix.color                  = [255, 255, 255; 255 0 0];            % white and red (for spatial cue)
-        
-    fprintf('*** FIXATION MARK: fixation center diam = %d, thick rim = %d, thick rim = %d pixels ***\n', ...
+   
+    fprintf('*** FIXATION CIRCLE: inner center diameter = %d, inner+thin rim = %d, inner+thick rim = %d pixels ***\n', ...
         stim.fix.dotcenterdiam_pix,stim.fix.dotthinborderdiam_pix,stim.fix.dotthickborderdiam_pix);
+    
     
     %% CONTRAST DECREMENT -- INVERTED GAUSSIAN TEMPORAL WINDOW
     % We treat timepoint t=0 as the onset time of a frame flip, and t=1 is 
@@ -379,7 +387,7 @@ else
                 
             case {'obj',4}
                 % GENERAL
-                p.indivobjectfile = fullfile(vcd_rootPath,'workspaces','stimuli','vcd_complex_objects_2degstep_lumcorrected');
+                p.indivobjfile = fullfile(vcd_rootPath,'workspaces','stimuli',disp_params.name,'vcd_objects_2degstep_lumcorrected');
                 p.stimfile = fullfile(vcd_rootPath,'workspaces','stimuli',sprintf('object_%s',disp_params.name)); % mat-file where to store stimulus images?
                 p.infofile = fullfile(vcd_rootPath,'workspaces','info',sprintf('object_info_%s',disp_params.name));  % csv-file Where to find stimulus info?
                 p.iscolor         = false;                                      % use color or not [[[IF WE USE COLOR: MAKE SURE TO SQUARE IMAGE VALS FOR CLUT]]
@@ -394,11 +402,9 @@ else
                 p.y0_deg        = y0_deg;                                       % y-center loc in deg (translation from center screen 0,0)
                 p.x0_pix        = x0_pix;                                       % x-center loc in pix (translation from center screen 0,0)
                 p.y0_pix        = y0_pix;                                       % y-center loc in pix (translation from center screen 0,0)
-                
-                
                 p.og_res_stim_total_sz  = 1024;                                 % original resolution of object stimuli
-                p.og_res_stim_target_sz = 354;                                  % these og stimuli have a target size of 354 pixels = 4 dva
-                
+
+                p.og_res_stim_target_sz = parafov_circle_diam_pix;              % object stimuli have a target size of 4 dva = 354 pixels (7TAS_BOLDSCREEN32) or 258 pixels (PP room)
                 p.og_res_stim_deg   = parafov_circle_diam_deg;                  % corresponding to 4 deg
                 
                 p.img_sz_pix        = (p.og_res_stim_total_sz/p.og_res_stim_target_sz)*parafov_circle_diam_pix;                      % scale factor to apply
@@ -407,22 +413,24 @@ else
                 
                 
                 p.num_unique_objects = 16;                                      % orientation "bins" from which we create final gabor orientations (deg), 0 = 12 o'clock
-%                 p.canonical_facing_dir_deg = repmat(90 + [-45, 45],1,p.num_unique_objects/2); % rotate 10 deg away from canonical view
+                p.canonical_facing_dir_deg = repmat(90 + [-45, 45],1,p.num_unique_objects/2); % rotate 10 deg away from canonical view
                 p.rot_bins      = linspace(10,170,p.num_unique_objects);
+                p.rot_bins      = p.rot_bins(1:2:end);
                 p.rot_jitter_sd = 1;                                           % std of normal distribution to sample rotation jitter
                 p.rot_jitter_mu = 1;                                           % mean of normal distribution to sample rotation jitter
                 
                 if overwrite_randomized_params 
                     p.rot_jitter       = p.rot_jitter_mu + (p.rot_jitter_sd.*randn(1,p.num_unique_objects)); % add a small amount of jitter around the rotation
                     p.facing_dir_deg   = round(p.rot_bins + p.rot_jitter);     % final facing direction for all objects
-                    p.facing_dir_deg   = ceil(p.facing_dir_deg/2)*2;
+                    p.facing_dir_deg   = ceil(p.facing_dir_deg/2)*2;           % ensure we only deal with even rotations
+                    p.facing_dir_deg   = p.facing_dir_deg(shuffle_concat([1:p.num_unique_objects],1)); % shuffle order of facing directions
                 else
                     p.rot_jitter       = [0.2280    0.7061    2.8998    0.5255    1.2055    0.8602   -0.1122  -0.6935    0.8379    2.1032    1.0862   -0.3847    1.5598    0.6225  0.2114  0.1853]; 
-                    p.facing_dir_deg   = [10    22    34    44    54    64    74    84    96   108   118   128   140   150   160   170];
+                    p.facing_dir_deg   = [64 44 150 34 96 128 84 22 10 170 108 74 118 160 54 140 64 44 150 34 96 128 84 22 10 170 108 74 118 160 54 140];
                 end
                 
-                
-                p.super_cat          = {'human','animal','object','place'};     % 4 superordinate categories
+                % Define the 4 superordinate, 8 basic, and 16 subordinate categories
+                p.super_cat          = {'human','animal','object','place'};     
                 
                 p.basic_cat{1}       = {'facemale','facefemale','facefemale'};
                 p.basic_cat{2}       = {'small','small','big','big'};
@@ -434,14 +442,17 @@ else
                 p.sub_cat{3}         = {'drill','brush','pizza','banana','bus','suv'};
                 p.sub_cat{4}         = {'church','house','watertower'};
                 
+                % Define the affordances for each object subcategory (for HOW task) 
                 p.affordance{1}       = {'greet','greet','greet'};
                 p.affordance{2}       = {'greet','greet','observe','observe'};
                 p.affordance{3}       = {'grasp','grasp','grasp','grasp','enter','enter'};
                 p.affordance{4}       = {'enter','enter','observe'};
 
                 p.square_pix_val     = true;
-                p.delta_from_ref     = [-8, -4, 4, 8];                        % how much should stim pose rotate from reference (WM: for double epochs)
-                % the bigger the delta, the easier the trial. Negative is counter-clockwise, positive is clockwise
+                p.delta_from_ref     = [-8, -4, 4, 8];                        % Stim pose rotation from reference for WM test image
+                                                                              % the bigger the delta, the easier the trial. 
+                                                                              % for 1-89 deg rotations: Negative values are leftwards, positive values is rightwards
+                                                                              % for 91-180 deg rotations: Negative values are rightward, positive values is leftward
                 % Add params to struct
                 stim.obj = p;
                 
@@ -506,6 +517,7 @@ else
                 p.affordance{5,1} = {'walk','walk','walk'};
                 p.affordance{5,2} = {'observe','walk','walk'};
                 
+                p.ltm_im        = [2,4,5,8,10,11,13,15,18,20,21,23,26,27,30];
                 
                 p.change_im     = {'easy_add', 'hard_add','easy_remove', 'hard_remove'};
                 p.lure_im       = {'lure01', 'lure02', 'lure03', 'lure04'};
@@ -517,8 +529,8 @@ else
         end
         
         fprintf('*** %s: Using a stimulus size of %2.2f deg (%3.2f pixels). ***\n', upper(stim_class{ii}), p.img_sz_deg, p.img_sz_pix);
-        fprintf('*** %s: Using a stimulus duration of %d frames (%3.2f seconds), where 1 bin is %d frames of 1/%d Hz ***\n', ...
-            upper(stim_class{ii}), p.duration, p.duration*stim.framedur_s, stim.presentationrate_hz, disp_params.refresh_hz);
+        fprintf('*** %s: Using a stimulus duration of %d frames (%3.2f seconds), where one frame relates to %d monitor refreshes (%d Hz) ***\n', ...
+            upper(stim_class{ii}), p.duration, p.duration*stim.framedur_s, stim.f2f, disp_params.refresh_hz);
     end
 
     
