@@ -1,6 +1,6 @@
-function [im, mask, prompt, xy_coords_deg, xy_coords_pix] = vcd_getImageryQuizDots(params)
+function [all_quiz_dots, params] = vcd_getImageryQuizDots(params, condition_master)
 %
-%  [im, mask, info, params] = vcd_getImageryQuizDots(params)
+%  [all_quiz_dots, params] = vcd_getImageryQuizDots(params, condition_master)
 %
 % Purpose:
 %   Create imagery quiz dot images for a specific display environment. Each
@@ -18,14 +18,35 @@ function [im, mask, prompt, xy_coords_deg, xy_coords_pix] = vcd_getImageryQuizDo
 %                    (params.disp), and each stimulus class:
 %                       - params.(stim_class).img_im : unique image nrs
 %                       that will be used in imagery stim-task crossing 
-%                  :
+%   condition_master :
 %
 % OUTPUTS:
-%   im             : quiz dot images: height (pixels) by width (pixels) x 3 (rgb)
-%   masks          : alpha masks for each quiz dot image to crop out image edges
-%   prompt         : cell with individual text prompts related to each quiz image
-%   xy_coords_deg  : [x,y] coordinates of each dot location within 
-%   xy_coords_pix  : [x,y] coordinates of each dot location within 
+%   all_quiz_dots.(stimClass) : struct with the following fields for each stimulus class: 
+%       * images              : quiz dot images: height (pixels) by width (pixels) x 3 (rgb)
+%       * masks               : alpha masks for each quiz dot image to crop out image edges
+%       * prompts             : cell with individual text prompts related to each quiz image
+%       * xy_coords_deg       : [x,y] coordinates of each dot location within quiz image
+%       * xy_coords_pix       : [x,y] coordinates of each dot location within quiz image
+%
+% EXAMPLE:
+% params = struct();
+% params.verbose        = true; % visualize stimuli or not
+% 
+% % Get display params
+% dispname = '7TAS_BOLDSCREEN32'; % Choose from: '7TAS_BOLDSCREEN32' or 'KKOFFICE_AOCQ3277' or 'EKHOME_ASUSVE247' or 'PPROOM_EIZOFLEXSCAN'
+% params.disp   = vcd_getDisplayParams(dispname);
+% 
+% % Get stimulus parameters
+% params.load_params                 = false; % get stim params
+% params.store_params                = false; 
+% params.overwrite_randomized_params = false; % DO NOT OVERWRITE PARAMS
+% p.stim   = vcd_getStimParams('stim_class','all', 'disp_name',p.disp.name, ...
+%     'load_params', params.load_params,...
+%     'store_params', params.store_params, ...
+%     'overwrite_randomized_params', params.overwrite_randomized_params);
+%
+% [all_quiz_dots, params] = vcd_getImageryQuizDots(params)
+
 
 all_quiz_dots = struct();
 
@@ -144,7 +165,7 @@ switch stimClass
 end
     
 all_quiz_dots.(stimClass).images        = im;
-all_quiz_dots.(stimClass).alpha_masks   = masks;
+all_quiz_dots.(stimClass).masks         = mask;
 all_quiz_dots.(stimClass).prompts       = prompt;
 all_quiz_dots.(stimClass).xy_coords_deg = xy_coords_deg;
 all_quiz_dots.(stimClass).xy_coords_pix = xy_coords_pix;
