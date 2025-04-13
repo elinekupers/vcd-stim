@@ -32,6 +32,9 @@ function [all_quiz_dots, params] = vcd_getImageryQuizDots(params)
 % % Get display params
 % disp_name = '7TAS_BOLDSCREEN32';
 % params.disp   = vcd_getDisplayParams(disp_name);
+%
+% % Get experimental design params
+% params.exp   = vcd_getSessionParams(disp_name);
 % 
 % % Get stimulus parameters
 % params.stim   = vcd_getStimParams('stim_class','all', ...
