@@ -231,7 +231,8 @@ else
     % * PP room EIZOFLEX: 194 pixels, which corresponds to 3.0139 degrees.
     stim.el.point2point_distance_deg = 3.0;                                % desired target distance (in deg) from fixation 
     stim.el.point2point_distance_pix = round((stim.el.point2point_distance_deg*disp_params.ppd/2))*2; % desired target distance in pixels
-
+    
+    
     %% STIM PARAMS
     for ii = 1:length(stim_class)
         
@@ -292,8 +293,11 @@ else
                 p.delta_from_ref  = [-15, -5, 5, 15];                           % how much should stim iso-eccen loc deviate from reference (WM: double epochs)
                                                                                 % the bigger the delta, the easier the judgement in a trial
                 % IMG SUBSET
-                p.img_im_nr       = [17:24];                                    % numbers refer to unique image nr (only high contrast)
-
+                p.imagery_im_nr       = [17:24];                                    % numbers refer to unique image nr (only high contrast)
+                
+                % IMAGERY QUIZ DOT PARAMS
+                p.imagery_sz_deg      = 5.658;                                      % degree diameter of the second, quiz dots image in an imagery trial to encourage subjects to create a vidid mental image.
+                p.imagery_sz_pix      = (round(p.img_sz_deg* disp_params.ppd)/2)*2; % pixel diameter of quiz dot image (ensure even nr of pixels)
                 
                 % Add params to struct
                 stim.gabor = p;
@@ -350,8 +354,10 @@ else
                 p.delta_from_ref  = [-15, -5, 5, 15];                           % how much should stim iso-eccen loc deviate from reference (WM: double epochs)
  
                 % IMG SUBSET
-                p.img_im_nr             = [17:24];                                 % numbers refer to unique image nr (only high coherence)
-
+                p.imagery_im_nr             = [17:24];                                 % numbers refer to unique image nr (only high coherence)
+                % IMAGERY QUIZ DOT PARAMS
+                p.imagery_sz_deg      = 5.658;                                      % degree diameter of the second, quiz dots image in an imagery trial to encourage subjects to create a vidid mental image.
+                p.imagery_sz_pix      = (round(p.img_sz_deg* disp_params.ppd)/2)*2; % pixel diameter of quiz dot image (ensure even nr of pixels)
                 
                 % Add params to struct
                 stim.rdk = p;
@@ -424,8 +430,12 @@ else
                 p.ltm_pairs          = [];                                       %%
                 
                 % IMG SUBSET
-                p.img_im_nr             = [1:2:p.num_loc];                          % numbers refer to unique image nr
-
+                p.imagery_im_nr             = [1:2:p.num_loc];                          % numbers refer to unique image nr
+                
+                % IMAGERY QUIZ DOT PARAMS
+                p.imagery_sz_pix   = [disp_params.xc,disp_params.h_pix];         % pixel diameter of quiz dot image (ensure even nr of pixels)     
+                p.imagery_sz_deg   = [disp_params.w_deg/2, disp_params.h_deg];   % degree diameter of the second, quiz dots image in an imagery trial to encourage subjects to create a vidid mental image.
+                
                 % Add params to struct
                 stim.dot = p;
                 
@@ -500,7 +510,11 @@ else
                                                                             % for 1-89 deg rotations: Negative values are leftwards, positive values is rightwards
                                                                             % for 91-180 deg rotations: Negative values are rightward, positive values is leftward
                 % IMG SUBSET
-                p.img_im_nr             = [1,3,5,7,8,10,12,14];                % unique im numbers we will use for IMG
+                p.imagery_im_nr             = [1,3,5,7,8,10,12,14];                % unique im numbers we will use for IMG
+                
+                % IMAGERY QUIZ DOT PARAMS
+                p.imagery_sz_deg      = 5.658;                                      % degree diameter of the second, quiz dots image in an imagery trial to encourage subjects to create a vidid mental image.
+                p.imagery_sz_pix      = (round(p.img_sz_deg* disp_params.ppd)/2)*2; % pixel diameter of quiz dot image (ensure even nr of pixels)
 
                 % LTM PAIR
                 p.ltm_pairs          = [];                                       %%
@@ -584,7 +598,11 @@ else
                 p.ltm_pairs     = [];                                       %%
                 
                 % Half of the images will be used for IMG/LTM pairing
-                p.img_im_nr        = [2,4,5,8,10,11,13,15,18,20,21,23,26,27,30]; % numbers refer to unique image nr (see scene_info csv file)
+                p.imagery_im_nr        = [2,4,5,8,10,11,13,15,18,20,21,23,26,27,30]; % numbers refer to unique image nr (see scene_info csv file)
+                
+                % IMAGERY QUIZ DOT PARAMS
+                p.imagery_sz_deg      = p.img_sz_deg;                                      % degree diameter of the second, quiz dots image in an imagery trial to encourage subjects to create a vidid mental image.
+                p.imagery_sz_pix      = p.img_sz_pix;                                      % pixel diameter of quiz dot image (ensure even nr of pixels)
                 
                 % Add params to struct
                 stim.ns = p;
