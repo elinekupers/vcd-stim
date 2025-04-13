@@ -11,7 +11,13 @@ disp.name = dispname;
 % edge of the first pixel in the upper left part of the screen. This means
 % that [1,1] is the outer right and lower edge of the first pixel. 
 % Screen rect will be [0 0 w_pix h_pix], where xc and yc are in between two
-% pixels. For BOLD screen, there are this is in between pixel 960 and 961. 
+% pixels. For BOLD screen, this is in between pixel 960 and 961. 
+%
+% Therefore, we work with even sized number of pixels (this is enforced in
+% vcd_getStimulusParams.m) and try to get the center on the stimulus
+% support (which lies in between pixels) in the right spot using PTB
+% CenterRectOnPoint.m. This function relies on PTB RectCenter.m, which
+% rounds to the closest integer for a given [x,y] center coordinate.
 
 switch dispname
     case '7TAS_BOLDSCREEN32'                    % MATLAB version 2016b, psychtoolbox version 3.0.14 December 30th 2016
@@ -76,6 +82,7 @@ switch dispname
         disp.fontsize    = 18;                  % fontsize of text
 end
 
+% assert xc and yc are integers
 assert(isint(disp.xc)); assert(isint(disp.yc));
 
 return
