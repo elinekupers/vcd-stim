@@ -61,9 +61,12 @@ The content of the `workspaces` folder is ignored, as the files are too big. You
 
 
 Folders ignored by git (see .gitignore):
-* `workspaces`		:	Folder where the stimuli and stimulus info files live.
-* `figs`		: 	Folder where debug figures are stored
-* `data` 		: 	Folder where subject's button presses and created stimuli are stored (if requested).
+* `workspaces`		:	Folder where the created stimuli, condition tables, and instructions live.
+	* `stimuli`		: 	Subfolder where stimuli are stored in matlab (.mat) files
+	* `info`		: 	Subfolder where logged stimulus information is stored in csv files, as well as stimulus, display, experiment session params are stored in matlab (.mat) files.	
+	* `instructions`: 	Subfolder where instructions are stored in text (.txt) files
+* `figs`		    : 	Folder where debug figures are stored
+* `data` 		    : 	Folder where subject's button presses and created stimuli are stored (if requested).
 
 
 ## Examples
@@ -72,15 +75,19 @@ Folders ignored by git (see .gitignore):
   
 `s_createStimuli.m`
 
-* Example 2: Present run 01 of session 01 for subject 001:
+* Example 2: Create experimental design
+  
+`s_createDesignMatrix.m`
+
+* Example 3: Present run 01 of session 01 for subject 001:
   
 `runme_vcdcore(1,1,1)`
 
-* Example 3: Present run 01 of session 01 for subject 001 in debug mode:
+* Example 4: Present run 01 of session 01 for subject 001 in debug mode:
   
 `runme_vcdcore(1,1,1, 'debugmode', true)`
 
-* Example 3: Present run 01 of session 01 for subject 001 in debug mode using the psychophysics room monitor:
+* Example 5: Present run 01 of session 01 for subject 001 in debug mode using the psychophysics room monitor:
   
 `runme_vcdcore(1,1,1, 'dispName','PPROOM_EIZOFLEXSCAN')`
 
