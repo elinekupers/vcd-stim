@@ -11,7 +11,7 @@ Stimulus classes:
 * **Gabors:** Gratings in a gaussian window
 * **RDKs:** Random dot motion kinetograms 
 * **Dot:** Single simple dot
-* **Cobj:** Complex objects
+* **Obj:** Objects
 * **NS:** Natural scenes
 
 Task classes:
@@ -44,19 +44,20 @@ This stimulus presentation code has also been tested on a MacbookPro with macOS 
 
 ## Stimuli and info files
 
-The content of the `workspaces` folder is ignored, as the files are too big. You can view a stored version of the workspace [here](https://www.dropbox.com/scl/fo/kwdmlhjh79w70nl8225wh/AATjemZUbgXi2P-_AGW_ffg?rlkey=c6ln9ms5nxz7n300nn03pynro&st=l9tpl1z4&dl=0).
+The content of the `workspaces` folder is ignored, as the files are too big. You can view a stored version of the workspace [here](https://drive.google.com/drive/folders/1Boahkioyk5sLrlVFPKiTmLR2RoDlDeaS?usp=sharing).
 
 ## Code and folder overview
 
-* `runme_vcdcore.m`	:	This is the main function to run the core experiment of VCD.
-* `vcd_rootPath.m` 	: 	Function to set the rootpath to relative to the base of this folder.
+* `runme_vcdcore.m`	 :	This is the main function to run the core experiment of VCD.
+* `vcd_rootPath.m` 	 : 	Function to set the rootpath to relative to the base of this folder.
 
-* `external`		:	Folder with external functions from other toolboxes	
-* `functions`		:	Folder with vcd related functions 
-* `ptb`			:	Folder with vcd functions that run stimulus presentation with psychtoolbox
-* `scripts`		: 	Folder with standalone scripts to create stimuli
-* `tinkers`		: 	Folder with code tinkering around and such (probably should be removed at some point)
-* `utils` 		: 	Folder with small and simple utility functions.
+* `bookkeeping`		 :	Folder with standalone script and vcd related functions to create experimental design and keep track of stimulus conditions during stimulus presentation.
+* `external`		 :	Folder with external functions from other toolboxes.
+* `params` 			 :	Folder with vcd functions that define display, stimulus, and experimental session parameters.
+* `stimpresentation` :	Folder with vcd functions that run stimulus presentation with psychtoolbox.
+* `stimcreation`	 : 	Folder with standalone script and functions to create stimuli.
+* `tinkers`			 : 	Folder with code tinkering around and such (probably should be removed at some point)
+* `utils` 			 : 	Folder with small and simple utility functions.
 
 
 Folders ignored by git (see .gitignore):
@@ -90,7 +91,7 @@ Folders ignored by git (see .gitignore):
 * `Image:`  The retinal image: the image on the BOLD screen that falls onto the retina.
 * `Session:` The 2-3 hr scan session at the MRI scanner
 * `Run:` Each session consists of approx. 10 runs (+ 2 resting state), where each run is a sequence of mini blocks where subjects perform the VCD-core experiment, + rest periods in between blocks.  Each run approx. 5 minutes
-* `Miniblock:` A series of trials from the same stimulus-task class crossing (one cell in the master table).
+* `Block:` A series of trials from the same stimulus-task class crossing (one cell in the master table).
 * `Trials:` A series of events where subjects perform the instructed task on the cued stimulus. 
 * `Trial events:` Each trial contains “events”: trial start » spatial cue » ISI » stimulus epoch » (ISI » stimulus epoch) »  response cue » ITI.
 * `Trial types:` We have either single-epoch (one stimulus presentation intervals) or double-epoch (two stimulus presentation intervals, in between is a delay period) trials.
