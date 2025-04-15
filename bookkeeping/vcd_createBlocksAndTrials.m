@@ -54,7 +54,7 @@ function [p, condition_master, all_unique_im, all_cond] = vcd_createBlocksAndTri
 %   15: {'stim_class'     } stim class nr (1:5)
 %   16: {'task_class_name'} task class name (fix/cd/scc/pc/wm/ltm/img/what/where/how)
 %   17: {'task_class'     } task class nr (1:10)
-%   18: {'iscued'         } cue status: 0 = uncued, 1 = cued
+%   18: {'is_cued'         } cue status: 0 = uncued, 1 = cued
 %   19: {'unique_trial_nr'} unique trial nr
 %   20: {'thickening_dir' } thickening direction of fixation dot rim (for spatial attention cue) 1 = left, 2 = right, 3 = both/neutral
 %   21: {'stim2_delta'    } for double epoch tasks, what predefined delta between stim 1 and stim 2 did we choose from p.stim.(<stim_class_name>).delta_ref
@@ -128,19 +128,19 @@ else % Recreate conditions and blocks and trials
         task_crossings = find(p.exp.crossings(bsc_idx,:));
         
         % Define the unique images for Gabors
-        [t_cond, n_unique_cases] = vcd_defineUniqueImageNr(p, stimClass_name);
+        [t_cond, n_unique_cases] = vcd_defineUniqueImages(p, stimClass_name);
         
         all_unique_im.(stimClass_name) = t_cond;
         
         % Add stimclass name and idx to temporary table
-        t_cond.stim_class_name = repmat({stimClass_name},size(t_cond,1),1);
-        t_cond.stim_class = repmat(stimClass_idx,size(t_cond,1),1);
+        t_cond.stim_class_name = repmat({stimClass_name}, size(t_cond,1),1);
+        t_cond.stim_class      = repmat(stimClass_idx,    size(t_cond,1),1);
         
         % Loop over each task crossing for this stim class
         for curr_task = 1:length(task_crossings)
             
             % Add task name to temp table
-            taskClass_name = p.exp.taskClassLabels{task_crossings(curr_task)};
+            taskClass_name         = p.exp.taskClassLabels{task_crossings(curr_task)};
             t_cond.task_class_name = repmat({taskClass_name},size(t_cond,1),1);
             t_cond.task_class      = repmat(task_crossings(curr_task),size(t_cond,1),1);
             
@@ -208,12 +208,12 @@ else % Recreate conditions and blocks and trials
     assert(isequal(unique(condition_master.task_class)',1:length(p.exp.taskClassLabels)))
     
     % Cued vs uncued stimuli should be matched
-    assert(isequal(sum(condition_master.iscued==1),sum(condition_master.iscued==0)))
+    assert(isequal(sum(condition_master.is_cued==1),sum(condition_master.is_cued==0)))
     
     % Thickening direction should following cuing status
     assert(isequal(sum(condition_master.thickening_dir==1),sum(condition_master.thickening_dir==2)))
-    assert(isequal(sum(condition_master.thickening_dir==1),sum(condition_master.iscued==1)))
-    assert(isequal(sum(condition_master.thickening_dir==2),sum(condition_master.iscued==1)))
+    assert(isequal(sum(condition_master.thickening_dir==1),sum(condition_master.is_cued==1)))
+    assert(isequal(sum(condition_master.thickening_dir==2),sum(condition_master.is_cued==1)))
     
     % Now dive into each stimulus class
     N_tbl = NaN(5,30);
@@ -246,7 +246,7 @@ else % Recreate conditions and blocks and trials
     
 
     
-    
+    p.verbose = false;
     % Plot figures to check stimulus order
     if p.verbose
         
