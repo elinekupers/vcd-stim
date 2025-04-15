@@ -1,4 +1,4 @@
-function [cue_vec,im_cue_vec_loc1] = vcd_getSpatialAttCueingDir(loc,cue_vec,im_cue_vec_loc1, conds_shuffle0, stimloc_cues, taskClass)
+function [cue_vec,im_cue_vec_loc1] = vcd_getSpatialAttCueingDir(loc, cue_vec, im_cue_vec_loc1, conds_shuffle0, stimloc_cues, taskClass)
 % VCD function to create spatial cueing vector to add to master condition
 % table.
 % 
@@ -10,6 +10,7 @@ function [cue_vec,im_cue_vec_loc1] = vcd_getSpatialAttCueingDir(loc,cue_vec,im_c
 
 n_unique_cases = length(unique(conds_shuffle0.unique_im_nr));
 n_stimloc_cues = length(stimloc_cues);
+unique_im_nrs = unique(conds_shuffle0.unique_im_nr);
 
 if strcmp(taskClass{:},'fix')
     % we don't have spatial cues in fixation condition
@@ -41,12 +42,12 @@ else
         prev_cue_vec = im_cue_vec_loc1; 
         
         % These unique images still need to be cued:
-        im_to_be_cued = setdiff([1:n_unique_cases],prev_cue_vec);
+        im_to_be_cued = setdiff(unique_im_nrs,prev_cue_vec);
         [~,im_to_be_cued_i] = intersect(conds_shuffle0.unique_im_nr,im_to_be_cued','stable');
         
         % check if this is true
-        assert(isequal(sort(conds_shuffle0.unique_im_nr(im_to_be_cued_i)),im_to_be_cued'))
-        assert(length(unique([im_to_be_cued,prev_cue_vec']))==n_unique_cases)
+        assert(isequal(sort(conds_shuffle0.unique_im_nr(im_to_be_cued_i)),im_to_be_cued))
+        assert(length(unique([im_to_be_cued,prev_cue_vec]))==n_unique_cases)
         
         cue_vec_anti(im_to_be_cued_i) = 1;
         cue_vec = cue_vec_anti;
