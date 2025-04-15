@@ -1,19 +1,20 @@
-function [t,unique_im,n_unique_cases] = vcd_defineUniqueImageNr(p, stimClass)
-% Create unique image numbers depending on the stimulus class
+function [t,n_unique_cases] = vcd_defineUniqueImages(p, stimClass)
+% Create table that defines the stimulus features of each unique image, 
+% for each stimulus class
 %
-%  unique_im = vcd_defineUniqueImageNr(p, stimClass)
+%  [t,n_unique_cases] = vcd_defineUniqueImages(p, stimClass)
 %
-% Purpose:
-% This function creates a N (rows) by M (columns) matrix with all
+% Purpose: This function creates a N (rows) by M (columns) matrix with all
 % the unique images for the requested stimulus class. Each row is an unique
-% images, each column is a specific stimulus conditions. Unique images are
-% based on stimulus features of interest. The unique images are a
-% combination of 1 or 2 fully crossed stimulus features, and in some cases
-% also fully crossed with cuing status (cued vs uncued). Some stimulus
-% classes have additional, equally distributed stimulus features across 
-% unique images (e.g., gabor phase or stim loc for non-fix tasks and non-ns 
-% stimulus classes). These additional stim features are therefore NOT fully 
-% crossed!
+% images, each column defines a specific stimulus condition. 
+% 
+% Unique images are based on stimulus features of interest. The unique
+% images are a combination of 1 or 2 fully crossed stimulus features, and
+% in some cases also fully crossed with cuing status (cued vs uncued). Some
+% stimulus classes have additional, equally distributed stimulus features
+% across unique images (e.g., gabor phase or stim loc for non-fix tasks and
+% non-ns stimulus classes). These additional stim features are therefore
+% NOT fully crossed!
 %
 % INPUTS:
 %  p            : (struct) params
@@ -22,7 +23,6 @@ function [t,unique_im,n_unique_cases] = vcd_defineUniqueImageNr(p, stimClass)
 %                   task or not
 % OUTPUTS:
 %  t              : (table) unique images and their stimulus properties
-%  unique_im      : (matrix) unique images for requested stimulus class
 %  n_unique_cases : (int) number of unique cases for requested stimulus class
 % 
 % ____MORE INFO ABOUT UNIQUE IMAGES____
@@ -90,11 +90,11 @@ function [t,unique_im,n_unique_cases] = vcd_defineUniqueImageNr(p, stimClass)
 varNames = {'unique_im_nr','stimloc','stimloc_name',...
             'orient_dir','contrast','gbr_phase','rdk_coherence'...
             'super_cat','basic_cat','sub_cat',...
-            'super_cat_name','basic_cat_name','sub_cat_name'};
+            'super_cat_name','basic_cat_name','sub_cat_name','is_in_img'};
 varUnits = {'','','',...
             'deg','fraction','deg', 'fraction',...
             '','','',...
-            '','',''};
+            '','','',''};
         
 switch stimClass
     
@@ -112,29 +112,29 @@ switch stimClass
 
         % Create vectors for each stimulus manipulation where conditions
         % are repeated and cross-combined
-        ori_vec     = repmat(p.stim.gabor.ori_deg, 1,  n_unique_cases/n_ori_bins);
-        ph_vec      = repmat(p.stim.gabor.ph_deg,  1,  n_unique_cases/n_phases);
-        stimloc_vec = repmat(loc_stim,             1,  n_unique_cases/n_stim_loc);
-        stimloc_name_vec = repmat({'left','right'}, 1,  n_unique_cases/n_stim_loc);
-        con_vec     = repelem(p.stim.gabor.contrast,   n_unique_cases/n_contrasts);
+        ori_vec     = repmat(p.stim.gabor.ori_deg,  1,  n_unique_cases/n_ori_bins);  % gabor orientation: human readible
+        ph_vec      = repmat(p.stim.gabor.ph_deg,   1,  n_unique_cases/n_phases);    % gabor phase: human readible
+        stimloc_vec = repmat(loc_stim,              1,  n_unique_cases/n_stim_loc);  % stimulus location: machine readible
+        stimloc_name_vec = repmat({'left','right'}, 1,  n_unique_cases/n_stim_loc);  % stimulus location: human readible
+        con_vec     = repelem(p.stim.gabor.contrast,    n_unique_cases/n_contrasts); % contrast
+        im_nr_vec   = p.stim.gabor.unique_im_nrs;                                    % allocated unique image nrs
+        img_vec     = false(size(con_vec));                                          % if image is part of imagery subset
+        img_vec(ismember(p.stim.gabor.unique_im_nrs,p.stim.gabor.imagery_im_nr)) = true;
         
         nan_vec = NaN(size(con_vec))';
         
-        % Place image vectors into a table.  a number between 1-24:
-        unique_im = cat(1, 1:length(ori_vec), stimloc_vec, ori_vec, con_vec, ph_vec)';
-        
-        % Add info to table
+        % Insert vectors into a table
         tmp = NaN(n_unique_cases,size(varNames,2));
         t = array2table(tmp);
         t.Properties.VariableNames = varNames;
         t.Properties.VariableUnits = varUnits;
         
-        t.unique_im_nr  = unique_im(:,1); 
-        t.stimloc       = unique_im(:,2);
+        t.unique_im_nr  = im_nr_vec'; 
+        t.stimloc       = stimloc_vec';
         t.stimloc_name  = stimloc_name_vec';
-        t.orient_dir    = unique_im(:,3);
-        t.contrast      = unique_im(:,4);
-        t.gbr_phase     = unique_im(:,5);
+        t.orient_dir    = ori_vec';
+        t.contrast      = con_vec';
+        t.gbr_phase     = ph_vec';
         t.rdk_coherence = nan_vec;
         t.super_cat     = nan_vec;
         t.basic_cat     = nan_vec;
@@ -142,6 +142,7 @@ switch stimClass
         t.super_cat_name = num2cell(nan_vec);
         t.basic_cat_name = num2cell(nan_vec);
         t.sub_cat_name   = num2cell(nan_vec);
+        t.is_in_img      = img_vec';
 
         
     case 'rdk'
@@ -161,12 +162,12 @@ switch stimClass
         stimloc_vec = repmat(loc_stim,                  1, n_unique_cases/n_stim_loc);
         stimloc_name_vec = repmat({'left','right'},     1, n_unique_cases/n_stim_loc);
         coh_vec     = repelem(p.stim.rdk.dots_coherence,   n_unique_cases/n_coh);
+        im_nr_vec   = p.stim.rdk.unique_im_nrs;                                    % allocated unique image nrs
+        img_vec     = false(size(coh_vec)); 
+        img_vec(ismember(p.stim.rdk.unique_im_nrs,p.stim.rdk.imagery_im_nr)) = true;
         
         contrast_vec = ones(size(stimloc_vec))';
         nan_vec      = NaN(size(stimloc_vec))';
-
-        % Horz cat and give each unique image a number between 1-24:
-        unique_im = cat(1, 1:length(motdir_vec), stimloc_vec, motdir_vec, coh_vec)';
    
         % Add info to table
         tmp = NaN(n_unique_cases,size(varNames,2));
@@ -174,20 +175,21 @@ switch stimClass
         t.Properties.VariableNames = varNames;
         t.Properties.VariableUnits = varUnits;
         
-        t.unique_im_nr  = unique_im(:,1);
-        t.stimloc       = unique_im(:,2);
+        t.unique_im_nr  = im_nr_vec';
+        t.stimloc       = stimloc_vec';
         t.stimloc_name  = stimloc_name_vec';
-        t.orient_dir    = unique_im(:,3);
+        t.orient_dir    = motdir_vec';
         t.contrast      = contrast_vec;
         t.gbr_phase     = nan_vec;
-        t.rdk_coherence = unique_im(:,4);
+        t.rdk_coherence = coh_vec';
         t.super_cat     = nan_vec;
         t.basic_cat     = nan_vec;
         t.sub_cat       = nan_vec;
         t.super_cat_name = num2cell(nan_vec);
         t.basic_cat_name = num2cell(nan_vec);
         t.sub_cat_name   = num2cell(nan_vec);
-        
+        t.is_in_img     = img_vec';
+                
     case 'dot' %% EK START HERE
         
         % Get stim manipulations
@@ -204,23 +206,23 @@ switch stimClass
         dot_loc_vec = repmat(p.stim.dot.loc_deg,    1, n_unique_cases/(n_stim_loc*n_dot_loc));
         stimloc_vec = repelem(loc_stim,  n_unique_cases/n_stim_loc);
         stimloc_name_vec = repelem({'left','right'}, n_unique_cases/n_stim_loc);
+        im_nr_vec   = p.stim.dot.unique_im_nrs;                                    % allocated unique image nrs
+        img_vec     = false(size(dot_loc_vec)); 
+        img_vec(ismember(p.stim.dot.unique_im_nrs,p.stim.dot.imagery_im_nr)) = true;
         
         contrast_vec = ones(size(stimloc_vec))';
         nan_vec      = NaN(size(stimloc_vec))';
-        
-        % give each unique image a nr, define it's properties
-        unique_im = cat(1, 1:length(dot_loc_vec), stimloc_vec, dot_loc_vec)';
-        
+
         % Add info to table
         tmp = NaN(n_unique_cases,size(varNames,2));
         t = array2table(tmp);
         t.Properties.VariableNames = varNames;
         t.Properties.VariableUnits = varUnits;
         
-        t.unique_im_nr  = unique_im(:,1);
-        t.stimloc       = unique_im(:,2);
+        t.unique_im_nr  = im_nr_vec';
+        t.stimloc       = stimloc_vec';
         t.stimloc_name  = stimloc_name_vec';
-        t.orient_dir    = unique_im(:,3);
+        t.orient_dir    = dot_loc_vec';
         t.contrast      = contrast_vec;
         t.gbr_phase     = nan_vec;
         t.rdk_coherence = nan_vec;
@@ -230,7 +232,8 @@ switch stimClass
         t.super_cat_name = num2cell(nan_vec);
         t.basic_cat_name = num2cell(nan_vec);
         t.sub_cat_name   = num2cell(nan_vec);
-        
+        t.is_in_img      = img_vec';
+                
     case 'obj'
         
         % Get stim manipulations
@@ -264,25 +267,29 @@ switch stimClass
 
         % 
         n_unique_cases = length(sub_cat_name);
-        
+        super_cat_name = p.stim.obj.super_cat(super_cat_vec);
+                
         % Create vectors for each stimulus manipulation where conditions
         % are repeated and cross-combined
-        stimloc_vec      = repmat(loc_stim,         n_unique_cases/n_stim_loc, 1);
-        stimloc_name_vec = repmat({'left','right'}, n_unique_cases/n_stim_loc, 1);
+        stimloc_vec      = repmat(loc_stim,         1, n_unique_cases/n_stim_loc);
+        stimloc_name_vec = repmat({'left','right'}, 1, n_unique_cases/n_stim_loc);
         facing_dir_vec   = shuffle_concat(p.stim.obj.facing_dir_deg,1);
         
         % flatten and transpose
-        stimloc_vec = stimloc_vec(:)';
+        stimloc_vec      = stimloc_vec(:)';
         stimloc_name_vec = stimloc_name_vec(:)';
+        
+        % Obtain unique image nrs
+        im_nr_vec        = p.stim.obj.unique_im_nrs;                                    % allocated unique image nrs
 
+        % add imagery image selection
+        img_vec          = false(size(stimloc_vec)); 
+        img_vec(ismember(p.stim.obj.unique_im_nrs,p.stim.obj.imagery_im_nr)) = true;
+        
         % create filler vectors
         contrast_vec = ones(size(stimloc_vec))';
         nan_vec      = NaN(size(stimloc_vec))';
-
-        % give each unique image a nr, define it's properties
-        unique_im = cat(1, 1:length(stimloc_vec), stimloc_vec, super_cat_vec, basic_cat_vec, sub_cat_vec, facing_dir_vec)';
         
-        super_cat_name = p.stim.obj.super_cat(super_cat_vec);
         
         % Add info to table
         tmp = NaN(n_unique_cases,size(varNames,2));
@@ -290,20 +297,21 @@ switch stimClass
         t.Properties.VariableNames = varNames;
         t.Properties.VariableUnits = varUnits;
         
-        t.unique_im_nr  = unique_im(:,1);
-        t.stimloc       = unique_im(:,2);
+        t.unique_im_nr  = im_nr_vec';
+        t.stimloc       = stimloc_vec';
         t.stimloc_name  = stimloc_name_vec';
-        t.orient_dir    = unique_im(:,6);
+        t.orient_dir    = facing_dir_vec';
         t.contrast      = contrast_vec;
         t.gbr_phase     = nan_vec;
         t.rdk_coherence = nan_vec;
-        t.super_cat     = unique_im(:,3);
-        t.basic_cat     = unique_im(:,4);
-        t.sub_cat       = unique_im(:,5);
+        t.super_cat     = super_cat_vec';
+        t.basic_cat     = basic_cat_vec';
+        t.sub_cat       = sub_cat_vec';
         t.super_cat_name = super_cat_name';
         t.basic_cat_name = basic_cat_name';
         t.sub_cat_name   = sub_cat_name';
-        
+        t.is_in_img     = img_vec';
+                
     case 'ns'
         
         % Get stim manipulations
@@ -330,10 +338,9 @@ switch stimClass
         end
         stimloc_vec      = repmat(loc_stim, 1, n_unique_cases);
         stimloc_name_vec = repmat({'center'}, 1, n_unique_cases);
-        
-        % give each unique image a nr, define it's properties
-        unique_im = cat(1,[1:n_unique_cases], stimloc_vec, super_cat_vec, basic_cat_vec, sub_cat_vec)';
-        
+        img_vec          = false(size(stimloc_vec));
+        img_vec(ismember(p.stim.ns.unique_im_nrs,p.stim.ns.imagery_im_nr)) = true;
+
         super_cat_name = p.stim.ns.super_cat(super_cat_vec);
         basic_cat_name = {}; sub_cat_name ={};
         
@@ -346,6 +353,9 @@ switch stimClass
             tmp = reshape(cat(1,p.stim.ns.sub_cat{ii,:}),1,[]);
             sub_cat_name = cat(2, sub_cat_name, tmp);
         end
+        
+        % Obtain unique image nrs
+        im_nr_vec        = p.stim.ns.unique_im_nrs;                                    % allocated unique image nrs
             
         % create filler vectors
         contrast_vec = ones(size(stimloc_vec))';
@@ -357,21 +367,22 @@ switch stimClass
         t.Properties.VariableNames = varNames;
         t.Properties.VariableUnits = varUnits;
         
-        t.unique_im_nr  = unique_im(:,1);
-        t.stimloc       = unique_im(:,2);
+        t.unique_im_nr  = im_nr_vec';
+        t.stimloc       = stimloc_vec';
         t.stimloc_name  = stimloc_name_vec';
         t.orient_dir    = nan_vec;
         t.contrast      = contrast_vec;
         t.gbr_phase     = nan_vec;
         t.rdk_coherence = nan_vec;
-        t.super_cat     = unique_im(:,3);
-        t.basic_cat     = unique_im(:,4);
-        t.sub_cat       = unique_im(:,5);
+        t.super_cat     = super_cat_vec';
+        t.basic_cat     = basic_cat_vec';
+        t.sub_cat       = sub_cat_vec';
         t.super_cat_name = super_cat_name';
         t.basic_cat_name = basic_cat_name';
         t.sub_cat_name   = sub_cat_name';
-        
-        assert(isequal(t.unique_im_nr,[1:size(t,1)]'))
+        t.is_in_img      = img_vec';
+                
+        assert(isequal(t.unique_im_nr, p.stim.ns.unique_im_nrs'))
         assert(isequal(n_unique_cases,size(t,1)))
         assert(isequal(unique(t.super_cat)',1:length(p.stim.ns.super_cat)))
         assert(isequal(unique(t.basic_cat)',1:length(p.stim.ns.basic_cat{1})))
