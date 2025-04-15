@@ -8,9 +8,9 @@ nan_table = table('Size',sz,'VariableTypes',varTypes, 'VariableNames',table_exam
 for vt = 1:length(varTypes)
     
     if ~exist('col_width','var') || isempty(col_width) 
-        % sometimes we deal with single table column, containing 2 sub columns
+        % extract col_width: sometimes we deal with single table column, containing 2 sub columns
         cw = size(nan_table.(table_example.Properties.VariableNames{vt}),2);
-    elseif numel(col_width) > 1 && isequal(length(col_width),nr_rows)
+    elseif numel(col_width) > 1 && isequal(length(col_width),nr_cols)
         cw = col_width(vt);
     else
         cw = col_width;
