@@ -292,12 +292,15 @@ else
                 
                 p.delta_from_ref  = [-15, -5, 5, 15];                           % how much should stim iso-eccen loc deviate from reference (WM: double epochs)
                                                                                 % the bigger the delta, the easier the judgement in a trial
-                % IMG SUBSET
-                p.imagery_im_nr       = [17:24];                                    % numbers refer to unique image nr (only high contrast)
                 
-                % IMAGERY QUIZ DOT PARAMS
-                p.imagery_sz_deg      = 5.658;                                      % degree diameter of the second, quiz dots image in an imagery trial to encourage subjects to create a vidid mental image.
-                p.imagery_sz_pix      = (round(p.img_sz_deg* disp_params.ppd)/2)*2; % pixel diameter of quiz dot image (ensure even nr of pixels)
+                p.unique_im_nrs   = [1:24];                                     % Unique image nrs associated with the 24 Gabors
+                                                                                
+                % IMAGERY: SELECTED UNIQUE IMAGES (SUBSET of all 24)
+                p.imagery_im_nr   = p.unique_im_nrs(17:end);                    % numbers refer to unique image nr (only high contrast)
+                
+                % IMAGERY QUIZ DOT PARAMS (STIM 2)
+                p.imagery_sz_deg  = 5.658;                                      % degree diameter of the second, quiz dots image in an imagery trial to encourage subjects to create a vidid mental image.
+                p.imagery_sz_pix  = (round(p.img_sz_deg* disp_params.ppd)/2)*2; % pixel diameter of quiz dot image (ensure even nr of pixels)
                 
                 % Add params to struct
                 stim.gabor = p;
@@ -346,17 +349,20 @@ else
                 p.max_dots_per_frame = 200;                                     % how many dots within a square support from (number is similar to Kiani lab) and roughly matches to nr of pixels in aperture
                                                                                 % Note that total nr of dots will be less than 200, because some will fall outside the aperture. (EK: CHECK HOW MANY)  
                 p.dots_contrast    = 1;                                         % Michelson [0-1] (fraction)
-                p.x0_deg          = x0_deg;                                     % Desired x-center loc of stimulus in deg (translation from 0,0)
-                p.y0_deg          = x0_deg;                                     % Desired y-center loc of stimulus in deg (translation from 0,0)
-                p.x0_pix          = x0_pix;                                     % x-center loc in pix (translation from 0,0)
-                p.y0_pix          = y0_pix;                                     % y-center loc in pix (translation from 0,0)
+                p.x0_deg           = x0_deg;                                    % Desired x-center loc of stimulus in deg (translation from 0,0)
+                p.y0_deg           = x0_deg;                                    % Desired y-center loc of stimulus in deg (translation from 0,0)
+                p.x0_pix           = x0_pix;                                    % x-center loc in pix (translation from 0,0)
+                p.y0_pix           = y0_pix;                                    % y-center loc in pix (translation from 0,0)
                 
-                p.delta_from_ref  = [-15, -5, 5, 15];                           % how much should stim iso-eccen loc deviate from reference (WM: double epochs)
+                p.delta_from_ref   = [-15, -5, 5, 15];                          % how much should stim iso-eccen loc deviate from reference (WM: double epochs)
  
-                % IMG SUBSET
-                p.imagery_im_nr             = [17:24];                                 % numbers refer to unique image nr (only high coherence)
-                % IMAGERY QUIZ DOT PARAMS
-                p.imagery_sz_deg      = 5.658;                                      % degree diameter of the second, quiz dots image in an imagery trial to encourage subjects to create a vidid mental image.
+                p.unique_im_nrs    = [25:48];                                   % Unique image nrs associated with the 24 RDK stimuli
+                
+                % IMAGERY: SELECTED UNIQUE IMAGES (SUBSET of all 24)
+                p.imagery_im_nr    = p.unique_im_nrs(17:end);                    % numbers refer to unique image nr (only high coherence)
+               
+                % IMAGERY: QUIZ DOT PARAMS
+                p.imagery_sz_deg      = 5.658;                                  % degree diameter of the second, quiz dots image in an imagery trial to encourage subjects to create a vidid mental image.
                 p.imagery_sz_pix      = (round(p.img_sz_deg* disp_params.ppd)/2)*2; % pixel diameter of quiz dot image (ensure even nr of pixels)
                 
                 % Add params to struct
@@ -426,13 +432,15 @@ else
                     p.y0_pix_delta(dd,:) = disp_params.yc - round(y_d * disp_params.ppd);  % y-center ref dot loc in pix (translation from upper left corner [0,0])
                 end
 
+                p.unique_im_nrs   = [49:64];                                     % Unique image nrs associated with the 16 single dot stimuli
+
                 % LTM PAIR
                 p.ltm_pairs          = [];                                       %%
+
+                % IMAGERY: SELECTED UNIQUE IMAGES (SUBSET of all 24)
+                p.imagery_im_nr    = p.unique_im_nrs(1:2:p.num_loc);                          % numbers refer to unique image nr
                 
-                % IMG SUBSET
-                p.imagery_im_nr             = [1:2:p.num_loc];                          % numbers refer to unique image nr
-                
-                % IMAGERY QUIZ DOT PARAMS
+                % IMAGERY: QUIZ DOT PARAMS
                 p.imagery_sz_pix   = [disp_params.xc,disp_params.h_pix];         % pixel diameter of quiz dot image (ensure even nr of pixels)     
                 p.imagery_sz_deg   = [disp_params.w_deg/2, disp_params.h_deg];   % degree diameter of the second, quiz dots image in an imagery trial to encourage subjects to create a vidid mental image.
                 
@@ -509,8 +517,12 @@ else
                                                                             %  the bigger the delta, the easier the trial. 
                                                                             % for 1-89 deg rotations: Negative values are leftwards, positive values is rightwards
                                                                             % for 91-180 deg rotations: Negative values are rightward, positive values is leftward
-                % IMG SUBSET
-                p.imagery_im_nr             = [1,3,5,7,8,10,12,14];                % unique im numbers we will use for IMG
+                
+                p.unique_im_nrs      = [65:80];                             % Unique image nrs associated with the 16 single dot stimuli
+
+                                                                            
+                % IMAGERY: SELECTED IMAGES USED (SUBSET of 16 IMAGES)
+                p.imagery_im_nr      = p.unique_im_nrs([1,3,5,7,8,10,12,14]);  % Unique im numbers we will use for IMG
                 
                 % IMAGERY QUIZ DOT PARAMS
                 p.imagery_sz_deg      = 5.658;                                      % degree diameter of the second, quiz dots image in an imagery trial to encourage subjects to create a vidid mental image.
@@ -585,6 +597,8 @@ else
                 p.affordance{5,1} = {'walk','walk','walk'};
                 p.affordance{5,2} = {'observe','walk','walk'};
                 
+                p.unique_im_nrs      = [81:110];                             % Unique image nrs associated with the 16 single dot stimuli
+
                 % FOR WM task crossing, we have manipulated the original
                 % NSD image by adding or removing something in the image.
                 % These changes can be obvious (easy) or subtle (hard) to
@@ -598,7 +612,7 @@ else
                 p.ltm_pairs     = [];                                       %%
                 
                 % Half of the images will be used for IMG/LTM pairing
-                p.imagery_im_nr        = [2,4,5,8,10,11,13,15,18,20,21,23,26,27,30]; % numbers refer to unique image nr (see scene_info csv file)
+                p.imagery_im_nr        = p.unique_im_nrs([2,4,5,8,10,11,13,15,18,20,21,23,26,27,30]); % numbers refer to unique image nr (see scene_info csv file)
                 
                 % IMAGERY QUIZ DOT PARAMS
                 p.imagery_sz_deg      = p.img_sz_deg;                                      % degree diameter of the second, quiz dots image in an imagery trial to encourage subjects to create a vidid mental image.
