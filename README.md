@@ -15,16 +15,26 @@ Stimulus classes:
 * **NS:** Natural scenes
 
 Task classes:
-* **FIX:** Fixation
-* **CD:** Contrast-detection
-* **SCC:** Superclass categorization
-* **PC:** Perceptual categorization
+* **FIX:** Fixation brightness task 
+* **CD:** Contrast change task
+* **SCC:** Superclass Categorization task
+* **PC:** Perceptual categorization:
+	* Gabor tilt task
+	* RDK motion direction task
+	* Dot position task
+	* Object rotation task
+	* Scene Indoor/outdoor task
 * **WM:** Working memory
-* **LTM:** Long-term memory
-* **IMG**: Imagery
-* **WHAT:** Object categorization
-* **WHERE:** Object localization
-* **HOW:** Scene/object affordance)
+	* Gabor tilt memory task
+ 	* RDK motion direction memory task
+  	* Dot position memory task
+  	* Object rotation memory task
+  	* Scene memory task 
+* **LTM:** Long-term memory matching task
+* **IMG**: Imagery task
+* **WHAT:** Object categorization task
+* **WHERE:** Object localization task
+* **HOW:** Scene/object affordance task
 
 ![vcd_master_table](https://github.com/user-attachments/assets/87e1f9ff-ce71-4c62-9548-f9325a09a5c2)
 
@@ -93,32 +103,53 @@ Folders ignored by git (see .gitignore):
 
 ## Terminology
 
-* `Monitor refresh rate:` The rate by which a monitor runs vertical retrace (VBL). For example, BOLD screen monitor refresh is 120 Hz (for reference: 6 frames = (1000/120) * 6 = 50 ms). Most LCD monitors have a refresh rate of 60 Hz
-* `Frames/ framerate / framedur:` Because we present our stimuli at a slower rate than the monitor refresh rate, we “bundle” or “skip” several monitor refreshes into a “frame”. We run our stimuli at 30 Hz, so we bundle 4 120 Hz (BOLDscreen) monitor refreshes or 2 60 Hz (regular LCD) monitor refreshes.
-* `Image:`  The retinal image: the image on the BOLD screen that falls onto the retina.
+* `Monitor refresh rate:` The rate by which a monitor runs vertical retrace (VBL). For example, BOLD screen monitor refresh is (approximately) 120 Hz (for reference: 6 frames = (1000/120)*6 = 50 ms). Most standard monitors have a refresh rate of about 60 Hz. But other rates are possible, like 75 Hz, 85 Hz.
+* `Frames / frame rate / frame duration:` Because we present our stimuli at a slower rate than the monitor refresh rate, we “bundle” or “skip” several monitor refreshes into a “frame”. We run our stimuli at 30 Hz, so we bundle 4 120 Hz (BOLDscreen) monitor refreshes or 2 60 Hz (regular LCD) monitor refreshes.
+* `Stimulus:` Either the thing on the left, right, or centrally positioned. There can be two stimuli on the screen simultaneously.
 * `Session:` The 2-3 hr scan session at the MRI scanner
-* `Run:` Each session consists of approx. 10 runs (+ 2 resting state), where each run is a sequence of mini blocks where subjects perform the VCD-core experiment, + rest periods in between blocks.  Each run approx. 5 minutes
+* `Run:` Each session consists of approx. 10 runs (+ 2 resting state), where each run is a sequence of blocks where subjects perform the VCD-core experiment, + rest periods in between blocks.  Each run approx. 5 minutes. Each run also includes an eyetracking block at the beginning.
 * `Block:` A series of trials from the same stimulus-task class crossing (one cell in the master table).
 * `Trials:` A series of events where subjects perform the instructed task on the cued stimulus. 
-* `Trial events:` Each trial contains “events”: trial start » spatial cue » ISI » stimulus epoch » (ISI » stimulus epoch) »  response cue » ITI.
-* `Trial types:` We have either single-epoch (one stimulus presentation intervals) or double-epoch (two stimulus presentation intervals, in between is a delay period) trials.
-	* `ISI:` Interstimulus interval (time between two stimulus presentation intervals)
-	* `ITI:` Intertrial interval (time between trials within a miniblock)
-	* `IBI:` Interblock interval (time between mini blocks within a run)
+* `Trial events:` Each trial contains “events”: trial start » spatial cue » ISI » stimulus epoch » (ISI » stimulus epoch) » response cue » ITI.
+* `Fixation circle:` it gets brighter or dimmer.
+* `Fixation circle rim:` Part of the fixation circle. The outer rim is what indicates trial starting and ending. It can get thick or thin.
+* `Spatial cue:` Either left, right, or central (using red to indicate).
+	* `Cued location:` either left, right, or central.
+	* `Uncued location:` typically refers to right/left if the cued location is left/right.
+* `Task cue:` A short screen of text at the beginning of every block.
+* `Trial types:` We have either one-image trials (one stimulus presentation, the stimulus) or two-image trials (two stimulus presentation (WM, LTM: reference image -> test image; IMG: text prompt -> test image), in between is a delay period).
+* `Delay period:` For two-image trials, the time between the offset of the first stimulus presentation and the onset of the second stimulus presentation
+* `ITI:` Intertrial interval (time between the offset of the response window (rim becomes thin) and the onset of the rim thickening of the next trial within the miniblock)
+* `IBI:` Interblock interval (time between the offset of the response window of the last trial in a block, and the onset of the task instruction window of the following miniblock). IBIs involve just the fixation circle.
+* `Correct image:` The image that you should have learned to associate with the reference image) vs. incorrect image (some incorrect images are lures (applies only to LTM; defined as incorrect associated images that are within stimulus class (in the classic group) or incorrect similarly-looking images (in the natural group)), modified stimulus (applies only NS-WM), stimulus pair (AB) where B is associated with A (LTM), test dots (IMG).
+* `Eyetracking terms:` targets, eyetracking block, Eyelink calibration
+* `Rest time:` (whenever there is “nothing” for the participant to do other than fixate)
+* Stimulus-task crossing - e.g. NS-WM
 
-* `Unique images:` For each stimulus class, we create a unique set of imagees where we manipulate a fix set of features. These manipulations can be at the image level (e.g., gabor contrast level, RDK motion coherence), sometimes they are at the global property level (indoor vs outdoor, manmade vs natural foods). 
+
+
+* `Unique stimuli:` All the images/movies within a single stimulus class. The number of unique stimuli is determined by the number of fully-crossed manipulated stimulus features (up to 3 stimulus features, see below). The manipulated stimulus features of interest can be at the image level (e.g., gabor contrast level, RDK motion coherence), or at the global property level (indoor vs outdoor, manmade vs natural foods). 
 
 * `Semantic Categories:` For CO and NS we sample different semantic categories:
 	* `Superordinate level:` humans, animals, food, objects, places
 	* `Basic level:` faces, cats, giraffes, tools, houses
 	* `Subordinate level:`  *this* cat or *this* dog
 
-* `Stimulus spatial layout`
-  
-![vcd_stimulus spatial extend](https://github.com/user-attachments/assets/70146c2c-b355-48f7-afc7-9ec5aefd0851)
-Black solid line shows spatial extent of display that is seen by either left or right eye. 
-Red dotted line shows spatial extent of display that is seen by both eyes.
-Yellow circles are the two peripheral stimulus apertures. Small simple single dot is show at 4.5 deg eccentricity (blue circle)
+## Stimulus spatial layout
+* `Background` exists of a full-field pink noise image and a mean-luminance gray "puzzle piece" cut out. The cutout is the union of all types of stimuli plus a 1-degree buffer zone on each side.
+* `Gabors, RDKs, and Objects` are presented within circular apertures (4 degree diameter), centered at 4 degrees eccentricity on the horizontal meridian. We choose these parafoveal locations to ensure subjects can see both left and right stimuli with both eyes.
+* `Single dots` are each 1 degree diameter and live on an iso-eccentric ring at 4 degrees eccentricity (to match the Gabors, RDKs, Objects).
+* `Scenes` are 8.4 degree width and height, and are presented centrally.
+* `Fixation circle` consists of two parts: an inner part (the part that changes luminance, 0.14 degrees in diameter) and a rim. During ITIs or IBIs, the rim is thin (~0.20 degrees diameter). During a trial, the rim is thick (~0.25 degrees diameter). The fixation circle is presented on top the background (or natural scene) and is 50% transparent.
+* `Alpha transparency masks` are applied to each element of the display to obscure the edges of each stimulus' support (e.g., a circular gabor lives on a rectangular support). One exception is scenes, which do not require an alpha mask.
+  	  
+![Gabor stimulus display for 7TAS BOLDScreen (same for RDK)](https://github.com/user-attachments/assets/088fe7b2-a583-4d9e-af22-f54ba2ecc2b5)
+
+![Object stimulus display for 7TAS BOLDScreen](https://github.com/user-attachments/assets/ca3b6bdd-d4b9-4391-99a9-c04208390b7e)
+
+![Single dot stimulus display for 7TAS BOLDScreen](https://github.com/user-attachments/assets/86950a17-e335-4a00-9a81-0da6b0ce068b)
+
+![Natural scenes stimulus display for 7TAS BOLDScreen](https://github.com/user-attachments/assets/7a6326b2-1b09-4bd2-adb1-66c81b39fcd6)
 
 
 ## MIT License
