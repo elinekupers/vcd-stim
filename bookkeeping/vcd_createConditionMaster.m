@@ -33,7 +33,7 @@ function cond_master = vcd_createConditionMaster(p, cond_table, n_trials_per_blo
 %                          fewest number of repeats.
 %
 % -- MORE INFO ABOUT CONDITION MASTER TABLE --
-% Rows contain unique stimuli (either 1 or 2) for each unique trial, 
+% Rows contains a single trial, with either 1 or 2 unique stimuli,
 % then repeated for the n_repeat times.
 %
 % Unique trials are defined by the number of unique images (e.g., 8
@@ -65,14 +65,14 @@ function cond_master = vcd_createConditionMaster(p, cond_table, n_trials_per_blo
 %   15: {'stim_class'     } stim class nr (1:5)
 %   16: {'task_class_name'} task class name (fix/cd/scc/pc/wm/ltm/img/what/where/how)
 %   17: {'task_class'     } task class nr (1:10)
-%   18: {'iscued'         } cue status: 0 = uncued, 1 = cued
+%   18: {'is_cued'         } cue status: 0 = uncued, 1 = cued
 %   19: {'unique_trial_nr'} unique trial nr
 %   20: {'thickening_dir' } thickening direction of fixation dot rim (for spatial attention cue) 1 = left, 2 = right, 3 = both/neutral
 %   21: {'stim2_delta'    } for double epoch tasks, what predefined delta between stim 1 and stim 2 did we choose from p.stim.(xx).delta_ref
 %   22: {'stim2'          } consequence of 21, so updated stim feature of stim2 (e.g., 80 deg orientation for a stim1: 95 - 15 deg)
 %   23: {'ltm_stim_pair'  } for LTM task: each unique image nr is associated with
 %                           another stimulus
-%   24: {'islure'         } for LTM task: XX of the trials we show a lure stimulus
+%   24: {'is_lure'         } for LTM task: XX of the trials we show a lure stimulus
 %   25: {'repeat_nr'      } Keep track how many times has this unique image has
 %                           been repeated thusfar in the experiment
 %
@@ -143,13 +143,13 @@ switch stimClass{:}
                 conds_shuffle0 = conds_shuffle0(shuffle_c,:); % <-- then shuffle based on unique nr of contrasts, such that new trial order prioritizes contrast order
                 
                 % Add catch trial vector
-                conds_shuffle0.iscatch = false(size(conds_shuffle0,1),1);
+                conds_shuffle0.is_catch = false(size(conds_shuffle0,1),1);
 
                 % get covert spatial attention cuing direction vector
                 [cue_vec,im_cue_vec_loc1] = vcd_getSpatialAttCueingDir(loc,cue_vec,im_cue_vec_loc1,conds_shuffle0, stimloc_cues, taskClass);
  
                 % Add cue vec column
-                conds_shuffle0.iscued = cue_vec;
+                conds_shuffle0.is_cued = cue_vec;
                 
                 % Do some checks on unique trial condition master table:
                 assert(isequal(sort(conds_shuffle0.unique_im_nr,'ascend'),[1:n_unique_cases]')); % Check unique image nr
@@ -165,11 +165,11 @@ switch stimClass{:}
                     cue_dir_for_catch_trial = [];
                 elseif sum(conds_shuffle0.stimloc==3)==size(conds_shuffle0.stimloc,1)
                     cue_dir_for_catch_trial = [];
-                elseif sum(conds_shuffle0.stimloc==1 & conds_shuffle0.iscued==1) > sum(conds_shuffle0.stimloc==2 & conds_shuffle0.iscued==1)  % if we have more lefts than rights
+                elseif sum(conds_shuffle0.stimloc==1 & conds_shuffle0.is_cued==1) > sum(conds_shuffle0.stimloc==2 & conds_shuffle0.is_cued==1)  % if we have more lefts than rights
                     cue_dir_for_catch_trial = 2; % catch trial will cue right
-                elseif sum(conds_shuffle0.stimloc==2 & conds_shuffle0.iscued==1) > sum(conds_shuffle0.stimloc==1 & conds_shuffle0.iscued==1)   % if we have more rights than lefts
+                elseif sum(conds_shuffle0.stimloc==2 & conds_shuffle0.is_cued==1) > sum(conds_shuffle0.stimloc==1 & conds_shuffle0.is_cued==1)   % if we have more rights than lefts
                     cue_dir_for_catch_trial = 1; % catch trial will cue right
-                elseif sum(conds_shuffle0.stimloc==2 & conds_shuffle0.iscued==1) == sum(conds_shuffle0.stimloc==1 & conds_shuffle0.iscued==1) 
+                elseif sum(conds_shuffle0.stimloc==2 & conds_shuffle0.is_cued==1) == sum(conds_shuffle0.stimloc==1 & conds_shuffle0.is_cued==1) 
                     if ~isempty(prior_cue_dir_for_catch_trial)
                         cue_dir_for_catch_trial = setdiff([1,2],prior_cue_dir_for_catch_trial); % do the opposite of previous trial
                     else
@@ -187,7 +187,6 @@ switch stimClass{:}
                 clear conds_shuffle0 conds_shuffle1
             end
             
-            % EK CONTINUE HERE
             % Merge trials and add fix cue thickening direction
             conds_single_rep_merged = vcd_mergeUniqueImageIntoTrials(conds_single_rep);
             
@@ -212,20 +211,18 @@ switch stimClass{:}
             
             % Add IMG text prompt and quiz dots
             if strcmp(taskClass{:},'img')
-                [~,img_stim]     = ismember(conds_single_rep_merged.unique_im_nr,p.stim.gabor.img_im_nr,'legacy');
                 n_quiz_images    = length(unique(p.exp.trial.img.quiz_images));
-                quiz_img_type_shuffle = [shuffle_concat(1:n_quiz_images, (length(find(img_stim(:,1)))/n_quiz_images)); ...
-                                         shuffle_concat(1:n_quiz_images, (length(find(img_stim(:,2)))/n_quiz_images))]';
-                img_quiz_im_vec  = NaN(size(img_stim));
-                img_quiz_im_vec(img_stim>0) = quiz_img_type_shuffle;
-                img_quiz_txt_vec  = NaN(size(img_stim));
+                quiz_img_type_shuffle = [shuffle_concat(1:n_quiz_images, size(conds_single_rep_merged,1)/n_quiz_images); ...
+                                         shuffle_concat(1:n_quiz_images, size(conds_single_rep_merged,1)/n_quiz_images)]';
+                img_quiz_im_vec  = quiz_img_type_shuffle;
+                img_quiz_txt_vec = NaN(size(conds_single_rep_merged,1),1);
                 conds_single_rep_merged.img_txt_prompt = num2cell(img_quiz_txt_vec);
                 conds_single_rep_merged.stim2          = num2cell(img_quiz_im_vec);
             else
-                img_quiz_im_vec   = NaN(size(conds_single_rep_merged.orient_dir));
-                img_quiz_txt_vec  = NaN(size(img_quiz_im_vec));
-                conds_single_rep_merged.stim2          = num2cell(img_quiz_txt_vec);
-                conds_single_rep_merged.img_txt_prompt = num2cell(img_quiz_im_vec);
+                img_quiz_im_vec   = NaN(size(conds_single_rep_merged,1),2);
+                img_quiz_txt_vec  = NaN(size(conds_single_rep_merged,1),1);
+                conds_single_rep_merged.stim2          = num2cell(img_quiz_im_vec);
+                conds_single_rep_merged.img_txt_prompt = num2cell(img_quiz_txt_vec);
             end
  
             %% TODO Preallocate space for LTM pairing (we'll do this later)
@@ -233,10 +230,10 @@ switch stimClass{:}
             lure_vec = false(size(pair_vec)); % should be boolean
             
             conds_single_rep_merged.ltm_stim_pair = pair_vec;
-            conds_single_rep_merged.islure        = lure_vec;
+            conds_single_rep_merged.is_lure        = lure_vec;
             
             % Keep track of the times a unique condition has been repeated
-            rep_vec = rep.*ones(size(conds_single_rep_merged.stim2));
+            rep_vec = rep.*ones(size(conds_single_rep_merged,1),1);
             
             conds_single_rep_merged.repeat_nr = rep_vec;
             unique_trial_nr = conds_single_rep_merged.unique_trial_nr + ((rep-1)*max(conds_single_rep_merged.unique_trial_nr));
@@ -249,7 +246,7 @@ switch stimClass{:}
             % between left and right, from my
             % understanding...
             if ~strcmp(taskClass{:},'fix')
-                assert(isequal(sum(cond_master.thickening_dir(:,1)==1),sum(cond_master.thickening_dir(:,2)==2)))
+                assert(isequal(sum(cond_master.is_cued==1),sum(cond_master.is_cued==2)))
             end
         end
 
@@ -300,13 +297,13 @@ switch stimClass{:}
                 [cue_vec,im_cue_vec_loc1] = vcd_getSpatialAttCueingDir(loc,cue_vec,im_cue_vec_loc1,conds_shuffle0, stimloc_cues, taskClass);
                 
                 % Add cue vec column
-                conds_shuffle0.iscued = cue_vec;
+                conds_shuffle0.is_cued = cue_vec;
                 
                 % Add catch trial vector
-                conds_shuffle0.iscatch = false(size(conds_shuffle0,1),1);
+                conds_shuffle0.is_catch = false(size(conds_shuffle0,1),1);
 
                 % Do some checks:
-                assert(isequal(sort(conds_shuffle0.unique_im_nr,'ascend'),[1:n_unique_cases]')); % Check unique image nr
+                assert(isequal(length(conds_shuffle0.unique_im_nr),n_unique_cases)); % Check unique image nr
                 assert(isequal(sum(conds_shuffle0.stimloc==1),n_unique_cases/2));  % Check left stim loc
                 assert(isequal(sum(conds_shuffle0.stimloc==2),n_unique_cases/2));  % Check right stim loc
                 assert(isequal(sort(conds_shuffle0.orient_dir,'ascend'),repelem(p.stim.rdk.dots_direction,n_coh)')); % Check motdir
@@ -318,11 +315,11 @@ switch stimClass{:}
                     cue_dir_for_catch_trial = [];
                 elseif sum(conds_shuffle0.stimloc==3)==size(conds_shuffle0.stimloc,1)
                     cue_dir_for_catch_trial = [];
-                elseif sum(conds_shuffle0.stimloc==1 & conds_shuffle0.iscued==1) > sum(conds_shuffle0.stimloc==2 & conds_shuffle0.iscued==1)  % if we have more lefts than rights
+                elseif sum(conds_shuffle0.stimloc==1 & conds_shuffle0.is_cued==1) > sum(conds_shuffle0.stimloc==2 & conds_shuffle0.is_cued==1)  % if we have more lefts than rights
                     cue_dir_for_catch_trial = 2; % catch trial will cue right
-                elseif sum(conds_shuffle0.stimloc==2 & conds_shuffle0.iscued==1) > sum(conds_shuffle0.stimloc==1 & conds_shuffle0.iscued==1)   % if we have more rights than lefts
+                elseif sum(conds_shuffle0.stimloc==2 & conds_shuffle0.is_cued==1) > sum(conds_shuffle0.stimloc==1 & conds_shuffle0.is_cued==1)   % if we have more rights than lefts
                     cue_dir_for_catch_trial = 1; % catch trial will cue right
-                elseif sum(conds_shuffle0.stimloc==2 & conds_shuffle0.iscued==1) == sum(conds_shuffle0.stimloc==1 & conds_shuffle0.iscued==1) 
+                elseif sum(conds_shuffle0.stimloc==2 & conds_shuffle0.is_cued==1) == sum(conds_shuffle0.stimloc==1 & conds_shuffle0.is_cued==1) 
                     if ~isempty(prior_cue_dir_for_catch_trial)
                         cue_dir_for_catch_trial = setdiff([1,2],prior_cue_dir_for_catch_trial); % do the opposite of previous trial
                     else
@@ -364,20 +361,18 @@ switch stimClass{:}
             
             % Add IMG text prompt and quiz dots
             if strcmp(taskClass{:},'img')
-                [~,img_stim]     = ismember(conds_single_rep_merged.unique_im_nr,p.stim.rdk.img_im_nr,'legacy');
                 n_quiz_images    = length(unique(p.exp.trial.img.quiz_images));
-                quiz_img_type_shuffle = [shuffle_concat(1:n_quiz_images, (length(find(img_stim(:,1)))/n_quiz_images)); ...
-                    shuffle_concat(1:n_quiz_images, (length(find(img_stim(:,2)))/n_quiz_images))]';
-                img_quiz_im_vec  = NaN(size(img_stim));
-                img_quiz_im_vec(img_stim>0) = quiz_img_type_shuffle;
-                img_quiz_txt_vec  = NaN(size(img_stim));
+                quiz_img_type_shuffle = [shuffle_concat(1:n_quiz_images, size(conds_single_rep_merged,1)/n_quiz_images); ...
+                    shuffle_concat(1:n_quiz_images, size(conds_single_rep_merged,1)/n_quiz_images)]';
+                img_quiz_im_vec  = quiz_img_type_shuffle;
+                img_quiz_txt_vec  = NaN(size(conds_single_rep_merged,1),1);
                 conds_single_rep_merged.img_txt_prompt = num2cell(img_quiz_txt_vec);
                 conds_single_rep_merged.stim2          = num2cell(img_quiz_im_vec);
             else
-                img_quiz_im_vec   = NaN(size(conds_single_rep_merged.orient_dir));
-                img_quiz_txt_vec  = NaN(size(img_quiz_im_vec));
-                conds_single_rep_merged.stim2          = num2cell(img_quiz_txt_vec);
-                conds_single_rep_merged.img_txt_prompt = num2cell(img_quiz_im_vec);
+                img_quiz_im_vec   = NaN(size(conds_single_rep_merged,1),2);
+                img_quiz_txt_vec  = NaN(size(conds_single_rep_merged,1),1);
+                conds_single_rep_merged.stim2          = num2cell(img_quiz_im_vec);
+                conds_single_rep_merged.img_txt_prompt = num2cell(img_quiz_txt_vec);
             end
 
             
@@ -388,10 +383,10 @@ switch stimClass{:}
             % %                             pair_vec = conds_master_single_rep3(:,7) + delta_vec';
             %                         else
             conds_single_rep_merged.ltm_stim_pair = NaN(size(conds_single_rep_merged.stim2_delta));
-            conds_single_rep_merged.islure = false(size(conds_single_rep_merged.ltm_stim_pair)); % should be boolean
+            conds_single_rep_merged.is_lure = false(size(conds_single_rep_merged.ltm_stim_pair)); % should be boolean
             
             % Keep track of repeat
-            conds_single_rep_merged.repeat_nr = rep.*ones(size(conds_single_rep_merged.stim2_delta));
+            conds_single_rep_merged.repeat_nr = rep.*ones(size(conds_single_rep_merged,1),1);
             
             % Accummulate
             cond_master = [cond_master; conds_single_rep_merged];
@@ -400,7 +395,7 @@ switch stimClass{:}
         % thickening direction doesn't have to match
         % between left and right, or do they??...
         if ~strcmp(taskClass{:},'fix')
-            assert(isequal(sum(cond_master.thickening_dir(:,1)==1),sum(cond_master.thickening_dir(:,2)==2)))
+            assert(isequal(sum(cond_master.is_cued==1),sum(cond_master.is_cued==2)))
         end
         
         
@@ -439,13 +434,13 @@ switch stimClass{:}
                 [cue_vec,im_cue_vec_loc1] = vcd_getSpatialAttCueingDir(loc,cue_vec,im_cue_vec_loc1,conds_shuffle0, stimloc_cues, taskClass);
                 
                 % Add cue vec
-                conds_shuffle0.iscued = cue_vec;
+                conds_shuffle0.is_cued = cue_vec;
                 
                 % Add catch trial vector
-                conds_shuffle0.iscatch = false(size(conds_shuffle0,1),1);
+                conds_shuffle0.is_catch = false(size(conds_shuffle0,1),1);
                 
                 % Do some checks:
-                assert(isequal(sort(conds_shuffle0.unique_im_nr,'ascend'),[1:n_unique_cases]')); % Check unique image nr
+                assert(isequal(length(conds_shuffle0.unique_im_nr),n_unique_cases)); % Check unique image nr
                 assert(isequal(sum(conds_shuffle0.stimloc==1),n_unique_cases/2));  % Check left stim loc
                 assert(isequal(sum(conds_shuffle0.stimloc==2),n_unique_cases/2));  % Check right stim loc
                 assert(isequal(sort(conds_shuffle0.orient_dir,'ascend'),repelem(p.stim.dot.ang_deg,1)')); % Check dot angle
@@ -455,11 +450,11 @@ switch stimClass{:}
                     cue_dir_for_catch_trial = [];
                 elseif sum(conds_shuffle0.stimloc==3)==size(conds_shuffle0.stimloc,1)
                     cue_dir_for_catch_trial = [];
-                elseif sum(conds_shuffle0.stimloc==1 & conds_shuffle0.iscued==1) > sum(conds_shuffle0.stimloc==2 & conds_shuffle0.iscued==1)  % if we have more lefts than rights
+                elseif sum(conds_shuffle0.stimloc==1 & conds_shuffle0.is_cued==1) > sum(conds_shuffle0.stimloc==2 & conds_shuffle0.is_cued==1)  % if we have more lefts than rights
                     cue_dir_for_catch_trial = 2; % catch trial will cue right
-                elseif sum(conds_shuffle0.stimloc==2 & conds_shuffle0.iscued==1) > sum(conds_shuffle0.stimloc==1 & conds_shuffle0.iscued==1)   % if we have more rights than lefts
+                elseif sum(conds_shuffle0.stimloc==2 & conds_shuffle0.is_cued==1) > sum(conds_shuffle0.stimloc==1 & conds_shuffle0.is_cued==1)   % if we have more rights than lefts
                     cue_dir_for_catch_trial = 1; % catch trial will cue right
-                elseif sum(conds_shuffle0.stimloc==2 & conds_shuffle0.iscued==1) == sum(conds_shuffle0.stimloc==1 & conds_shuffle0.iscued==1) 
+                elseif sum(conds_shuffle0.stimloc==2 & conds_shuffle0.is_cued==1) == sum(conds_shuffle0.stimloc==1 & conds_shuffle0.is_cued==1) 
                     if ~isempty(prior_cue_dir_for_catch_trial)
                         cue_dir_for_catch_trial = setdiff([1,2],prior_cue_dir_for_catch_trial); % do the opposite of previous trial
                     else
@@ -498,20 +493,18 @@ switch stimClass{:}
 
             % Add IMG text prompt and quiz dots
             if strcmp(taskClass{:},'img')
-                [~,img_stim]     = ismember(conds_single_rep_merged.unique_im_nr,p.stim.dot.img_im_nr,'legacy');
-                n_quiz_images    = length(unique(p.exp.trial.img.quiz_images));
-                quiz_img_type_shuffle = [shuffle_concat(1:n_quiz_images, (length(find(img_stim(:,1)))/n_quiz_images)); ...
-                    shuffle_concat(1:n_quiz_images, (length(find(img_stim(:,2)))/n_quiz_images))]';
-                img_quiz_im_vec  = NaN(size(img_stim));
-                img_quiz_im_vec(img_stim>0) = quiz_img_type_shuffle;
-                img_quiz_txt_vec  = NaN(size(img_stim));
+               n_quiz_images    = length(unique(p.exp.trial.img.quiz_images));
+                quiz_img_type_shuffle = [shuffle_concat(1:n_quiz_images, size(conds_single_rep_merged,1)/n_quiz_images); ...
+                    shuffle_concat(1:n_quiz_images, size(conds_single_rep_merged,1)/n_quiz_images)]';
+                img_quiz_im_vec   = quiz_img_type_shuffle;
+                img_quiz_txt_vec  = NaN(size(conds_single_rep_merged,1),1);
                 conds_single_rep_merged.img_txt_prompt = num2cell(img_quiz_txt_vec);
                 conds_single_rep_merged.stim2          = num2cell(img_quiz_im_vec);
             else
-                img_quiz_im_vec   = NaN(size(conds_single_rep_merged.orient_dir));
-                img_quiz_txt_vec  = NaN(size(img_quiz_im_vec));
-                conds_single_rep_merged.stim2          = num2cell(img_quiz_txt_vec);
-                conds_single_rep_merged.img_txt_prompt = num2cell(img_quiz_im_vec);
+                img_quiz_im_vec   = NaN(size(conds_single_rep_merged,1),2);
+                img_quiz_txt_vec  = NaN(size(conds_single_rep_merged,1),1);
+                conds_single_rep_merged.stim2          = num2cell(img_quiz_im_vec);
+                conds_single_rep_merged.img_txt_prompt = num2cell(img_quiz_txt_vec);
             end
 
             
@@ -522,11 +515,11 @@ switch stimClass{:}
             % %                             pair_vec = conds_master_single_rep3(:,7) + delta_vec';
             %                         else
             conds_single_rep_merged.ltm_stim_pair = NaN(size(conds_single_rep_merged.stim2_delta));
-            conds_single_rep_merged.islure = false(size(conds_single_rep_merged.ltm_stim_pair)); % should be boolean
+            conds_single_rep_merged.is_lure = false(size(conds_single_rep_merged.ltm_stim_pair)); % should be boolean
             %                         end
             
             % Keep track of repeat
-            conds_single_rep_merged.repeat_nr = rep.*ones(size(conds_single_rep_merged.stim2_delta));
+            conds_single_rep_merged.repeat_nr = rep.*ones(size(conds_single_rep_merged,1),1);
             
             % Accummulate
             cond_master = [cond_master; conds_single_rep_merged];
@@ -535,7 +528,7 @@ switch stimClass{:}
         % thickening direction doesn't have to match
         % between left and right, or do they??...
         if ~strcmp(taskClass{:},'fix')
-            assert(isequal(sum(cond_master.thickening_dir==1),sum(cond_master.thickening_dir==2)))
+            assert(isequal(sum(cond_master.is_cued==1),sum(cond_master.is_cued==2)))
         end
         
         
@@ -624,13 +617,13 @@ switch stimClass{:}
                 [cue_vec,im_cue_vec_loc1] = vcd_getSpatialAttCueingDir(loc,cue_vec,im_cue_vec_loc1,conds_shuffle1, stimloc_cues, taskClass);
                 
                 % Add cue vec
-                conds_shuffle1.iscued = cue_vec;
+                conds_shuffle1.is_cued = cue_vec;
                 
                 % Add catch trial vector
-                conds_shuffle1.iscatch = false(size(conds_shuffle1,1),1);
+                conds_shuffle1.is_catch = false(size(conds_shuffle1,1),1);
 
                 % Do some checks:
-                assert(isequal(sort(conds_shuffle1.unique_im_nr,'ascend'),[1:n_unique_cases]')); % Check unique image nr
+                assert(isequal(length(conds_shuffle0.unique_im_nr),n_unique_cases)); % Check unique image nr
                 assert(isequal(sum(conds_shuffle1.stimloc==1),n_unique_cases/2));  % Check left stim loc
                 assert(isequal(sum(conds_shuffle1.stimloc==2),n_unique_cases/2));  % Check right stim loc
                 assert(isequal(sort(conds_shuffle1.super_cat_name),sort(repelem(p.stim.obj.super_cat,n_sub_cat)'))); % Check supercat
@@ -640,11 +633,11 @@ switch stimClass{:}
                     cue_dir_for_catch_trial = [];
                 elseif sum(conds_shuffle1.stimloc==3)==size(conds_shuffle1.stimloc,1)
                     cue_dir_for_catch_trial = [];
-                elseif sum(conds_shuffle1.stimloc==1 & conds_shuffle1.iscued==1) > sum(conds_shuffle1.stimloc==2 & conds_shuffle1.iscued==1)  % if we have more lefts than rights
+                elseif sum(conds_shuffle1.stimloc==1 & conds_shuffle1.is_cued==1) > sum(conds_shuffle1.stimloc==2 & conds_shuffle1.is_cued==1)  % if we have more lefts than rights
                     cue_dir_for_catch_trial = 2; % catch trial will cue right
-                elseif sum(conds_shuffle1.stimloc==2 & conds_shuffle1.iscued==1) > sum(conds_shuffle1.stimloc==1 & conds_shuffle1.iscued==1)   % if we have more rights than lefts
+                elseif sum(conds_shuffle1.stimloc==2 & conds_shuffle1.is_cued==1) > sum(conds_shuffle1.stimloc==1 & conds_shuffle1.is_cued==1)   % if we have more rights than lefts
                     cue_dir_for_catch_trial = 1; % catch trial will cue right
-                elseif sum(conds_shuffle1.stimloc==2 & conds_shuffle1.iscued==1) == sum(conds_shuffle1.stimloc==1 & conds_shuffle1.iscued==1) 
+                elseif sum(conds_shuffle1.stimloc==2 & conds_shuffle1.is_cued==1) == sum(conds_shuffle1.stimloc==1 & conds_shuffle1.is_cued==1) 
                     if ~isempty(prior_cue_dir_for_catch_trial)
                         cue_dir_for_catch_trial = setdiff([1,2],prior_cue_dir_for_catch_trial); % do the opposite of previous trial
                     else
@@ -686,20 +679,18 @@ switch stimClass{:}
             
             % Add IMG text prompt and quiz dots
             if strcmp(taskClass{:},'img')
-                [~,img_stim]     = ismember(conds_single_rep_merged.unique_im_nr,p.stim.obj.img_im_nr,'legacy');
                 n_quiz_images    = length(unique(p.exp.trial.img.quiz_images));
-                quiz_img_type_shuffle = [shuffle_concat(1:n_quiz_images, (length(find(img_stim(:,1)))/n_quiz_images)); ...
-                    shuffle_concat(1:n_quiz_images, (length(find(img_stim(:,2)))/n_quiz_images))]';
-                img_quiz_im_vec  = NaN(size(img_stim));
-                img_quiz_im_vec(img_stim>0) = quiz_img_type_shuffle;
-                img_quiz_txt_vec  = NaN(size(img_stim));
+                quiz_img_type_shuffle = [shuffle_concat(1:n_quiz_images, size(conds_single_rep_merged,1)/n_quiz_images); ...
+                    shuffle_concat(1:n_quiz_images, size(conds_single_rep_merged,1)/n_quiz_images)]';
+                img_quiz_im_vec  = quiz_img_type_shuffle;
+                img_quiz_txt_vec  = NaN(size(conds_single_rep_merged,1),1);
                 conds_single_rep_merged.img_txt_prompt = num2cell(img_quiz_txt_vec);
                 conds_single_rep_merged.stim2          = num2cell(img_quiz_im_vec);
             else
-                img_quiz_im_vec   = NaN(size(conds_single_rep_merged.orient_dir));
-                img_quiz_txt_vec  = NaN(size(img_quiz_im_vec));
-                conds_single_rep_merged.img_txt_prompt = num2cell(img_quiz_txt_vec);
+                img_quiz_im_vec   = NaN(size(conds_single_rep_merged,1),2);
+                img_quiz_txt_vec  = NaN(size(conds_single_rep_merged,1),1);
                 conds_single_rep_merged.stim2          = num2cell(img_quiz_im_vec);
+                conds_single_rep_merged.img_txt_prompt = num2cell(img_quiz_txt_vec);
             end
             
             % Add ltm pair.
@@ -709,10 +700,10 @@ switch stimClass{:}
             % %                             pair_vec = conds_master_single_rep3(:,7) + delta_vec';
             %                         else
             conds_single_rep_merged.ltm_stim_pair = NaN(size(conds_single_rep_merged.stim2_delta));
-            conds_single_rep_merged.islure = false(size(conds_single_rep_merged.ltm_stim_pair));
+            conds_single_rep_merged.is_lure = false(size(conds_single_rep_merged.ltm_stim_pair));
             
             % Keep track of repeat
-            conds_single_rep_merged.repeat_nr =rep.*ones(size(conds_single_rep_merged.stim2_delta));
+            conds_single_rep_merged.repeat_nr = rep.*ones(size(conds_single_rep_merged,1),1);
             
             % Accummulate
             cond_master = [cond_master; conds_single_rep_merged];
@@ -721,7 +712,7 @@ switch stimClass{:}
         % thickening direction doesn't have to match
         % between left and right, or do they??...
         if ~strcmp(taskClass,'fix')
-            assert(isequal(sum(cond_master.thickening_dir(:,1)==1),sum(cond_master.thickening_dir(:,2)==2)))
+            assert(isequal(sum(cond_master.is_cued==1),sum(cond_master.is_cued==2)))
         end
         
     case 'ns'
@@ -811,54 +802,56 @@ switch stimClass{:}
             % NOW SHUFFLE!
             conds_shuffle0 = cond_table(basic_cat_shuffle_idx,:); % <-- shuffle based on basic category
             conds_master_single_rep = conds_shuffle0(super_cat_shuffle_idx,:); % <-- shuffle based on super category, last one to give it priority
-
-            % No need for cued vs uncued status
-            conds_master_single_rep.iscued = NaN(size(conds_master_single_rep,1),1);
             
             % Add catch trial vector
-            conds_master_single_rep.iscatch = false(size(conds_master_single_rep,1),1);
+            conds_master_single_rep.is_catch = false(size(conds_master_single_rep,1),1);
 
-            % Single stim loc
-            conds_master_single_rep.stimloc = 3.*ones(size(conds_master_single_rep,1),1);
-            
             % Add catch trials
             conds_master_single_rep2 = vcd_addCatchTrials(conds_master_single_rep, 1, []);
             
             % No need to merge unique im into trials because there is only one
             % stim.
-            conds_master_single_rep2.unique_trial_nr = cat(2,[1:size(conds_master_single_rep2,1)]',NaN(size(conds_master_single_rep2,1),1));
+            conds_master_single_rep2.unique_trial_nr = [1:size(conds_master_single_rep2,1)]';
             
+            conds_master_single_rep2.stim_nr_left  = conds_master_single_rep2.unique_im_nr;
+            conds_master_single_rep2.stim_nr_right = NaN(size(conds_master_single_rep2,1),1);
+            
+            conds_master_single_rep2.unique_im_nr = [];
+            conds_master_single_rep2.stimloc = [];
+            conds_master_single_rep2.stimloc_name = [];
+
             % Both sides will be thickened given single central image
-            conds_master_single_rep2.thickening_dir = repmat(stimloc_cues,1,size(conds_master_single_rep2,1)/n_cued_stimlocs)';
+            conds_master_single_rep2.is_cued = 3.*ones(size(conds_master_single_rep2,1),1);
            
             % fill second column with nans, so we can merge across stim
             % classes
-            conds_master_single_rep2.unique_im_nr    = [conds_master_single_rep2.unique_im_nr, NaN(size(conds_master_single_rep2,1),1)];
-            conds_master_single_rep2.stimloc         = [conds_master_single_rep2.stimloc, NaN(size(conds_master_single_rep2,1),1)];
-            conds_master_single_rep2.stimloc_name    = [conds_master_single_rep2.stimloc_name, num2cell(NaN(size(conds_master_single_rep2,1),1))];
-            conds_master_single_rep2.orient_dir      = [conds_master_single_rep2.orient_dir, NaN(size(conds_master_single_rep2,1),1)];
-            conds_master_single_rep2.gbr_phase       = [conds_master_single_rep2.gbr_phase, NaN(size(conds_master_single_rep2,1),1)];
-            conds_master_single_rep2.rdk_coherence   = [conds_master_single_rep2.rdk_coherence, NaN(size(conds_master_single_rep2,1),1)];
-            conds_master_single_rep2.contrast        = [conds_master_single_rep2.contrast, NaN(size(conds_master_single_rep2,1),1)];
-            conds_master_single_rep2.super_cat       = [conds_master_single_rep2.super_cat, NaN(size(conds_master_single_rep2,1),1)];
-            conds_master_single_rep2.basic_cat       = [conds_master_single_rep2.basic_cat, NaN(size(conds_master_single_rep2,1),1)];
-            conds_master_single_rep2.sub_cat         = [conds_master_single_rep2.sub_cat, NaN(size(conds_master_single_rep2,1),1)];
-            conds_master_single_rep2.super_cat_name  = [conds_master_single_rep2.super_cat_name, num2cell(NaN(size(conds_master_single_rep2,1),1))];
-            conds_master_single_rep2.basic_cat_name  = [conds_master_single_rep2.basic_cat_name, num2cell(NaN(size(conds_master_single_rep2,1),1))];
-            conds_master_single_rep2.sub_cat_name    = [conds_master_single_rep2.sub_cat_name, num2cell(NaN(size(conds_master_single_rep2,1),1))];
-            conds_master_single_rep2.stim_class_name = [conds_master_single_rep2.stim_class_name, num2cell(NaN(size(conds_master_single_rep2,1),1))];
-            conds_master_single_rep2.stim_class      = [conds_master_single_rep2.stim_class, NaN(size(conds_master_single_rep2,1),1)];
-            conds_master_single_rep2.task_class_name = [conds_master_single_rep2.task_class_name, num2cell(NaN(size(conds_master_single_rep2,1),1))];
-            conds_master_single_rep2.task_class      = [conds_master_single_rep2.task_class, NaN(size(conds_master_single_rep2,1),1)];
-            conds_master_single_rep2.iscued          = [conds_master_single_rep2.iscued, NaN(size(conds_master_single_rep2,1),1)];
-            conds_master_single_rep2.iscatch         = [conds_master_single_rep2.iscatch, NaN(size(conds_master_single_rep2,1),1)];
-            conds_master_single_rep2.thickening_dir  = [conds_master_single_rep2.thickening_dir, NaN(size(conds_master_single_rep2,1),1)];
+            fnames = {'orient_dir','contrast','gbr_phase','rdk_coherence','super_cat','basic_cat','sub_cat','super_cat_name','basic_cat_name','sub_cat_name','stim_class_name','is_in_img'};
+            
+            for fn = 1:length(fnames)
+                if size(conds_master_single_rep2.(fnames{fn}),2) == 1
+                    if iscell(conds_master_single_rep2.(fnames{fn}))
+                        conds_master_single_rep2.(fnames{fn}) = [conds_master_single_rep2.(fnames{fn}), num2cell(NaN(size(conds_master_single_rep2,1),1))];
+                    else
+                        conds_master_single_rep2.(fnames{fn}) = [conds_master_single_rep2.(fnames{fn}), NaN(size(conds_master_single_rep2,1),1)];
+                    end
+                end
+            end
+            
+            % reorder columns:
+            newOrder = {'unique_trial_nr','stim_class', 'task_class', ...
+                'stim_nr_left','stim_nr_right','is_cued','is_catch', 'stim_class_name','task_class_name'};
+            for ii = 1:length(newOrder)
+                newOrderIdx(ii) = find(strcmp(conds_master_single_rep2.Properties.VariableNames,newOrder{ii}));
+            end
+            newOrderIdx = [newOrderIdx, setdiff([1:size(conds_master_single_rep2,2)],newOrderIdx)];
+            conds_master_single_rep2 = conds_master_single_rep2(:,newOrderIdx);
+            
            
             % add WM change
             if strcmp(taskClass{:},'wm')
                 n_changes = length(p.stim.ns.change_im);
                 change_blindness_vec = shuffle_concat(1:length(p.stim.ns.change_im), ceil(size(conds_master_single_rep2.unique_trial_nr,1)/n_changes))';
-                noncatch_trials_idx  = ~conds_master_single_rep2.iscatch(:,1);
+                noncatch_trials_idx  = ~conds_master_single_rep2.is_catch(:,1);
                 delta_vec            = NaN(length(noncatch_trials_idx),2);
                 change_blindness_vec = change_blindness_vec(1:sum(noncatch_trials_idx)); % check length 
                 delta_vec(noncatch_trials_idx,1) = change_blindness_vec;
@@ -874,20 +867,19 @@ switch stimClass{:}
             end
 
             
-            % Add IMG text prompt and quiz dots
+            % take subset of IMG trials, add text prompt and quiz dots loc
             if strcmp(taskClass{:},'img')
-                img_stim              = find(conds_single_rep_merged.unique_im_nr == p.stim.ns.img_im_nr);
-                n_quiz_images         = length(unique(p.exp.trial.img.quiz_images));
-                quiz_img_type_shuffle = shuffle_concat(1:n_quiz_images, (length(img_stim)/n_quiz_images));
-                img_quiz_im_vec       = NaN(size(conds_single_rep_merged.thickening_dir));
-                img_quiz_im_vec(img_stim,:) = quiz_img_type_shuffle;
-                img_quiz_txt_vec  = NaN(size(img_quiz_im_vec),2);
-                conds_single_rep_merged.img_txt_prompt = num2cell(img_quiz_txt_vec);
-                conds_single_rep_merged.stim2          = num2cell(img_quiz_im_vec);
-
+                n_quiz_images    = length(unique(p.exp.trial.img.quiz_images));
+                quiz_img_type_shuffle = shuffle_concat(1:n_quiz_images, ceil(size(conds_master_single_rep2,1)/n_quiz_images))'; ...
+                quiz_img_type_shuffle = quiz_img_type_shuffle(1:size(conds_master_single_rep2,1));
+                quiz_img_type_shuffle = [quiz_img_type_shuffle, NaN(size(conds_master_single_rep2,1),1)];
+                img_quiz_im_vec  = quiz_img_type_shuffle;
+                img_quiz_txt_vec  = NaN(size(conds_master_single_rep2,1),1);
+                conds_master_single_rep2.img_txt_prompt = num2cell(img_quiz_txt_vec);
+                conds_master_single_rep2.stim2          = num2cell(img_quiz_im_vec);
             else
-                conds_single_rep_merged.stim2           = num2cell(NaN(size(conds_single_rep_merged.orient_dir)));
-                conds_single_rep_merged.img_txt_prompt  = num2cell(conds_single_rep_merged.stim2);
+                conds_master_single_rep2.stim2           = num2cell(NaN(size(conds_master_single_rep2,1),2));
+                conds_master_single_rep2.img_txt_prompt  = num2cell(NaN(size(conds_master_single_rep2,1),1));
             end
             
             % add ltm change
@@ -900,10 +892,11 @@ switch stimClass{:}
             %                             lure_vec = (pair_vec==;
             %                         else
             conds_master_single_rep2.ltm_stim_pair = NaN(size(conds_master_single_rep2.stim2_delta));
-            conds_master_single_rep2.islure = false(size(conds_master_single_rep2.ltm_stim_pair));
+            conds_master_single_rep2.is_lure = false(size(conds_master_single_rep2.ltm_stim_pair));
             
             % Keep track of repeat
-            conds_master_single_rep2.repeat_nr = [rep.*ones(size(conds_master_single_rep2,1),1), NaN(size(conds_master_single_rep2,1),1)];
+            conds_master_single_rep2.repeat_nr = rep.*ones(size(conds_master_single_rep2,1),1);
+            
             
             % Accummulate
             cond_master = [cond_master; conds_master_single_rep2];
