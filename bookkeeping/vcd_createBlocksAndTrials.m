@@ -186,8 +186,8 @@ else % Recreate conditions and blocks and trials
     
     
     %% ---- IMPORTANT FUNCTION: Shuffle stimuli for SCC task ----
-    condition_master = vcd_shuffleStimForSCC(condition_master, p.exp.block.n_trials_single_epoch);
-%     
+    condition_master = vcd_shuffleStimForTaskClass(p,  'scc', condition_master, p.exp.block.n_trials_single_epoch);
+%     condition_master2 = vcd_shuffleStimForTaskClass(p, condition_master, 'ltm', p.exp.block.n_trials_single_epoch);
 %     condition_master = vcd_shuffleStimForLTM(condition_master, p.exp.block.n_trials_double_epoch);
 
     
@@ -203,50 +203,55 @@ else % Recreate conditions and blocks and trials
     %% At last, do some checks:
     
     % Stim class nr should match with params
-    assert(isequal(unique(condition_master.stim_class)',1:length(p.exp.stimClassLabels)))
+    assert(isequal(unique(condition_master.stim_class)',[1:length(p.exp.stimClassLabels),99]))
     % Task class nr should match with params
     assert(isequal(unique(condition_master.task_class)',1:length(p.exp.taskClassLabels)))
     
     % Cued vs uncued stimuli should be matched
-    assert(isequal(sum(condition_master.is_cued==1),sum(condition_master.is_cued==0)))
-    
-    % Thickening direction should following cuing status
-    assert(isequal(sum(condition_master.thickening_dir==1),sum(condition_master.thickening_dir==2)))
-    assert(isequal(sum(condition_master.thickening_dir==1),sum(condition_master.is_cued==1)))
-    assert(isequal(sum(condition_master.thickening_dir==2),sum(condition_master.is_cued==1)))
+    assert(isequal(sum(condition_master.is_cued==1),sum(condition_master.is_cued==2)))
     
     % Now dive into each stimulus class
-    N_tbl = NaN(5,30);
-    for ii = unique(condition_master.stim_class)'
-        [N, N_edges] = histcounts(condition_master.unique_im_nr(condition_master.stim_class==ii));
+    N_tbl = NaN(5,30); unique_stim_class_names_in_table = unique(condition_master.stim_class)';
+    adjusted_crossings = double(p.exp.crossings);
+    for ii = unique_stim_class_names_in_table(1:5)
+        [N, N_edges] = histcounts([condition_master.stim_nr_left(~condition_master.is_catch & condition_master.stim_class==ii); ...
+                                    condition_master.stim_nr_right(~condition_master.is_catch & condition_master.stim_class==ii)]);
         N_tbl(ii,1:length(N)) = N;
-        assert(length(unique(N))==1);
-        assert(isequal(size(N,2), max(all_unique_im.(p.exp.stimClassLabels{ii}).unique_im_nr)))
+        assert(isequal(size(N,2), length(all_unique_im.(p.exp.stimClassLabels{ii}).unique_im_nr)))
         
         % Check nr of unique stimuli per stimulus class
-        if ii == max(unique(condition_master.stim_class))
-            assert(isequal(sum(condition_master.stim_class==ii),...
-                max(condition_master.unique_im_nr(condition_master.stim_class==ii))*p.exp.n_unique_trial_repeats*(sum(p.exp.crossings(ii,:)))))
-            unique_im_from_table(ii) = max(condition_master.unique_im_nr(condition_master.stim_class==ii));
+        if ii == unique_stim_class_names_in_table(5)
+            unique_im_from_table(ii) = length(unique(condition_master.stim_nr_left(~condition_master.is_catch & condition_master.stim_class==ii)));
+            
+            adjusted_crossings(ii,7) = 2*length(p.stim.(p.exp.stimClassLabels{ii}).imagery_im_nr)/length(p.stim.(p.exp.stimClassLabels{ii}).unique_im_nrs);
+            
+            assert(isequal(sum(condition_master.stim_class(~condition_master.is_catch)==ii),...
+                unique_im_from_table(ii) * p.exp.n_unique_trial_repeats*(sum(adjusted_crossings(ii,:)))))
+            
         else
-            assert(isequal(sum(condition_master.stim_class==ii),...
-                max(condition_master.unique_im_nr(condition_master.stim_class==ii))*p.exp.n_unique_trial_repeats*(sum(p.exp.crossings(ii,:))-0.5)*p.exp.trial.stim_LR_loc_cue(ii)*2))
-            unique_im_from_table(ii) = max(condition_master.unique_im_nr(condition_master.stim_class==ii));
+            unique_im_from_table(ii) = length([unique(condition_master.stim_nr_left(~condition_master.is_catch & condition_master.stim_class==ii)); ...
+                                    unique(condition_master.stim_nr_right(~condition_master.is_catch & condition_master.stim_class==ii))]);
+            adjusted_crossings(ii,1) = 0.5;
+            adjusted_crossings(ii,3) = 0;
+            adjusted_crossings(ii,7) = 2*length(p.stim.(p.exp.stimClassLabels{ii}).imagery_im_nr)/length(p.stim.(p.exp.stimClassLabels{ii}).unique_im_nrs);
+            assert(isequal(sum(condition_master.stim_class(~condition_master.is_catch)==ii),...
+                sum(unique_im_from_table(ii).* adjusted_crossings(ii,:)) * p.exp.n_unique_trial_repeats));
         end
     end
     
     % Now dive into each task class
-    crossings_unique_im = max(p.exp.crossings.*unique_im_from_table',2);
+    crossings_unique_im = max(adjusted_crossings.*unique_im_from_table',[],2);
     
-    M_tbl = NaN(10,30);
+    M_tbl = NaN(10,112);
     for ii = unique(condition_master.task_class)'
-        [M, edges_M] = histcounts(condition_master.unique_im_nr(condition_master.task_class==ii));
+        [M, edges_M] = histcounts([condition_master.stim_nr_left(~condition_master.is_catch & (condition_master.task_class==ii)); ...
+                                    condition_master.stim_nr_left(~condition_master.is_catch & (condition_master.task_class==ii))],[0:1:111]);
         M_tbl(ii,1:length(M)) = M;
     end
     
 
     
-    p.verbose = false;
+    
     % Plot figures to check stimulus order
     if p.verbose
         
@@ -255,9 +260,10 @@ else % Recreate conditions and blocks and trials
         
         
         figure; set(gcf,'Position',[1,1,1200,300]);
-        histogram(condition_master.unique_im_nr)
+        histogram([condition_master.stim_nr_left;condition_master.stim_nr_right],'numbins',111)
         xlabel('unique condition nr'); ylabel('trial count')
-        set(gca,'XTick',[1:30]); title('Total unique image nr')
+         title('Total unique image nr')
+%          set(gca,'XTick',[1:30]);
         box off;
         if p.store_imgs
             saveFigsFolder = fullfile(vcd_rootPath,'figs');
