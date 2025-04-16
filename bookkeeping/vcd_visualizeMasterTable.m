@@ -4,7 +4,7 @@ function fH = vcd_visualizeMasterTable(master_table,store_imgs)
 makeprettyfigures;
 
 %%
-strCols = [3,11:14,16,22]; % columns with names/characters (we don't want to plot)
+strCols = find(ismember(master_table.Properties.VariableNames,{'stim_class_name','task_class_name','super_cat_name','basic_cat_name','sub_cat_name','stim2','img_txt_prompt'})); % columns with names/characters (we don't want to plot)
 colsToPlot = 1:size(master_table,2);
 colsToPlot = setdiff(colsToPlot,strCols);
 
@@ -15,17 +15,17 @@ for jj = 1:length(unique(master_table.stim_class))
     taskClassData = stimClassData.task_class_name;
 
     nrows = length(colsToPlot);
-    zoomwindow = 500;
+    zoomwindow = 750;
     for ii = 1:nrows
         colName = master_table.Properties.VariableNames{colsToPlot(ii)};
         
         clf; set(gcf,'Position',[1,1,2500,1280]);
         
         dataToPlot = table2array(stimClassData(:,colsToPlot(ii)))';
-        nsubplots = 1:ceil(length(dataToPlot)/500);
+        nsubplots = 1:ceil(length(dataToPlot)/zoomwindow);
         
         if all(iscell(dataToPlot))
-            if sum(cellfun(@isnan, dataToPlot))~=length(dataToPlot)
+            if sum(cellfun(@isnan, dataToPlot(:,1), 'UniformOutput',false))~=length(dataToPlot)
                 
             end
             
@@ -34,8 +34,11 @@ for jj = 1:length(unique(master_table.stim_class))
         
         % convert to stim conditions
         if strcmp(colName,'contrast') || strcmp(colName,'rdk_coherence')
-            nrconds0 = unique(dataToPlot);
-            dataToPlot = sum((dataToPlot'==nrconds0).*[1:length(nrconds0)],2)';
+            nrconds0 = unique(dataToPlot(~isnan(dataToPlot)));
+            for xx = 1:length(nrconds0)
+                dataToPlot((dataToPlot(:,1)==nrconds0(xx)),1) = xx;
+                dataToPlot((dataToPlot(:,2)==nrconds0(xx)),2) = xx;
+            end
             fixTickFlag = true;
         else
             fixTickFlag = false;
