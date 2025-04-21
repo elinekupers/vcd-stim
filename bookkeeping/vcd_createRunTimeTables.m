@@ -12,6 +12,50 @@ function time_table_master = vcd_createRunTimeTables(params)
 % OUTPUTS:
 %   time_table_master   :  (struct) updated condition master table with
 %                           single trial events.
+%     {'subj_nr'             } : (double) subject number
+%     {'session_nr'          } : (double) MRI session nr
+%     {'run_nr'              } : (double) run nr within a session
+%     {'block_nr'            } : (double) block nr within a run
+%     {'block_local_trial_nr'} : (double) trial number within a block
+%     {'cond_name'           } : (cell w str) name of unique image x cue status
+%     {'stim_class'          } : (double) stimulus class number [1-5]: GBR, RDK, DOT, OBJ, NS
+%     {'task_class'          } : (double) task class number [1-10]: FIX, CD, SCC, PC, WM, LTM, IMG, WHAT, WHERE, HOW
+%     {'stim_nr_left'        } : (double) unique stimulus number for left spatial stimulus location or center location in case of NS
+%     {'stim_nr_right'       } : (double) unique stimulus number for left spatial stimulus location, left empty in case of NS
+%     {'is_cued'             } : (double) if stimulus is cued left (1), right (2), or neutral (3)
+%     {'is_catch'            } : (bool) if stimulus is a catch trial (true) or not (false)
+%     {'trial_type'          } : (double) if it is a single-stimulus or double-stimulus presentation trial
+%     {'block_ID'            } : (double) stimulus-task crossing (1:32), see params.exp.stimtaskcrossings
+%     {'event_start'         } : (double) event onset in 33 ms frames 
+%     {'event_dur'           } : (double) event duration in 33 ms frames
+%     {'event_end'           } : (double) event end in 33 ms frames
+%     {'event_id'            } : (double) event ID (e.g., 91 for stimulus)
+%     {'event_name'          } : (cell w str) same as event ID but human readable
+%     {'stim_class_name'     } : (cell w str) same as stim_class but human readable
+%     {'task_class_name'     } : (cell w str) same as task_class but human readable
+%     {'orient_dir'          } : (double) Gabor tilt orientation, RDK motion direction, dot spatial location angle, object facing direction in degrees
+%     {'contrast'            } : (double) stimulus michelson contrast (fraction), 1 = 100%
+%     {'gbr_phase'           } : (double) Gabor stimulus phase (in degrees) or NaN for other stimulus classes
+%     {'rdk_coherence'       } : (double) RDK stimulus coherence (in fraction of dots) or NaN for other stimulus classes
+%     {'super_cat'           } : (double) Object/Scene superordinate semantic category or NaN for other stimulus classes
+%     {'basic_cat'           } : (double) Object/Scene basic semantic category or NaN for other stimulus classes
+%     {'sub_cat'             } : (double) Object/Scene subordinate semantic category or NaN for other stimulus classes
+%     {'super_cat_name'      } : (cell w str) same as super_cat but human readable
+%     {'basic_cat_name'      } : (cell w str) same as basic_cat but human readable
+%     {'sub_cat_name'        } : (cell w str) same as sub_cat but human readable
+%     {'is_in_img'           } : (bool) if stimulus is part of imagery stimulus subset
+%     {'stim2_delta'         } : (double) WM or IMG quiz image change. For
+%                                 example, for WM it is the difference from reference for gabor degrees tilt, rdk motion direction, 
+%                                 dot angle, object facing direction, or
+%                                 type of change in scene.
+%     {'stim2'               } : (cell w str or double) outcome of 'stim2_delta'. For
+%                                 example, for -8 + 18 = 10 degrees gabor
+%                                 tilt for quiz image after delay.
+%     {'img_txt_prompt'      } : (cell w str or double) text prompt for imagery quiz image
+%     {'ltm_stim_pair'       } : (double) Long term memory paired stimulus
+%     {'is_lure'             } : (bool) if LTM quiz image is lure (true) or not (false)
+%     {'repeat_nr'           } : (double) how often this particular stimulus-task crossing has been repeated across sessions for a subject
+%     {'global_block_nr'     } : (double) block number across all sessions for a subject
 
 
 % Define event ID within trial for single and double epoch trial types
