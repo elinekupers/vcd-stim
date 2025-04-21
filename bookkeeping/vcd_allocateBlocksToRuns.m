@@ -1,6 +1,21 @@
-function condition_master = vcd_allocateBlocksToRuns(p)
+function condition_master = vcd_allocateBlocksToRuns(params)
+% VCD function to allocate the unique trials and blocks to given runs.
+% 
+%   condition_master = vcd_allocateBlocksToRuns(params)
+%
+% INPUTS:
+%   params              : 	(struct) parameter struct needed to get subject
+%                           nrs and run type params. REQUIRES params.trials 
+%                           to exist and contain condition_master v0.                   
+%   
+% OUTPUTS:
+%   condition_master    :  (struct) updated condition master table with
+%                           block and runs for each subject and session.
 
-condition_master = p.trials;
+%% 
+
+% copy condition master
+condition_master = params.trials;
 
 % Add extra columns to master table
 if sum(strcmp(condition_master.Properties.VariableNames,'session_nr'))==0
@@ -8,7 +23,7 @@ if sum(strcmp(condition_master.Properties.VariableNames,'session_nr'))==0
         NaN(size(condition_master,1),1), ... session_nr
         NaN(size(condition_master,1),1), ... run_nr
         NaN(size(condition_master,1),1), ... block_nr
-        NaN(size(condition_master,1), p.exp.total_subjects), ...
+        NaN(size(condition_master,1), params.exp.total_subjects), ...
         num2cell(NaN(size(condition_master,1),2)), ... cond_name
         NaN(size(condition_master,1),1), ... block_ID
         num2cell(NaN(size(condition_master,1),1)), ... block_name
@@ -34,34 +49,34 @@ end
 
 % Keep track of allocated blocks for each stim-task crossing and continue
 % counting to avoid overwriting of trials
-stimtask_tracker_global = ones(length(p.exp.stimClassLabels), length(p.exp.taskClassLabels));
+stimtask_tracker_global = ones(length(params.exp.stimClassLabels), length(params.exp.taskClassLabels));
     
 global_block_counter = 1; % keep track of all the blocks allocated across sessions
 
 % change stim/task labels to upper case and abbreviated version
-stim_class_abbr = upper(p.exp.stimClassLabels);
+stim_class_abbr = upper(params.exp.stimClassLabels);
 stim_class_abbr{1} = 'GBR';
-task_class_abbr = upper(p.exp.taskClassLabels);
+task_class_abbr = upper(params.exp.taskClassLabels);
 
-for ses = 1:p.exp.n_sessions
+for ses = 1:params.exp.n_sessions
     
     %% First we check how many repeats of stim-task crossings we want to run within a session
     fprintf('\nSESSION %d:',ses)
     
     % also keep track of local stim-task block allocation
-    stimtask_tracker_local = ones(length(p.exp.stimClassLabels), length(p.exp.taskClassLabels));
+    stimtask_tracker_local = ones(length(params.exp.stimClassLabels), length(params.exp.taskClassLabels));
 
     % Nr of blocks for each stim-task crossing. We use the nr of blocks,
     % same trials, and same unique image for each subject
-    block_distr = p.exp.ses_blocks(:,:,ses);
+    block_distr = params.exp.ses_blocks(:,:,ses);
     
     bb = 1; % block tracker
     scc_bb = 0; % separate counter for scc task, because it is spread across stimulus classes
     
-    for sc = 1:length(p.exp.stimClassLabels)
-        for tc = 1:length(p.exp.taskClassLabels)
+    for sc = 1:length(params.exp.stimClassLabels)
+        for tc = 1:length(params.exp.taskClassLabels)
             
-            if  ses >= p.exp.session.task_start(tc)
+            if  ses >= params.exp.session.task_start(tc)
                 % get nr of blocks for this specific crossing
                 n_blocks = block_distr(sc,tc);
                 
@@ -73,24 +88,24 @@ for ses = 1:p.exp.n_sessions
                     
                     for ii = 1:length(curr_blocks)
                         
-                        if strcmp(p.exp.taskClassLabels{tc},'scc')
+                        if strcmp(params.exp.taskClassLabels{tc},'scc')
                             % We can't sort on stim class name for SCC,
                             % otherwise stim will be allocated to different
                             % blocks. Hence we use an if statement and call
                             % the block_name 'scc-all'
                             idx = ((condition_master.stim_class==99) & (condition_master.task_class==tc) & (condition_master.stim_class_unique_block_nr== scc_bb + curr_blocks(ii)));
-                            condition_master.block_name(idx)        = {sprintf('%s-all',p.exp.taskClassLabels{tc})};
+                            condition_master.block_name(idx)        = {sprintf('%s-all',params.exp.taskClassLabels{tc})};
                             stim_class_tmp_name = 'ALL';
                         else
                             idx = ((condition_master.stim_class==sc) & (condition_master.task_class==tc) & (condition_master.stim_class_unique_block_nr==curr_blocks(ii)));
-                            condition_master.block_name(idx)          = {sprintf('%s-%s',p.exp.taskClassLabels{tc}, p.exp.stimClassLabels{sc})};
+                            condition_master.block_name(idx)          = {sprintf('%s-%s',params.exp.taskClassLabels{tc}, params.exp.stimClassLabels{sc})};
                             stim_class_tmp_name = stim_class_abbr{sc};
                         end
                         % get block numbers for this stim-task crossing
                         condition_master.session_nr(idx)        = ses;
                         blck_name                               = condition_master.block_name(idx);
                         blck_name = blck_name(1);
-                        condition_master.block_ID(idx)          = find(strcmp(blck_name,p.exp.stimTaskLabels));
+                        condition_master.block_ID(idx)          = find(strcmp(blck_name,params.exp.stimTaskLabels));
                         condition_master.block_nr(idx)          = bb;
                         condition_master.global_block_nr(idx)   = global_block_counter;
                         
@@ -104,7 +119,7 @@ for ses = 1:p.exp.n_sessions
                                 cue_label = {sprintf('%s %03d L UNCUED %s',stim_class_tmp_name,condition_master.stim_nr_left(sub_idx(tt)),task_class_abbr{tc}),...
                                     sprintf('%s %03d R CUED %s',stim_class_tmp_name,condition_master.stim_nr_right(sub_idx(tt)),task_class_abbr{tc})};
                             elseif condition_master.is_cued(sub_idx(tt))==3
-                                if any(ismember(condition_master.stim_nr_left(sub_idx(tt)),p.stim.ns.unique_im_nrs)) && isnan(condition_master.stim_nr_right(sub_idx(tt)))
+                                if any(ismember(condition_master.stim_nr_left(sub_idx(tt)),params.stim.ns.unique_im_nrs)) && isnan(condition_master.stim_nr_right(sub_idx(tt)))
                                     cue_label = {sprintf('%s %03d C NCUED %s',stim_class_tmp_name,condition_master.stim_nr_left(sub_idx(tt)),task_class_abbr{tc}), ''};
                                 elseif condition_master.stim_nr_left(sub_idx(tt))==0 && strcmp(stim_class_tmp_name,'NS')
                                     cue_label = {sprintf('%s %03d L NCUED %s',stim_class_tmp_name,condition_master.stim_nr_left(sub_idx(tt)),task_class_abbr{tc}), ''};
@@ -117,7 +132,7 @@ for ses = 1:p.exp.n_sessions
                             condition_master.cond_name(sub_idx(tt),:)          = strrep(cue_label,' ', '-'); % add dash here, otherwise sprintf interprets dash as left align
                         end
                         
-                        if p.exp.trial.double_epoch_tasks(tc)
+                        if params.exp.trial.double_epoch_tasks(tc)
                             condition_master.trial_type(idx) = 2; % double epoch;
                         else
                             condition_master.trial_type(idx) = 1; % double epoch;
@@ -129,7 +144,7 @@ for ses = 1:p.exp.n_sessions
                         stimtask_tracker_global(sc,tc) = stimtask_tracker_global(sc,tc)+1;
                     end
                     
-                    if strcmp(p.exp.taskClassLabels{tc},'scc')
+                    if strcmp(params.exp.taskClassLabels{tc},'scc')
                         scc_bb = scc_bb+max(curr_blocks);
                     end
                     fprintf('\n%s   \t:\t %d block(s)',blck_name{:},n_blocks)
@@ -173,7 +188,7 @@ for ses = 1:p.exp.n_sessions
     % %     end
     %     set(gca,'YTick',1,'YTickLabel',{'global block nr'})
     %
-    %     if p.store_imgs
+    %     if params.store_imgs
     %         saveFigsFolder = fullfile(vcd_rootPath,'figs');
     %         filename = sprintf('vcd_session%02d_blocks_pre_shuffle.png', ses);
     %         print(gcf,'-dpng','-r300',fullfile(saveFigsFolder,filename));
@@ -194,8 +209,8 @@ for ses = 1:p.exp.n_sessions
     n_type1 = sum(unique_trialtypes==1); % single
     n_type2 = sum(unique_trialtypes==2); % double
     
-    block_type_allocation  = [p.exp.run.run_type1,p.exp.run.run_type2,p.exp.run.run_type3,p.exp.run.run_type4];
-    ses_run_types          = [p.exp.session.nr_of_type1_runs(ses),p.exp.session.nr_of_type2_runs(ses),p.exp.session.nr_of_type3_runs(ses),p.exp.session.nr_of_type4_runs(ses)];
+    block_type_allocation  = [params.exp.run.run_type1,params.exp.run.run_type2,params.exp.run.run_type3,params.exp.run.run_type4];
+    ses_run_types          = [params.exp.session.nr_of_type1_runs(ses),params.exp.session.nr_of_type2_runs(ses),params.exp.session.nr_of_type3_runs(ses),params.exp.session.nr_of_type4_runs(ses)];
     nr_blocks_per_run_type = ses_run_types * block_type_allocation';
     
     assert(isequal(unique_blocks,[1:length(unique_blocks)]'))
@@ -203,7 +218,7 @@ for ses = 1:p.exp.n_sessions
     assert(isequal(n_type1 , nr_blocks_per_run_type(1)))
     assert(isequal(n_type2 , nr_blocks_per_run_type(2)))
     
-    runs_to_fill = [ones(1, p.exp.session.nr_of_type1_runs(ses)), 2*ones(1,p.exp.session.nr_of_type2_runs(ses)),3*ones(1,p.exp.session.nr_of_type3_runs(ses)),3*ones(1,p.exp.session.nr_of_type4_runs(ses))];
+    runs_to_fill = [ones(1, params.exp.session.nr_of_type1_runs(ses)), 2*ones(1,params.exp.session.nr_of_type2_runs(ses)),3*ones(1,params.exp.session.nr_of_type3_runs(ses)),3*ones(1,params.exp.session.nr_of_type4_runs(ses))];
   
     curr_runs = zeros(length(runs_to_fill),7);
 
@@ -262,7 +277,7 @@ for ses = 1:p.exp.n_sessions
         % Once blocks are allocated to each run, we want to
         % shuffle the order of blocks within a run for each subject
         
-        for sj = 1:p.exp.total_subjects
+        for sj = 1:params.exp.total_subjects
             
             this_run = curr_runs_shuffled(run_idx,:);
             this_run = this_run(this_run>0);
@@ -289,17 +304,17 @@ for ses = 1:p.exp.n_sessions
     end
 end % session
 
-if p.store_params
+if params.store_params
     fprintf('\n[%s]:Storing updated condition_master data..\n',mfilename)
     saveDir = fullfile(vcd_rootPath,'workspaces','info');
     if ~exist(saveDir,'dir'), mkdir(saveDir); end
-    save(fullfile(saveDir,sprintf('condition_master_w_subject_blocks_%s_%s.mat',p.disp.name, datestr(now,30))),'condition_master')
+    save(fullfile(saveDir,sprintf('condition_master_w_subject_blocks_%s_%s.mat',params.disp.name, datestr(now,30))),'condition_master')
 end
 
 % Visualize results
-if p.verbose
+if params.verbose
     close all; makeprettyfigures
-    for ses = 1:p.exp.n_sessions
+    for ses = 1:params.exp.n_sessions
         % visualize blocks and trials, now after shuffle
         figure; set(gcf,'Position',[1 1 1200 600]);
         ses_data = condition_master(~isnan(condition_master.session_nr),:);
@@ -320,13 +335,13 @@ if p.verbose
         for ff = 1:length(new_run_line)
             plot([new_run_line(ff),new_run_line(ff)],[0,6],'k','linewidth',4)
         end
-        for ii = 1:p.exp.total_subjects, label{ii} = sprintf('subj %d',ii); end
-        set(gca,'YTick',[1:p.exp.total_subjects+2],'YTickLabel',{'session nr','run nr', label{:}});
+        for ii = 1:params.exp.total_subjects, label{ii} = sprintf('subj %d',ii); end
+        set(gca,'YTick',[1:params.exp.total_subjects+2],'YTickLabel',{'session nr','run nr', label{:}});
         title(sprintf('SESSION %02d OVERVIEW',ses),'FontSize',20);
         xlabel('BLOCK NR')
         
         
-        if p.store_imgs
+        if params.store_imgs
             saveFigsFolder = fullfile(vcd_rootPath,'figs');
             filename = sprintf('vcd_session%02d_subjblocks_post_shuffle.png',ses);
             print(gcf,'-dpng','-r300',fullfile(saveFigsFolder,filename));
