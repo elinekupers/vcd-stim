@@ -314,9 +314,9 @@ else
                 % TEMPORAL
                 p.duration        = stimdur_frames;                            % frames (nr of monitor refreshes)
                 p.dots_coherence  = [0.064, 0.128, 0.512];                     % fraction of coherent moving dots. Kiani lab uses usually one of these [0 0.032 0.064 0.128 0.256 0.512]
-                p.dots_speed      = 5;                                         % pixels/s   (Kiani lab uses usually 5 to 10)
-                p.dots_interval   = 1;                                         % framedur_s interval by which dots update (so 30 disp.framedur_s / 1 interval = 30 frames/sec) 
-                                                                               % currently set to 30 frames per second (which approximates Kiani's 75 hz refresh rate / 3 interval = 25 frames/sec)
+                p.dots_speed      = 6 * p.stim.presentationrate_hz;            % pixels/frames (Kiani lab uses usually 5 to 10) / rokers lab uses 5 deg/s
+                p.dots_interval   = 1;                                         % update dots every frame   (for references: Kiani's 75 hz refresh rate / 3 interval = 25 frames/sec)
+                p.dots_lifetime   = 0.1 * p.stim.presentationrate_hz;          % 3 frames / 0.1 seconds   
                 
                 % SPATIAL
                 p.img_sz_deg      = parafov_circle_diam_deg;                    % stimulus aperture diameter (deg)
@@ -346,6 +346,7 @@ else
                 p.dots_density     = 16.7;                                      % dots/deg^2??
                 p.dots_size        = 3;                                         % single dot radius in pixels??
                 p.dots_color       = [255 255 255; 1 1 1]./255;                 % 50:50 white:black, color in RGB and converted to [0-1] as expected by stimulus creation function
+
                 p.max_dots_per_frame = 200;                                     % how many dots within a square support from (number is similar to Kiani lab) and roughly matches to nr of pixels in aperture
                                                                                 % Note that total nr of dots will be less than 200, because some will fall outside the aperture. (EK: CHECK HOW MANY)  
                 p.dots_contrast    = 1;                                         % Michelson [0-1] (fraction)
@@ -397,7 +398,7 @@ else
                 p.num_loc         = 16;                                          % orientation "bins" from which we create final gabor orientations (deg), 0 = 12 o'clock
                 p.loc_jitter_sd   = 1;                                           % std of normal distribution to sample orientation jitter
                 p.loc_jitter_mu   = 1;                                           % mean of normal distribution to sample orientation jitter
-                p.loc_bins        = 10:(360/p.num_loc):350;                      % rotate 2 deg away from vertical, to avoid ill-defined response options and have integer angle differences between locations
+                p.loc_bins        = 10:(360/p.num_loc):350;                      % rotate 10 deg away from vertical, to avoid ill-defined response options and have integer angle differences between locations
                 
                 % DOT ANGLES
                 % *** PROBABILISTIC *** 

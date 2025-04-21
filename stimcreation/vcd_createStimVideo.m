@@ -1,6 +1,9 @@
 function vcd_createStimVideo(frames, ifi, saveFolder, fname)
 
 % Prepare the new file.
+if ~exist(saveFolder,'dir')
+    mkdir(saveFolder);
+end
 vidObj = VideoWriter(fullfile(saveFolder,[fname '.mp4']),'MPEG-4');
 open(vidObj);
 
