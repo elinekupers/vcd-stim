@@ -101,7 +101,7 @@ switch stimClass{:}
         n_ori_bins     = length(p.stim.gabor.ori_deg);
         assert(isequal(length(unique(cond_table.orient_dir)),n_ori_bins));
         
-        if strcmp(taskClass,'fix')
+        if strcmp(taskClass{:},'fix')
             stimloc_cues   = NaN; % {1:cued,0:uncued, NaN:no cue} or 3??
             n_cued_stimlocs = length(stimloc_cues);
         else
@@ -256,7 +256,7 @@ switch stimClass{:}
         n_coh       = length(p.stim.rdk.dots_coherence); % levels of dot coherence
         n_motdir    = length(p.stim.rdk.dots_direction); % number of motion direction bins per hemifield
         
-        if strcmp(taskClass,'fix')
+        if strcmp(taskClass{:},'fix')
             stimloc_cues   = NaN; % {1:cued,0:uncued, NaN:neutral/no cue} or 3??
             n_cued_stimlocs = length(stimloc_cues);
         else
@@ -342,7 +342,7 @@ switch stimClass{:}
             clear conds_master_single_rep
 
             % Add WM change.
-            if strcmp(taskClass,'wm')
+            if strcmp(taskClass{:},'wm')
                 n_deltas      = length(p.stim.rdk.delta_from_ref);
                 shuffle_delta = shuffle_concat(1:length(p.stim.rdk.delta_from_ref), (n_unique_cases/(n_deltas/2)));
                 noncatch_trials_idx = ~isnan(conds_single_rep_merged.orient_dir(:,1));
@@ -404,7 +404,7 @@ switch stimClass{:}
         % Get stim manipulations
         n_dot_loc  = size(p.stim.dot.loc_deg,2);
         
-        if strcmp(taskClass,'fix')
+        if strcmp(taskClass{:},'fix')
             stimloc_cues = NaN;  % {1:cued,0:uncued, NaN:neutral/no cue} or 3??
             n_cued_stimlocs = length(stimloc_cues);
         else
@@ -711,7 +711,7 @@ switch stimClass{:}
         
         % thickening direction doesn't have to match
         % between left and right, or do they??...
-        if ~strcmp(taskClass,'fix')
+        if ~strcmp(taskClass{:},'fix')
             assert(isequal(sum(cond_master.is_cued==1),sum(cond_master.is_cued==2)))
         end
         

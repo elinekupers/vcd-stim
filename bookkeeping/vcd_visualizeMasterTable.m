@@ -14,34 +14,39 @@ for jj = 1:length(unique(master_table.stim_class))
     stimClassData = master_table(master_table.stim_class==jj,:);
     taskClassData = stimClassData.task_class_name;
 
-    nrows = length(colsToPlot);
-    zoomwindow = 750;
-    for ii = 1:nrows
+%     zoomwindow = 750;
+    for ii = 1:length(colsToPlot)
         colName = master_table.Properties.VariableNames{colsToPlot(ii)};
         
-        clf; set(gcf,'Position',[1,1,2500,1280]);
         
         dataToPlot = table2array(stimClassData(:,colsToPlot(ii)))';
-        nsubplots = 1:ceil(length(dataToPlot)/zoomwindow);
+%         nsubplots = 1:ceil(length(dataToPlot)/zoomwindow);
+        nsubplots = 1;
+        
+        if nsubplots == 1
+            clf; set(gcf,'Position',[1,1,1500,300]);
+        else
+            clf; set(gcf,'Position',[1,1,1500,880]);
+        end
         
         if all(iscell(dataToPlot))
-            if sum(cellfun(@isnan, dataToPlot(:,1), 'UniformOutput',false))~=length(dataToPlot)
-                
-            end
-            
+%             if sum(cellfun(@isnan, dataToPlot(:,1), 'UniformOutput',false))~=length(dataToPlot)
+%                 
+%             end           
             dataToPlot = cell2mat(dataToPlot);
         end
         
         % convert to stim conditions
         if strcmp(colName,'contrast') || strcmp(colName,'rdk_coherence')
             nrconds0 = unique(dataToPlot(~isnan(dataToPlot)));
-            for xx = 1:length(nrconds0)
-                dataToPlot((dataToPlot(:,1)==nrconds0(xx)),1) = xx;
-                dataToPlot((dataToPlot(:,2)==nrconds0(xx)),2) = xx;
-            end
+            dataToPlot = log10(dataToPlot*100);
             fixTickFlag = true;
         else
             fixTickFlag = false;
+        end
+        
+        if size(dataToPlot,1) > size(dataToPlot,2)
+            dataToPlot = dataToPlot';
         end
         
         if  ~isequalwithequalnans(dataToPlot,NaN(size(dataToPlot)))
@@ -50,11 +55,15 @@ for jj = 1:length(unique(master_table.stim_class))
             else
                 cmap = cmapturbo(length(unique(dataToPlot)));
             end
+            
+            
             % Plot all trials
-            subplot(length(nsubplots)+1,1,1) 
+%             subplot(length(nsubplots)+1,1,1) 
             imagesc(dataToPlot);
             box off; 
             title(sprintf('%s - %s', stimClassData.stim_class_name{1}, colName),'Interpreter', 'none', 'FontSize', 25)
+            
+            
             
             % Set colorbar
             nrconds = unique(dataToPlot);
@@ -79,39 +88,40 @@ for jj = 1:length(unique(master_table.stim_class))
             end
             set(gca,'CLim', [cmin, cmax], 'YTick',[], 'XTick', [1:500:length(dataToPlot),length(dataToPlot)])
             ylabel('all trials');
-            
+            xlabel('Unique stimulus/trial nr');
 
-            
-            for kk = nsubplots
-                trialidx = (kk-1)*zoomwindow  + [1:zoomwindow]';
-                if trialidx(end)>length(dataToPlot)
-                    trialidx(find(trialidx==(length(dataToPlot)+1)):end) = [];
-                end
-                if trialidx(1)<length(dataToPlot)
-                    subplot(length(nsubplots)+1,1,kk+1); cla
-                    
-                    imagesc(dataToPlot(trialidx));
-                    box off
-                    
-                    ylabel(sprintf('rows %d-%d', trialidx(1),trialidx(end)))
-                    colormap(cmap); cb = colorbar;
-                    
-                    if fixTickFlag
-                        cb.Ticks = nrconds;
-                        cb.TickLabels = cellfun(@num2str, num2cell(nrconds0), 'UniformOutput', false);
-                    else
-                        if length(nrconds)<6
-                            cb.Ticks = nrconds;
-                        elseif length(nrconds)<10
-                            cb.Ticks = nrconds(1:2:end);
-                        else
-                            cb.Ticks = nrconds(1:round(length(nrconds))/4:end);
-                        end
+            if exist('nsubplots','var') && nsubplots > 1
+                for kk = nsubplots
+                    trialidx = (kk-1)*zoomwindow  + [1:zoomwindow]';
+                    if trialidx(end)>length(dataToPlot)
+                        trialidx(find(trialidx==(length(dataToPlot)+1)):end) = [];
                     end
-                    set(gca,'CLim', [cmin, cmax],'YTick',[],'XTick',[1,[1:3].*round(length(trialidx)/4),length(trialidx)],...
-                        'XTickLabel',trialidx([1,[1:3].*round(length(trialidx)/4),end]))
-                    if kk == nsubplots
-                        xlabel('Unique stimulus/trial nr');
+                    if trialidx(1)<length(dataToPlot)
+                        subplot(length(nsubplots)+1,1,kk+1); cla
+                        
+                        imagesc(dataToPlot(trialidx));
+                        box off
+                        
+                        ylabel(sprintf('rows %d-%d', trialidx(1),trialidx(end)))
+                        colormap(cmap); cb = colorbar;
+                        
+                        if fixTickFlag
+                            cb.Ticks = nrconds;
+                            cb.TickLabels = cellfun(@num2str, num2cell(nrconds0), 'UniformOutput', false);
+                        else
+                            if length(nrconds)<6
+                                cb.Ticks = nrconds;
+                            elseif length(nrconds)<10
+                                cb.Ticks = nrconds(1:2:end);
+                            else
+                                cb.Ticks = nrconds(1:round(length(nrconds))/4:end);
+                            end
+                        end
+                        set(gca,'CLim', [cmin, cmax],'YTick',[],'XTick',[1,[1:3].*round(length(trialidx)/4),length(trialidx)],...
+                            'XTickLabel',trialidx([1,[1:3].*round(length(trialidx)/4),end]))
+                        if kk == nsubplots
+                            xlabel('Unique stimulus/trial nr');
+                        end
                     end
                 end
             end

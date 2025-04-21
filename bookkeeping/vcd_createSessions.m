@@ -39,7 +39,7 @@ if load_params
         end
     end
     
-    d = dir(fullfile(vcd_rootPath,'workspaces','info',sprintf('time_table*.mat')));
+    d = dir(fullfile(vcd_rootPath,'workspaces','info',sprintf('time_table_master*.mat')));
     if isempty(d)
         error('[%s]: Can''t find time table file with subject session!\n', mfilename)
     elseif ~isempty(d(end).name)

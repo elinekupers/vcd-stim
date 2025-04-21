@@ -97,15 +97,15 @@ clear rename_me ff p0
 %% Load params if requested and we can find the file
 if load_params
     d = dir(fullfile(vcd_rootPath,'workspaces','info',sprintf('trials_%s*.mat',p.disp.name)));
-    fprintf('[%s]: Found %d trial .mat file(s)\n',mfilename,length(d));
+    fprintf('\n[%s]: Found %d trial .mat file(s)\n',mfilename,length(d));
     if ~isempty(d)
         if length(d) > 1
-            warning('[%s]: Multiple .mat files! Will pick the most recent one', mfilename);
+            warning('[%s]: Multiple .mat files! Will pick the most recent one\n', mfilename);
         end
         fprintf('[%s]: Loading exp params .mat file: %s\n', mfilename, d.name);
         load(fullfile(d(end).folder,d(end).name));
     else
-        error('[%s]: Can''t find trial params file!', mfilename)
+        error('[%s]: Can''t find trial params file!\n', mfilename)
     end
 else % Recreate conditions and blocks and trials
     
@@ -187,9 +187,8 @@ else % Recreate conditions and blocks and trials
     
     %% ---- IMPORTANT FUNCTION: Shuffle stimuli for SCC task ----
     condition_master = vcd_shuffleStimForTaskClass(p,  'scc', condition_master, p.exp.block.n_trials_single_epoch);
-%     condition_master2 = vcd_shuffleStimForTaskClass(p, condition_master, 'ltm', p.exp.block.n_trials_single_epoch);
-%     condition_master = vcd_shuffleStimForLTM(condition_master, p.exp.block.n_trials_double_epoch);
-
+%     condition_master = vcd_shuffleStimForTaskClass(p, condition_master, 'ltm', p.exp.block.n_trials_single_epoch);
+    
     
     %% Store structs if requested
     if p.store_params
@@ -289,8 +288,9 @@ else % Recreate conditions and blocks and trials
         xlabel('unique condition nr'); ylabel('Task class');
         C = parula(20); colormap(C); set(gca,'CLim',[0 max(M_tbl(~isnan(M_tbl)))])
         cb = colorbar; cb.Label.String = 'unique im count';
-        cb.Ticks = [0,unique(M_tbl(~isnan(M_tbl)))'];
-        set(gca,'YTick',[1:10],'YTickLabel', p.exp.taskClassLabels);  set(gca,'XTick',[1:30]); title('Sum of unique im per task class')
+        cb.Ticks = unique(M_tbl(~isnan(M_tbl)))';
+        set(gca,'YTick',[1:10],'YTickLabel', p.exp.taskClassLabels); 
+        set(gca,'XTick',[0:25:110]); title('Sum of unique im per task class')
         box off;
         if p.store_imgs
             saveFigsFolder = fullfile(vcd_rootPath,'figs');
@@ -298,13 +298,14 @@ else % Recreate conditions and blocks and trials
             print(gcf,'-dpng','-r300',fullfile(saveFigsFolder,filename));
         end
         
-        foo = condition_master.stim_class((condition_master.task_class==3),:);
+        foo = [condition_master.stim_nr_left((condition_master.task_class==3),:), ...
+            condition_master.stim_nr_right((condition_master.task_class==3),:)]';
         figure; set(gcf,'Position',[1,1,1200,300])
-        imagesc(reshape(foo,p.exp.block.n_trials_single_epoch,[]))
-        xlabel('SCC block nr'); ylabel('Trial nr within block');
-        C = parula(4); colormap(C); set(gca,'CLim',[min(foo),max(foo)])
-        cb = colorbar; cb.Label.String = 'stim class nr';
-        cb.Ticks = [1:max(foo)];
+        imagesc(foo)
+        xlabel('Trial nr'); ylabel('left vs right stim');
+        C = parula(max(foo(:))); colormap(C); set(gca,'CLim',[min(foo(:)),max(foo(:))])
+        cb = colorbar; cb.Label.String = 'unique im nr';
+        cb.Ticks = [min(foo(:)):10:max(foo(:))];
         set(gca,'YTick',[1:p.exp.block.n_trials_single_epoch]); title('SCC stimulus class distribution')
         box off;
         if p.store_imgs
