@@ -48,9 +48,9 @@ if load_params
     if ~isempty(d)
         fprintf('[%s]: Found %d exp params .mat file(s)\n',mfilename,length(d));
         if length(d) > 1
-            warning('[%s]: Multiple .mat files! Will pick the most recent one\n', mfilename);
+            warning('[%s]: Multiple .mat files! Will pick the most recent one', mfilename);
         end
-        fprintf('[%s]: Loading exp params .mat file: %s\n', mfilename, d.name);
+        fprintf('[%s]: Loading exp params .mat file: %s\n', mfilename, d(end).name);
         load(fullfile(d(end).folder,d(end).name),'exp_session');
     else
         error('[%s]: Can''t find experiment session params file!\n', mfilename)
@@ -109,37 +109,45 @@ else
     exp_session.session.baselineSessions = [1:6]; % Sessions dedicated to establish baseline
     
     % Response for LTM/IMAG (= 2 repeats of unique image conditions)
-    exp_session.session.task_start       = [1,1,1,1,1,7,7,1,1,1]; % When do we start sampling the tasks (LTM/IMG have later starts)
+    exp_session.session.task_start       = [1,1,1,1,1,6,6,1,1,1]; % When do we start sampling the tasks (LTM/IMG have later starts)
     
      
     %% %%%% RUN %%%%
     % general
-    exp_session.run.run_typeA = [7; 0]; % single-stim, double-stim blocks within a run --> counts to ~ 330 s
-    exp_session.run.run_typeB = [4; 2];
-    exp_session.run.run_typeC = [1; 4];
-    exp_session.run.run_typeD = [0; 5]; 
-    
-    % eye gaze block
-    exp_session.run.eye_gaze_fix0       = presentationrate_hz * 1.0; % start with 1 second fixation period
-    exp_session.run.eye_gaze_sac_target = presentationrate_hz * 1.2; % then 5x1.2 = 6 seconds of saccades (mimicing EL HV5 grid,±3 deg in all directions)
-    exp_session.run.eye_gaze_fix1       = presentationrate_hz * 2.0; % then a 2-seconds rest trial
-    exp_session.run.eye_gaze_pupil      = presentationrate_hz .* [3.0,1.0]; % then a 4-seconds pupil trial: 3-s black adaptation, 1-s white screen to evoke max pupil response.
-    
+    exp_session.run.run_type1 = [7; 0]; % single-stim, double-stim blocks within a run, total run time is 227 TRs or 363 s
+    exp_session.run.run_type2 = [4; 2];
+    exp_session.run.run_type3 = [1; 4];
+    exp_session.run.run_type4 = [0; 5]; 
+   
     % timing
-    exp_session.run.pre_blank_dur     = presentationrate_hz * 4.0; % pre-run blank period: 11 seconds in number of presentation frames
-    exp_session.run.post_blank_dur    = presentationrate_hz * 12.0; % 11 seconds in number of presentation frames
-    exp_session.run.total_run_dur     = presentationrate_hz * 282.2; % 282.2 s or 197 volumes x 1.6 sTRs
+    exp_session.run.pre_blank_dur     = presentationrate_hz * 4.0; % pre-run blank period: 4 seconds in number of presentation frames
+    exp_session.run.post_blank_dur    = presentationrate_hz * 12.2; % 12 seconds in number of presentation frames
+    exp_session.run.total_run_dur     = presentationrate_hz * 363.2; % 363.2 s or 227 volumes (1.6 s TR)
     
     assert(isint(exp_session.run.total_run_dur/exp_session.TR)); % ensure this is an integer nr of TRs
-    
-    exp_session.run.actual_task_dur = exp_session.run.total_run_dur - exp_session.run.pre_blank_dur - exp_session.run.post_blank_dur; % nr of presentation frames we actually spend doing the experiment
-    
-    
+
     %% %%%% BLOCK PARAMS %%%%
     
     % general
     exp_session.block.n_trials_single_epoch = 8; % number of trials per block when we only have a single stimulus epoch 
     exp_session.block.n_trials_double_epoch = 4; % number of trials per block when we only have a two stimulus epochs (less trials because each trial is longer)
+    
+    % eye gaze block
+    exp_session.block.nr_of_saccades      = 5;
+    exp_session.block.eye_gaze_fix0       = presentationrate_hz * 1.0; % start with 1 second fixation period
+    exp_session.block.eye_gaze_sac_target = presentationrate_hz * 1.2; % then 5x1.2 = 6 seconds of saccades (mimicing EL HV5 grid,±3 deg in all directions)
+    exp_session.block.eye_gaze_fix1       = presentationrate_hz * 2.0; % then a 2-seconds rest trial
+    exp_session.block.eye_gaze_pupil      = presentationrate_hz .* [3.0,1.0]; % then a 4-seconds pupil trial: 3-s black adaptation, 1-s white screen to evoke max pupil response.
+    exp_session.block.total_eyetracking_block_dur = sum([exp_session.block.eye_gaze_fix0, ...
+                                                        exp_session.block.eye_gaze_sac_target*exp_session.block.nr_of_saccades, ...
+                                                        exp_session.block.eye_gaze_fix1, ...
+                                                        exp_session.block.eye_gaze_pupil]);
+    
+    exp_session.block.eye_gaze_fix_ID         = 990;
+    exp_session.block.eye_gaze_sac_target_ID  = [991:995]; % central, left, right, up, down.
+    exp_session.block.eye_gaze_pupil_ID       = 996;
+    
+    exp_session.run.actual_task_dur = exp_session.run.total_run_dur - exp_session.block.total_eyetracking_block_dur - exp_session.run.pre_blank_dur - exp_session.run.post_blank_dur; % nr of presentation frames we actually spend doing the experiment
     
     % event IDs
     exp_session.block.stim_epoch1_ID        = 91; % generic stim ID
@@ -165,7 +173,7 @@ else
     
     % Timing
     exp_session.block.task_cue_dur        = presentationrate_hz * 2.0; % 2.0 seconds in number of presentation frames
-    exp_session.block.IBI                 = presentationrate_hz * linspace(5,7,3); % [5:1:7] seconds Inter-block interval -- uniformly sample between [min,max]
+    exp_session.block.IBI                 = presentationrate_hz * linspace(5,9,5); % [5:1:9] seconds Inter-block interval -- uniformly sample between [min,max]
     
     exp_session.block.total_single_epoch_dur =  presentationrate_hz * 42.0;  % 42.0 seconds in number of presentation frames (excl. IBI)
     exp_session.block.total_double_epoch_dur =  presentationrate_hz * 62.0;  % 62.0 seconds in number of presentation frames (excl. IBI)
@@ -214,13 +222,13 @@ else
     exp_session.trial.delay_dur           = presentationrate_hz * 8.0 ; % 240 x 33 ms frames = 8.0 seconds
     
     exp_session.trial.single_epoch_dur   = ...
-        sum([exp_session.trial.start_cue_dur,... % seconds
+        sum([exp_session.trial.start_cue_dur,... % frames
         exp_session.trial.spatial_cue_dur, ...
         exp_session.trial.stim_array_dur, ...
         exp_session.trial.response_win_dur]);
     
     exp_session.trial.double_epoch_dur   = ...
-        sum([exp_session.trial.start_cue_dur,... % seconds
+        sum([exp_session.trial.start_cue_dur,... % frames
         exp_session.trial.spatial_cue_dur, ...
         exp_session.trial.stim_array_dur, ...
         exp_session.trial.delay_dur, ...
@@ -250,51 +258,64 @@ else
 
     
     %% Nr of blocks per sessions 
-    exp_session.session.nr_of_typeA_runs([1:7])  = 7; % 7 single-stim blocks / 0 double-stim blocks 
-    exp_session.session.nr_of_typeB_runs([1:7])  = 0; % 4 single-stim blocks / 2 double-stim blocks
-    exp_session.session.nr_of_typeC_runs([1:7])  = 3; % 1 single-stim blocks / 4 double-stim blocks
-    exp_session.session.nr_of_typeD_runs([1:7])  = 0; % 0 single-stim blocks / 5 double-stim blocks
+    
+    % 2 wide sessions with 23 runs
+    exp_session.session.nr_of_type1_runs([1,2])  = [6,6]; % 7 single-stim blocks / 0 double-stim blocks 
+    exp_session.session.nr_of_type2_runs([1,2])  = [0,0]; % 4 single-stim blocks / 2 double-stim blocks
+    exp_session.session.nr_of_type3_runs([1,2])  = [4,4]; % 1 single-stim blocks / 4 double-stim blocks
+    exp_session.session.nr_of_type4_runs([1,2])  = [0,0]; % 0 single-stim blocks / 5 double-stim blocks
+    
+    exp_session.session.nr_of_type1_runs([3:5])  = [5,6,5]; % 7 single-stim blocks / 0 double-stim blocks 
+    exp_session.session.nr_of_type2_runs([3:5])  = [0,0,0]; % 4 single-stim blocks / 2 double-stim blocks
+    exp_session.session.nr_of_type3_runs([3:5])  = [5,4,5]; % 1 single-stim blocks / 4 double-stim blocks
+    exp_session.session.nr_of_type4_runs([3:5])  = [0,0,0]; % 0 single-stim blocks / 5 double-stim blocks
 
-    exp_session.session.nr_of_typeA_runs([3:exp_session.n_sessions])  = 3;
-    exp_session.session.nr_of_typeB_runs([3:exp_session.n_sessions])  = 0;
-    exp_session.session.nr_of_typeC_runs([3:exp_session.n_sessions])  = 0;
-    exp_session.session.nr_of_typeD_runs([3:exp_session.n_sessions])  = 7;
+    exp_session.session.nr_of_type1_runs([6:22])  = 3;
+    exp_session.session.nr_of_type2_runs([6:22])  = 0;
+    exp_session.session.nr_of_type3_runs([6:22])  = 0;
+    exp_session.session.nr_of_type4_runs([6:22])  = 7;
+    
+    exp_session.session.nr_of_type1_runs([23:27])  = 4;
+    exp_session.session.nr_of_type2_runs([23:27])  = 0;
+    exp_session.session.nr_of_type3_runs([23:27])  = 0;
+    exp_session.session.nr_of_type4_runs([23:27])  = 6;
     
     ses_blocks = zeros(size(exp_session.crossings,1),size(exp_session.crossings,2),exp_session.n_sessions);
     
     % sessions 1-2 are WIDE
-    %                   fix    cd   scc   pc    wm    ltm   img   what where  how                 
-    ses_blocks(:,:,1) = [1     2     3     3     2     0     0     0     0     0; % Gabor:
-                         1     2     3     2     3     0     0     0     0     0; % RDK:
-                         1     2     2     2     2     0     0     0     0     0; % Dot:
-                         1     2     2     2     2     0     0     2     0     2; % Obj:
-                         2     2     0     2     3     0     0     3     3     3];% NS: 
-    %                   fix    cd   scc   pc    wm    ltm   img   what where  how                 
-    ses_blocks(:,:,2) = [1     3     2     2     3     0     0     0     0     0; % Gabor:
-                         1     3     2     3     2     0     0     0     0     0; % RDK:
-                         1     2     2     2     2     0     0     0     0     0; % Dot:
-                         1     2     2     2     2     0     0     2     0     2; % Obj:
-                         2     3     0     3     3     0     0     3     3     3];% NS: 
+    %                   fix cd scc  pc  wm ltm img what where  how  
+    ses_blocks(:,:,1) = [1	 2	 2	 3	 3	 0	 0	 0	 0	   0; % Gabor:
+                         1	 2	 2	 3	 4	 0	 0	 0	 0	   0; % RDK:
+                         1	 1	 1	 2	 3	 0	 0	 0	 0	   0; % Dot:
+                         1	 1	 1	 2	 2	 0	 0	 1	 0	   2; % Obj:
+                         2	 3	 0	 3	 4	 0	 0	 3	 3	   3];% NS: 
+                     
+    %                   fix  cd   scc   pc    wm    ltm   img   what where  how                 
+    ses_blocks(:,:,2) = [1    2    2	3	4	0	0	0	0	0;% Gabor:
+                         1    2	   2	3	3	0	0	0	0	0;% RDK:
+                         1    1	   1	2	2	0	0	0	0	0;% Dot:
+                         1    1	   1	2	3	0	0	2	0	1; % Obj:
+                         2    3    0    3	4	0	0	3	3	3];% NS: 
 
     % sessions 3-6 have no LTM and no IMG
     %                   fix    cd   scc   pc    wm    ltm   img   what where  how                 
-    ses_blocks(:,:,3) = [1     3     2     3     3     0     0     0     0     0; % Gabor: 3 WM
-                         1     3     2     2     2     0     0     0     0     0; % RDK: 3 WM
-                         1     1     2     2     2     0     0     0     0     0; % Dot: 2 WM
-                         1     1     2     2     2     0     0     2     0     2; % Obj: 2 WM, 2 WHAT & 2 HOW
-                         3     3     0     4     3     0     0     3     3     3];
+    ses_blocks(:,:,3) = [1      2       2	2	4	0	0	0	0	0;  % Gabor:
+                         1      2       2	1	4	0	0	0	0	0;  % RDK:
+                         1      1       1	1	3	0	0	0	0	0;  % Dot:
+                         1      2       2	1	3	0	0	1	0	1;  % Obj:
+                         3      3       0	2	6	0	0	3	2	2]; % NS:
 
-    ses_blocks(:,:,4) = [1     3     2     3     2     0     0     0     0     0; % Gabor: 
-                         1     3     3     3     3     0     0     0     0     0; % RDK: 
-                         1     1     2     2     2     0     0     0     0     0; % Dot
-                         1     1     2     2     2     0     0     2     0     2; % Obj
-                         3     3     0     3     3     0     0     3     3     3]; % NS
+    ses_blocks(:,:,4) = [1      2       2	2	4	0	0	0	0	0;  % Gabor:
+                         1      2       2	2	4	0	0	0	0	0;  % RDK:
+                         1      2       2	1	2	0	0	0	0	0;  % Dot:
+                         1      2       2	1	2	0	0	2	0	1;  % Obj:
+                         3      3       0	3	4	0	0	3	2	3]; % NS
                      
-    ses_blocks(:,:,5) = [1     3     2     3     2     0     0     0     0     0; % Gabor: 
-                         1     3     3     3     3     0     0     0     0     0; % RDK:
-                         1     1     2     2     2     0     0     0     0     0; % Dot: 
-                         1     1     2     2     2     0     0     2     0     2; % Obj: 
-                         3     3     0     3     3     0     0     3     3     3]; % NS: 
+    ses_blocks(:,:,5) = [1      2       2	1	4	0	0	0	0	0;  % Gabor:
+                         1      2       2	2	4	0	0	0	0	0;  % RDK:
+                         1      2       2	1	3	0	0	0	0	0;  % Dot:
+                         1      1       1	1	3	0	0	1	0	2;  % Obj:
+                         2      2       0	3	6	0	0	2	3	2]; % NS: 
                      
 
                      
