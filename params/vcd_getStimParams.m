@@ -314,9 +314,9 @@ else
                 % TEMPORAL
                 p.duration        = stimdur_frames;                            % frames (nr of monitor refreshes)
                 p.dots_coherence  = [0.064, 0.128, 0.512];                     % fraction of coherent moving dots. Kiani lab uses usually one of these [0 0.032 0.064 0.128 0.256 0.512]
-                p.dots_speed      = 6 * p.stim.presentationrate_hz;            % pixels/frames (Kiani lab uses usually 5 to 10) / rokers lab uses 5 deg/s
+                p.dots_speed      = 6 * stim.presentationrate_hz;              % pixels/frames (Kiani lab uses usually 5 to 10) / rokers lab uses 5 deg/s
                 p.dots_interval   = 1;                                         % update dots every frame   (for references: Kiani's 75 hz refresh rate / 3 interval = 25 frames/sec)
-                p.dots_lifetime   = 0.1 * p.stim.presentationrate_hz;          % 3 frames / 0.1 seconds   
+                p.dots_lifetime   = 0.1 * stim.presentationrate_hz;            % 3 frames / 0.1 seconds   
                 
                 % SPATIAL
                 p.img_sz_deg      = parafov_circle_diam_deg;                    % stimulus aperture diameter (deg)

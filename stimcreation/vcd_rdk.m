@@ -52,9 +52,6 @@ function [rdk, mask, info, p] = vcd_rdk(p)
 % Define dot apeture in pixels
 p.stim.rdk.dots_aperture = floor([0 0 p.stim.rdk.img_sz_deg./2 p.stim.rdk.img_sz_deg./2].*p.disp.ppd); % [x y w h] in pixels
 
-% Convert dot motion direction from degrees to radians
-p.stim.rdk.dots_angle    = pi*p.stim.rdk.dots_direction/180;
-
 % Define an elliptic aperture in screen
 ap_center = p.stim.rdk.dots_aperture(1:2);
 ap_radius = p.stim.rdk.dots_aperture(3:4)-p.stim.rdk.dots_size; % shave off 3 pixels (one dot) to avoid dot falling outside the aperture
@@ -283,9 +280,9 @@ for cc = 1:length(p.stim.rdk.dots_coherence)
             mask(mask==1) = 255;
             mask          = uint8(mask);
             
-%             % save intermediate stage in case matlab crashes 
-%             rdk_info = info(counter,:);
-%             save(fullfile(tmpDir, sprintf('%d_rdk_ori%d_coh%d_delta%d.mat', im_name, bb,cc,dd)),'frames','rdk_info','mask','stored_coh_dot_pos','-v7.3');
+            % save intermediate stage in case matlab crashes 
+            rdk_info = info(counter,:);
+            save(fullfile(tmpDir, sprintf('%d_rdk_ori%d_coh%d_delta%d.mat', im_name, bb,cc,dd)),'frames','rdk_info','mask','stored_coh_dot_pos','-v7.3');
 
              clear frames
             counter = counter +1;
