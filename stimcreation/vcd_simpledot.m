@@ -1,5 +1,5 @@
 function [simple_dot, mask, info, p] = vcd_simpledot(p)
-%
+% VCD function to create single dot images for experimental display.
 %  [simple_dot, p] = vcd_simpledot(p)
 %
 % Purpose:
@@ -70,7 +70,7 @@ mask(mask0) = 255;
 mask        = uint8(mask);
 
 % Get nr of angles
-nr_angles = [1:length(p.stim.dot.loc_deg)];
+nr_angles = [1:length(p.stim.dot.ang_deg)];
 
 % Add baseline location (no delta)
 if ~isempty(p.stim.dot.delta_from_ref)
@@ -80,7 +80,7 @@ else
 end
 
 % Create reference angle and [x,y]-coords matrix
-all_angles_deg  = cat(1,p.stim.dot.ang_deg,p.stim.dot.ang_deg_delta);
+all_angles_deg = cat(1,p.stim.dot.ang_deg,p.stim.dot.ang_deg_delta);
 all_xpos_pix   = cat(1,p.stim.dot.x0_pix,p.stim.dot.x0_pix_delta);
 all_ypos_pix   = cat(1,p.stim.dot.y0_pix,p.stim.dot.y0_pix_delta);
 
@@ -92,18 +92,21 @@ all_angles_rad = deg2rad(all_angles_deg);
 
 % add conditions to table
 stim_loc      = repmat({'left','right'},(length(nr_angles)/2),length(dot_ref_locs)); % stim loc refers to hemifield on display. We divide nr angles by 2, because they contain both L/R
-bin           = repmat(nr_angles,1,length(dot_ref_locs));
+stim_loc_idx  = repmat([1,2],(length(nr_angles)/2),length(dot_ref_locs)); % stim loc refers to hemifield on display. We divide nr angles by 2, because they contain both L/R
+ang_idx       = repmat(nr_angles,1,length(dot_ref_locs));
 dot_angle_deg = reshape(all_angles_deg',1,[])';
 dot_eccen     = repmat(p.stim.dot.iso_eccen, size(dot_angle_deg,1),1);
 dot_xpos_pix  = reshape(all_xpos_pix',1,[])';
 dot_ypos_pix   = reshape(all_ypos_pix',1,[])';
 
 dot_radians   = reshape(all_angles_rad',1,[])';
-dot_ref_locs  = repelem(dot_ref_locs,length(p.stim.dot.loc_deg))';
-unique_im     = [1:length(all_angles_deg), NaN(1,length(all_angles_deg)*length(p.stim.dot.delta_from_ref))];
+dot_ref_locs  = repelem(dot_ref_locs,length(p.stim.dot.ang_deg))';
+unique_ref_im = reshape(p.stim.dot.unique_im_nrs_WM,4,[])';
+unique_im     = [p.stim.dot.unique_im_nrs, unique_ref_im(:)'];
 
-info = table(unique_im(:), ... %             repmat(nr_angles',2*length(dot_ref_locs),1), ...
-             bin(:), ...
+info = table(unique_im(:), ... 
+             ang_idx(:), ...
+             stim_loc_idx(:),...
              stim_loc(:), ...
              dot_angle_deg(:), ...
              dot_eccen(:),...
@@ -113,7 +116,7 @@ info = table(unique_im(:), ... %             repmat(nr_angles',2*length(dot_ref_
              dot_ypos_pix(:));
          
 % add column names
-info.Properties.VariableNames = {'unique_im','bin','stim_pos','angle_deg','eccen_deg','angle_rad','delta_deg_ref','dot_xpos_pix','dot_ypos_pix'};
+info.Properties.VariableNames = {'unique_im','angle_i','pos_i','stim_pos','angle_deg','eccen_deg','angle_rad','delta_deg_ref','dot_xpos_pix','dot_ypos_pix'};
 
 % Store
 if p.stim.store_imgs
@@ -142,10 +145,10 @@ if ~exist(saveDir,'dir'), mkdir(saveDir); end;
 
 cmap = [0,0,0; lines(4)];
 sz = 50*ones(1,5);
-for ii = 1:length(unique(info.unique_im(~isnan(info.unique_im))))
+for ii = p.stim.dot.unique_im_nrs
     
     idx1 = find(info.unique_im==ii);
-    idx2 = find(info.bin==info.bin(idx1) &  sum(info.delta_deg_ref==p.stim.dot.delta_from_ref,2));
+    idx2 = find(info.angle_i==info.angle_i(idx1) &  sum(info.delta_deg_ref==p.stim.dot.delta_from_ref,2));
     
     figure(1); clf;
     pax = polaraxes;
@@ -161,7 +164,7 @@ end
 
 
 
-% 
+% debug figure
 %     subplot(2,5,ii+5)
 %     if ii == 1
 %         ax = polarscatter(info.ori_rad(strcmp(info.stim_pos,{'right'})& info.delta_deg_ref==dot_ref_locs(ii)), info.eccen_deg(strcmp(info.stim_pos,{'right'})& info.delta_deg_ref==dot_ref_locs(ii)),[],'k');
