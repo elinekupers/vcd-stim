@@ -1,4 +1,4 @@
-function [rdk, mask, info] = vcd_rdk(params)
+function [rdks, masks, info] = vcd_rdk(params)
 % VCD function:
 %  [rdk, mask, info] = vcd_rdk(params)
 %
@@ -59,10 +59,10 @@ function [rdk, mask, info] = vcd_rdk(params)
 %    rdk.unique_im_nrs_WM   : (int) number for each unique WM test rdk
 %
 % OUTPUTS:
-%   rdk         : unique RDK images used for VCD experiment, 
+%   rdk         : (uint8) unique RDK images used for VCD experiment, 
 %                   8x3x5 cell for each motion direction, coherence level and delta offset (0, -15, -5, +5, +15)
 %                   Each cell contains an uint8 image with dimensions: height (pixels) x width (pixels) x 3 (rgb) x 60 frames
-%   mask        : unique alpha mask images used for VCD experiment,
+%   mask        : (uint8) unique alpha mask images used for VCD experiment,
 %                   8x3x5 cell for each motion direction, coherence level and delta offset (0, -15, -5, +5, +15):
 %                   Each cell contains an uint8 image with dimensions: height (pixels) x width (pixels)
 %   info        : table with rdk stimulus information matching the gabor array
@@ -105,12 +105,12 @@ img_im_nrs2{3} = img_im_nrs(1,17:24); % dir 1:8, coherence 3, delta = nr+dd
 
 % A cell array for each unique rdk video: 
 % nr of directions x nr of coherence levels x nr of deltas (WM quiz images)
-rdk     = cell(length(params.stim.rdk.dots_direction),length(params.stim.rdk.dots_coherence),length(rdk_motdir_ref)); 
-dotlocs = rdk;
-all_masks = rdk; 
+rdks     = cell(length(params.stim.rdk.dots_direction),length(params.stim.rdk.dots_coherence),length(rdk_motdir_ref)); 
+dotlocs  = rdks;
+masks    = rdks; 
 
 % nr of unique videos = 72 : 8 directions x 3 coherence levels x 5 deltas (none + 4)
-n_unique_videos = size(rdk,1)*size(rdk,2)*size(rdk,3);
+n_unique_videos = size(rdks,1)*size(rdks,2)*size(rdks,3);
 
 % info table to log order of rdk videos
 info = table(NaN(n_unique_videos,1), NaN(n_unique_videos,1), NaN(n_unique_videos,1), cell(n_unique_videos,1), NaN(n_unique_videos,1));
@@ -299,7 +299,7 @@ for cc = 1:length(params.stim.rdk.dots_coherence)
             end
             
             % Store rdk video and dot positions in cell array
-            rdk{bb,cc,dd+1} = frames;
+            rdks{bb,cc,dd+1} = frames;
             dotlocs{bb,cc,dd+1} = stored_coh_dot_pos;
             
             % Log info 
@@ -327,7 +327,7 @@ for cc = 1:length(params.stim.rdk.dots_coherence)
             mask(mask==1) = 255;
             mask          = uint8(mask);
     
-            all_masks{bb,cc,dd+1} = mask;
+            masks{bb,cc,dd+1} = mask;
     
             if params.store_imgs
                 % save intermediate stage in case matlab crashes 
@@ -353,7 +353,7 @@ if params.store_imgs
     % in addition to storing separate conditions, we also store larger rdk file 
     saveDir = fileparts(fullfile(params.stim.rdk.stimfile));
     if ~exist(saveDir,'dir'), mkdir(saveDir); end
-    save(fullfile(sprintf('%s_%s.mat',params.stim.rdk.stimfile,datestr(now,30))),'rdk','info','all_masks','dotlocs','-v7.3');
+    save(fullfile(sprintf('%s_%s.mat',params.stim.rdk.stimfile,datestr(now,30))),'rdks','info','masks','dotlocs','-v7.3');
     
     saveDir = fileparts(fullfile(params.stim.rdk.infofile));
     if ~exist(saveDir,'dir'), mkdir(saveDir); end
