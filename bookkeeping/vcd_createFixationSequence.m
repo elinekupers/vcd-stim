@@ -10,8 +10,8 @@ end
 % trim in case we accidentally went overtime
 f_fix = f_fix(f_fix<run_dur);
 
-% Update luminance of fixation dot randomly (WITH replacement)
-lum_shuffled_idx = datasample(double(params.stim.fix.dotlum),length(f_fix)+1,'Replace',true);
+% Update luminance of fixation dot randomly (WITH Oreplacement)
+lum_shuffled_idx = datasample(double(params.stim.fix.dotlum),length(f_fix)+1,'Replace',false);
 
 % figure out when dot is brighter, dimmer or the same
 % relative to previous time point
