@@ -1,4 +1,9 @@
-function vcd_createStimVideo(frames, ifi, saveFolder, fname)
+function vcd_createStimVideo(frames, ifi, saveFolder, fname, printtitle)
+
+% check inputs
+if ~exist('printtitle','var')
+   printtitle = false;
+end
 
 % Prepare the new file.
 if ~exist(saveFolder,'dir')
@@ -9,7 +14,8 @@ open(vidObj);
 
 % Create an animation.
 figure(101);
-set(gca,'CLim', [0 255]);
+set(gcf,'Position',[500   500   700  700], 'Units','Pixels','Renderer','OpenGL','PaperUnits','normalized')
+set(gca,'CLim', [1 255]);
 
 if ndims(frames) == 3
     nframes = size(frames,3);
@@ -25,19 +31,25 @@ for k = 1:nframes
     cla
     if ndims(frames) == 3
         % Assume grayscale frame    
-        imshow(frames(:,:,k)); title(sprintf('Frame %d - %3.3fs',k, k*ifi));
+        imshow(frames(:,:,k)); 
+        axis off square tight; 
+        if printtitle
+            title(sprintf('Frame %d - %3.3fs',k, k*ifi));
+        end
         
     elseif ndims(frames) == 4
         % Assume color frame
-        imshow(frames(:,:,:,k)); title(sprintf('Frame %d - %3.3fs',k, k*ifi));
+        imshow(frames(:,:,:,k)); 
+        axis off square tight; 
+        if printtitle
+            title(sprintf('Frame %d - %3.3fs',k, k*ifi));
+        end
     end
-    
-    
-    drawnow; axis equal tight off
 
+    drawnow;
     
     % Write each frame to the file.
-    currFrame = getframe(101);
+    currFrame = getframe(gca);
     writeVideo(vidObj,currFrame);
     
 end
