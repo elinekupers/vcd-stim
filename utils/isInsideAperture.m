@@ -1,6 +1,6 @@
 function inside = isInsideAperture(pos, center, radius)
 % 
-% function in = isInsideRegion(pos, region)
+% function in = isInsideRegion(pos, center, radius)
 % 
 % checks if pos is inside a specified region
 % 
