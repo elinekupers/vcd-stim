@@ -79,8 +79,14 @@ function [rdks, masks, info] = vcd_rdk(params)
 ap_center = [0,0]; % [x y] in pixels. center on zero for now
 
 % Define dot aperture in pixels. 
-% NOTE: we shave off 1 dots (6 pixels) from each side to avoid dots falling outside the aperture
-ap_radius = [params.stim.rdk.img_sz_pix./2 params.stim.rdk.img_sz_pix./2]-(4*params.stim.rdk.dots_size); % [w h] in pixels
+% NOTE: we shave off 1 dot radius (3 pixels from each side) to avoid dots being plotting outside the aperture
+ap_radius = [params.stim.rdk.img_sz_pix./2 params.stim.rdk.img_sz_pix./2]-(params.stim.rdk.dots_size); % [w h] in pixels
+
+% When exporting the frame, the RDK image turns out to be 548.7 pixels for 7TAS
+% BOLDscreen; This is ~1.5 times bigger than the 4 deg RDK aperture we specified. 
+% We adjust for this by increasing the size of the gray RDK box such that 
+% the inner dot aperture will have the 4 deg size we want.
+rect_box = params.stim.rdk.img_sz_pix * (577./params.stim.rdk.img_sz_pix);
 
 % Define number of frames within a single RDK video
 num_frames = params.stim.rdk.duration/params.stim.rdk.dots_interval;
@@ -97,9 +103,9 @@ end
 
 % Organize unique image numbers for core and WM test images
 img_im_nrs = reshape(params.stim.rdk.unique_im_nrs_WM,length(params.stim.rdk.delta_from_ref),[]);
-img_im_nrs2{1} = img_im_nrs(1,1:8); % dir 1:8, coherence 1, delta = nr+dd
-img_im_nrs2{2} = img_im_nrs(1,9:16); % dir 1:8, coherence 2, delta = nr+dd
-img_im_nrs2{3} = img_im_nrs(1,17:24); % dir 1:8, coherence 3, delta = nr+dd
+img_im_nrs2{1} = img_im_nrs(1,1:length(params.stim.rdk.dots_direction)); % dir 1:8, coherence 1, delta = nr+dd
+img_im_nrs2{2} = img_im_nrs(1,(length(params.stim.rdk.dots_direction)+1):(length(params.stim.rdk.dots_direction)*2)); % dir 1:8, coherence 2, delta = nr+dd
+img_im_nrs2{3} = img_im_nrs(1,(2*(length(params.stim.rdk.dots_direction))+1):(length(params.stim.rdk.dots_direction)*3)); % dir 1:8, coherence 3, delta = nr+dd
 
 %% Preallocate space
 
@@ -113,8 +119,16 @@ masks    = rdks;
 n_unique_videos = size(rdks,1)*size(rdks,2)*size(rdks,3);
 
 % info table to log order of rdk videos
-info = table(NaN(n_unique_videos,1), NaN(n_unique_videos,1), NaN(n_unique_videos,1), cell(n_unique_videos,1), NaN(n_unique_videos,1));
-info.Properties.VariableNames = {'unique_im','dot_motdir_deg','dot_motdir_deg_i','dot_coh','dot_coh_i','rel_motdir_deg','rel_motdir_deg_i','dot_pos'};
+info = table(NaN(n_unique_videos,1), ... unique_im
+             NaN(n_unique_videos,1), ... dot_motdir_deg
+             NaN(n_unique_videos,1), ... dot_motdir_deg_i
+             NaN(n_unique_videos,1), ... dot_coh
+             NaN(n_unique_videos,1), ... dot_coh_i
+             NaN(n_unique_videos,1), ... rel_motdir_deg
+             NaN(n_unique_videos,1), ... rel_motdir_deg_i
+             cell(n_unique_videos,1)); % dot_pos
+info.Properties.VariableNames = {'unique_im','dot_motdir_deg','dot_motdir_deg_i',...
+    'dot_coh','dot_coh_i','rel_motdir_deg','rel_motdir_deg_i','dot_pos'};
 
 %% RNG seed parameters
 rseed = [1000 2010];
@@ -124,12 +138,16 @@ counter = 1;
 %% Folder to store RDK videos
 tmpDir = fullfile(vcd_rootPath, 'workspaces','stimuli',params.disp.name,['rdk_' datestr(now,'yyyymmdd')]);
 if ~exist(tmpDir,'dir'), mkdir(tmpDir); end
-saveStimDir = fullfile(vcd_rootPath, 'figs', ['rdk_' datestr(now,'yyyymmdd')]);
+saveStimDir = fullfile(vcd_rootPath, 'figs', params.disp.name, ['rdk_' datestr(now,'yyyymmdd')]);
+if ~exist(fullfile(saveStimDir,'export'),'dir'), mkdir(fullfile(saveStimDir,'export')); end
 
+% get pixels per inch for saving frames
+sppi = get(groot,"ScreenPixelsPerInch");
 
 %% Create rdk images
 fH = figure(1); clf; 
-set(gcf,'Position',[0,0,params.stim.rdk.img_sz_pix,params.stim.rdk.img_sz_pix], 'Units','Pixels','Renderer','zbuffer')
+set(gcf,'Position',[0,0,2*params.stim.rdk.img_sz_pix,2*params.stim.rdk.img_sz_pix], ...
+    'Units','Pixels','Renderer','OpenGL','PaperUnits','normalized')
 
 for cc = 1:length(params.stim.rdk.dots_coherence)
     
@@ -155,7 +173,9 @@ for cc = 1:length(params.stim.rdk.dots_coherence)
 
             % Initialize and reset rng for each RDK video
             RandStream.setGlobalStream(RandStream('mt19937ar','seed',prod(rseed)));
-            RandStream.setGlobalStream(RandStream('mt19937ar','seed',sum(100*clock)));
+            clock_seed = sum(100*clock);
+            RandStream.setGlobalStream(RandStream('mt19937ar','seed',clock_seed));
+            rdk_seed(cc,bb,dd+1) = clock_seed;
             
             % Allocate space for new dots, their kill time and position in this video
             dots               = NaN(ndots,2);
@@ -266,10 +286,10 @@ for cc = 1:length(params.stim.rdk.dots_coherence)
                 clf; hold all;
                 ax = gca;
                 ax.Units = 'pixels';
-                r = rectangle(ax,'Position', [(ap_center -1.*(params.stim.rdk.img_sz_pix/2)), ...
-                    [1,1].*params.stim.rdk.img_sz_pix], ...
+                r=rectangle(ax,'Position', [(ap_center -(rect_box/2)), ...
+                    rect_box, rect_box], ...
                     'FaceColor', [0.5 0.5 0.5], 'EdgeColor', 'none'); %
-                colormap gray; axis square; axis off; axis tight; axis manual; axis image
+                colormap gray; axis off square tight; 
                 set(gca, 'CLim',[0 1]);
                 for mm = 1:size(dots,1)
                     drawcircle('Parent',ax,'Center',dots(mm,:),'Radius',params.stim.rdk.dots_size,...
@@ -279,10 +299,17 @@ for cc = 1:length(params.stim.rdk.dots_coherence)
 
                 % store location in case we want to check it later
                 stored_coh_dot_pos(:,:,curr_frame) = dots;
-
-                % get frame
-                f = getframe(ax);
+                
+                offsetRect = ax.Children(end).Parent.Position;
+                if mod(round(offsetRect(3)),2)==1
+                    scf = floor(offsetRect(3))/offsetRect(3);
+                    offsetRect = [0,0,scf*offsetRect(3),scf*offsetRect(3)];
+                end
+                f = getframe(ax,offsetRect);
                 im = frame2im(f);
+                
+                fn = fullfile(saveStimDir,'export',sprintf('vcd_rdk_coh%02d_dir%02d_delta%02d_t%02d.png',cc,bb,dd,curr_frame));
+                imwrite(im,fn);%,'Location',[pbRect(1:2)],'ScreenSize',[pbRect(3:4)]);
 
                 % store frame
                 frames = cat(4,frames,im);
@@ -321,7 +348,7 @@ for cc = 1:length(params.stim.rdk.dots_coherence)
 
             % Create binary circular alpha mask for rdk frames
             [XX,YY]       = meshgrid((1:size(frames,1))-(size(frames,1)/2),(1:size(frames,1))-(size(frames,1)/2)); 
-            mask_radius   = ap_radius(1);
+            mask_radius   = ap_radius(1)+(4*params.stim.rdk.dots_size); % add 4 x dot pixel radius to avoid cutting off dots
             circlemask    = (YY - ap_center(1)).^2 + (XX - ap_center(2)).^2 <= mask_radius.^2;
             mask          = double(circlemask);
             mask(mask==1) = 255;
@@ -346,14 +373,14 @@ end
 % (uneven numbers are left, even numbers are right).
 stim_loc = repmat(repelem({'left','right'},1+length(params.stim.gabor.delta_from_ref)), 1,length(params.stim.rdk.dots_direction)/2*length(params.stim.rdk.dots_coherence))';
 stim_loc_i = repmat(repelem([1,2],1+length(params.stim.gabor.delta_from_ref)), 1, length(params.stim.rdk.dots_direction)/2*length(params.stim.rdk.dots_coherence))';
-info.stim_loc = stim_loc;
+info.stim_loc   = stim_loc;
 info.stim_loc_i = stim_loc_i;
 
 if params.store_imgs
     % in addition to storing separate conditions, we also store larger rdk file 
     saveDir = fileparts(fullfile(params.stim.rdk.stimfile));
     if ~exist(saveDir,'dir'), mkdir(saveDir); end
-    save(fullfile(sprintf('%s_%s.mat',params.stim.rdk.stimfile,datestr(now,30))),'rdks','info','masks','dotlocs','-v7.3');
+    save(fullfile(sprintf('%s_%s.mat',params.stim.rdk.stimfile,datestr(now,30))),'rdks','info','masks','dotlocs','rdk_seed','-v7.3');
     
     saveDir = fileparts(fullfile(params.stim.rdk.infofile));
     if ~exist(saveDir,'dir'), mkdir(saveDir); end
