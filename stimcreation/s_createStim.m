@@ -7,7 +7,7 @@
 %%%%%% PARAMETERS %%%% 
 %%%%%%%%%%%%%%%%%%%%%%
 
-verbose        = true; % visualize stimuli or not
+p.verbose        = true; % visualize stimuli or not
 p.store_imgs   = true; % store visualization figures
 
 % Get display params
@@ -80,14 +80,14 @@ bckgrnd_im  = vcd_pinknoisebackground(p, ...
 %   height (24 pixels) x width (24 pixels) x 3 (rgb) x 5 luminance levels x 5 dot rims types (thin, thick, thick-left, thick-right, thick-both)
 % fix_mask (uint8) is a 4D array with alpha transparency masks: 
 %   height (24 pixels) x width (24 pixels) x 2 dot rims types (thin, thick)
-[fix_im, fix_mask, fix_info, p] = vcd_fixationDot(p);
+[fix_im, fix_mask, fix_info] = vcd_fixationDot(p);
 
 %% Gabor images
 % gabor (uint8) is a uint8 6D array containing unique gabor images: 
 %   height (354 pixels) x width (354 pixels) x 3 (rgb) x 24 unique images (8 ori x 3 contrasts) x 5 tilt offsets (0 + -15, -5, +5, +15 deg)
 % gbr_masks (uint8) is a uint8 4D array with alpha transparency masks: 
 %   height (354 pixels) x width (354 pixels) x 24 unique images x 5 tilt offsets
-[gabor, gbr_masks, gbr_info, p] = vcd_gabor(p);
+[gabor, gbr_masks, gbr_info] = vcd_gabor(p);
 
 %% RDK movies
 % rdk (uint8) is a 8 x 3 x 5 cell array: 
@@ -96,14 +96,14 @@ bckgrnd_im  = vcd_pinknoisebackground(p, ...
 %   height (549 pixels) x width (549 pixels) x 3 (rgb) x 30 frames (total of 2 s, 33 ms per frame).
 % rdk_masks (uint8) is a uint8 matrix with a single alpha transparency mask: 
 %   height (549 pixels) x width (549 pixels)
-[rdk, rdk_masks, rdk_info, p] = vcd_rdk(p);
+[rdk, rdk_masks, rdk_info] = vcd_rdk(p);
 
-%% Simple dot
-% * simple_dot (uint8) is a single matrix: 
+%% Single dot
+% * single_dot (uint8) is a single matrix: 
 %   height (94 pixels) x width (94 pixels) x 3 (rgb).
 % * dot_masks (uint8) is a alpha transparency mask:
 %   height (94 pixels) x width (94 pixels)
-[simple_dot, dot_masks, dot_info, p] = vcd_simpledot(p);
+[single_dot, dot_masks, dot_info] = vcd_singledot(p);
 
 %% Objects
 % Output images:
@@ -111,7 +111,7 @@ bckgrnd_im  = vcd_pinknoisebackground(p, ...
 %   height (1024 pixels) x width (1024 pixels) x 3 (rgb) x 16 object categories (subordinate level) x 4 rotation offsets (0, -8, -4, +4, +8 deg). 
 % * cobj_masks (uint8) is a 4D array containing alpha transparency mask:
 %   height (1024 pixels) x width (1024 pixels) x 16 object categories (subordinate level) x 5 rotation offsets (0, -8, -4, +4, +8 deg). 
-[objects, obj_masks, obj_order, obj_info, p] = vcd_objects(p);
+[objects, obj_masks, ~, obj_info] = vcd_objects(p);
 
 %% Natural scenes
 % Output images:
@@ -127,38 +127,39 @@ bckgrnd_im  = vcd_pinknoisebackground(p, ...
 %       3:easy remove -- scene is altered by removing something big/obvious
 %       4:hard remove -- scene is altered by removing something small/subtle
 % Note: There are no alpha masks for this stimulus class.
-[scenes, lure_im, cblind_im, ns_order, ns_info, p] = vcd_naturalscenes(p);
+[scenes, lure_im, cblind_im, ~, ns_info] = vcd_naturalscenes(p);
 
 
 %% %%%%%%%%%%%%%%%%
 %%%% Visualize %%%% 
 %%%%%%%%%%%%%%%%%%%
 
-if verbose
+if p.verbose
     makeprettyfigures;
     
     %% Background
-    saveDir = fullfile(vcd_rootPath,'figs',dispname,'background');
+    saveDir = fullfile(vcd_rootPath,'figs',dispname,'background','visual_check');
     if ~exist(saveDir,'dir'); mkdir(saveDir); end
     
     fH = figure(100);
     set(fH, 'Position', [0 0 p.disp.w_pix p.disp.h_pix], 'color','w')
 
-    for jj = 1:num
+    for jj = 1:size(bckgrnd_im,4)
         clf;
         imagesc(bckgrnd_im(:,:,jj)); colormap gray
         axis image
         title(sprintf('Background im %s %s %03d',gaptype, borderwidth, jj))
         set(gca, 'TickDir','out', 'LineWidth',2,'FontSize',20)
         drawnow;
-        if p.store_imgs
+        if p.store_imgs        
             filename = sprintf('vcd_background_%s%s%03d.png',gaptype, borderwidth, jj);
+            imwrite(bckgrnd_im(:,:,:,jj), fullfile(vcd_rootPath,'figs',dispname,'background',filename));
             print(fH,'-dpng','-r300',fullfile(saveDir,filename));
         end
     end
 
     %% Fixation dot
-    saveDir = fullfile(vcd_rootPath,'figs',dispname,'fix');
+    saveDir = fullfile(vcd_rootPath,'figs',dispname,'fix','visual_check');
     if ~exist(saveDir,'dir'); mkdir(saveDir); end
  
     fH = figure(101); clf;
@@ -173,6 +174,9 @@ if verbose
             set(gca,'CLim',[1 255])
             title(sprintf('%01d, %01d',ii, jj))
             counter = counter+1;
+            if p.store_img
+            imwrite(fix_im(:,:,:,ii,jj), fullfile(vcd_rootPath,'figs',dispname,'fix',sprintf('vcd_fixdots_w_alphamask_%01d_%01d.png', ii, jj)));
+            end
         end
     end
     if p.store_imgs
@@ -192,6 +196,9 @@ if verbose
             set(gca,'CLim',[1 255])
             title(sprintf('%01d, %01d',ii, jj))
             counter = counter+1;
+            if p.store_img
+                imwrite(fix_im(:,:,:,ii,jj), fullfile(vcd_rootPath,'figs',dispname,'fix',sprintf('vcd_fixdots_%01d_%01d.png', ii, jj)));
+            end
         end
     end
     if p.store_imgs
@@ -200,55 +207,64 @@ if verbose
     end
     
     %% Gabor
-    saveDir1 = fullfile(vcd_rootPath,'figs',dispname,'gabor','gabor_hist');
-    saveDir2 = fullfile(vcd_rootPath,'figs',dispname,'gabor','gabor_im');
-    if ~exist(saveDir,'dir'); mkdir(saveDir1); end
-    if ~exist(saveDir,'dir'); mkdir(saveDir2); end
+    saveDir1 = fullfile(vcd_rootPath,'figs',dispname,'gabor','visual_checks','gabor_hist');
+    saveDir2 = fullfile(vcd_rootPath,'figs',dispname,'gabor','visual_checks','gabor_im');
+    if ~exist(saveDir1,'dir'); mkdir(saveDir1); end
+    if ~exist(saveDir2,'dir'); mkdir(saveDir2); end
     
     fH1 = figure(1); fH2 = figure(2); 
     set(fH1, 'Position', [0 0 1024 1080], 'color','w')
     set(fH2, 'Position', [1   400   750   578], 'color','w')
-    if verbose
-        for dd = 1:size(gabor,5)
+    if p.verbose
+        counter = 1;
+        for dd = 1:size(gabor,6)
             if dd==1, dlta = 0; else, dlta = p.stim.gabor.delta_from_ref(dd-1); end
-            for ii = 1:size(gabor,4)
-                figure(fH1); clf;
-                imagesc(gabor(:,:,:,ii,dd)); colormap gray; set(gca, 'CLim',[1 255])
-                title(sprintf('ori:%03d deg c:%1.2f ph:%03d delta:%02d', ...
-                    gbr_info(gbr_info.unique_im==ii,:).ori_deg,...
-                    gbr_info(gbr_info.unique_im==ii,:).contrast,...
-                    gbr_info(gbr_info.unique_im==ii,:).phase_deg,...
-                    gbr_info(gbr_info.unique_im==ii,:).delta_deg));
-                cb = colorbar; cb.Ticks = [1, 50, 100, 150, 200, 250];
-                set(gca, 'FontSize',20, 'TickDir','out', 'LineWidth', 2); axis image;
-                drawnow;
-                if p.store_imgs
-                    filename = sprintf('vcd_gabor_im%02d_delta%02d.png',ii,dd);
-                    print(fH1,'-dpng','-r300',fullfile(saveDir1,filename));
-                end
-                
-                % Plot pix histogram
-                figure(fH2); clf
-                histogram(gabor(:,:,:,ii,dd), 'NumBins', 30); 
-                title(sprintf('ori:%03d deg c:%1.2f ph:%03d delta:%02d', ...
-                    gbr_info(gbr_info.unique_im==ii,:).ori_deg,...
-                    gbr_info(gbr_info.unique_im==ii,:).contrast,...
-                    gbr_info(gbr_info.unique_im==ii,:).phase_deg,...
-                    gbr_info(gbr_info.unique_im==ii,:).delta_deg));
-                box off; axis square; xlim([-10 260]); ylim([0,3.5].*10^5)
-                drawnow;
-                set(gca,'XTick',[0 64 128 190 255])
-                set(gca,'YTick',[1:3].*10^5)
-                if p.store_imgs
-                    filename = sprintf('vcd_gabor_im%02d_delta%02d_hist.png',ii,dd);
-                    print(fH2,'-dpng','-r300',fullfile(saveDir2,filename));
+            for ii = 1:size(gabor,5)
+                for jj=1:size(gabor,4)
+                    figure(fH1); clf;
+                    imagesc(gabor(:,:,:,jj,ii,dd));
+                    
+                    colormap gray; set(gca, 'CLim',[1 255])
+                    title(sprintf('ori:%3.2f deg c:%1.2f ph:%3.0f delta:%02d', ...
+                        p.stim.gabor.ori_deg(jj),...
+                        p.stim.gabor.contrast(ii),...
+                        p.stim.gabor.ph_deg(mod(ii-1,4)+1),...
+                        dlta));
+                    cb = colorbar; cb.Ticks = [1, 50, 100, 150, 200, 250];
+                    set(gca, 'FontSize',20, 'TickDir','out', 'LineWidth', 2); axis image;
+                    drawnow;
+                    axis image
+                    if p.store_imgs
+                        filename = sprintf('vcd_gabor_ori%02d_c%02d_delta%02d.png',jj,ii,dd);
+                        print(fH1,'-dpng','-r300',fullfile(saveDir1,filename));
+                        imwrite(gabor(:,:,:,jj,ii,dd), fullfile(vcd_rootPath,'figs',dispname,'gabor',filename));
+                    end
+                    
+                    % Plot pix histogram
+                    figure(fH2); clf
+                    histogram(gabor(:,:,:,ii,dd), 'NumBins', 30);
+                    title(sprintf('ori:%3.2f deg c:%1.2f ph:%3.0f delta:%02d', ...
+                        p.stim.gabor.ori_deg(jj),...
+                        p.stim.gabor.contrast(ii),...
+                        p.stim.gabor.ph_deg(mod(ii-1,4)+1),...
+                        dlta));
+                    box off; axis square; xlim([-10 260]); ylim([0,3.5].*10^5)
+                    drawnow;
+                    axis square
+                    set(gca,'XTick',[0 64 128 190 255])
+                    set(gca,'YTick',[1:3].*10^5)
+                    if p.store_imgs
+                        filename = sprintf('vcd_gabor_ori%02d_c%02d_delta%02d_hist.png',jj,ii,dd);
+                        print(fH2,'-dpng','-r300',fullfile(saveDir2,filename));
+                    end
+                    counter = counter+1;
                 end
             end
         end
     end
 
     %% RDK
-    saveDir = fullfile(vcd_rootPath,'figs',dispname,'rdk');
+    saveDir = fullfile(vcd_rootPath,'figs',dispname,'rdk','visual_checks');
     if ~exist(saveDir,'dir'); mkdir(saveDir); end
     
     fH1 = figure(1); 
@@ -271,10 +287,10 @@ if verbose
             for dd = 1:length(p.stim.rdk.dots_direction)
                 
 %                 % create movie
-%                 vcd_createStimVideo(rdk{dd,cc,dl}, 1/p.stim.presentationrate_hz, ...
-%                     fullfile(saveDir), ...
-%                     sprintf('vcd_rdk_coh%s_dir%02d_delta%s',...
-%                     cohlabels{cc},p.stim.rdk.dots_direction(dd),deltalabels{dl}));
+                vcd_createStimVideo(rdk{dd,cc,dl}, 1/p.stim.presentationrate_hz, ...
+                    fullfile(vcd_rootPath,'figs',dispname,'rdk'), ...
+                    sprintf('vcd_rdk_coh%s_dir%02d_delta%s',...
+                    cohlabels{cc},p.stim.rdk.dots_direction(dd),deltalabels{dl}));
 
                 % plot dot position & motion vector
                 dot_pos = dotlocs{dd,cc, dl};
@@ -309,26 +325,26 @@ if verbose
 
     end
     
-    %% Simple dot: Main dot locations per hemifield
-    saveDir = fullfile(vcd_rootPath,'figs',dispname,'dot');
+    %% single dot: Main dot locations per hemifield
+    saveDir = fullfile(vcd_rootPath,'figs',dispname,'dot','visual_checks');
     if ~exist(saveDir,'dir'); mkdir(saveDir); end
     
     bckground = uint8(ones(p.disp.h_pix,p.disp.w_pix))*p.stim.bckgrnd_grayval;
     
     im1 = repmat(bckground,[1 1 3]);
     
-    for ang = p.stim.dot.loc_deg
+    for ang = p.stim.dot.ang_deg
         
         angle = deg2rad(ang);
         [x_shift,y_shift] = pol2cart(angle,p.stim.dot.iso_eccen);
     
         ys = p.disp.yc + round(y_shift*p.disp.ppd);
         xs = p.disp.xc + round(x_shift*p.disp.ppd);
-        dot_halfsz = (size(simple_dot,1)/2);
+        dot_halfsz = (size(single_dot,1)/2);
         dot_coords_x = (xs - dot_halfsz) : (xs + dot_halfsz -1);
         dot_coords_y = (ys - dot_halfsz) : (ys + dot_halfsz -1);
     
-        im1( dot_coords_y, dot_coords_x,:) = simple_dot;
+        im1( dot_coords_y, dot_coords_x,:) = single_dot;
     end
     
     figure;
@@ -336,21 +352,21 @@ if verbose
     hold on;
     h0 = drawcircle('Center',[p.disp.xc,p.disp.yc],'Radius',11,'color', [1 1 1],'LineWidth',6);
     h0.InteractionsAllowed = 'none';
-    title('simple dot locations - both hemifields');
+    title('single dot locations - both hemifields');
     axis image;
     if p.store_imgs
         set(gcf, 'InvertHardCopy', 'off');
-        print(fullfile(saveDir,'simpledot_all_loc'),'-dpng','-r150');
+        print(fullfile(saveDir,'singledot_all_loc'),'-dpng','-r150');
     end
-    %% Simple dot: visualize individual dot locations
+    %% single dot: visualize individual dot locations
 
-    saveDir = fullfile(vcd_rootPath,'figs',dispname,'dot', 'indiv_dot_displays');
+    saveDir = fullfile(vcd_rootPath,'figs',dispname,'dot', 'visual_checks');
     if ~exist(saveDir,'dir'); mkdir(saveDir); end
 
     bckground = double(ones(p.disp.h_pix,p.disp.w_pix))*0.5;
     
     im1 = bckground;
-    dot_halfsz = (size(simple_dot,1)/2)-0.5;
+    dot_halfsz = (size(single_dot,1)/2)-0.5;
     cmap = varysat(parula(16),4);
     xpos_dots_to_plot = cat(1,p.stim.dot.x0_pix, p.stim.dot.x0_pix_delta);
     ypos_dots_to_plot = cat(1,p.stim.dot.y0_pix, p.stim.dot.y0_pix_delta);
@@ -370,13 +386,16 @@ if verbose
             title(sprintf('Angle: %02d; Delta: %02d',p.stim.dot.ang_deg(aa),dot_ref_locs(bb)), 'FontSize',20);
             axis image;
             set(gcf, 'InvertHardCopy', 'off');
-            print(fullfile(saveDir,sprintf('%02d_%02d_simpledot', aa, bb)),'-dpng','-r150');
+            print(fullfile(saveDir,sprintf('%02d_%02d_singledot', aa, bb)),'-dpng','-r150');
         end
     end
 
+    imwrite(single_dot, fullfile(vcd_rootPath,'figs',dispname,'dot',sprintf('singledot.png')));
+
     %% Complex objects
+    obj_masks = masks;
     counter = 1;
-    saveDir = fullfile(vcd_rootPath,'figs',dispname, 'objects');
+    saveDir = fullfile(vcd_rootPath,'figs',dispname, 'objects','visual_checks');
     if ~exist(saveDir,'dir'); mkdir(saveDir); end
     figure(99); set(gcf, 'Position', [300   584   868   753]);
     for objectNr = 1:size(objects,4)
@@ -386,7 +405,7 @@ if verbose
             I.AlphaData = obj_masks(:,:,objectNr,rot);
             axis image
             
-%             title(sprintf('Object:%02d Rot:%02d Delta:%02d',objectNr,im_order.abs_rot(counter),im_order.rel_rot(counter)), 'FontSize',20);
+            title(sprintf('Object:%02d Rot:%02d Delta:%02d',objectNr,im_order.abs_rot(counter),im_order.rel_rot(counter)), 'FontSize',20);
             
             if rot == 1
                 dd = 0;
@@ -394,12 +413,13 @@ if verbose
                 dd = rot;
             end
             print(fullfile(saveDir,sprintf('object%02d_rot%02d_delta%02d', objectNr, rot, dd)),'-dpng','-r150');
+            imwrite(objects(:,:,:,objectNr,rot), fullfile(vcd_rootPath,'figs',dispname,'objects',sprintf('object%02d_rot%02d_delta%02d.png', objectNr, rot, dd)),'Alpha',obj_masks(:,:,objectNr,rot));
             counter = counter+1;
         end
     end
     
     %% Natural scenes
-    saveDir = fullfile(vcd_rootPath,'figs',dispname,'ns','resized_and_squared');
+    saveDir = fullfile(vcd_rootPath,'figs',dispname,'ns','visual_checks','resized_and_squared');
     if ~exist(saveDir,'dir'); mkdir(saveDir); end
     figure; set(gcf,'Position', [156    91   881   706],'color','w');
     counter = 1;
@@ -408,33 +428,36 @@ if verbose
             for cc = 1:size(scenes,6)
                 clf;
                 imagesc(scenes(:,:,:,ss,bb,cc));
-%                 title(sprintf('Im %02d resized & squared',counter), 'FontSize',20);
+                title(sprintf('Im %02d resized & squared',counter), 'FontSize',20);
                 axis image; box off; axis off
                 set(gca,'CLim',[1 255]);
                 if p.stim.store_imgs
                     saveDir = fullfile(vcd_rootPath,'figs','ns','resized_and_squared');
                     if ~exist(saveDir,'dir'), mkdir(saveDir); end
                     print(fullfile(saveDir, sprintf('ns_%02d', counter)),'-dpng','-r150');
+                    imwrite(scenes(:,:,:,ss,bb,cc), fullfile(vcd_rootPath,'figs',dispname,'ns',sprintf('ns_%02d.png', counter)));
                 end
         
                 for ll = 1:size(lures,7)
                     clf;
                     imagesc(lures(:,:,:,ss,bb,cc,ll));
-%                     title(sprintf('Im %02d, lure %02d resized & squared',counter,ll), 'FontSize',20);
+                    title(sprintf('Im %02d, lure %02d resized & squared',counter,ll), 'FontSize',20);
                     axis image; box off; axis off
                     set(gca,'CLim',[1 255]);
                     if p.stim.store_imgs
                         print(fullfile(saveDir, sprintf('ns_%02d_lure%02d', counter,ll)),'-dpng','-r150');
+                        imwrite(lures(:,:,:,ss,bb,cc,ll), fullfile(vcd_rootPath,'figs',dispname,'ns',sprintf('ns_%02d_lure%02d.png', counter,ll)));
                     end
                     
                     clf;
                     imagesc(cblind(:,:,:,ss,bb,cc,ll));
-%                     title(sprintf('Im %02d, cblindness %02d resized & squared',counter,ll), 'FontSize',20);
+                    title(sprintf('Im %02d, cblindness %02d resized & squared',counter,ll), 'FontSize',20);
                     axis image; box off; axis off
                     set(gca,'CLim',[1 255]);
                     
                     if p.stim.store_imgs
                         print(fullfile(saveDir, sprintf('ns_%02d_cblind%02d', counter,ll)),'-dpng','-r150');
+                        imwrite(cblind(:,:,:,ss,bb,cc,ll), fullfile(vcd_rootPath,'figs',dispname,'ns',sprintf('ns_%02d_lcblind%02d.png', counter,ll)));
                     end
                 end
                 counter = counter + 1;

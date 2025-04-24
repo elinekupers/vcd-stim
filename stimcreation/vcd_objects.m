@@ -1,4 +1,4 @@
-function [objects, masks, info] = vcd_objects(params)
+function [objects, masks, im_order, info] = vcd_objects(params)
 % VCD function:
 %   [objects, masks, info] = vcd_objects(params)
 %
