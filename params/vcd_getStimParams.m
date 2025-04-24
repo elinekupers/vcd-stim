@@ -342,7 +342,6 @@ else
                 assert(isequal(abs(90-p.dots_direction(1:(p.num_mot_dir/2))), abs(270-p.dots_direction(((p.num_mot_dir/2)+1):p.num_mot_dir))));
                                 
                 % RDK specific
-                p.dots_density     = 16.7;                                      % dots/deg^2?? (EK: do we still use this??)
                 p.dots_size        = 3;                                         % single dot radius in pixels??
                 p.dots_color       = [255 255 255; 1 1 1]./255;                 % 50:50 white:black, color in RGB and converted to [0-1] as expected by stimulus creation function
                 p.max_dots_per_frame = 200;                                     % how many dots within a square support from (number is similar to Kiani lab, rokers lab aims for 150) and roughly matches to nr of pixels in aperture
