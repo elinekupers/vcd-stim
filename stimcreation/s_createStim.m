@@ -83,7 +83,7 @@ bckgrnd_im  = vcd_pinknoisebackground(p, ...
 [fix_im, fix_mask, fix_info] = vcd_fixationDot(p);
 
 %% Gabor images
-% gabor (uint8) is a uint8 6D array containing unique gabor images: 
+% gabor (uint8) is a uint8 5D array containing unique gabor images: 
 %   height (354 pixels) x width (354 pixels) x 3 (rgb) x 24 unique images (8 ori x 3 contrasts) x 5 tilt offsets (0 + -15, -5, +5, +15 deg)
 % gbr_masks (uint8) is a uint8 4D array with alpha transparency masks: 
 %   height (354 pixels) x width (354 pixels) x 24 unique images x 5 tilt offsets
@@ -116,12 +116,21 @@ bckgrnd_im  = vcd_pinknoisebackground(p, ...
 %% Natural scenes
 % Output images:
 % * scenes (uint8) is a 6D array: 
-%   height (BOLDscreen 743 pixels) x width (BOLDscreen 743 pixels) x 3 (rgb) x 5 superordinate categories x 2 scene locations (indoor/outdoor) x 3 obj locations (left/middle/right)
-% * lure_im (uint8) is a 7D array:
-%   height (BOLDscreen 743 pixels) x width (BOLDscreen 743 pixels) x 3 (rgb) x 5 superordinate categories x 2 scene locations (indoor/outdoor) x 3 obj locations (left/middle/right) x 4 lure types:
-%       1:very similar/difficult ... 4:least similar/easy
-% * cblind_im (uint8) is a 7D array:
-%   height (743 pixels) x width (743 pixels) x 3 (rgb) x 5 superordinate categories x 2 scene locations (indoor/outdoor) x 3 obj locations (left/middle/right) x 4 change types:
+%   height (BOLDscreen 743 pixels) x width (BOLDscreen 743 pixels) x 3
+%   (rgb) x 5 superordinate categories x 2 scene locations (indoor/outdoor)
+%   x 3 obj locations (left/middle/right)
+% * ltm_lures (uint8) is a 7D array:
+%   height (BOLDscreen 743 pixels) x width (BOLDscreen 743 pixels) x 3
+%   (rgb) x 5 superordinate categories x 2 scene locations (indoor/outdoor)
+%   x 3 obj locations (left/middle/right) x 4 lure types:
+%       1: very similar/difficult
+%       2: somewhat similar
+%       3: somewhat different
+%       4: very different/easy
+% * wm_im (uint8) is a 7D array:
+%   height (743 pixels) x width (743 pixels) x 3 (rgb) x 5 superordinate
+%   categories x 2 scene locations (indoor/outdoor) x 3 obj locations
+%   (left/middle/right) x 4 change types:
 %       1:easy add -- scene is altered by adding something big/obvious 
 %       2:hard add -- scene is altered by adding something small/subtle
 %       3:easy remove -- scene is altered by removing something big/obvious
@@ -446,18 +455,18 @@ if p.verbose
                     set(gca,'CLim',[1 255]);
                     if p.stim.store_imgs
                         print(fullfile(saveDir, sprintf('ns_%02d_lure%02d', counter,ll)),'-dpng','-r150');
-                        imwrite(lures(:,:,:,ss,bb,cc,ll), fullfile(vcd_rootPath,'figs',dispname,'ns',sprintf('ns_%02d_lure%02d.png', counter,ll)));
+                        imwrite(ltm_lures(:,:,:,ss,bb,cc,ll), fullfile(vcd_rootPath,'figs',dispname,'ns',sprintf('ns_%02d_ltm_lure%02d.png', counter,ll)));
                     end
                     
                     clf;
-                    imagesc(cblind(:,:,:,ss,bb,cc,ll));
-                    title(sprintf('Im %02d, cblindness %02d resized & squared',counter,ll), 'FontSize',20);
+                    imagesc(wm_im(:,:,:,ss,bb,cc,ll));
+                    title(sprintf('Im %02d, wm test im %02d resized & squared',counter,ll), 'FontSize',20);
                     axis image; box off; axis off
                     set(gca,'CLim',[1 255]);
                     
                     if p.stim.store_imgs
                         print(fullfile(saveDir, sprintf('ns_%02d_cblind%02d', counter,ll)),'-dpng','-r150');
-                        imwrite(cblind(:,:,:,ss,bb,cc,ll), fullfile(vcd_rootPath,'figs',dispname,'ns',sprintf('ns_%02d_lcblind%02d.png', counter,ll)));
+                        imwrite(wm_im(:,:,:,ss,bb,cc,ll), fullfile(vcd_rootPath,'figs',dispname,'ns',sprintf('ns_%02d_wm_im%02d.png', counter,ll)));
                     end
                 end
                 counter = counter + 1;
