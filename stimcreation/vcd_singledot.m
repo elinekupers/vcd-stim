@@ -213,7 +213,7 @@ if params.verbose
     end
     %% Make PNG image of dot alone:
     if params.store_imgs
-        imwrite(single_dot, fullfile(vcd_rootPath,'figs',dispname,'single_dot',sprintf('singledot.png')));
+        imwrite(single_dot, fullfile(vcd_rootPath,'figs',params.disp.name,'single_dot',sprintf('singledot.png')));
     end
     
     %% Visualize effect of alpha transparency mask
