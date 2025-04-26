@@ -1,6 +1,6 @@
 function [rdks, masks, info] = vcd_rdk(params)
 % VCD function:
-%  [rdk, mask, info] = vcd_rdk(params)
+%  [rdks, masks, info] = vcd_rdk(params)
 %
 % Purpose:
 %   Create a random dot motion kinetograms for experimental display. 
@@ -59,17 +59,34 @@ function [rdks, masks, info] = vcd_rdk(params)
 %    rdk.unique_im_nrs_WM   : (int) number for each unique WM test rdk
 %
 % OUTPUTS:
-%   rdk         : (uint8) unique RDK images used for VCD experiment, 
+%   rdks         : (uint8) unique RDK images used for VCD experiment, 
 %                   8x3x5 cell for each motion direction, coherence level and delta offset (0, -15, -5, +5, +15)
 %                   Each cell contains an uint8 image with dimensions: height (pixels) x width (pixels) x 3 (rgb) x 60 frames
-%   mask        : (uint8) unique alpha mask images used for VCD experiment,
+%   masks        : (uint8) unique alpha mask images used for VCD experiment,
 %                   8x3x5 cell for each motion direction, coherence level and delta offset (0, -15, -5, +5, +15):
 %                   Each cell contains an uint8 image with dimensions: height (pixels) x width (pixels)
-%   info        : table with rdk stimulus information matching the gabor array
-%       unique_im    dot_motdir_deg    dot_motdir_deg_i    dot_coh    dot_coh_i    rel_motdir_deg    rel_motdir_deg_i   dot_pos      stim_loc     stim_loc_i
-%         25           -67.5                1             0.064         1               0                 0            {1×1 cell}    {'left' }        1     
-%         ...
-%         302          262.5                8             0.512         3              15                 4            {1×1 cell}    {'right'}        2      
+%   info         : table with rdk stimulus information matching the gabor array
+%      unique_im        : (double) unique image nr for each RDK movie: 
+%                           range 25-48 for core RDKs, 207-302.   
+%      stim_pos_i       : (double) stimulus position index. 1=left, 2=right
+%      stim_pos         : (cell) stimulus position, same as stim_loc_i but
+%                           human readable ({'left'} or {'right'})
+%      dot_motdir_deg   : (double) motion direction in degrees (0 = 12
+%                           o'clock).
+%      dot_motdir_deg_i : (double) same as dot_motdir_deg but indexed 1
+%                           (smallest: 22.5 deg) to 8 (largest: 337.5 deg)
+%      dot_coh          : (double) coherence level (fraction of 1), 
+%      dot_coh_i        : (double) same as dot_coh but indexed 1 (lowest: 0.064)
+%                           2 (medium: 0.128) or 3 (highest: 0.512).
+%      rel_motdir_deg   : (double) motion direction relative from
+%                           corresponding core RDK -15, -5, +5, +15 (deg)
+%      rel_motdir_deg_i : (double) same as rel_motdir_deg but indexed 1
+%                           (-15 deg), 2 (-5 deg), 3 (+5 deg), or 4 (+15 deg).            
+%      dot_pos          : {1×1 cell} 200x2xtime dot positions on each frame
+%                           relative to the center of the aperture (pixels).
+%      is_in_img_ltm    : (logical) whether the RDK movie is part of the
+%                           subselected stimuli used in imagery and
+%                           long-term memory task.
 %
 % Written by Eline Kupers 2024/12, updated 2025/04
 
@@ -126,9 +143,10 @@ info = table(NaN(n_unique_videos,1), ... unique_im
              NaN(n_unique_videos,1), ... dot_coh_i
              NaN(n_unique_videos,1), ... rel_motdir_deg
              NaN(n_unique_videos,1), ... rel_motdir_deg_i
+             NaN(n_unique_videos,1), ... is_in_img_ltm
              cell(n_unique_videos,1)); % dot_pos
 info.Properties.VariableNames = {'unique_im','dot_motdir_deg','dot_motdir_deg_i',...
-    'dot_coh','dot_coh_i','rel_motdir_deg','rel_motdir_deg_i','dot_pos'};
+    'dot_coh','dot_coh_i','rel_motdir_deg','rel_motdir_deg_i','dot_pos','is_in_img_ltm'};
 
 %% RNG seed parameters
 rseed = [1000 2010];
@@ -140,9 +158,6 @@ tmpDir = fullfile(vcd_rootPath, 'workspaces','stimuli',params.disp.name,['rdk_' 
 if ~exist(tmpDir,'dir'), mkdir(tmpDir); end
 saveStimDir = fullfile(vcd_rootPath, 'figs', params.disp.name, ['rdk_' datestr(now,'yyyymmdd')]);
 if ~exist(fullfile(saveStimDir,'export'),'dir'), mkdir(fullfile(saveStimDir,'export')); end
-
-% get pixels per inch for saving frames
-sppi = get(groot,"ScreenPixelsPerInch");
 
 %% Create rdk images
 fH = figure(1); clf; 
@@ -176,6 +191,8 @@ for cc = 1:length(params.stim.rdk.dots_coherence)
             clock_seed = sum(100*clock);
             RandStream.setGlobalStream(RandStream('mt19937ar','seed',clock_seed));
             rdk_seed(cc,bb,dd+1) = clock_seed;
+            
+            %% RDK MOVIE TIME!! 
             
             % Allocate space for new dots, their kill time and position in this video
             dots               = NaN(ndots,2);
@@ -318,19 +335,13 @@ for cc = 1:length(params.stim.rdk.dots_coherence)
                 clear f im
                 
             end % frame loop
-
-            % Create debug video
-            if params.verbose
-                vcd_createStimVideo(frames, 1/params.stim.presentationrate_hz, ...
-                    fullfile(saveStimDir),sprintf('vcd_rdk_coh%02d_dir%02d_delta%02d',cc,bb,dd));           
-            end
             
             % Store rdk video and dot positions in cell array
             rdks{bb,cc,dd+1} = frames;
             dotlocs{bb,cc,dd+1} = stored_coh_dot_pos;
             
             % Log info 
-            info.dot_motdir_deg(counter) = curr_motdir_deg;
+            info.dot_motdir_deg(counter) = curr_motdir_deg + 90; % shift 90 deg back
             info.dot_coh(counter) = params.stim.rdk.dots_coherence(cc);
             info.dot_motdir_deg_i(counter) = bb;
             info.dot_coh_i(counter) = cc;
@@ -346,6 +357,8 @@ for cc = 1:length(params.stim.rdk.dots_coherence)
                 info.unique_im(counter) = img_im_nrs2{cc}(bb)+(dd-1);
             end
 
+            info.is_in_img_ltm(counter) = (info.unique_im(counter)==params.stim.rdk.imagery_im_nr);
+            
             % Create binary circular alpha mask for rdk frames
             [XX,YY]       = meshgrid((1:size(frames,1))-(size(frames,1)/2),(1:size(frames,1))-(size(frames,1)/2)); 
             mask_radius   = ap_radius(1)+(4*params.stim.rdk.dots_size); % add 4 x dot pixel radius to avoid cutting off dots
@@ -371,10 +384,10 @@ end
 
 % add stimulus location for each rdk orientation and coherence level
 % (uneven numbers are left, even numbers are right).
-stim_loc = repmat(repelem({'left','right'},1+length(params.stim.gabor.delta_from_ref)), 1,length(params.stim.rdk.dots_direction)/2*length(params.stim.rdk.dots_coherence))';
-stim_loc_i = repmat(repelem([1,2],1+length(params.stim.gabor.delta_from_ref)), 1, length(params.stim.rdk.dots_direction)/2*length(params.stim.rdk.dots_coherence))';
-info.stim_loc   = stim_loc;
-info.stim_loc_i = stim_loc_i;
+stim_pos    = repmat(repelem({'left','right'},1+length(params.stim.gabor.delta_from_ref)), 1,length(params.stim.rdk.dots_direction)/2*length(params.stim.rdk.dots_coherence))';
+stim_pos_i  = repmat(repelem([1,2],1+length(params.stim.gabor.delta_from_ref)), 1, length(params.stim.rdk.dots_direction)/2*length(params.stim.rdk.dots_coherence))';
+info.stim_pos   = stim_pos;
+info.stim_pos_i = stim_pos_i;
 
 if params.store_imgs
     % in addition to storing separate conditions, we also store larger rdk file 
@@ -387,5 +400,81 @@ if params.store_imgs
     writetable(info, fullfile(sprintf('%s_%s.csv',params.stim.rdk.infofile,datestr(now,30))))
 end
 
+%% RDK
+
+if params.verbose
+    
+    if params.store_imgs
+        saveFigDir1 = fullfile(vcd_rootPath,'figs',params.disp.name,'rdk','visual_checks');
+        saveFigDir2 = fullfile(vcd_rootPath,'figs',params.disp.name,'rdk','export');
+        if ~exist(saveFigDir1,'dir'); mkdir(saveFigDir1); end
+        if ~exist(saveFigDir2,'dir'); mkdir(saveFigDir2); end
+    end
+    
+    fH1 = figure(1); 
+    set(fH1, 'Position', [0 0 1024 1080], 'color','w')
+    deltalabels = cellfun(@num2str, (num2cell(params.stim.rdk.delta_from_ref)),'UniformOutput', false);
+    for ll = 1:length(deltalabels), 
+        if strfind(deltalabels{ll},'-')
+            deltalabels{ll} = strrep(deltalabels{ll},'-','min'); 
+        else
+            deltalabels{ll} = ['plus' deltalabels{ll}]; 
+        end
+    end
+    deltalabels = [{'00'}, deltalabels(:)'];
+    
+    cohlabels = cellfun(@num2str, (num2cell(params.stim.rdk.dots_coherence*100)),'UniformOutput', false);
+    cohlabels = cellfun(@(x) strrep(x,'.','pt'), cohlabels,'UniformOutput',false);
+    
+    % Loop over deltas
+    for dd = 1:size(rdks,3)
+        
+        % Loop over coherence levels
+        for cc = 1:size(rdks,1)
+            
+            % Loop over motion directions
+            for bb = 1:size(rdks,1)
+                
+                im_idx = (info.dot_motdir_deg_i == params.stim.rdk.dots_direction(dd) & ...
+                          info.dot_coh_i == params.stim.rdk.dots_coherence(cc) & ...
+                          info.dot_motdir_deg_i == rdk_motdir_ref);
+                im_nr  = info.unique_im(im_idx); 
+                
+                % Create RDK movie (mp4, with compression)
+                vcd_createStimVideo(rdks{bb,cc,dd}, 1/params.stim.presentationrate_hz, ...
+                    fullfile(vcd_rootPath,'figs',params.disp.name,'rdk'),sprintf('%03d_vcd_rdk_coh%02d_dir%02d_delta%02d',im_nr,cc,bb,dd-1));
+
+                % Plot dot position & motion vector
+                dot_pos = dotlocs{bb, cc, dd};
+                dxdy    = dot_pos(:,:,2:end)-dot_pos(:,:,1:end-1);
+                dxdy    = cat(3,zeros(size(dot_pos,1),size(dot_pos,2)),dxdy);
+
+                for tt = 1:size(dot_pos,3) % loop over time
+                    figure(fH1); cla;
+                    xlim([-250, 250]); ylim([-250, 250]); box off;
+                    plot(dot_pos(~isnan(dot_pos(:,1,tt)),1,tt),dot_pos(~isnan(dot_pos(:,2,tt)),2,tt),'o'); hold on;
+                    quiver(dot_pos(~isnan(dot_pos(:,1,tt)),1,tt),dot_pos(~isnan(dot_pos(:,2,tt)),2,tt), ...
+                        dxdy(~isnan(dot_pos(:,1,tt)),1,tt),dxdy(~isnan(dot_pos(:,2,tt)),2,tt));
+                    title(sprintf('frame %02d: coh: %3.2f%% dir:%02d delta: %s',...
+                            tt, params.stim.rdk.dots_coherence(cc)*100,params.stim.rdk.dots_direction(dd), deltalabels{dd})); 
+                    axis square;
+                    
+                    if params.store_imgs
+                        % store motion vector figure
+                        if ~exist(fullfile(saveFigDir,sprintf('motdir%02d',dd)), 'dir')
+                            mkdir(fullfile(saveFigDir,sprintf('motdir%02d',dd))); end
+                        print(gcf,'-dpng','-r300',fullfile(saveFigDir1,sprintf('motdir%02d',dd),...
+                            sprintf('%02d_vcd_rdk_coh%03d_dir%02d_delta%02d_motionvec%d.png',im_nr,cc,bb,dd,ii)));
+                        
+                        % store PNG of movie frame
+                        imwrite(rdks{bb,cc,dd}, fullfile(saveFigDir2, ...
+                            sprintf('%03d_vcd_rdk_coh%02d_dir%02d_delta%02d',im_nr,cc,bb,dd-1)));
+                    end
+                end
+                
+            end
+        end
+    end
+end
 return
 

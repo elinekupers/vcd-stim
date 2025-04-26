@@ -1,14 +1,18 @@
-function [objects, masks, im_order, info] = vcd_objects(params)
+function [objects, masks, info] = vcd_objects(params)
 % VCD function:
 %   [objects, masks, info] = vcd_objects(params)
 %
 % Purpose:
-%   Luminance-correct, load, and store object images for VCD experimental display.
-%   Requires two files:
+%   Luminance-correct, load, and store object images for VCD experimental
+%   display. By default, we do not preprocess images and assume this has
+%   already been done.
+%
+%   After preprocessing, you have two files required to execute the rest of
+%   the function:
 %    1. a set of individual object image files, where the folder is defined
-%       by p.stim.obj.indivobjfile, e.g.:
+%       by params.stim.obj.indivobjfile, e.g.:
 %       fullfile(vcd_rootPath,'workspaces/stimuli/vcd_complex_objects/*_rot*.png)
-%    2. A csv file defined in p.stim.obj.infofile, e.g.: 
+%    2. A csv file defined in params.stim.obj.infofile, e.g.: 
 %       fullfile(vcd_rootPath,'workspaces/objects_info.csv')
 %   Given that 0, 90, and 180 degrees are right, forwards, and left facing, 
 %   respectively. Facing directions of objects in the following files are:
@@ -23,9 +27,18 @@ function [objects, masks, im_order, info] = vcd_objects(params)
 % 
 %   When params.store_params = true, this function will store generated
 %   object images as a single mat file in params.stim.obj.stimfile (e.g.:
-%   fullfile(vcd_rootPath,'workspaces',....
-%   'stimuli',<disp_name>,'objects.mat').
+%   fullfile(vcd_rootPath,'workspaces','stimuli',<disp_name>,'objects.mat').
 %
+%   We also create a struct called "im_order", which contains subset of 
+%   the info table in the order they were loaded, which makes it easier to
+%   keep track and double check indexing.
+%    - object_name: {1×80 cell} - same as filename in info
+%    - base_rot: [1×80 double]  - base rotation of core object
+%    - abs_rot: [1×80 double]   - absolute rotation of object (after adding delta)
+%    - rel_rot: [1×80 double]   - rel rotation of object (i.e. the delta)
+%    - unique_im_nr: [1×80 double] - same as unique_im_nr in info
+%    - facing_dir: {1×80 cell}  - same as facing_dir in info
+%    - rel_rot_name: {1×80 cell} - same as rel_rot_name in info
 %
 % INPUTS:
 %  params            :   struct with stimulus params
@@ -38,22 +51,64 @@ function [objects, masks, im_order, info] = vcd_objects(params)
 %                   background. Dimensions are width (pixels) x height
 %                   (pixels) x object's subordinate category x num of
 %                   rotations
-%  im_order     :   (struct) with fields containing a subset of info about 
-%                   objects in the order they were loaded:
-%                       object_name: {1×80 cell} - same as filename in info
-%                       base_rot: [1×80 double]  - base rotation of core object
-%                       abs_rot: [1×80 double]   - absolute rotation of object (after adding delta)
-%                       rel_rot: [1×80 double]   - rel rotation of object (i.e. the delta)
-%                       unique_im_nr: [1×80 double] - same as unique_im_nr in info
-%                       facing_dir: {1×80 cell}  - same as facing_dir in info
-%                       rel_rot_name: {1×80 cell} - same as rel_rot_name in info
 %  info         :   Loaded csv from workspaces/stimuli/ with png file names
 %                   and object category information. 
-%              
-%      filename                         unique_im_nr   stim_pos  stim_pos_i  superordinate    superordinate_i     basic      basic_i  subordinate   subordinate_i  rot_abs  rot_rel   facing_dir   is_in_img  rel_rot_name
-%  {'faces_damonwayans_rot31.png'  }        65         {'left' }    1          {'human'}           1           {'facemale'}     1      {'damon'}        1            60       0       {'forward'}    1       {'rightwards'}              
-%      ...
-%  {'places_watertower_rot75.png'  }        430       {'right'}     2         {'place' }           4           {'tower'}        2      {'watertower'}   3            148      8       {'sideways'}   0       {'rightwards'}    
+%      filename         : (cell) filename of original png, e.g.: {'faces_damonwayans_rot31.png'} or {'places_watertower_rot75.png'}                
+%      unique_im        : (double) unique image nr for each object: 
+%                         range 65-80, 367-430. 
+%      stim_pos_i       : (double) stimulus position index. 1=left, 2=right
+%      stim_pos         : (cell) stimulus position, same as stim_loc_i but
+%                           human readable ({'left'} or {'right'})
+%      superordinate    : (cell) superordinate semantic category label:
+%                           {'human','animal','object','place'}
+%      superordinate_i  : (double) same as superordinate, but indexed by nr
+%                           1:'human' through 4: 'place'    
+%      basic            : (cell) basic semantic category label for each
+%                          superordinate semantic categorycategory:
+%                           {'facefemale','facefemale', ...
+%                           'small','large',...
+%                           'tool',food','vehicle',...
+%                           'building'};
+%      basic_i          : (double) same as basic, but indexed by nr
+%                           1: facefemale, 2: facefemale
+%                           1: small, 2: large
+%                           1: tool, 2: food, 3: vehicle
+%                           1: building.
+%      subordinate      : (cell) subordinate semantic category label, name 
+%                           for each individual core object: 
+%                           {'damon','lisa','sophia','parrot','cat','bear',...
+%                            'giraffe','drill','brush','pizza','banana',...
+%                            'bus','suv''church','house','watertower'};
+%      subordinate_i    : (double) same as subordinate, but indexed by nr
+%                           1:damon through 16: watertower. 
+%      rot_abs          : (double) absolute rotation (deg) of object.
+%                          ranges from 10-170, in evenly steps of 10 deg
+%                          (excluding 90 degrees). 
+%                           0 deg = profile view facing to the right. 
+%                           90 deg = forward facing view. 
+%                           180 deg = profile view facing to the left. 
+%      rot_rel          : (double) relative rotation (deg) of object from
+%                           core object rotation, ranges from -8, -4, +4,
+%                           +8 deg.
+%      facing_dir       : (cell) facing direction, 'forward' directions are
+%                           between 46-134 degree. 'sideways' directions
+%                           are between 0-44 and 136-180 degrees. Rotations
+%                           of 45 and 135 are ill-defined and does not occur.
+%      rel_rot_name     : (cell) relative rotation name for WM test images
+%                           whether the relative rotation results in the
+%                           object facing more left or rightwards from the
+%                           perspective of the observer. 
+%                           'rightwards' is when absolute rotation is
+%                           between 0-90 and relative rotation is > 0, OR
+%                           when absolute rotation is between 91-180 and
+%                           relative rotation < 0 deg. 
+%                           'leftwards' is when absolute rotation is
+%                           between 0-90 and relative rotation is < 0, OR
+%                           when absolute rotation is between 91-180
+%                           relative rotation is > 0 deg.
+%      is_in_img_ltm    : (logical) whether the object is part of the
+%                           subselected stimuli used in imagery and
+%                           long-term memory task.
 %
 % Written by Eline Kupers 2024/12, updated 2025/04
 
@@ -85,7 +140,7 @@ extent   = params.stim.obj.img_sz_pix.*params.stim.obj.dres;
 
 % Preallocate space
 objects = uint8(ones(extent, extent,3, length(subordinate(idx0)),length(rotations)));
-masks = uint8(ones(extent, extent, length(subordinate(idx0)),length(rotations)));
+masks   = uint8(ones(extent, extent, length(subordinate(idx0)),length(rotations)));
 
 counter = 1; % we use the lazy counter way to keep track of image
 
@@ -144,35 +199,54 @@ for sub = 1:length(subordinate(idx0))
         im_order.abs_rot(counter)        = base_rot(sub)+rotations(rr);
         im_order.rel_rot(counter)        = rotations(rr);
         if rr == 1
-            im_order.unique_im_nr(counter)   = params.stim.obj.unique_im_nrs(sub);
-        else
-            im_order.unique_im_nr(counter)   = unique_ref_im(rr-1,sub);
+            im_order.unique_im(counter)   = params.stim.obj.unique_im_nrs(sub);
+        else 
+            im_order.unique_im(counter)  = unique_ref_im(rr-1,sub);
         end
         
-        % check facing direction        
-        if (im_order.abs_rot(counter) < 45) || (im_order.abs_rot(counter) > 135)
-            facing_dir = {'sideways'};
-        elseif (im_order.abs_rot(counter) > 45) || (im_order.abs_rot(counter) < 135)
-            facing_dir = {'forward'};
+        % check facing direction, when the offset may technically result in
+        % a flipping of the facing direction, go by original core facing
+        % direction, as subjects will never perform the PC task on working
+        % memory test images.
+        if im_order.rel_rot(counter) == 0
+            if (im_order.abs_rot(counter) < 45) || (im_order.abs_rot(counter) > 135)
+                im_order.facing_dir(counter) = {'sideways'};
+            elseif (im_order.abs_rot(counter) > 45) || (im_order.abs_rot(counter) < 135)
+                im_order.facing_dir(counter) = {'forward'};
+            end
+        elseif im_order.rel_rot(counter) ~= 0
+            og_rot = im_order.base_rot(counter);
+            if (og_rot < 45) || (og_rot > 135)
+                im_order.facing_dir(counter) = {'sideways'};
+            elseif (og_rot > 45) || (og_rot < 135)
+                im_order.facing_dir(counter) = {'forward'};
+            end
         end
-        im_order.facing_dir(counter)     = facing_dir;
-        
+
         % we define rotations relative to the reference object rotation
-        if (im_order.abs_rot(counter)-90) < 0 && im_order.rel_rot(counter) < 0
+            % if abs rotation is between 0-90 and rel rotation is negative
+        if (im_order.abs_rot(counter)-90) < 0 && im_order.rel_rot(counter) < 0 
             im_order.rel_rot_name(counter) = {'rightward'};
-        elseif (im_order.abs_rot(counter)-90) < 0 && im_order.rel_rot(counter) > 0
+            % if abs rotation is between 0-90 and rel rotation is positive
+        elseif (im_order.abs_rot(counter)-90) < 0 && im_order.rel_rot(counter) > 0 
             im_order.rel_rot_name(counter) = {'leftward'};
-        elseif (im_order.abs_rot(counter)-90) > 0 && im_order.rel_rot(counter) > 0
+            % if abs rotation is between 90-180 and rel rotation is negative
+        elseif (im_order.abs_rot(counter)-90) > 0 && im_order.rel_rot(counter) < 0 
             im_order.rel_rot_name(counter) = {'rightward'};
-        elseif (im_order.abs_rot(counter)-90) > 0 && im_order.rel_rot(counter) < 0
+            % if abs rotation is between 90-180 and rel rotation is positive
+        elseif (im_order.abs_rot(counter)-90) > 0 && im_order.rel_rot(counter) > 0 
             im_order.rel_rot_name(counter) = {'leftward'};
-        elseif (im_order.abs_rot(counter)-90) == 0 && im_order.base_rot(counter) < 0 && im_order.rel_rot(counter) < 0
+            % CORNER CASE 1: if abs rotation is exactly 90, but core rotation was between 0-90, and rel rotation is negative
+        elseif (im_order.abs_rot(counter)-90) == 0 && im_order.base_rot(counter) < 0 && im_order.rel_rot(counter) < 0 
             im_order.rel_rot_name(counter) = {'rightward'};
+            % CORNER CASE 2:  if abs rotation is exactly 90, but core rotation was between 0-90, and rel rotation is positive
         elseif (im_order.abs_rot(counter)-90) == 0 && im_order.base_rot(counter) < 0 && im_order.rel_rot(counter) > 0
             im_order.rel_rot_name(counter) = {'leftward'};
-        elseif (im_order.abs_rot(counter)-90) == 0 && im_order.base_rot(counter) > 0 && im_order.rel_rot(counter) > 0
-            im_order.rel_rot_name(counter) = {'rightward'};
+            % CORNER CASE 3:  if abs rotation is exactly 90, but core rotation was between 90-180, and rel rotation is negative
         elseif (im_order.abs_rot(counter)-90) == 0 && im_order.base_rot(counter) > 0 && im_order.rel_rot(counter) < 0
+            im_order.rel_rot_name(counter) = {'rightward'};
+            % CORNER CASE 4:  if abs rotation is exactly 90, but core rotation was between 90-180, and rel rotation is positive
+        elseif (im_order.abs_rot(counter)-90) == 0 && im_order.base_rot(counter) > 0 && im_order.rel_rot(counter) > 0
             im_order.rel_rot_name(counter) = {'leftward'};
         elseif im_order.rel_rot(counter) == 0
             im_order.rel_rot_name(counter) = {'none'};
@@ -183,6 +257,7 @@ for sub = 1:length(subordinate(idx0))
     end
 end
 
+%% Store stimuli if requested
 if params.stim.store_imgs
     fprintf('\nStoring images..')
     saveDir = fileparts(fullfile(params.stim.obj.stimfile));
@@ -190,31 +265,47 @@ if params.stim.store_imgs
     save(fullfile(sprintf('%s_%s.mat',params.stim.obj.stimfile,datestr(now,30))),'objects','masks','info','im_order','-v7.3');
 end
 
-%
-%     figure(1); clf;
-%     figure(2); clf;
-%     figure(3); clf;
-%     figure(4); clf;
-%     for ii = 1:size(objects,5)
-%         figure(1); subplot(3,3,ii); hold all;
-%         I = imshow(objects(:,:,:,1,ii),[1 255]);
-%         I.AlphaData = masks(:,:,1,ii)>0;
-%         axis image
-%         
-%         figure(2); subplot(3,3,ii); hold all;
-%         I = imshow(objects(:,:,:,2,ii),[1 255]);
-%         I.AlphaData = masks(:,:,2,ii)>0;
-%         axis image
-%         
-%         figure(3); subplot(3,3,ii); hold all;
-%         I = imshow(objects(:,:,:,3,ii),[1 255]);
-%         I.AlphaData = masks(:,:,3,ii)>0;
-%         axis image
-%         
-%         figure(4); subplot(3,3,ii); hold all;
-%         I = imshow(objects(:,:,:,4,ii),[1 255]);
-%         I.AlphaData = masks(:,:,4,ii)>0;
-%         axis image
-%     end
+%% Visualize stimuli if requested
+if params.verbose
+   
+    counter = 1;
+    if params.stim.store_imgs
+        saveFigDir = fullfile(vcd_rootPath,'figs',params.disp.name, 'obj','visual_checks');
+        if ~exist(saveDir,'dir'); mkdir(saveDir); end
+    end
+    
+    figure(99); set(gcf, 'Position', [300   584   868   753]);
+    for objectNr = 1:size(objects,4)
+        for rot = 1:size(objects,5)
+            
+            if rot == 1
+                im_nr = info.unique_im_nr(objectNr);
+            else 
+                im_nr = info.unique_im_nr(size(objects,4) + ((objectNr-1)*4) + rot-1);
+            end
+            cla;
+            I = imshow(objects(:,:,:,objectNr,rot),[1 255]);
+            I.AlphaData = masks(:,:,objectNr,rot);
+            axis image
+            
+            title(sprintf('Object:%02d Rot:%02d Delta:%02d',objectNr,im_order.abs_rot(counter),im_order.rel_rot(counter)), 'FontSize',20);
+            
+            if rot == 1, dd = 0;
+            else, dd = rot; end
+            
+            if params.stim.store_imgs
+                % Print figure with axes
+                print(fullfile(saveFigDir,sprintf('%02d_object%02d_delta%02d', im_nr,objectNr, dd)),'-dpng','-r150');
+                % Export PNG
+                imwrite(objects(:,:,:,objectNr,rot), fullfile(vcd_rootPath,'figs',params.disp.name,...
+                    'obj',sprintf('%02d_object%02d_delta%02d.png',im_nr, objectNr, dd)),'Alpha',masks(:,:,objectNr,rot));
+            end
+            
+            % update counter
+            counter = counter+1;
+        end
+    end
+end
+
 return
 

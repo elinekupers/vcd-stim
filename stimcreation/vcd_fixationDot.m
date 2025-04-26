@@ -148,6 +148,58 @@ if p.stim.store_imgs
     fprintf('done! '); toc
 end
 
+%% Visualize fixation circle if requested
+if params.verbose
+    makeprettyfigures;
+    
+    saveFigDir = fullfile(vcd_rootPath,'figs',params.disp.name,'fix','visual_check');
+    if ~exist(saveFigDir,'dir'); mkdir(saveFigDir); end
+    
+    fH = figure(101); clf;
+    set(fH, 'Position', [1   400   750   578], 'color','w')
+    counter = 1;
+    for ii = 1:size(fix_im,4)
+        for jj = 1:size(fix_im,5)
+            subplot(5,5,counter)
+            imagesc(squeeze(fix_im(:,:,:,ii,jj)), 'AlphaData',params.stim.fix.dotopacity)
+            axis square
+            axis off
+            set(gca,'CLim',[1 255])
+            title(sprintf('%01d, %01d',ii, jj))
+            counter = counter+1;
+            if params.store_imgs
+                imwrite(fix_im(:,:,:,ii,jj), fullfile(vcd_rootPath,'figs',params.disp.name,'fix',sprintf('vcd_fixdots_w_alphamask_%01d_%01d.png', ii, jj)));
+            end
+        end
+    end
+    if params.store_imgs
+        filename = sprintf('vcd_fixdots_w_alphamask.png');
+        print(fH,'-dpng','-r300',fullfile(saveFigDir,filename));
+    end
+    
+    fH = figure(101); clf;
+    set(fH, 'Position', [1   400   750   578], 'color','w')
+    counter = 1;
+    for ii = 1:size(fix_im,4)
+        for jj = 1:size(fix_im,5)
+            subplot(5,5,counter)
+            imagesc(squeeze(fix_im(:,:,:,ii,jj)))
+            axis square
+            axis off
+            set(gca,'CLim',[1 255])
+            title(sprintf('%01d, %01d',ii, jj))
+            counter = counter+1;
+            if params.store_img
+                imwrite(fix_im(:,:,:,ii,jj), fullfile(vcd_rootPath,'figs',params.disp.name,'fix',sprintf('vcd_fixdots_%01d_%01d.png', ii, jj)));
+            end
+        end
+    end
+    if params.store_imgs
+        filename = sprintf('vcd_fixdots.png');
+        print(fH,'-dpng','-r300',fullfile(saveFigDir,filename));
+    end
+end
+
 return
 
 

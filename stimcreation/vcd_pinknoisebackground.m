@@ -59,18 +59,21 @@ clear rename_me ff p
 pixelrange = [1 255]; % pixel range
 scale_images_fixedrng = @(x,b) uint8((x - min(b)) / (max(b) - min(b)) * diff(pixelrange) + min(pixelrange));
 
-im0 = generatepinknoise(params.disp.w_pix ,1,num,0);
-
-% trim edges (initial generated pinknoise image is a square)
-screen_edge_pix = (params.disp.w_pix - params.disp.h_pix)/2;
-trimMe          = [1:screen_edge_pix; (params.disp.w_pix-screen_edge_pix+1):params.disp.w_pix];
-std_norm        = params.stim.bckground.std_clip_range*std(im0(:));
-
 im1 = NaN(params.disp.h_pix,params.disp.w_pix,num);
 for ii = 1:num
-    tmp = im0(:,:,ii);
-    tmp(trimMe,:) = [];
-    im1(:,:,ii) = scale_images_fixedrng(tmp,std_norm.*[-1 1]);
+    
+    % generate pink noise image
+    im0 = generatepinknoise(params.disp.w_pix,1,1,0); % mode 0 means fixed amplitude spectrum + random phase
+    
+    % trim edges (initial generated pinknoise image is a square)
+    screen_edge_pix = (params.disp.w_pix - params.disp.h_pix)/2;
+    trimMe          = [1:screen_edge_pix; (params.disp.w_pix-screen_edge_pix+1):params.disp.w_pix];
+    
+    % Clip the range based on the predefined std
+    std_norm        = params.stim.bckground.std_clip_range*std(im0(:));
+
+    im0(trimMe,:) = [];
+    im1(:,:,ii) = scale_images_fixedrng(im0,std_norm.*[-1 1]);
 end
 
 % deal with center offset
@@ -95,6 +98,7 @@ elseif strcmp(borderwidth,'skinny')
     rim = 0;
 end
 
+% Create the stimulus elements, take the union of the elements to create the cutout
 switch gaptype
     
     case 'puzzle'
@@ -180,6 +184,7 @@ bckgrnd_im = reshape(tmp, size(bckground_mask,1),size(bckground_mask,2),num);
 bckgrnd_im = repmat(bckgrnd_im, [1 1 1 3]);
 bckgrnd_im = permute(bckgrnd_im, [1 2 4 3]);
 
+% Store images if requested
 if params.stim.store_imgs
     fprintf('[%s]:Storing background image(s)..',mfilename);
     tic
@@ -190,5 +195,8 @@ if params.stim.store_imgs
     fprintf('\n')
 end
 
+if params.verbose
+    vcd_visualizeBackground(params, bckgrnd_im, [])
+end
 
 return

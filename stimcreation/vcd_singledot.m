@@ -1,6 +1,6 @@
-function [single_dot, mask, info, params] = vcd_singledot(params)
+function [single_dot, mask, info] = vcd_singledot(params)
 % VCD function
-%  [single_dot, mask, info, params] = vcd_simpledot(params)
+%  [single_dot, mask, info] = vcd_singledot(params)
 % 
 % Purpose:
 %   Create a simple dot image for experimental display.
@@ -11,7 +11,7 @@ function [single_dot, mask, info, params] = vcd_singledot(params)
 %   * im 57:64  right dots 
 %   Angles are evenly spaced between 0-359 degrees + half a shift away from
 %   vertical to avoid ill-defined response options. (0 deg = 12 o'clock.)
-%   Location angles turn out to be: 11.25 33.75 56.25 78.75 101.25 123.75
+%   Location angles are: 11.25 33.75 56.25 78.75 101.25 123.75
 %   146.25 11.25 33.75 56.25 78.75 101.25 123.75 146.25 326.25 348.75 in
 %   deg.
 % 
@@ -55,11 +55,26 @@ function [single_dot, mask, info, params] = vcd_singledot(params)
 %   masks          : (uint8) alpha masks  used for VCD experiment, to crop out image edges:
 %                      height (pixels) by width (pixels))
 %   info           : (table) info about sinlge dot images
-%    unique_im    angle_i    pos_i    stim_pos     angle_deg    eccen_deg    angle_rad    delta_deg_ref    dot_xpos_pix    dot_ypos_pix
-%        49          1         1      {'left' }      11.25          4         0.19635            0             1029            193     
-%      ....
-%       366         16         2      {'right'}     363.75          4          6.3486           15              983            187     
-%   params         : updated params struct
+%      unique_im     : (double) unique image nr for each dot location: 
+%                     range 49-64 for core images, 303-366 for WM test
+%                     images.
+%      stim_pos      : (cell) stimulus position, same as stim_loc_i but
+%                           human readable ({'left'} or {'right'})
+%      stim_pos_i    : (double) stimulus position index. 1=left, 2=right
+%      angle_deg     : (double) dot angle in degrees (0 = 12 o'clock).
+%      angle_i       : (double) same as angle_deg but indexed 1
+%                           (smallest: 11.25 deg) to 8 (largest: 348.75 deg)
+%      eccen_deg     : (double) eccentricity of dot (deg) 
+%      angle_rad     : (double) dot angle in radians.
+%      delta_deg     : (double) dot angle relative from core dot angle:
+%                             -15, -5, +5, +15 (deg)
+%      delta_deg_i   : (double) same as delta_deg but indexed 1: -15 deg
+%                             2: -5 deg, 3: +5 deg, or 4: +15 deg.            
+%      dot_xpos_pix  : (double) x-position of dot angle in image space (pixels)
+%      dot_ypos_pix  : (double) y-position of dot angle in image space (pixels)
+%      is_in_img_ltm : (logical) whether the dot location is part of the
+%                           subselected stimuli used in imagery and long-term
+%                            memory task.
 %
 % Written by Eline Kupers 2024/12, updated 2025/04
 
@@ -91,7 +106,11 @@ simple_dot_mask = (Y - centerY).^2 ...
 simple_dot_mask_inv = (~simple_dot_mask);
 
 % Smooth circle edge (anti alias) with a Savitzky-Golay sliding polynomial filter
-smooth_dot = dealias(double(simple_dot_mask), 0.4, 0.4, 2, 6);
+smooth_dot = dealias(double(simple_dot_mask), ...
+                     params.stim.dot.antialias.fcutoff_x, ...
+                     params.stim.dot.antialias.fcutoff_y, ...
+                     params.stim.dot.antialias.butterworth_order, ...
+                     params.stim.dot.antialias.tapered_pad_pix);
 
 % rescale range to [1 255]
 pixelrange = [1 255]; % pixel range
@@ -139,7 +158,7 @@ all_angles_rad = deg2rad(all_angles_deg);
 % add conditions to table
 stim_loc      = repmat({'left','right'},(length(nr_angles)/2),length(dot_ref_locs)); % stim loc refers to hemifield on display. We divide nr angles by 2, because they contain both L/R
 stim_loc_idx  = repmat([1,2],(length(nr_angles)/2),length(dot_ref_locs)); % stim loc refers to hemifield on display. We divide nr angles by 2, because they contain both L/R
-ang_idx       = repmat(nr_angles,1,length(dot_ref_locs));
+dot_ang_idx       = repmat(nr_angles,1,length(dot_ref_locs));
 dot_angle_deg = reshape(all_angles_deg',1,[])';
 dot_eccen     = repmat(params.stim.dot.iso_eccen, size(dot_angle_deg,1),1);
 dot_xpos_pix  = reshape(all_xpos_pix',1,[])';
@@ -147,24 +166,30 @@ dot_ypos_pix   = reshape(all_ypos_pix',1,[])';
 
 dot_radians   = reshape(all_angles_rad',1,[])';
 dot_ref_locs  = repelem(dot_ref_locs,length(params.stim.dot.ang_deg))';
+dot_ref_loc_idx = repelem([0:length(params.stim.dot.delta_from_ref)],length(params.stim.dot.ang_deg))';
 unique_ref_im = reshape(params.stim.dot.unique_im_nrs_WM,4,[])';
 unique_im     = [params.stim.dot.unique_im_nrs, unique_ref_im(:)'];
+ltm_img_bool  = ismember(unique_im,params.stim.dot.imagery_im_nr)';
+assert(sum(ltm_img_bool)==8);
 
 info = table(unique_im(:), ... 
-             ang_idx(:), ...
-             stim_loc_idx(:),...
              stim_loc(:), ...
+             stim_loc_idx(:),...
              dot_angle_deg(:), ...
+             dot_ang_idx(:), ...
              dot_eccen(:),...
              dot_radians(:), ...
-             dot_ref_locs, ...
+             dot_ref_locs(:), ...
+             dot_ref_loc_idx(:),...
              dot_xpos_pix(:), ...
-             dot_ypos_pix(:));
+             dot_ypos_pix(:), ...
+             ltm_img_bool(:));
          
 % add column names
-info.Properties.VariableNames = {'unique_im','angle_i','pos_i','stim_pos','angle_deg','eccen_deg','angle_rad','delta_deg_ref','dot_xpos_pix','dot_ypos_pix'};
+info.Properties.VariableNames = {'unique_im','stim_pos','stim_pos_i','angle_deg','angle_i',...
+    'eccen_deg','angle_rad','delta_deg','delta_i','dot_xpos_pix','dot_ypos_pix', 'is_in_img_ltm'};
 
-% Store
+% Store if requested
 if params.stim.store_imgs
     fprintf('\nStoring images..')
     saveDir = fileparts(fullfile(params.stim.dot.stimfile));
@@ -177,19 +202,34 @@ if params.stim.store_imgs
 end
 
 
+
+
+%% Visualize if requested
 if params.verbose
-    % debug figure
+    makeprettyfigures;
+    if params.stim.store_imgs
+        saveFigDir = fullfile(vcd_rootPath,'figs',params.disp.name,'single_dot','visual_checks');
+        if ~exist(saveFigDir,'dir'), mkdir(saveFigDir); end
+    end
+    %% Make PNG image of dot alone:
+    if params.store_imgs
+        imwrite(single_dot, fullfile(vcd_rootPath,'figs',dispname,'single_dot',sprintf('singledot.png')));
+    end
+    
+    %% Visualize effect of alpha transparency mask
     figure(99); clf;
     subplot(131); imagesc(single_dot); colormap gray; axis image; set(gca, 'CLim', [1 255]);
-    title('simple dot'); xlabel('pixels'); ylabel('pixels')
+    title('single dot'); xlabel('pixels'); ylabel('pixels')
     subplot(132); imagesc(mask); colormap gray; axis image;  set(gca, 'CLim', [1 255]);
     title('alpha mask'); xlabel('pixels'); ylabel('pixels')
     subplot(133); imagesc(single_dot, 'AlphaData',mask); colormap gray; axis image;  set(gca, 'CLim', [1 255]);
     title('dot+alpha mask'); xlabel('pixels'); ylabel('pixels')
+
+    if params.store_imgs 
+        print(fullfile(saveFigDir,'singledot_alphamask'),'-dpng','-r150');
+    end
     
-    saveDir = fullfile(vcd_rootPath,'figs',params.disp.name,'simple_dot');
-    if ~exist(saveDir,'dir'), mkdir(saveDir); end;
-    
+    %% Visualize reference location vs offset locations for WM images
     cmap = [0,0,0; lines(4)];
     sz = 50*ones(1,5);
     for ii = params.stim.dot.unique_im_nrs
@@ -204,40 +244,75 @@ if params.verbose
         pax.ThetaZeroLocation = 'top';
         pax.ThetaDir = 'clockwise';
         pax.FontSize = 20;
-        
-        title(sprintf('Simple dot location %d + ref: [%d,%d,0,%d,%d]',ii, params.stim.dot.delta_from_ref));
-        print(fullfile(saveDir,sprintf('%02d_simpledot', ii)),'-dpng','-r150');
+        if params.store_imgs
+            title(sprintf('Single dot location %d + ref: [%d,%d,0,%d,%d]',ii, params.stim.dot.delta_from_ref));
+            print(fullfile(saveFigDir,sprintf('%02d_singledot', ii)),'-dpng','-r150');
+        end
     end
+    
+    
+    %% All dot locations per hemifield with "fake" fixation circle
+    bckground = uint8(ones(params.disp.h_pix,params.disp.w_pix))*params.stim.bckgrnd_grayval;
+    im1 = repmat(bckground,[1 1 3]);
+    
+    for ang = params.stim.dot.ang_deg
+        
+        angle = deg2rad(ang);
+        [x_shift,y_shift] = pol2cart(angle,params.stim.dot.iso_eccen);
+    
+        ys = params.disp.yc + round(y_shift*params.disp.ppd);
+        xs = params.disp.xc + round(x_shift*params.disp.ppd);
+        dot_halfsz = (size(single_dot,1)/2);
+        dot_coords_x = (xs - dot_halfsz) : (xs + dot_halfsz -1);
+        dot_coords_y = (ys - dot_halfsz) : (ys + dot_halfsz -1);
+    
+        im1(dot_coords_y, dot_coords_x,:) = single_dot;
+    end
+    
+    figure;
+    imshow(im1,[1 255]);
+    hold on;
+    h0 = drawcircle('Center',[params.disp.xc,params.disp.yc],'Radius',11,'color', [1 1 1],'LineWidth',6);
+    h0.InteractionsAllowed = 'none';
+    title('single dot locations - both hemifields');
+    axis image;
+    if params.store_imgs
+        set(gcf, 'InvertHardCopy', 'off');
+        print(fullfile(saveFigDir,'singledot_all_loc'),'-dpng','-r150');
+    end
+    
+    %% Visualize individual dot locations
+    im1 =double(ones(params.disp.h_pix,params.disp.w_pix))*0.5; % gray background
+    dot_halfsz = (size(single_dot,1)/2)-0.5;
+    dot_ref_locs = [0, params.stim.dot.delta_from_ref];
+    for aa = 1:length(info.dot_xpos_pix)
+        
+        im_nr = info.unique_im(aa);
+        xpos_dots_to_plot = info.dot_xpos_pix(aa);
+        ypos_dots_to_plot = info.dot_ypos_pix(aa);
+        dlta = find(info.delta_deg_ref(aa)==[0,params.stim.dot.delta_from_ref]);
+        
+        figure(99); clf;
+        imshow(im1,[0 1]);
+        hold all;
+        h0 = drawcircle('Center',[params.disp.xc,params.disp.yc],'Radius',11,'color', [1 1 1],'LineWidth',6);
+        h0.InteractionsAllowed = 'none';
+        h1 = drawcircle('Center',[xpos_dots_to_plot,ypos_dots_to_plot],'Radius',dot_halfsz,'color',[1 1 1],'EdgeAlpha',0);
+        h1.InteractionsAllowed = 'none';
+        h1.FaceAlpha=1;
+        
+        title(sprintf('Angle: %2.2f; Delta: %2.2f',info.angle_deg(aa),dot_ref_locs(dlta)), 'FontSize',20);
+        axis image tight;
+        set(gcf, 'InvertHardCopy', 'off');
+        if params.stim.store_imgs
+            print(fullfile(saveFigDir,sprintf('%02d_singledot_delta%02d', im_nr,dlta-1)),'-dpng','-r150');
+        end
+    end
+    
     
 end
 
-% debug figure
-%     subplot(2,5,ii+5)
-%     if ii == 1
-%         ax = polarscatter(info.ori_rad(strcmp(info.stim_pos,{'right'})& info.delta_deg_ref==dot_ref_locs(ii)), info.eccen_deg(strcmp(info.stim_pos,{'right'})& info.delta_deg_ref==dot_ref_locs(ii)),[],'k');
-%     else
-%         ax = polarscatter(info.ori_rad(strcmp(info.stim_pos,{'right'})& info.delta_deg_ref==dot_ref_locs(ii)), info.eccen_deg(strcmp(info.stim_pos,{'right'})& info.delta_deg_ref==dot_ref_locs(ii)),[],cmap2);
-%     end
-%     ax.LineWidth = 3;
-%     title(sprintf('Right dot location ref: %d', dot_ref_locs(ii)));
-% 
-% 
-% figure(2); clf;
-% ax = polarscatter(info.ori_rad, info.eccen_deg,[],'k');
-% ax.LineWidth = 3;
-%  title('ALL dot locations')
-%     
-% figure(3); clf;
-% ax = polarscatter(info.ori_rad(info.delta_deg_ref==0), info.eccen_deg(info.delta_deg_ref==0),[],'k');
-% ax.LineWidth = 3;
-% title('unique im dot locations')
-
-
-
-
 return
-
-
 
 
 

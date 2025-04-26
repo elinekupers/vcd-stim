@@ -1,24 +1,28 @@
-function [scenes,ltm_lures,wm_im, im_order,info] = vcd_naturalscenes(params)
+function [scenes,ltm_lures,wm_im,info] = vcd_naturalscenes(params)
 % VCD function to load and resize/square pix values for natural scenes:
 %
-%  [scenes,lures,cblind,im_order,info,params] = vcd_naturalscenes(params)
+%  [scenes,ltm_lures,wm_im,info] = vcd_naturalscenes(params)
 %
 % Purpose:
 %   Load subset of natural scene images used in the Natural Scenes Dataset
 %   for specified VCD experimental display. If params.store_imgs is set to
 %   true then this function will store the loaded images as a single mat
 %   file as defined by p.stim.ns.stimfile, e.g.: 
-%   fullfile(vcd_rootPath,'workspaces','stimuli','scenes.mat')
+%   fullfile(vcd_rootPath,'workspaces','stimuli',<disp_name>,'scenes_<disp_name>_YYYYMMDDTHHMMSS.mat')
 %
 % Requirements:
 %   1. csv file with png file names defined by p.stim.ns.infofile, e.g.: 
 %       fullfile(vcd_rootPath,'workspaces','scenes_info.csv')
 %   2. Folder with png images, defined by p.stim.ns.indivscenefiles, e.g.: 
 %       fullfile(vcd_rootPath,'workspaces','stimuli','RAW','vcd_natural_scenes')
-%   
+%
+% While loading and resizing scenes, we also create a struct "im_order" with
+% information in the order that images are loaded, including scene super 
+% and basic level semantic category, affordance type, scene loc, object 
+% location in scene, lure name, wm test im name, unique image number.
 %
 % INPUTS:
-%  p                  : struct with stimulus params, with the following fields
+%  params             : struct with stimulus params, with the following fields
 %   store_imgs        : store finalized scene images and info or not.
 %   disp.name         : name of used monitor (to check for squaring pixel values) (see vcd_getDisplayParams.m)
 %   stim.ns.infofile  : csv file name (see vcd_getStimulusParams.m)
@@ -38,21 +42,50 @@ function [scenes,ltm_lures,wm_im, im_order,info] = vcd_naturalscenes(params)
 %                       height (pixels) x width (pixels) x 3 (rgb) x 5
 %                       superordinate categories x 2 scene locations
 %                       (indoor/outdoor) x 3 obj locations (left/center/right)
-%                       x 4 lure types (1: most similar, 4 least similar)
+%                       x 4 lure image types (1: most similar, 4 least similar)
 %  wm_im        :   uint8 wm test images for each of the 30 VCD natural 
 %                   scenes (think of a change blindness experiment)
 %                   dimensions are width (pixels) x height (pixels) x 3
 %                   (rgb) x 5 superordinate categories x 2 scene locations
 %                   (indoor/outdoor) x 3 obj locations (left/middle/right)
-%                   x 4 change blindness types (1: easy_add, 2: hard_add,
+%                   x 4 wm image types (1: easy_add, 2: hard_add,
 %                   3: easy_remove, 4: hard_remove).
-%  im_order     :   270x8 table with information about scene super and basic
-%                   level semantic category, affordance type, scene loc,
-%                   object location in scene, lure name, change blindness
-%                   name, unique image number.
 %  info         :   Loaded csv from workspaces/stimuli/ with png file names
 %                   and scene/object category information. Has some overlap 
 %                   of information with im_order, such as category info.
+%      filename         : (cell) filename of original png.                
+%      unique_im        : (double) unique image nr for each object: range 65-430   
+%      superordinate    : (cell) superordinate semantic category label:
+%                           {'human','animal','object','food','place'}
+%      superordinate_i  : (double) same as superordinate, but indexed by nr
+%                           1:'human' through 5: 'place'    
+%      exemplar         : (cell) name for each image:
+%                           {'face','cat','giraffe','donut',...
+%                           'banana',vase','bus',...
+%                           'bathroom','building'};
+%      exemplar_i       : (double) index for each individual image within a
+%                           superordinate class: 1-6 faces, 1-6 animals,
+%                           1-6 food items, 1-6 objects, 1-6 places
+%      basic           : (double) basic semantic category label:
+%                           {'indoor', 'outdoor'}
+%      basic_i          : (double) same as basic, but indexed by nr
+%                           1: indoor, 2: outdoor
+%      subordinate      : (cell) subordinate semantic category label, one
+%                           of three object spatial locations relative to
+%                           central fixation circle: {'left','center','right'};
+%      subordinate_i    : (double) same as subordinate, but indexed by nr
+%                           1:left, 2: center, 3: right. 
+%      obj_act          : (cell) object affordance inferred by the experimenter 
+%                          {'greet','grasp','walk','observe'}
+%      obj_act_1        : (double) same as obj_act, but indexed by nr
+%                           1:greet, 2: grasp, 3: walk, 4:observe
+%      is_in_img_ltm    : (logical) whether the scene is part of the
+%                           subselected stimuli used in imagery and
+%                           long-term memory task.
+%      is_lure          : (double) whether the scenes are lures for long-
+%                           term memory task: ordered 1-6. Where 1 is most
+%                           similar to core scene and 6 is least similar.
+%                           Note that some core scenes only have 5 lures.
 %
 % Written by Eline Kupers 2024/12, updated 2025/04
 %
@@ -68,60 +101,63 @@ if isempty(d)
     error('[%s]: Infofile cannot be found!',mfilename)
 end
 
-% Read info table, we import as char, other the ns_loc and obj_loc columns
-% are converted to NaNs. One annoying part is that we have to convert image
-% numbers back to integers (and using a loop because matlab won't zero pad)
-opts = detectImportOptions(fullfile(d(end).folder, d(end).name));
-opts = setvartype(opts,'char');  % or 'string'
-info = readtable(fullfile(d(end).folder, d(end).name),opts);
-
-for ii = 1:length(info.unique_im_nr)
-    unique_im_nrs(ii) = str2num(info.unique_im_nr{ii});
-end
-[~,idx0] = intersect(params.stim.ns.unique_im_nrs,unique_im_nrs);
+% Read info table
+info = readtable(fullfile(d(end).folder, d(end).name));
+[~,idx0] = intersect(params.stim.ns.unique_im_nrs,info.unique_im);
 
 % Define superordinate and basic categories, and number of exemplars per basic category
-superordinate = unique(info.superordinate,'stable'); % 4 superordinate categories
-basic         = unique(info.basic,'stable');         % basic
-ns_loc        = unique(info.ns_loc,'stable');        % indoor/outdoor
-obj_loc       = unique(info.obj_loc,'stable');       % dominant object location
-ns_loc(find(~cell2mat(cellfun(@isempty, regexp(ns_loc,'NaN'), 'UniformOutput', false))))=[];
-obj_loc(find(~cell2mat(cellfun(@isempty, regexp(obj_loc,'NaN'), 'UniformOutput', false))))=[];
+superordinate = unique(info.superordinate,'stable'); % 5 superordinate categories
+basic         = unique(info.basic,'stable');         % indoor/outdoor
+subordinate   = unique(info.subordinate,'stable');   % dominant object location
+
+% Delete empties
+basic(cellfun(@isempty, basic)) = [];
+subordinate(cellfun(@isempty, subordinate)) = [];
 
 % WM image filenames
 wm_test_im_name = repmat(params.stim.ns.change_im,1,length(idx0));
 
+% unique image nrs
+unique_im       = params.stim.ns.unique_im_nrs;
+
 % Get info about images
-n_scenes          = length(idx0)*length(ns_loc)*length(obj_loc);
-n_ltm_lures       = length(params.stim.ns.lure_im);
-n_wm_im = length(params.stim.ns.change_im);
+n_scenes     = length(idx0)*length(basic)*length(subordinate);
+n_ltm_lures  = length(params.stim.ns.lure_im);
+n_wm_im      = length(params.stim.ns.change_im);
 
 % Predefine im_order table
 n_cols   = n_scenes + (n_scenes*n_ltm_lures) + (n_scenes*n_wm_im);
-im_order = table(NaN(n_cols,1),cell(n_cols,1),cell(n_cols,1),cell(n_cols,1),cell(n_cols,1),cell(n_cols,1),NaN(n_cols,1),NaN(n_cols,1));
-im_order.Properties.VariableNames = {'unique_im','super_cat','basic_cat','affordance','scene_loc','obj_loc','change_im','lure_im'};
+im_order = table(NaN(n_cols,1), ...unique_im
+                cell(n_cols,1), ...super_cat
+                cell(n_cols,1), ...exemplar
+                cell(n_cols,1), ...affordance
+                cell(n_cols,1), ...basic_cat
+                cell(n_cols,1), ...sub_cat
+                NaN(n_cols,1), ... wm change_im
+                NaN(n_cols,1)); ...lure_im
+im_order.Properties.VariableNames = {'unique_im','super_cat','exemplar','affordance','basic_cat','sub_cat','change_im','lure_im'};
 
 % Preallocate space for images
 scenes0 = uint8(ones(params.stim.ns.og_res_stim,params.stim.ns.og_res_stim,3,...
-    length(superordinate), length(ns_loc),length(obj_loc)));
+    length(superordinate), length(basic),length(subordinate)));
 wmtest0 = uint8(ones(params.stim.ns.og_res_stim,params.stim.ns.og_res_stim,3,...
-    length(superordinate), length(ns_loc),length(obj_loc),n_ltm_lures));
+    length(superordinate), length(basic),length(subordinate),n_ltm_lures));
 ltmlures0 = uint8(ones(params.stim.ns.og_res_stim,params.stim.ns.og_res_stim,3,...
-    length(superordinate), length(ns_loc),length(obj_loc),n_wm_im));
+    length(superordinate), length(basic),length(subordinate),n_wm_im));
 
 
-%% Loop over superordinate, inside/outside, and varying object location images
+%% Loop over superordinate, basic (inside/outside), and subordiante (object location) images
 counter = 1;
 
 for ss = 1:length(superordinate)
-    for ex = 1:length(ns_loc)
-        for bb = 1:length(obj_loc)
+    for ex = 1:length(basic)
+        for bb = 1:length(subordinate)
             
             % Get scene file name from info table
             im_png = info.filename{ ...
                 strcmp(info.superordinate,superordinate(ss)) & ...
-                strcmp(info.ns_loc,ns_loc(ex)) & ...
-                strcmp(info.obj_loc,obj_loc(bb))};
+                strcmp(info.basic,basic(ex)) & ...
+                strcmp(info.subordinate,subordinate(bb))};
             
             d = dir(fullfile(params.stim.ns.indivscenefile, im_png));
             
@@ -132,9 +168,7 @@ for ss = 1:length(superordinate)
             im_order.super_cat(counter) = superordinate(ss);
             im_order.basic_cat(counter) = info.basic(bb);
             im_order.affordance(counter)= info.obj_act(bb);
-            im_order.scene_loc(counter) = ns_loc(ex);
-            im_order.obj_loc(counter)   = obj_loc(bb);
-            im_order.unique_im(counter) = unique_im_nrs((ex-1)*length(obj_loc) + bb + (ss-1)*(length(ns_loc)*length(obj_loc)));
+            im_order.unique_im(counter) = unique_im((ex-1)*length(subordinate) + bb + (ss-1)*(length(basic)*length(subordinate)));
             im_order.lure_im(counter)   = NaN;
             im_order.change_im(counter) = NaN;
             
@@ -142,7 +176,7 @@ for ss = 1:length(superordinate)
             
             counter = counter+1;
             
-            % Find corresponding change blindness images
+            % Find corresponding wm test image images
             for cb_idx = 1:n_wm_im
                 
                 % Find image filename in info table
@@ -154,19 +188,19 @@ for ss = 1:length(superordinate)
                 d = dir(fullfile(params.stim.ns.indivscenefile,...
                     'changes', cb_im_name));
                 if isempty(d)
-                    error('[%s]: can''t find change blindness image file',mfilename)
+                    error('[%s]: can''t find wm test image file',mfilename)
                 end                
                 % Load image into array
                 wmtest0(:,:,:,ss,ex,bb,cb_idx) = imread(fullfile(d.folder,d.name));
 
                 % Keep track of category, etc.
                 im_order.super_cat(counter) = superordinate(ss);
-                im_order.basic_cat(counter) = info.basic(bb);
+                im_order.exemplar(counter)  = info.exemplar(bb);
                 im_order.affordance(counter)= info.obj_act(bb);
-                im_order.scene_loc(counter) = ns_loc(ex);
-                im_order.obj_loc(counter)   = obj_loc(bb);
-                im_order.unique_im(counter) = params.stim.ns.unique_im_nrs_WM(cb_idx+((ex-1)*length(obj_loc) + bb + (ss-1)*(length(ns_loc)*length(obj_loc))));
-                im_order.lure_im(counter)   = NaN;
+                im_order.basic_cat(counter) = basic(ex);
+                im_order.sub_cat(counter)   = subordinate(bb);
+                im_order.unique_im(counter) = params.stim.ns.unique_im_nrs_WM(cb_idx+((ex-1)*length(subordinate) + bb + (ss-1)*(length(basic)*length(subordinate))));
+                im_order.lure_im(counter)   = false;
                 im_order.change_im(counter) = cb_idx;
                 
                 counter = counter+1;
@@ -175,8 +209,8 @@ for ss = 1:length(superordinate)
             
             
             % Now do the same for LTM lures (can't use the same look up,
-            % because nr of lures and change blindness varies per image)
-            if str2num(info.is_in_img_ltm{row_nr})
+            % because nr of lures and wm test images varies)
+            if info.is_in_img_ltm(row_nr)
             
                 for lure_idx = 1:n_ltm_lures
                     
@@ -196,13 +230,13 @@ for ss = 1:length(superordinate)
                     
                     % Keep track of category, etc.
                     im_order.super_cat(counter) = superordinate(ss);
-                    im_order.basic_cat(counter) = info.basic(bb);
+                    im_order.exemplar(counter)  = info.exemplar(bb);
                     im_order.affordance(counter)= info.obj_act(bb);
-                    im_order.scene_loc(counter) = ns_loc(ex);
-                    im_order.obj_loc(counter)   = obj_loc(bb);
-                    im_order.unique_im(counter) = params.stim.ns.unique_im_nrs_LTM_lures((ex-1)*length(obj_loc) + bb +  (ss-1)*(length(ns_loc)*length(obj_loc)));
+                    im_order.basic_cat(counter) = basic(ex);
+                    im_order.sub_cat(counter)   = subordinate(bb);
+                    im_order.unique_im(counter) = params.stim.ns.unique_im_nrs_LTM_lures((ex-1)*length(subordinate) + bb +  (ss-1)*(length(basic)*length(subordinate)));
                     im_order.lure_im(counter)   = lure_idx;
-                    im_order.change_im(counter) = NaN;
+                    im_order.change_im(counter) = false;
                     
                     counter = counter+1;
                 end
@@ -220,11 +254,11 @@ if ~isempty(params.stim.ns.dres) && ~isequal(params.stim.ns.dres,1)
     scenes_rz = reshape(scenes0,size(scenes0,1),size(scenes0,2),size(scenes0,3), ...
         size(scenes0,4)*size(scenes0,5)*size(scenes0,6));
     
-    % collapse lure conditions
+    % collapse ltm lure conditions
     lures_rz = reshape(ltmlures0,size(ltmlures0,1),size(ltmlures0,2),size(ltmlures0,3), ...
         size(ltmlures0,4)*size(ltmlures0,5)*size(ltmlures0,6),size(ltmlures0,7));
     
-    % collapse change blindness conditions    
+    % collapse wm im conditions    
     wm_rz = reshape(wmtest0,size(wmtest0,1),size(wmtest0,2),size(wmtest0,3), ...
         size(wmtest0,4)*size(wmtest0,5)*size(wmtest0,6),size(wmtest0,7));
     
@@ -233,7 +267,7 @@ if ~isempty(params.stim.ns.dres) && ~isequal(params.stim.ns.dres,1)
     temp_ltm = cast([],class(lures_rz));
     temp_wm = cast([],class(wm_rz));
     
-    % loop over scenes, lures, clindness images
+    % loop over scenes, lures, wm images
     for pp = 1:size(scenes_rz,4)
         statusdots(pp,size(scenes_rz,4));
         
@@ -257,7 +291,7 @@ if ~isempty(params.stim.ns.dres) && ~isequal(params.stim.ns.dres,1)
             temp_ltm(:,:,:,pp,ll) = l1;
         end
         
-        % Loop over cblindness images
+        % Loop over wm images
         for kk = 1:n_wm_im
             c0 = double(wm_rz(:,:,:,pp,kk)); % image lum vals ranges from [0-255]
             c1 = uint8(imresize(c0,params.stim.ns.dres));
@@ -299,40 +333,52 @@ if params.verbose
     %% Visualize resized images
     makeprettyfigures;
     figure; set(gcf,'Position', [156    91   881   706],'color','w');
-    scenes0 = reshape(scenes,size(scenes,1),size(scenes,2),size(scenes,3),size(scenes,4)*size(scenes,5)*size(scenes,6));
+    scenes0    = reshape(scenes,size(scenes,1),size(scenes,2),size(scenes,3),size(scenes,4)*size(scenes,5)*size(scenes,6));
     ltmlures0  = reshape(ltm_lures,size(ltm_lures,1),size(ltm_lures,2),size(ltm_lures,3),size(ltm_lures,4)*size(ltm_lures,5)*size(ltm_lures,6),size(ltm_lures,7));
-    wmtest0 = reshape(wm_im,size(wm_im,1),size(wm_im,2),size(wm_im,3),size(wm_im,4)*size(wm_im,5)*size(wm_im,6),size(wm_im,7));
+    wmtest0    = reshape(wm_im,size(wm_im,1),size(wm_im,2),size(wm_im,3),size(wm_im,4)*size(wm_im,5)*size(wm_im,6),size(wm_im,7));
     
     for ss = 1:size(scenes0,4)
         
+        % Plot scene
         clf;
         imagesc(scenes0(:,:,:,ss));
+        
         title(sprintf('Im %02d resized',ss), 'FontSize',20);
         axis image; box off
         set(gca,'CLim',[1 255]);
         if params.stim.store_imgs
-            saveDir = fullfile(vcd_rootPath,'figs',params.disp.name,'ns','resized');
-            if ~exist(saveDir,'dir'), mkdir(saveDir); end
-            print(fullfile(saveDir, sprintf('ns_%02d', ss)),'-dpng','-r150');
+            saveFigDir1 = fullfile(vcd_rootPath,'figs',params.disp.name,'ns','visual_checks','resized_with_axes');
+            if ~exist(saveFigDir1,'dir'), mkdir(saveFigDir1); end
+            print(fullfile(saveFigDir1, sprintf('%03d_vcd_ns%02d', params.stim.ns.unique_im_nrs(ss), ss)),'-dpng','-r150');
+            
+            saveFigDir2 = fullfile(vcd_rootPath,'figs',params.disp.name,'ns','visual_checks','resized');
+            if ~exist(saveFigDir2,'dir'), mkdir(saveFigDir2); end
+            imwrite(scenes0(:,:,:,ss), fullfile(saveFigDir2, sprintf('%03d_vcd_ns%02d.png', params.stim.ns.unique_im_nrs(ss), ss)));
         end
         
         for ll = 1:size(ltmlures0,5)
-            clf;
-            imagesc(ltmlures0(:,:,:,ss,ll));
-            title(sprintf('Im %02d, LTM lure im %02d resized ',ss,ll), 'FontSize',20);
-            axis image; box off
-            set(gca,'CLim',[1 255]);
-            if params.stim.store_imgs
-                print(fullfile(saveDir, sprintf('ns_%02d_ltm_lure%02d', ss,ll)),'-dpng','-r150');
+            if ~isequal(ltmlures0(:,:,:,ss,ll),ones(size(ltmlures0,1),size(ltmlures0,2),size(ltmlures0,3)))
+                % Plot LTM lure image
+                clf; imagesc(ltmlures0(:,:,:,ss,ll));
+                title(sprintf('Im %02d, LTM lure im %02d resized ',ss,ll), 'FontSize',20);
+                axis image; box off
+                set(gca,'CLim',[1 255]);
+                
+                if params.stim.store_imgs
+                    print(fullfile(saveFigDir1, sprintf('%03d_vcd_ns%02d_ltm_lure%02d', params.stim.ns.unique_im_nrs_LTM_lures(ss), ss,ll)),'-dpng','-r150');
+                    imwrite(ltmlures0(:,:,:,ss,ll), fullfile(saveFigDir2, sprintf('%03d_vcd_ns%02d_ltm_lure%02d.png', params.stim.ns.unique_im_nrs_LTM_lures(ss), ss,ll)));
+                end
             end
-            
+            % Plot WM image
             clf;
             imagesc(wmtest0(:,:,:,ss,ll));
             title(sprintf('Im %02d, WM test im %02d resized',ss,ll), 'FontSize',20);
             axis image; box off
             set(gca,'CLim',[1 255]);
+            
             if params.stim.store_imgs
-                print(fullfile(saveDir, sprintf('ns_%02d_wm_test%02d', ss,ll)),'-dpng','-r150');
+                print(fullfile(saveFigDir1, sprintf('%03d_vcd_ns%02d_wm_im%02d',params.stim.ns.unique_im_nrs_WM(ss), ss,ll)),'-dpng','-r150');
+                imwrite(wmtest0(:,:,:,ss,ll), fullfile(saveFigDir2, sprintf('%03d_vcd_ns%02d_wm_im%02d.png', params.stim.ns.unique_im_nrs_WM(ss), ss,ll)));
             end
         end
     end
@@ -350,7 +396,7 @@ if any(strcmp(params.disp.name, {'7TAS_BOLDSCREEN32', 'PPROOM_EIZOFLEXSCAN'}))
     lures_sq = reshape(ltm_lures,size(ltm_lures,1),size(ltm_lures,2),size(ltm_lures,3), ...
         size(ltm_lures,4)*size(ltm_lures,5)*size(ltm_lures,6),size(ltm_lures,7));
     
-    % collapse change blindness category dim (w x h x 3 x 30 x 4)
+    % collapse wm category dim (w x h x 3 x 30 x 4)
     wm_sq = reshape(wm_im,size(wm_im,1),size(wm_im,2),size(wm_im,3), ...
         size(wm_im,4)*size(wm_im,5)*size(wm_im,6),size(wm_im,7));
     
@@ -378,21 +424,27 @@ if any(strcmp(params.disp.name, {'7TAS_BOLDSCREEN32', 'PPROOM_EIZOFLEXSCAN'}))
             axis image; box off
             set(gca,'CLim',[1 255]);
             if params.stim.store_imgs
-                saveDir = fullfile(vcd_rootPath,'figs',params.disp.name,'ns','resized_and_squared');
-                if ~exist(saveDir,'dir'), mkdir(saveDir); end
-                print(fullfile(saveDir, sprintf('ns_%02d', ss)),'-dpng','-r150');
+                saveFigDir1 = fullfile(vcd_rootPath,'figs',params.disp.name,'ns','visual_checks','resized_and_squared_with_axes');
+                if ~exist(saveFigDir1,'dir'), mkdir(saveFigDir1); end
+                print(fullfile(saveFigDir1, sprintf('%03d_vcd_ns%02d', params.stim.ns.unique_im_nrs(ss), ss)),'-dpng','-r150');
+                
+                saveFigDir2 = fullfile(vcd_rootPath,'figs',params.disp.name,'ns','visual_checks','resized_and_squared');
+                if ~exist(saveFigDir2,'dir'), mkdir(saveFigDir2); end
+                imwrite(temp_sc(:,:,:,ss), fullfile(saveFigDir2, sprintf('%03d_vcd_ns%02d.png', params.stim.ns.unique_im_nrs(ss), ss)));
             end
             
             for ll = 1:size(lures_sq,5)
-                clf;
-                imagesc(temp_ltm(:,:,:,ss,ll));
-                title(sprintf('Im %02d, ltm lure %02d resized & squared',ss,ll), 'FontSize',20);
-                axis image; box off
-                set(gca,'CLim',[1 255]);
-                if params.stim.store_imgs
-                    print(fullfile(saveDir, sprintf('ns_%02d_ltm_lure%02d', ss,ll)),'-dpng','-r150');
+                if ~isequal(temp_ltm(:,:,:,ss,ll),ones(size(ltmlures0,1),size(ltmlures0,2),size(ltmlures0,3)))
+                    clf;
+                    imagesc(temp_ltm(:,:,:,ss,ll));
+                    title(sprintf('Im %02d, ltm lure %02d resized & squared',ss,ll), 'FontSize',20);
+                    axis image; box off
+                    set(gca,'CLim',[1 255]);
+                    if params.stim.store_imgs
+                        print(fullfile(saveFigDir1, sprintf('%03d_vcd_ns%02d_ltm_lure%02d', params.stim.ns.unique_im_nrs_LTM_lures(ss),ss,ll)),'-dpng','-r150');
+                        imwrite(temp_ltm(:,:,:,ss,ll), fullfile(saveFigDir2, sprintf('%03d_vcd_ns%02d_ltm_lure%02d.png', params.stim.ns.unique_im_nrs_LTM_lures(ss), ss,ll)));
+                    end
                 end
-                
                 clf;
                 imagesc(temp_wm(:,:,:,ss,ll));
                 title(sprintf('Im %02d, wm test im %02d resized & squared',ss,ll), 'FontSize',20);
@@ -400,20 +452,21 @@ if any(strcmp(params.disp.name, {'7TAS_BOLDSCREEN32', 'PPROOM_EIZOFLEXSCAN'}))
                 set(gca,'CLim',[1 255]);
                 
                 if params.stim.store_imgs
-                    print(fullfile(saveDir, sprintf('ns_%02d_wm_im%02d', ss,ll)),'-dpng','-r150');
+                    print(fullfile(saveFigDir1, sprintf('%03d_vcd_ns%02d_wm_im%02d', params.stim.ns.unique_im_nrs_WM(ss),ss,ll)),'-dpng','-r150');
+                    imwrite(temp_wm(:,:,:,ss,ll), fullfile(saveFigDir2, sprintf('%03d_vcd_ns%02d_wm_im%02d.png', params.stim.ns.unique_im_nrs_WM(ss), ss,ll)));
                 end
             end
         end
     end
     
     %% Reshape back 
-    % Scene dims: (w x h x 3 x 5 super cat x 2 scene loc x 3 obj loc)
+    % Scenes 6 dims: (w x h x 3 x 5 super cat x 2 scene loc x 3 obj loc)
     scenes = reshape(temp_sc, size(scenes,1),size(scenes,2),size(scenes,3),...
                              size(scenes,4),size(scenes,5),size(scenes,6));
-    % Lure dims: (w x h x 3 x 5 super cat x 2 scene loc x 3 obj loc x 4 lure types)
+    % LTM lures 7 dims: (w x h x 3 x 5 super cat x 2 basic cat x 3 sub cat x 4 ltm lure images)
     ltm_lures  = reshape(temp_ltm, size(ltm_lures,1),size(ltm_lures,2),size(ltm_lures,3),...
                             size(ltm_lures,4),size(ltm_lures,5),size(ltm_lures,6),size(ltm_lures,7));
-    % Change blindness dims: (w x h x 3 x 5 super cat x 2 scene loc x 3 obj loc x 4 blindness types)
+    % WM ims 7 dims: (w x h x 3 x 5 super cat x 2 basic cat x 3 sub cat x 4 wm test images)
     wm_im = reshape(temp_wm, size(wm_im,1),size(wm_im,2),size(wm_im,3),...
                              size(wm_im,4),size(wm_im,5),size(wm_im,6),size(wm_im,7));
 
@@ -426,7 +479,7 @@ if params.stim.store_imgs
     fprintf('[%]: Storing images',mfilename);
     saveDir = fileparts(fullfile(params.stim.ns.stimfile));
     if ~exist(saveDir,'dir'), mkdir(saveDir); end
-    save(fullfile(sprintf('%s_%s_%s.mat',params.stim.ns.stimfile,params.disp.name,datestr(now,30))),'scenes','ltm_lures','wm_im', 'im_order','info,'-v7.3');
+    save(fullfile(sprintf('%s_%s_%s.mat',params.stim.ns.stimfile,params.disp.name,datestr(now,30))),'scenes','ltm_lures','wm_im', 'im_order','info','-v7.3');
 end
 
 

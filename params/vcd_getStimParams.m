@@ -1,53 +1,44 @@
 function stim = vcd_getStimParams(varargin)
 % VCD function to get stimulus parameters:
 %
-%   stim = vcd_getStimParams(['stim_class',{'all'},] ...
-%                            ['disp_name','7TAS_BOLDSCREEN32',] ...
+%   stim = vcd_getStimParams(['disp_name','7TAS_BOLDSCREEN32',] ...
 %                            ['load_params',false,] ...
-%                            ['store_params',true,] ...
-%                            ['overwrite_randomized_params',false]);
+%                            ['store_params',true,], ...
+%                            ['saveInfoDir', fullfile(vcd_rootPath,'workspaces','info')]);
 %
 % Stimulus params such as size and location will depend on display params.
 %
-% !!WARNING!! There is a randomization component involved in creating some
-% stimuli (e.g., orientation of gabor stimuli or dot locations). If you
-% don't want this, this leave the fifth argument
-% (overwrite_randomized_params) empty (default is set to false) or set to
-% false. If you do want regenerate probabilistic params, set the fifth
-% argument to true and some stimulus values will change.
+% All parameters are deterministic, meaning there is NO randomization 
+% component involved in creating these stimulus parameters.
 %
 % INPUTS:
-%  stim_class                  : Stimulus class to load params, choose from 
-%                                 'gabor','rdk','dot','obj','ns','all' (default is 'all') 
-%  disp_name                   : Display name to load params (see vcd_getDisplayParams.m)
-%                                 Default: '7TAS_BOLDSCREEN32'
-%  load_params                 : Load prior stored parameters or not. Default: true
-%  store_params                : Store generated parameters or not. Default: true
-%  overwrite_randomized_params : Overwrite stored parameters and regenerate 
-%                                 params with probabilistic/randomized element.
-%                                 Default: false 
+%  disp_name      : Display name to load params (see vcd_getDisplayParams.m)
+%                   Default: '7TAS_BOLDSCREEN32'
+%  load_params    : Load prior stored parameters or not. Default: true
+%  store_params   : Store generated parameters or not. Default: true
+%  save_info_dir  : Where to store generated parameters?. 
+%                   Default: fullfile(vcd_rootPath,'workspaces','info')
 %
 % OUTPUT:
-%  stim                        : struct with stimulus params, including:
-%                                  * fix (fixation dot)
-%                                  * bckground (pink noise background).
-%                                  * cd (contrast decrement)
-%                                  * el (eyelink)
-%                                  * gabor
-%                                  * rdk (random dot motion kinetograms)
-%                                  * dot (single, simple dot)
-%                                  * obj (complex objects)
-%                                  % ns (natural scenes)
+%  stim           : struct with stimulus params, including:
+%                   * fix (fixation dot)
+%                   * bckground (pink noise background).
+%                   * cd (contrast decrement)
+%                   * el (eyelink)
+%                   * gabor
+%                   * rdk (random dot motion kinetograms)
+%                   * dot (single, simple dot)
+%                   * obj (complex objects)
+%                   % ns (natural scenes)
 %
 % Written by Eline Kupers November 2024 (kupers [at] umn [dot] edu)
 
 %% %%%%%%%%%%%%% PARSE INPUTS %%%%%%%%%%%%%
 p0 = inputParser;
-p0.addParameter('stim_class'                 , {'all'}, @(x) ischar(x) || any(strcmp(x, {'all','gabor','rdk','dot','obj','ns'})));
-p0.addParameter('disp_name'                  , '7TAS_BOLDSCREEN32', @(x) any(strcmp(x,{'7TAS_BOLDSCREEN32', 'KKOFFICE_AOCQ3277', 'PPROOM_EIZOFLEXSCAN', 'EKHOME_ASUSVE247'})));                   
-p0.addParameter('load_params'                , true   , @islogical);                    
-p0.addParameter('store_params'               , true   , @islogical); 
-p0.addParameter('overwrite_randomized_params', false  , @islogical); 
+p0.addParameter('disp_name'    , '7TAS_BOLDSCREEN32', @(x) any(strcmp(x,{'7TAS_BOLDSCREEN32', 'KKOFFICE_AOCQ3277', 'PPROOM_EIZOFLEXSCAN', 'EKHOME_ASUSVE247'})));                   
+p0.addParameter('load_params'  , true, @islogical);                    
+p0.addParameter('store_params' , true, @islogical); 
+p0.addParameter('save_info_dir', fullfile(vcd_rootPath,'workspaces','info'), @ischar);
 
 % Parse inputs
 p0.parse(varargin{:});
@@ -59,13 +50,8 @@ for ff = 1:length(rename_me)
 end
 clear rename_me ff p0
 
-if ischar(stim_class)
-    stim_class = {stim_class};
-end
-
-if any(strcmp(stim_class{:},'all'))
-    stim_class = {'gabor','rdk','dot','obj','ns'};
-end
+% Define stimulus classes
+stim_class = {'gabor','rdk','dot','obj','ns'};
 
 %% Obtain display params
 disp_params = vcd_getDisplayParams(disp_name);
@@ -85,7 +71,7 @@ if load_params
     end
 else 
     %% We will load params if requested
-    fprintf('[%s]: Define stim params and %s overwrite randomized params\n', mfilename, choose(overwrite_randomized_params,'will','will NOT'));
+    fprintf('[%s]: Define stim params\n', mfilename);
     
     % Setup struct
     stim = struct();
@@ -93,9 +79,9 @@ else
     %% GENERAL PARAMS
     stim.store_imgs          = true;                                       % Store images when creating them? (see s_createStimuli.m)
     
-    % we want to present images at a rate of 30 Hz
+    % we want to present images at a rate of 30 Hz (every 33 ms)
     stim.presentationrate_hz = 30;                                         % rate of stimulus presentation (Hz)
-    stim.f2f                 = disp_params.refresh_hz*(1/stim.presentationrate_hz); % frame-to-frame duration: nr of monitor refreshes 
+    stim.f2f                 = disp_params.refresh_hz*(1/stim.presentationrate_hz); % frame-to-frame duration: nr of monitor refreshes in between 2 (33-ms) frames
                                                                            % we want to wait to achieve 30 Hz presentation rate. 
                                                                            % so this number is 4 for a monitor refresh rate of 120 Hz and 2 for 60 Hz. 
 
@@ -110,10 +96,12 @@ else
     
     stim.scfactor            = 1;                                          % no global scaling (only for specific stimulus images)
     
-    % Default params to inherit (or overwrite)
+    
+    
+    % Define default params to inherit (or overwrite) by STIM CLASSES BELOW
     
     % **** TEMPORAL **** 
-    stimdur_frames           = stim.presentationrate_hz * 2.0;             % nr of (33 ms) presentation frames that results in 2 s (60 frames = 2 sec)
+    stimdur_frames           = stim.presentationrate_hz * 2.0;             % nr of (33 ms) presentation frames that results in 2 s (7TAS has 60 frames = 2 sec, PP room has 30 frames = 2 sec)
     
     % **** SPATIAL ****
     
@@ -148,7 +136,7 @@ else
     stim.bckground.mode             = 0;                                    % mode of pinknoise function, 0 means fixed amplitude spectrum + random phase
     stim.bckground.std_clip_range   = 3.5;                                  % when converting pixel values to 1-255 range, how many std's of image values do we allow before clipping the range
     
-    fprintf('*** %s SCREEN SIZE (hxw): FoV: [%2.2f,%2.2f] degrees visual angle. Resolution = [%02d,%02d] pixels.***\n', disp_params.name, disp_params.h_deg,disp_params.w_deg ,disp_params.h_pix,disp_params.w_pix);
+    fprintf('*** %s SCREEN SIZE (height x width): FoV: [%2.2f,%2.2f] degrees visual angle. Resolution = [%02d,%02d] pixels.***\n', disp_params.name, disp_params.h_deg,disp_params.w_deg ,disp_params.h_pix,disp_params.w_pix);
  
     %% FIXATION CIRCLE
     
@@ -171,7 +159,7 @@ else
     % * PP room EIZOFLEX screen = 9 pixels for center + 4 pixels for rim (split across both sides) = 13 pixels ~ 0.2020 deg.
     
     % THICK RIM Empirical diameters are:
-    % * BOLDscreen: 12 pixels for center + 10 pixels for rim (split across both sides) = 22 ~ 0.249 deg. 
+    % * BOLDscreen: 12 pixels for center + 10 pixels for rim (split across both sides) = 22 pixels ~ 0.249 deg. 
     % * PP room EIZOFLEX screen = 9 pixels for center + 7 pixels for rim (split across both sides) = 16 pixels ~ 0.2486 deg
     stim.fix.dotcenterdiam_pix      = round(stim.fix.dotcenterdiam_deg * disp_params.ppd);      % inner fixaton cirle diameter in pixels (boldscreen: 12 pixels, pproom: 9 pixels)
     stim.fix.dotthinborderdiam_pix  = round(stim.fix.dotthinborderdiam_deg * disp_params.ppd);  % total fixation circle diameter with thin border in pixels (during ITI/IBI) 
@@ -212,9 +200,13 @@ else
     t_gauss             = 1-(t_gauss*stim.cd.max_cd); % invert gaussian, we start from 1, then dip to 0.5 and go back to 1. 
     stim.cd.t_gauss     = t_gauss;
 
-    %% EYELINK PARAMS
-    % we manually place the eyelink calibration/validation points on the
-    % display. The distance between the center and 4 left/right/up/down
+    %% EYETRACKING BLOCK PARAMS
+    % Each run starts with an eyetracking "block", which mimics the 
+    % eyelink calibration/validation points on the display, and evokes a 
+    % pupil constriction response by adapting pupil to black screen and 
+    % flashing a white screen for 1 second.
+    % 
+    % The distance between the center and 4 left/right/up/down
     % points are set as [xc,yc] ± 265 pixels (BOLDscreen) 
     % or ± 194 pixels (EIZOFLEXSCAN). This results in dots at the following
     % BOLDscreen coordinates in pixels:
@@ -229,9 +221,12 @@ else
     % EMPIRICAL target distance:
     % * BOLDscreen: 265 pixels, which corresponds to 3.0059 degrees.
     % * PP room EIZOFLEX: 194 pixels, which corresponds to 3.0139 degrees.
+    % See vcd_setEyelinkParams.m for other parameters regarding Eyelink.
     stim.el.point2point_distance_deg = 3.0;                                % desired target distance (in deg) from fixation 
     stim.el.point2point_distance_pix = round((stim.el.point2point_distance_deg*disp_params.ppd/2))*2; % desired target distance in pixels
-    
+    stim.el.total_target_diam_pix    = stim.fix.dotthickborderdiam_pix;    % same as thick fixation circle (22 pixels for BOLDscreen)
+    stim.el.target_center_diam_pix   = stim.fix.dotcenterdiam_pix;         % same as inner fixation circle (10 pixels for BOLDscreen)
+
     
     %% STIM PARAMS
     for ii = 1:length(stim_class)
@@ -249,12 +244,10 @@ else
                 % GENERAL
                 p.unique_im_nrs   = [1:24];                                     % Unique image nrs associated with the CORE 24 Gabors
 
-                % TEMPORAL
-                % Fixed params
+                % TEMPORAL -- Fixed params
                 p.duration        = stimdur_frames;                             % frames (nr of monitor refreshes)
 
-                % SPATIAL
-                % Fixed params
+                % SPATIAL -- Fixed params
                 p.img_sz_deg      = parafov_circle_diam_deg;                    % desired height (and width) of stimulus support (deg)
                 p.img_sz_pix      = parafov_circle_diam_pix;                    % desired height (and width) of square stimulus support (pix)
                 p.og_res_stim     = p.img_sz_pix;                               % resolution of stored dot stimuli (in pixels)
@@ -267,18 +260,15 @@ else
                 % * EIZOFLEXSCAN: 32 pixels (0.4971 deg)
                 p.gauss_std_deg   = 0.5;                                        % desired standard deviation of gaussian window in degrees
                 p.gauss_std_pix   = round((p.gauss_std_deg * disp_params.ppd)/2)*2; % standard deviation of gaussian window in pixels.
-                
                 p.sf_cpd          = 4;                                          % spatial frequency (cycles/deg)
                 p.cycles_per_pix  = (p.sf_cpd/p.img_sz_deg)/disp_params.ppd;    % nr of cycles per image (pix)
-                
                 p.x0_deg          = x0_deg;                                     % x-center loc in deg (translation from 0,0)
                 p.y0_deg          = y0_deg;                                     % y-center loc in deg (translation from 0,0)
                 p.x0_pix          = x0_pix;                                     % x-center loc in pix (translation from 0,0)
                 p.y0_pix          = y0_pix;                                     % y-center loc in pix (translation from 0,0)
-                
                 p.ph_deg          = [0:(180/4):179];                            % 4 quadrature Gabor phases
                 
-                % Manipulated params
+                % SPATIAL -- Manipulated params
                 p.contrast        = [0.05, 0.10, 1];                            % Michelson contrasts [0-1] (fraction)
                 p.num_ori         = 8;                                          % gabor orientations (deg), 0 = 12 o'clock
                 p.ori_deg         = [0:(180/p.num_ori):179]+(0.5*(180/p.num_ori)); % rotate half shift away from vertical, to avoid ill-defined response options                                                                 
@@ -289,7 +279,7 @@ else
                 assert(isequal(sort(abs(90-p.ori_deg(1:(p.num_ori/2))),2),sort(abs(90-p.ori_deg(((p.num_ori/2)+1):p.num_ori)),2)))
                                                                                 
                 % WORKING MEMORY: gabor orientation deltas for test images
-                p.delta_from_ref  = [-15, -5, 5, 15];                           % how much should stim iso-eccen loc deviate from reference (WM: double epochs)
+                p.delta_from_ref   = [-15, -5, 5, 15];                          % how much should stim iso-eccen loc deviate from reference (WM: double epochs)
                                                                                 % the bigger the delta, the easier the judgement in a trial
                 p.unique_im_nrs_WM = [111:206];                                 % Unique image nrs associated with the 96 WM test images
 
@@ -305,7 +295,7 @@ else
                 p.imagery_sz_deg  = 5.658;                                      % QUIZ DOT PARAMS (STIM 2) desired diameter (deg) of the quiz dots image in an imagery trial to encourage subjects to create a vidid mental image.
                 p.imagery_sz_pix  = (round(p.img_sz_deg* disp_params.ppd)/2)*2; % QUIZ DOT PARAMS (STIM 2) diameter of quiz dot image in pixels (ensure even nr of pixels)
                 
-                p.unique_im_nrs_IMG_test  = [610:669];                          % Unique image nrs associated with the 8*20=60 IMG gabor test dot images
+                p.unique_im_nrs_IMG_test  = [551:710];                          % Unique image nrs associated with the 8*20=160 IMG gabor test dot images
 
                 % Add params to struct
                 stim.gabor = p;
@@ -318,38 +308,45 @@ else
                 
                 % GENERAL
                 p.unique_im_nrs    = [25:48];                                  % Unique image nrs associated with the CORE 24 RDK stimuli
-
-                % TEMPORAL
+                p.iscolor          = false;                                    % Use color or not? 
+                if p.iscolor
+                    p.square_pix_val = true;                                   % [IF YES: MAKE SURE TO SQUARE IMAGE VALS FOR CLUT]
+                else
+                    p.square_pix_val = false;
+                end
+                
+                % TEMPORAL -- fixed
+                % RDK specific
+                p.dots_size       = 3;                                         % single dot radius in pixels??
+                p.dots_color      = [255 255 255; 1 1 1]./255;                 % 50:50 white:black, color in RGB and converted to [0-1] as expected by stimulus creation function
+                p.max_dots_per_frame = 200;                                    % how many dots within a square support from (number is similar to Kiani lab, rokers lab aims for 150) and roughly matches to nr of pixels in aperture
+                p.dots_contrast   = 1;                                         % Michelson [0-1] (fraction)
                 p.duration        = stimdur_frames;                            % frames (nr of monitor refreshes)
-                p.dots_coherence  = [0.064, 0.128, 0.512];                     % fraction of coherent moving dots. Kiani lab uses usually one of these [0 0.032 0.064 0.128 0.256 0.512]
                 p.dots_speed      = (5*disp_params.ppd)/stim.presentationrate_hz; % pixels/frames (or 5 deg/s). For reference: Kiani lab uses usually 5 to 10 deg/s. Rokers lab uses 5 deg/s.
                 p.dots_interval   = 1;                                         % update dots every frame   (for references: Kiani's 75 hz refresh rate / 3 interval = 25 frames/sec)
                 p.dots_lifetime   = 0.1 * stim.presentationrate_hz;            % 3 frames / 0.1 seconds   
                 
-                % SPATIAL
-                p.img_sz_deg      = parafov_circle_diam_deg;                    % stimulus aperture diameter (deg)
-                p.img_sz_pix      = parafov_circle_diam_pix;                    % stimulus aperture diameter (pix)
-                p.og_res_stim     = p.img_sz_pix;                               % resolution of stored dot stimuli (in pixels)
+                % TEMPORAL -- manipulated
+                p.dots_coherence  = [0.064, 0.128, 0.512];                     % fraction of coherent moving dots. Kiani lab uses usually one of these [0 0.032 0.064 0.128 0.256 0.512]
+                
+                % SPATIAL -- fixed
+                p.img_sz_deg      = parafov_circle_diam_deg;                   % stimulus aperture diameter (deg)
+                p.img_sz_pix      = parafov_circle_diam_pix;                   % stimulus aperture diameter (pix)
+                p.og_res_stim     = p.img_sz_pix;                              % resolution of stored dot stimuli (in pixels)
                 p.dres            = (( (p.img_sz_pix/disp_params.ppd) /disp_params.h_deg * disp_params.h_pix) / p.og_res_stim);  % scale factor to apply
-                p.iscolor         = false;                                      % use color or not [[[IF WE USE COLOR: MAKE SURE TO SQUARE IMAGE VALS FOR CLUT]]
-                p.square_pix_val  = false;
-
-                p.num_mot_dir      = 8;                                         % number of sampled motion directions
+                p.x0_deg          = x0_deg;                                    % Desired x-center loc of stimulus in deg (translation from 0,0)
+                p.y0_deg          = x0_deg;                                    % Desired y-center loc of stimulus in deg (translation from 0,0)
+                p.x0_pix          = x0_pix;                                    % x-center loc in pix (translation from 0,0)
+                p.y0_pix          = y0_pix;                                    % y-center loc in pix (translation from 0,0)
+                
+                % SPATIAL -- manipulated
+                p.num_mot_dir      = 8;                                        % number of sampled motion directions
                 p.dots_direction   = [0:(360/p.num_mot_dir):359]+(0.5*(360/p.num_mot_dir)); % sample direction of coherent motion from [0-359] in deg (0 deg is aligned with 12 o'clock)
-                                                                                % turns out to be: [22.5   67.5  112.5  157.5  202.5  247.5  292.5 337.5]
+                                                                               % turns out to be: [22.5   67.5  112.5  157.5  202.5  247.5  292.5 337.5]
                 % ensure equal distance from cardinal meridians
                 assert(isequal(abs(0-p.dots_direction(1:(p.num_mot_dir/2))), abs(180-p.dots_direction(((p.num_mot_dir/2)+1):p.num_mot_dir))));
                 assert(isequal(abs(90-p.dots_direction(1:(p.num_mot_dir/2))), abs(270-p.dots_direction(((p.num_mot_dir/2)+1):p.num_mot_dir))));
-                                
-                % RDK specific
-                p.dots_size        = 3;                                         % single dot radius in pixels??
-                p.dots_color       = [255 255 255; 1 1 1]./255;                 % 50:50 white:black, color in RGB and converted to [0-1] as expected by stimulus creation function
-                p.max_dots_per_frame = 200;                                     % how many dots within a square support from (number is similar to Kiani lab, rokers lab aims for 150) and roughly matches to nr of pixels in aperture
-                p.dots_contrast    = 1;                                         % Michelson [0-1] (fraction)
-                p.x0_deg           = x0_deg;                                    % Desired x-center loc of stimulus in deg (translation from 0,0)
-                p.y0_deg           = x0_deg;                                    % Desired y-center loc of stimulus in deg (translation from 0,0)
-                p.x0_pix           = x0_pix;                                    % x-center loc in pix (translation from 0,0)
-                p.y0_pix           = y0_pix;                                    % y-center loc in pix (translation from 0,0)
+
                 
                 % WORKING MEMORY: motion direction deltas for test images
                 p.delta_from_ref   = [-15, -5, 5, 15];                          % how much should stim iso-eccen loc deviate from reference (WM: double epochs)
@@ -363,10 +360,10 @@ else
                 clear tmp 
 
                 % IMAGERY: 
-                p.imagery_im_nr    = p.unique_im_nrs(17:end);                   % SELECTED UNIQUE IMAGES (SUBSET of all 24) (only high coherence) 
-                p.imagery_sz_deg      = 5.658;                                  % desired diameter (degree) of the second, quiz dots image in an imagery trial to encourage subjects to create a vidid mental image.
-                p.imagery_sz_pix      = (round(p.img_sz_deg* disp_params.ppd)/2)*2; % diameter of quiz dot image (pixels) (ensure even nr of pixels)
-                p.unique_im_nrs_IMG_test  = [670:729];                          % Unique image nrs associated with the 8*20=60 IMG RDK test dot images
+                p.imagery_im_nr    = p.unique_im_nrs(17:end);                  % SELECTED UNIQUE IMAGES (SUBSET of all 24) (only high coherence) 
+                p.imagery_sz_deg   = 5.658;                                    % desired diameter (degree) of the second, quiz dots image in an imagery trial to encourage subjects to create a vidid mental image.
+                p.imagery_sz_pix   = (round(p.img_sz_deg* disp_params.ppd)/2)*2; % diameter of quiz dot image (pixels) (ensure even nr of pixels)
+                p.unique_im_nrs_IMG_test  = [711:870];                         % Unique image nrs associated with the 8*20=60 IMG RDK test dot images
 
                 % Add params to struct
                 stim.rdk = p;
@@ -405,6 +402,16 @@ else
                 % Alpha mask
                 p.alpha_mask_diam_pix = p.radius_pix+1;                          % add one pixel for alpha mask (EK: why 1?)
 
+                % Savitzky-Golay sliding polynomial filter (anti-aliasing
+                % circle edge) This filter is the product of a 2D low-pass
+                % Butterworth filters: one that cuts out the high
+                % frequencies in x direction, one that cuts high
+                % frequencies in the y direction.  
+                p.antialias.fcutoff_x         = 0.4;                             % Cutoff frequencies for x direction (dB)                                   
+                p.antialias.fcutoff_y         = 0.4;                             % Cutoff frequencies for y direction (dB)  
+                p.antialias.butterworth_order = 2;                               % Order of the Butterworth filter 
+                p.antialias.tapered_pad_pix   = 6;                               % Width of tapered padding (pixels)
+                
                 % DOT LOCATIONS
                 p.num_loc         = 16;                                          % number of equally spaced dot angles (deg), 0 = 12 o'clock
                 p.ang_deg         = [0:(360/p.num_loc):359]+(0.5*(360/p.num_loc)); % idealized angle of center dot loc in deg, 0 deg = 12 o'clock. rotate half a shift away from vertical, to avoid ill-defined response options
@@ -452,7 +459,7 @@ else
                 % IMAGERY: QUIZ DOT PARAMS
                 p.imagery_sz_deg   = [disp_params.w_deg/2, disp_params.h_deg];   % desired diameter (deg) of the second, quiz dots image in an imagery trial to encourage subjects to create a vidid mental image.
                 p.imagery_sz_pix   = [disp_params.xc,disp_params.h_pix];         % diameter of quiz dot image (pixels) (we already ensured even nr of pixels in display params function)
-                p.unique_im_nrs_IMG_test = [730:789];                            % Unique image nrs associated with the 8*20=60 IMG DOT test dot images
+                p.unique_im_nrs_IMG_test = [871:1030];                            % Unique image nrs associated with the 8*20=60 IMG DOT test dot images
                 
                 % Add params to struct
                 stim.dot = p;
@@ -513,7 +520,7 @@ else
                 p.basic_cat{1}       = {'facemale','facefemale','facefemale'};
                 p.basic_cat{2}       = {'small','small','large','large'};
                 p.basic_cat{3}       = {'tool','tool','food','food','vehicle','vehicle'};
-                p.basic_cat{4}       = {'building','building','tower'};
+                p.basic_cat{4}       = {'building','building','building'};
                 
                 p.sub_cat{1}         = {'damon','lisa','sophia'};
                 p.sub_cat{2}         = {'parrot','cat','bear','giraffe'};
@@ -544,7 +551,7 @@ else
                 % IMAGERY QUIZ DOT PARAMS
                 p.imagery_sz_deg      = 5.658;                              % desired diameter (degree) of the second, quiz dots image in an imagery trial to encourage subjects to create a vidid mental image.
                 p.imagery_sz_pix      = (round(p.img_sz_deg* disp_params.ppd)/2)*2; % pixel diameter of quiz dot image (ensure even nr of pixels)
-                p.unique_im_nrs_IMG_test = [790:849];                      % Unique image nrs associated with the 8*20=60 IMG OBJ test dot images
+                p.unique_im_nrs_IMG_test = [1031:1190];                      % Unique image nrs associated with the 8*20=60 IMG OBJ test dot images
 
                 % LTM PAIR
                 p.ltm_pairs          = [];                                       %%
@@ -587,14 +594,14 @@ else
                 % 5 superordinate semantic object categories
                 p.super_cat     = {'human','animal','food','object','place'};      
                 
-                % 2 basic semantic object categories (scene location)
+                % 5 x 2 basic semantic object categories (scene location)
                 p.basic_cat{1}  = {'indoor','outdoor'};
                 p.basic_cat{2}  = {'indoor','outdoor'};
                 p.basic_cat{3}  = {'indoor','outdoor'};
                 p.basic_cat{4}  = {'indoor','outdoor'};
                 p.basic_cat{5}  = {'indoor','outdoor'};
                 
-                % 3 subordinate categories (object spatial location)
+                % 5 x 1 or 2 exemplars + subordinate categories (object spatial location)
                 p.sub_cat{1,1}  = {'face1_left','face2_center','face3_right'};
                 p.sub_cat{1,2}  = {'face1_left','face2_center','face3_right'};
                 
@@ -632,16 +639,16 @@ else
 
                 % FOR LTM incorrect trials, we have very similar looking images called "lures":
                 p.lure_im       = {'lure01', 'lure02', 'lure03', 'lure04'};
-                p.unique_im_nrs_LTM_lures  = [551:610];                    % Unique image nrs associated with the 15*4=60 WM NS lure images
+                p.unique_im_nrs_LTM_lures  = [1491:1550];                   % Unique image nrs associated with the 15*4=60 WM NS lure images
 
-                % LTM PAIR
-                p.ltm_pairs     = [];                                       %%
+                % LTM PAIRED ASSOCIATES
+                p.ltm_pairs     = [];                                       %
                 
                 % IMAGERY 
-                p.imagery_im_nr          = p.unique_im_nrs([2,4,5,8,10,11,13,15,18,20,21,23,26,27,30]); % Half of the images will be used for IMG/LTM pairing (these are carefully handpicked! see scene_info csv file)
+                p.imagery_im_nr          = p.unique_im_nrs([2,4,5,8,10,11,13,15,18,20,21,23,26,27,30]); % Half of the images will be used for  IMG/LTM pairing (these are carefully handpicked! see scene_info csv file)
                 p.imagery_sz_deg         = p.img_sz_deg;                    % desired diameter (degree) of the second, quiz dots image in an imagery trial to encourage subjects to create a vidid mental image.
                 p.imagery_sz_pix         = p.img_sz_pix;                    % diameter of quiz dot image (pixels) (we already ensured even nr of pixels)
-                p.unique_im_nrs_IMG_test = [850:1149];                     % Unique image nrs associated with the 15*20=300 IMG NS test dot images
+                p.unique_im_nrs_IMG_test = [1191:1490];                     % Unique image nrs associated with the 15*20=300 IMG NS test dot images
                 
                 % Add params to struct
                 stim.ns = p;
@@ -657,9 +664,8 @@ else
     % Store params if requested
     if store_params
         fprintf('[%s]: Storing params..\n',mfilename)
-        saveDir = fullfile(vcd_rootPath,'workspaces','info');
-        if ~exist(saveDir,'dir'); mkdir(saveDir); end
-        save(fullfile(saveDir,sprintf('stim_%s_%s.mat',disp_params.name,datestr(now,30))),'stim')
+        if ~exist(save_info_dir,'dir'); mkdir(save_info_dir); end
+        save(fullfile(save_info_dir,sprintf('stim_%s_%s.mat',disp_params.name,datestr(now,30))),'stim')
     end
 end
 

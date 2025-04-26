@@ -1,117 +1,228 @@
 %% s_createStim.m
 %
-% Stand-alone script to create and store the stimuli shown in VCD core 
-% experiment.
+% Stand-alone script to create and store the stimuli presented in the VCD
+% core experiment, as well as the background and small fixation circle at
+% the center of the screen. This script will do the following: 
+%
+% % 1. Load or define display parameters.
+%      Users can pick from a list of 4 environments:
+%      * '7TAS_BOLDSCREEN32'  : BOLDscreen at the CMRR's 7 Tesla Actively Shielded MRI.
+%      * 'PPROOM_EIZOFLEXSCAN': Eizo Flexscan monitor at the CMRR's psychophysics lab.
+%      * 'KKOFFICE_AOCQ3277'  : AOC monitor in Kay office at CMRR (only used for testing purposes).
+%      * 'EKHOME_ASUSVE247'   : ASUS monitor in Eline's home (only used for testing purposes).
+%   This adjust stimulus parameters such that stimuli are the intended size.
 
 %% %%%%%%%%%%%%%%%%%%%
 %%%%%% PARAMETERS %%%% 
 %%%%%%%%%%%%%%%%%%%%%%
 
-p.verbose        = true; % visualize stimuli or not
-p.store_imgs   = true; % store visualization figures
+params = struct();
+params.verbose      = true; % visualize stimuli (true) or not (false)
+params.store_imgs   = true; % store visualization figures (true) or not (false)
 
 % Get display params
-dispname = '7TAS_BOLDSCREEN32'; % Choose from: '7TAS_BOLDSCREEN32';'KKOFFICE_AOCQ3277';'EKHOME_ASUSVE247';'PPROOM_EIZOFLEXSCAN'
-p.disp   = vcd_getDisplayParams(dispname);
+% Users can pick from a list of 4 environments (or add their own):
+%  * '7TAS_BOLDSCREEN32'  : BOLDscreen at the CMRR's 7 Tesla Actively Shielded MRI.
+%  * 'PPROOM_EIZOFLEXSCAN': Eizo Flexscan monitor at the CMRR's psychophysics lab.
+%  * 'KKOFFICE_AOCQ3277'  : AOC monitor in Kay office at CMRR (only used for testing purposes).
+%  * 'EKHOME_ASUSVE247'   : ASUS monitor in Eline's home (only used for testing purposes).
+% This function will use field of view and native refresh rate of monitor
+% to adjust stimulus pixel size and frame duration.
+dispname    = '7TAS_BOLDSCREEN32';
+params.disp = vcd_getDisplayParams(dispname);
 
-
-saveFigsFolder = fullfile(vcd_rootPath,'figs',dispname); % where to store visualization figures
+% Where to store visualization of stimuli (debug figures and PNGs)?
+saveFigsFolder = fullfile(vcd_rootPath,'figs',dispname); 
 if ~exist(saveFigsFolder,'dir'); mkdir(saveFigsFolder); end
 
 % Get stimulus parameters
-p.load_params                 = true; % if false, re-create params.
-                                      % if true, we load stored mat file
-p.store_params                = true; % if false, we don't store params. 
-                                      % if true, we store mat file in fullfile(vcd_rootPath,'workspaces','info')
-p.overwrite_randomized_params = false; % if false, we will use now hardcoded (once probabilistic) stimulus/experimental design params. Use this for reproducible results.
-                                       % if true, we do redefine all stimulus/experimental design params, including probabilistic params
-
-% Reset random number generator with arbitrary number (based on system clock) 
+% When loading stored parameters from file, it will search for a file called
+% "stim_<dispname>_*.mat" in fullfile(vcd_rootPath,'workspaces','info').
+% When storing generated parameters, we save the parameters as a .mat file
+% in "stim_<dispname>_YYYYMMDDTHHMMSS.mat" in fullfile(vcd_rootPath,'workspaces','info').
+params.load_params  = true;  % if true, we load from file. if false, define params.
+params.store_params = true;  % if false, we don't store params. if true, we store mat file in fullfile(vcd_rootPath,'workspaces','info')
+                                       
+% Reset random number generator with arbitrary number (based on system
+% clock). Early versions of Matlab use different generators for rand and
+% randn, hence we do it separately for each.
 rand('seed', sum(100*clock));
-p.rng.rand_seed  = rng; % store 
-randn('seed', sum(100*clock)); % early versions of Matlab use different generators for rand and randn.
-p.rng.randn_seed  = rng; % store 
+params.rng.rand_seed  = rng;   % store rand seed
+randn('seed', sum(100*clock)); 
+params.rng.randn_seed  = rng;  % store randn seed
 
 %% Define/Load stimulus params 
-% !!WARNING!! There is a randomization component involved in creating some
-% stimuli (e.g., orientation of gabor stimuli or dot locations). If you
-% don't want this, this leave the fifth argument:
-% "overwrite_randomized_params" empty (default is set to false) or set to
-% false.
-%
-% If you do want regenerate probabilistic params, set the fifth argument to
-% true and some stimulus values will change.
-%
-% Input 1: Stimulus class, choose from 'gabor','rdk','dot','obj','ns','all' (default is 'all')
-% Input 2: Display params struct (see vcd_getDisplayParams.m)
-% Input 3: Load prior stored parameters or not. 
-% Input 4: Store generated parameters or not. 
-% Input 5: Overwrite stored parameters and regenerate probabilistic params
-p.stim   = vcd_getStimParams('stim_class','all', ...
-                             'disp_name',p.disp.name, ...
-                             'load_params', p.load_params,...
-                             'store_params', p.store_params, ...
-                             'overwrite_randomized_params', p.overwrite_randomized_params); 
+% Load stimulus params, all parameters are deterministic (i.e., there is no
+% randomization involved in setting the stimulus parameters). This function
+% well get appropriate display params by calling vcd_getDisplayParams.m.
+
+params.stim   = vcd_getStimParams('disp_name',params.disp.name, ...       
+                                  'load_params', params.load_params, ...  
+                                  'store_params', params.store_params);  
 
 %% %%%%%%%%%%%%%%%%
 %%%%%% STIMULI %%%% 
 %%%%%%%%%%%%%%%%%%%
 
-%% Create background
-% Input 1: params struct 
-% Input 2: type: 'puzzle', 'dotring', or 'comb'
-% Input 3: rim width, choose from: 'skinny' (no blank space between noise
-%           and stim) or 'fat' (2 dva space between noise and stim) 
-% Input 4: number of unique noise images
+%% Background
+% We create a pinknoise (1/f) image for the entire monitor size, and
+% superimpose a mean gray luminance cutout. The center of this cutout can
+% be adjusted with pixoffset parameter.
+% If params.verbose = true, this function will make a PNG of each
+% background image, and a figure plotting image with image nr and axes.
+% If params.store_imgs = true, this function will store these figures in
+% fullfile(vcd_rootPath,'figs',dispname,'background').
 %
-% OUTPUT: bckgrnd_im uint8 images:
-%   height (1080 pixels) x width (1920 pixels) x 3 (rbg)
+% INPUTS:
+% * params      : parameter struct (requires display and stimulus parameters)
+% * cutout_type : what stimulus apertures to use to create cutout shape, choose from:
+%   - 'puzzle'    (union of center square and 2 parafoveal stimulus apertures in 2-stimulus array)
+%   - 'dotring'   (iso-eccentric ring that the single dot lives on) 
+%   - 'comb'      (union of puzzle and dotring)
+% * rim width   : what rim do you want, choose from: 
+%   - 'skinny'    (no additional "buffer zone" between  and pink noise background
+%   - 'fat'       (with additional "buffer zone": 1 degree added on each side of the cutout 
+% * num         : number of unique noise images (should be an integer, default is 1)
+% * pixoffset   : relative offset of [x,y] center in pixels from the native 
+%                 center of the monitor (BOLDscreen width 540 x height 960
+%                 pixels). Default is [0,0] pixels.
+%
+% OUTPUT: 
+% * bckgrnd_im  : (uint8) background images, height in pixels x width in pixels x 3 (rbg) x number of images (int) 
+%                 BOLDscreen dimensions are: height (1080 pixels) x width (1920 pixels)
 
 gaptype     = 'comb';
 borderwidth = 'fat';
-num         = 1;
-bckgrnd_im  = vcd_pinknoisebackground(p, ...
-                                     'gaptype',gaptype, ...
+num         = 272; % 271 MRI runs + 1 behavioral session
+bckgrnd_im  = vcd_pinknoisebackground(params, ...
+                                     'gaptype', gaptype, ...
                                      'borderwidth', borderwidth,...
-                                     'num',num); 
+                                     'num', num, ...
+                                     'pixoffset', [0,0]); 
 
-%% Fixation dot images
-% fix_im (uint8) is a 5D array containing unique fixation dot images: 
-%   height (24 pixels) x width (24 pixels) x 3 (rgb) x 5 luminance levels x 5 dot rims types (thin, thick, thick-left, thick-right, thick-both)
-% fix_mask (uint8) is a 4D array with alpha transparency masks: 
-%   height (24 pixels) x width (24 pixels) x 2 dot rims types (thin, thick)
-[fix_im, fix_mask, fix_info] = vcd_fixationDot(p);
+%% Fixation circle
+% vcd_fixationDot function creates 25 types of fixation circles, the full
+% crossing between 5 inner circle luminance levels and 5 rim types. 
+% If params.verbose = true, this function will make a PNG of each
+% fixation dot, and a figure with all dots in a 5x5 array.
+% If params.store_imgs = true, this function will store these figures in
+% fullfile(vcd_rootPath,'figs',dispname,'fix').
+%
+% INPUTS:
+% * params      : parameter struct (requires display and stimulus parameters)
+%
+% OUTPUTS:
+% * fix_im      : (uint8) unique fixation circle images, 5D array: 
+%                   height (24 pixels) x width (24 pixels) x 3 (rgb) 
+%                   x 5 luminance levels x 5 dot rims types 
+%                   Rim types are 1: thin white, 2: thick white, 
+%                   3: thick-red left, 4: thick-red right, 5: thick-red both
+% * fix_mask    : (uint8) alpha transparency masks, 4D array: 
+%                   height (24 pixels) x width (24 pixels) x 2 dot rims types (thin, thick)
+[fix_im, fix_mask, fix_info] = vcd_fixationDot(params);
 
-%% Gabor images
-% gabor (uint8) is a uint8 5D array containing unique gabor images: 
-%   height (354 pixels) x width (354 pixels) x 3 (rgb) x 24 unique images (8 ori x 3 contrasts) x 5 tilt offsets (0 + -15, -5, +5, +15 deg)
-% gbr_masks (uint8) is a uint8 4D array with alpha transparency masks: 
-%   height (354 pixels) x width (354 pixels) x 24 unique images x 5 tilt offsets
-[gabor, gbr_masks, gbr_info] = vcd_gabor(p);
+%% Gabors
+% vcd_gabor function creates 120 Gabor stimuli: 24 core and 96 working
+% memory test images.
+% If params.verbose = true, this function will make a PNG of each
+% gabor image, and a figure plotting gabors with image nr and axes as well 
+% as histograms of the pixel luminance.
+% If params.store_imgs = true, this function will store these figures in
+% fullfile(vcd_rootPath,'figs',dispname,'gabor').
+%
+% INPUTS:
+% * params      : parameter struct (requires display and stimulus parameters)
+%
+% OUTPUTS:
+% * gabors      : (uint8) 120 unique gabor images, 5D array: 
+%                   height (354 pixels) x width (354 pixels) x 3 (rgb) 
+%                   x 24 unique images (8 ori x 3 contrasts) 
+%                   x 5 orientation tilt offsets (0 + -15, -5, +5, +15 deg)
+% * masks       : (uint8) alpha transparency masks used by Psychtoolbox to
+%                   crop the edges of the square support, 4D array:
+%                   height (354 pixels) x width (354 pixels) 
+%                   x 24 unique images x 5 tilt offsets
+% * info        : table with stimulus information matching the gabor array
+[gabors, masks, info] = vcd_gabor(params);
 
-%% RDK movies
-% rdk (uint8) is a 8 x 3 x 5 cell array: 
-%   8 motion directions x 3 coherence levels x 5 motion direction offsets (0, -15, -5, +5, +15 deg). 
-% Each cell contains a movie (uint8):
-%   height (549 pixels) x width (549 pixels) x 3 (rgb) x 30 frames (total of 2 s, 33 ms per frame).
-% rdk_masks (uint8) is a uint8 matrix with a single alpha transparency mask: 
-%   height (549 pixels) x width (549 pixels)
-[rdk, rdk_masks, rdk_info] = vcd_rdk(p);
+%% RDKs (Random Dot motion Kinetograms)
+% vcd_rdk function creates 120 RDK movies: 24 core and 96 working memory
+% test images.
+%
+% If params.verbose = true, this function will make a PNG of each RDK movie
+% frame, a MP4 movie per RDK, and figure plotting dot motion vectors for
+% each movie frame. 
+% If params.store_imgs = true, this function will store
+% these figures in fullfile(vcd_rootPath,'figs',dispname,'rdk').
+%
+% INPUTS:
+% * params      : parameter struct (requires display and stimulus parameters)
+%
+% OUTPUTS:
+% * rdks        : (cell) 3D cell array with RDK stimuli: 
+%                  8 motion directions x 3 coherence levels x 5 motion direction offsets (0, -15, -5, +5, +15 deg). 
+%                  Each cell contains movie frames (uint8):
+%                  For BOLDscreen:
+%                   height (548 pixels) x width (548 pixels for BOLDscreen) 
+%                   x 3 (rgb) x 30 frames (total of 2 s, 33 ms per frame).
+% * masks       : (cell) 3D cell with alpha transparency masks:
+%                   8 motion directions x 3 coherence levels x 5 motion direction offsets (0, -15, -5, +5, +15 deg). 
+%                   Each cell contains one uint8 mask image: 
+%                   For BOLDscreen:
+%                     height (548 pixels) x width (548 pixels)
+% * info        : table with stimulus information matching the rdk array                 
+[rdks, masks, info] = vcd_rdk(params);
 
 %% Single dot
-% * single_dot (uint8) is a single matrix: 
-%   height (94 pixels) x width (94 pixels) x 3 (rgb).
-% * dot_masks (uint8) is a alpha transparency mask:
-%   height (94 pixels) x width (94 pixels)
-[single_dot, dot_masks, dot_info] = vcd_singledot(p);
+% vcd_singledot function creates 1 dot that will be used for 16 core and 64
+% working memory test images.
+%
+% If params.verbose = true, this function will make a PNG for each dot 
+% location (core and WM test), and figures to check dot WM test locations 
+% relative to core image and core dot locations relative to one another.
+% If params.store_imgs = true, this function will store
+% these figures in fullfile(vcd_rootPath,'figs',dispname,'dot').
+%
+% INPUTS:
+% * params      : parameter struct (requires display and stimulus parameters)
+%
+% OUTPUTS:
+% * single_dot  : (uint8) matrix with single dot image:
+%                 For BOLDscreen:
+%                   height (94 pixels) x width (94 pixels) x 3 (rgb).
+% * masks       : (uint8) matrix with single alpha transparency mask:
+%                 For BOLDscreen:
+%                   height (94 pixels) x width (94 pixels)
+% * info        : table with stimulus information about the dot locations
+[single_dot, masks, info] = vcd_singledot(params);
 
 %% Objects
-% Output images:
-% * objects (uint8) is a 5D array:
-%   height (1024 pixels) x width (1024 pixels) x 3 (rgb) x 16 object categories (subordinate level) x 4 rotation offsets (0, -8, -4, +4, +8 deg). 
-% * cobj_masks (uint8) is a 4D array containing alpha transparency mask:
-%   height (1024 pixels) x width (1024 pixels) x 16 object categories (subordinate level) x 5 rotation offsets (0, -8, -4, +4, +8 deg). 
-[objects, obj_masks, ~, obj_info] = vcd_objects(p);
+% vcd_objects function creates 80 objects will be used for 16 core and 64
+% working memory test images.
+%
+% If params.verbose = true, this function will make a PNG for each object 
+% (core and WM test) and figures with axes/titles to check image nrs,
+% rotation.
+% If params.store_imgs = true, this function will store
+% these figures in fullfile(vcd_rootPath,'figs',dispname,'obj').
+%
+% INPUTS:
+% * params      : parameter struct (requires display and stimulus parameters)
+%
+% OUTPUTS:
+% * objects     : (uint8) is a 5D array:
+%                 For BOLDscreen:
+%                   height (1024 pixels) x width (1024 pixels) x 3 (rgb) 
+%                   x 16 object categories (subordinate level) 
+%                   x 4 rotation offsets (0, -8, -4, +4, +8 deg). 
+% * masks       : (uint8) is a 4D array containing alpha transparency mask:
+%                 For BOLDscreen:
+%                   height (1024 pixels) x width (1024 pixels) 
+%                   x 16 object categories (subordinate level) 
+%                   x 5 rotation offsets (0, -8, -4, +4, +8 deg). 
+%  info         :   Loaded csv from workspaces/stimuli/ with png file names
+%                   and object category information. 
+[objects, masks, info] = vcd_objects(params);
 
 %% Natural scenes
 % Output images:
@@ -136,341 +247,5 @@ bckgrnd_im  = vcd_pinknoisebackground(p, ...
 %       3:easy remove -- scene is altered by removing something big/obvious
 %       4:hard remove -- scene is altered by removing something small/subtle
 % Note: There are no alpha masks for this stimulus class.
-[scenes, lure_im, cblind_im, ~, ns_info] = vcd_naturalscenes(p);
+[scenes, ltm_lures, wm_im, info] = vcd_naturalscenes(params);
 
-
-%% %%%%%%%%%%%%%%%%
-%%%% Visualize %%%% 
-%%%%%%%%%%%%%%%%%%%
-
-if p.verbose
-    makeprettyfigures;
-    
-    %% Background
-    saveDir = fullfile(vcd_rootPath,'figs',dispname,'background','visual_check');
-    if ~exist(saveDir,'dir'); mkdir(saveDir); end
-    
-    fH = figure(100);
-    set(fH, 'Position', [0 0 p.disp.w_pix p.disp.h_pix], 'color','w')
-
-    for jj = 1:size(bckgrnd_im,4)
-        clf;
-        imagesc(bckgrnd_im(:,:,jj)); colormap gray
-        axis image
-        title(sprintf('Background im %s %s %03d',gaptype, borderwidth, jj))
-        set(gca, 'TickDir','out', 'LineWidth',2,'FontSize',20)
-        drawnow;
-        if p.store_imgs        
-            filename = sprintf('vcd_background_%s%s%03d.png',gaptype, borderwidth, jj);
-            imwrite(bckgrnd_im(:,:,:,jj), fullfile(vcd_rootPath,'figs',dispname,'background',filename));
-            print(fH,'-dpng','-r300',fullfile(saveDir,filename));
-        end
-    end
-
-    %% Fixation dot
-    saveDir = fullfile(vcd_rootPath,'figs',dispname,'fix','visual_check');
-    if ~exist(saveDir,'dir'); mkdir(saveDir); end
- 
-    fH = figure(101); clf;
-    set(fH, 'Position', [1   400   750   578], 'color','w')
-    counter = 1;
-    for ii = 1:size(fix_im,4)
-        for jj = 1:size(fix_im,5)
-            subplot(5,5,counter)
-            imagesc(squeeze(fix_im(:,:,:,ii,jj)), 'AlphaData',p.stim.fix.dotopacity)
-            axis square
-            axis off
-            set(gca,'CLim',[1 255])
-            title(sprintf('%01d, %01d',ii, jj))
-            counter = counter+1;
-            if p.store_img
-            imwrite(fix_im(:,:,:,ii,jj), fullfile(vcd_rootPath,'figs',dispname,'fix',sprintf('vcd_fixdots_w_alphamask_%01d_%01d.png', ii, jj)));
-            end
-        end
-    end
-    if p.store_imgs
-        filename = sprintf('vcd_fixdots_w_alphamask.png');
-        print(fH,'-dpng','-r300',fullfile(saveDir,filename));
-    end
-    
-    fH = figure(101); clf;
-    set(fH, 'Position', [1   400   750   578], 'color','w')
-    counter = 1;
-    for ii = 1:size(fix_im,4)
-        for jj = 1:size(fix_im,5)
-            subplot(5,5,counter)
-            imagesc(squeeze(fix_im(:,:,:,ii,jj)))
-            axis square
-            axis off
-            set(gca,'CLim',[1 255])
-            title(sprintf('%01d, %01d',ii, jj))
-            counter = counter+1;
-            if p.store_img
-                imwrite(fix_im(:,:,:,ii,jj), fullfile(vcd_rootPath,'figs',dispname,'fix',sprintf('vcd_fixdots_%01d_%01d.png', ii, jj)));
-            end
-        end
-    end
-    if p.store_imgs
-        filename = sprintf('vcd_fixdots.png');
-        print(fH,'-dpng','-r300',fullfile(saveDir,filename));
-    end
-    
-    %% Gabor
-    saveDir1 = fullfile(vcd_rootPath,'figs',dispname,'gabor','visual_checks','gabor_hist');
-    saveDir2 = fullfile(vcd_rootPath,'figs',dispname,'gabor','visual_checks','gabor_im');
-    if ~exist(saveDir1,'dir'); mkdir(saveDir1); end
-    if ~exist(saveDir2,'dir'); mkdir(saveDir2); end
-    
-    fH1 = figure(1); fH2 = figure(2); 
-    set(fH1, 'Position', [0 0 1024 1080], 'color','w')
-    set(fH2, 'Position', [1   400   750   578], 'color','w')
-    if p.verbose
-        counter = 1;
-        for dd = 1:size(gabor,6)
-            if dd==1, dlta = 0; else, dlta = p.stim.gabor.delta_from_ref(dd-1); end
-            for ii = 1:size(gabor,5)
-                for jj=1:size(gabor,4)
-                    figure(fH1); clf;
-                    imagesc(gabor(:,:,:,jj,ii,dd));
-                    
-                    colormap gray; set(gca, 'CLim',[1 255])
-                    title(sprintf('ori:%3.2f deg c:%1.2f ph:%3.0f delta:%02d', ...
-                        p.stim.gabor.ori_deg(jj),...
-                        p.stim.gabor.contrast(ii),...
-                        p.stim.gabor.ph_deg(mod(ii-1,4)+1),...
-                        dlta));
-                    cb = colorbar; cb.Ticks = [1, 50, 100, 150, 200, 250];
-                    set(gca, 'FontSize',20, 'TickDir','out', 'LineWidth', 2); axis image;
-                    drawnow;
-                    axis image
-                    if p.store_imgs
-                        filename = sprintf('vcd_gabor_ori%02d_c%02d_delta%02d.png',jj,ii,dd);
-                        print(fH1,'-dpng','-r300',fullfile(saveDir1,filename));
-                        imwrite(gabor(:,:,:,jj,ii,dd), fullfile(vcd_rootPath,'figs',dispname,'gabor',filename));
-                    end
-                    
-                    % Plot pix histogram
-                    figure(fH2); clf
-                    histogram(gabor(:,:,:,ii,dd), 'NumBins', 30);
-                    title(sprintf('ori:%3.2f deg c:%1.2f ph:%3.0f delta:%02d', ...
-                        p.stim.gabor.ori_deg(jj),...
-                        p.stim.gabor.contrast(ii),...
-                        p.stim.gabor.ph_deg(mod(ii-1,4)+1),...
-                        dlta));
-                    box off; axis square; xlim([-10 260]); ylim([0,3.5].*10^5)
-                    drawnow;
-                    axis square
-                    set(gca,'XTick',[0 64 128 190 255])
-                    set(gca,'YTick',[1:3].*10^5)
-                    if p.store_imgs
-                        filename = sprintf('vcd_gabor_ori%02d_c%02d_delta%02d_hist.png',jj,ii,dd);
-                        print(fH2,'-dpng','-r300',fullfile(saveDir2,filename));
-                    end
-                    counter = counter+1;
-                end
-            end
-        end
-    end
-
-    %% RDK
-    saveDir = fullfile(vcd_rootPath,'figs',dispname,'rdk','visual_checks');
-    if ~exist(saveDir,'dir'); mkdir(saveDir); end
-    
-    fH1 = figure(1); 
-    set(fH1, 'Position', [0 0 1024 1080], 'color','w')
-    deltasToPlot = [0, p.stim.rdk.delta_from_ref];
-    deltalabels = cellfun(@num2str, (num2cell(p.stim.rdk.delta_from_ref)),'UniformOutput', false);
-    for ll = 1:length(deltalabels), 
-        if strfind(deltalabels{ll},'-')
-            deltalabels{ll} = strrep(deltalabels{ll},'-','min'); 
-        else
-            deltalabels{ll} = ['plus' deltalabels{ll}]; 
-        end
-    end
-    deltalabels = [{'00'}, deltalabels(:)'];
-    
-    cohlabels = cellfun(@num2str, (num2cell(p.stim.rdk.dots_coherence*100)),'UniformOutput', false);
-    cohlabels = cellfun(@(x) strrep(x,'.','pt'), cohlabels,'UniformOutput',false);
-    for dl = 1:length(deltalabels)
-        for cc = 1:length(p.stim.rdk.dots_coherence)
-            for dd = 1:length(p.stim.rdk.dots_direction)
-                
-%                 % create movie
-                vcd_createStimVideo(rdk{dd,cc,dl}, 1/p.stim.presentationrate_hz, ...
-                    fullfile(vcd_rootPath,'figs',dispname,'rdk'), ...
-                    sprintf('vcd_rdk_coh%s_dir%02d_delta%s',...
-                    cohlabels{cc},p.stim.rdk.dots_direction(dd),deltalabels{dl}));
-
-                % plot dot position & motion vector
-                dot_pos = dotlocs{dd,cc, dl};
-                dxdy    = dot_pos(:,:,2:end)-dot_pos(:,:,1:end-1);
-                dxdy    = cat(3,zeros(size(dot_pos,1),size(dot_pos,2)),dxdy);
-                if p.store_imgs
-                    saveDir = fullfile(vcd_rootPath,'figs',dispname,'rdk','motion_vecs',sprintf('dir%02d',dd));
-                    if ~exist(saveDir,'dir'); mkdir(saveDir); end
-                end
-                for ii = 1:size(dot_pos,3) % loop over time
-                    cla;
-                    xlim([-250, 250]); ylim([-250, 250]); box off;
-                    plot(dot_pos(~isnan(dot_pos(:,1,ii)),1,ii),dot_pos(~isnan(dot_pos(:,2,ii)),2,ii),'o'); hold on;
-                    quiver(dot_pos(~isnan(dot_pos(:,1,ii)),1,ii),dot_pos(~isnan(dot_pos(:,2,ii)),2,ii), ...
-                        dxdy(~isnan(dot_pos(:,1,ii)),1,ii),dxdy(~isnan(dot_pos(:,2,ii)),2,ii));
-                    title(sprintf('frame %02d: coh: %3.2f%% dir:%02d delta: %s',...
-                    ii, p.stim.rdk.dots_coherence(cc)*100,p.stim.rdk.dots_direction(dd), deltalabels{dl})); axis square;
-                    filename = sprintf('vcd_rdk_coh%03d_dir%02d_delta%02d_motionvec%d.png',p.stim.rdk.dots_coherence(cc)*100,dd,dl,ii);
-                    if p.store_imgs
-                        print(gcf,'-dpng','-r300',fullfile(saveDir,filename));
-                    end
-                end
-            end
-        end
-    end
-    
-    % ek start here, check dot post vs coherence..
-    figure(100);
-    for ii = 1:60; clf;
-        
-        
-
-    end
-    
-    %% single dot: Main dot locations per hemifield
-    saveDir = fullfile(vcd_rootPath,'figs',dispname,'dot','visual_checks');
-    if ~exist(saveDir,'dir'); mkdir(saveDir); end
-    
-    bckground = uint8(ones(p.disp.h_pix,p.disp.w_pix))*p.stim.bckgrnd_grayval;
-    
-    im1 = repmat(bckground,[1 1 3]);
-    
-    for ang = p.stim.dot.ang_deg
-        
-        angle = deg2rad(ang);
-        [x_shift,y_shift] = pol2cart(angle,p.stim.dot.iso_eccen);
-    
-        ys = p.disp.yc + round(y_shift*p.disp.ppd);
-        xs = p.disp.xc + round(x_shift*p.disp.ppd);
-        dot_halfsz = (size(single_dot,1)/2);
-        dot_coords_x = (xs - dot_halfsz) : (xs + dot_halfsz -1);
-        dot_coords_y = (ys - dot_halfsz) : (ys + dot_halfsz -1);
-    
-        im1( dot_coords_y, dot_coords_x,:) = single_dot;
-    end
-    
-    figure;
-    imshow(im1,[1 255]);
-    hold on;
-    h0 = drawcircle('Center',[p.disp.xc,p.disp.yc],'Radius',11,'color', [1 1 1],'LineWidth',6);
-    h0.InteractionsAllowed = 'none';
-    title('single dot locations - both hemifields');
-    axis image;
-    if p.store_imgs
-        set(gcf, 'InvertHardCopy', 'off');
-        print(fullfile(saveDir,'singledot_all_loc'),'-dpng','-r150');
-    end
-    %% single dot: visualize individual dot locations
-
-    saveDir = fullfile(vcd_rootPath,'figs',dispname,'dot', 'visual_checks');
-    if ~exist(saveDir,'dir'); mkdir(saveDir); end
-
-    bckground = double(ones(p.disp.h_pix,p.disp.w_pix))*0.5;
-    
-    im1 = bckground;
-    dot_halfsz = (size(single_dot,1)/2)-0.5;
-    cmap = varysat(parula(16),4);
-    xpos_dots_to_plot = cat(1,p.stim.dot.x0_pix, p.stim.dot.x0_pix_delta);
-    ypos_dots_to_plot = cat(1,p.stim.dot.y0_pix, p.stim.dot.y0_pix_delta);
-
-    dot_ref_locs = [0, p.stim.dot.delta_from_ref];
-    for aa = 1:size(xpos_dots_to_plot,2)
-        for bb = 1:size(xpos_dots_to_plot,1)
-            figure(99); clf;
-            imshow(im1,[0 1]);
-            hold all;
-            h0 = drawcircle('Center',[p.disp.xc,p.disp.yc],'Radius',11,'color', [1 1 1],'LineWidth',6);
-            h0.InteractionsAllowed = 'none';
-            h1 = drawcircle('Center',[xpos_dots_to_plot(bb,aa),ypos_dots_to_plot(bb,aa)],'Radius',dot_halfsz,'color',[1 1 1],'EdgeAlpha',0);
-            h1.InteractionsAllowed = 'none';
-            h1.FaceAlpha=1;
-            
-            title(sprintf('Angle: %02d; Delta: %02d',p.stim.dot.ang_deg(aa),dot_ref_locs(bb)), 'FontSize',20);
-            axis image;
-            set(gcf, 'InvertHardCopy', 'off');
-            print(fullfile(saveDir,sprintf('%02d_%02d_singledot', aa, bb)),'-dpng','-r150');
-        end
-    end
-
-    imwrite(single_dot, fullfile(vcd_rootPath,'figs',dispname,'dot',sprintf('singledot.png')));
-
-    %% Complex objects
-    obj_masks = masks;
-    counter = 1;
-    saveDir = fullfile(vcd_rootPath,'figs',dispname, 'objects','visual_checks');
-    if ~exist(saveDir,'dir'); mkdir(saveDir); end
-    figure(99); set(gcf, 'Position', [300   584   868   753]);
-    for objectNr = 1:size(objects,4)
-        for rot = 1:size(objects,5)
-            clf;
-            I = imshow(objects(:,:,:,objectNr,rot),[1 255]);
-            I.AlphaData = obj_masks(:,:,objectNr,rot);
-            axis image
-            
-            title(sprintf('Object:%02d Rot:%02d Delta:%02d',objectNr,im_order.abs_rot(counter),im_order.rel_rot(counter)), 'FontSize',20);
-            
-            if rot == 1
-                dd = 0;
-            else
-                dd = rot;
-            end
-            print(fullfile(saveDir,sprintf('object%02d_rot%02d_delta%02d', objectNr, rot, dd)),'-dpng','-r150');
-            imwrite(objects(:,:,:,objectNr,rot), fullfile(vcd_rootPath,'figs',dispname,'objects',sprintf('object%02d_rot%02d_delta%02d.png', objectNr, rot, dd)),'Alpha',obj_masks(:,:,objectNr,rot));
-            counter = counter+1;
-        end
-    end
-    
-    %% Natural scenes
-    saveDir = fullfile(vcd_rootPath,'figs',dispname,'ns','visual_checks','resized_and_squared');
-    if ~exist(saveDir,'dir'); mkdir(saveDir); end
-    figure; set(gcf,'Position', [156    91   881   706],'color','w');
-    counter = 1;
-    for ss = 1:size(scenes,4)
-        for bb = 1:size(scenes,5)
-            for cc = 1:size(scenes,6)
-                clf;
-                imagesc(scenes(:,:,:,ss,bb,cc));
-                title(sprintf('Im %02d resized & squared',counter), 'FontSize',20);
-                axis image; box off; axis off
-                set(gca,'CLim',[1 255]);
-                if p.stim.store_imgs
-                    saveDir = fullfile(vcd_rootPath,'figs','ns','resized_and_squared');
-                    if ~exist(saveDir,'dir'), mkdir(saveDir); end
-                    print(fullfile(saveDir, sprintf('ns_%02d', counter)),'-dpng','-r150');
-                    imwrite(scenes(:,:,:,ss,bb,cc), fullfile(vcd_rootPath,'figs',dispname,'ns',sprintf('ns_%02d.png', counter)));
-                end
-        
-                for ll = 1:size(lures,7)
-                    clf;
-                    imagesc(lures(:,:,:,ss,bb,cc,ll));
-                    title(sprintf('Im %02d, lure %02d resized & squared',counter,ll), 'FontSize',20);
-                    axis image; box off; axis off
-                    set(gca,'CLim',[1 255]);
-                    if p.stim.store_imgs
-                        print(fullfile(saveDir, sprintf('ns_%02d_lure%02d', counter,ll)),'-dpng','-r150');
-                        imwrite(ltm_lures(:,:,:,ss,bb,cc,ll), fullfile(vcd_rootPath,'figs',dispname,'ns',sprintf('ns_%02d_ltm_lure%02d.png', counter,ll)));
-                    end
-                    
-                    clf;
-                    imagesc(wm_im(:,:,:,ss,bb,cc,ll));
-                    title(sprintf('Im %02d, wm test im %02d resized & squared',counter,ll), 'FontSize',20);
-                    axis image; box off; axis off
-                    set(gca,'CLim',[1 255]);
-                    
-                    if p.stim.store_imgs
-                        print(fullfile(saveDir, sprintf('ns_%02d_cblind%02d', counter,ll)),'-dpng','-r150');
-                        imwrite(wm_im(:,:,:,ss,bb,cc,ll), fullfile(vcd_rootPath,'figs',dispname,'ns',sprintf('ns_%02d_wm_im%02d.png', counter,ll)));
-                    end
-                end
-                counter = counter + 1;
-            end
-        end
-    end
-end
