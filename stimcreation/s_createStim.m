@@ -11,6 +11,13 @@
 %      * 'KKOFFICE_AOCQ3277'  : AOC monitor in Kay office at CMRR (only used for testing purposes).
 %      * 'EKHOME_ASUSVE247'   : ASUS monitor in Eline's home (only used for testing purposes).
 %   This adjust stimulus parameters such that stimuli are the intended size.
+% 2. Create background images (BCKGRND)
+% 3. Create small, central, fixation circle images (FIX)
+% 4. Create gabor images (GBR)
+% 5. Create rdk movies (RDK)
+% 6. Create single dot images (DOT)
+% 7. Create object images (OBJ)
+% 8. Create scene images (NS)
 
 %% %%%%%%%%%%%%%%%%%%%
 %%%%%% PARAMETERS %%%% 
@@ -119,6 +126,7 @@ bckgrnd_im  = vcd_pinknoisebackground(params, ...
 %                   3: thick-red left, 4: thick-red right, 5: thick-red both
 % * fix_mask    : (uint8) alpha transparency masks, 4D array: 
 %                   height (24 pixels) x width (24 pixels) x 2 dot rims types (thin, thick)
+
 [fix_im, fix_mask, fix_info] = vcd_fixationDot(params);
 
 %% Gabors
@@ -143,6 +151,7 @@ bckgrnd_im  = vcd_pinknoisebackground(params, ...
 %                   height (354 pixels) x width (354 pixels) 
 %                   x 24 unique images x 5 tilt offsets
 % * info        : table with stimulus information matching the gabor array
+
 [gabors, masks, info] = vcd_gabor(params);
 
 %% RDKs (Random Dot motion Kinetograms)
@@ -170,7 +179,8 @@ bckgrnd_im  = vcd_pinknoisebackground(params, ...
 %                   Each cell contains one uint8 mask image: 
 %                   For BOLDscreen:
 %                     height (548 pixels) x width (548 pixels)
-% * info        : table with stimulus information matching the rdk array                 
+% * info        : table with stimulus information matching the rdk array 
+
 [rdks, masks, info] = vcd_rdk(params);
 
 %% Single dot
@@ -194,6 +204,7 @@ bckgrnd_im  = vcd_pinknoisebackground(params, ...
 %                 For BOLDscreen:
 %                   height (94 pixels) x width (94 pixels)
 % * info        : table with stimulus information about the dot locations
+
 [single_dot, masks, info] = vcd_singledot(params);
 
 %% Objects
@@ -222,30 +233,53 @@ bckgrnd_im  = vcd_pinknoisebackground(params, ...
 %                   x 5 rotation offsets (0, -8, -4, +4, +8 deg). 
 %  info         :   Loaded csv from workspaces/stimuli/ with png file names
 %                   and object category information. 
+
 [objects, masks, info] = vcd_objects(params);
 
 %% Natural scenes
-% Output images:
-% * scenes (uint8) is a 6D array: 
-%   height (BOLDscreen 743 pixels) x width (BOLDscreen 743 pixels) x 3
-%   (rgb) x 5 superordinate categories x 2 scene locations (indoor/outdoor)
-%   x 3 obj locations (left/middle/right)
-% * ltm_lures (uint8) is a 7D array:
-%   height (BOLDscreen 743 pixels) x width (BOLDscreen 743 pixels) x 3
-%   (rgb) x 5 superordinate categories x 2 scene locations (indoor/outdoor)
-%   x 3 obj locations (left/middle/right) x 4 lure types:
-%       1: very similar/difficult
-%       2: somewhat similar
-%       3: somewhat different
-%       4: very different/easy
-% * wm_im (uint8) is a 7D array:
-%   height (743 pixels) x width (743 pixels) x 3 (rgb) x 5 superordinate
-%   categories x 2 scene locations (indoor/outdoor) x 3 obj locations
-%   (left/middle/right) x 4 change types:
-%       1:easy add -- scene is altered by adding something big/obvious 
-%       2:hard add -- scene is altered by adding something small/subtle
-%       3:easy remove -- scene is altered by removing something big/obvious
-%       4:hard remove -- scene is altered by removing something small/subtle
-% Note: There are no alpha masks for this stimulus class.
+% vcd_naturalscenes function loads, resizes (and squares pixel values if
+% using linearized display) for 30 core scenes, 120 working memory test
+% images, 80 long-term memory lure images.  Note: There are no alpha masks
+% for this stimulus class.
+%
+% If params.verbose = true, this function will make a PNG for each scene 
+% (core, WM test, and LTM lute) and figures with axes/titles to check image 
+% nrs, pixel values and scene size.
+% If params.store_imgs = true, this function will store
+% these figures in fullfile(vcd_rootPath,'figs',dispname,'ns').
+%
+% INPUTS:
+% * params      : parameter struct (requires display and stimulus parameters)
+%
+% OUTPUTS:
+% * scenes      : (uint8) core scene images, 6D array:
+%                 For BOLDscreen:
+%                   height (743 pixels) x width ( 743 pixels) x 3 (rgb)
+%                   x 5 superordinate semantic object categories (human, animal, object, food, place)
+%                   x 2 scene locations (indoor/outdoor)
+%                   x 3 obj locations (left/middle/right)
+% * ltm_lures   : (uint8) long term memory lure scenes, 7D array:
+%                 For BOLDscreen:
+%                   height (743 pixels) x width (743 pixels) x 3 (rgb)
+%                   x 5 superordinate semantic object categories 
+%                   x 2 scene locations (indoor/outdoor)
+%                   x 3 obj locations (left/middle/right) 
+%                   x 4 lure types:
+%                       1: very similar/difficult
+%                       2: somewhat similar
+%                       3: somewhat different
+%                       4: very different/easy
+% * wm_im       : (uint8) working memory test scenes, 7D array:
+%                 For BOLDscreen:
+%                   height (743 pixels) x width (743 pixels) x 3 (rgb) 
+%                   x 5 superordinate semantic object categories 
+%                   x 2 scene locations (indoor/outdoor) 
+%                   x 3 obj locations (left/middle/right)
+%                   x 4 change types:
+%                       1:easy add -- scene is altered by adding something big/obvious 
+%                       2:hard add -- scene is altered by adding something small/subtle
+%                       3:easy remove -- scene is altered by removing something big/obvious
+%                       4:hard remove -- scene is altered by removing something small/subtle
+
 [scenes, ltm_lures, wm_im, info] = vcd_naturalscenes(params);
 
