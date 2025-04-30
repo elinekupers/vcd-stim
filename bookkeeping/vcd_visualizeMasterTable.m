@@ -4,7 +4,7 @@ function fH = vcd_visualizeMasterTable(master_table,store_imgs)
 makeprettyfigures;
 
 %%
-strCols = find(ismember(master_table.Properties.VariableNames,{'stim_class_name','task_class_name','super_cat_name','basic_cat_name','sub_cat_name','stim2','img_txt_prompt'})); % columns with names/characters (we don't want to plot)
+strCols = find(ismember(master_table.Properties.VariableNames,{'stim_class_name','task_class_name','super_cat_name','basic_cat_name','sub_cat_name','stim2','img_txt_prompt','affordance_name'})); % columns with names/characters (we don't want to plot)
 colsToPlot = 1:size(master_table,2);
 colsToPlot = setdiff(colsToPlot,strCols);
 
@@ -126,7 +126,8 @@ for jj = 1:length(unique(master_table.stim_class))
                 end
             end
             if store_imgs
-                saveFigsFolder = fullfile(vcd_rootPath,'figs');
+                saveFigsFolder = fullfile(vcd_rootPath,'figs','condition_master0');
+                if ~exist(saveFigsFolder,'dir'); mkdir(saveFigsFolder); end
                 filename = sprintf('vcd_stimclass%02d_%s.png', jj, colName);
                 print(fH,'-dpng','-r300',fullfile(saveFigsFolder,filename));
             end
