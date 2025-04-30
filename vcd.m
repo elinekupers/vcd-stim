@@ -79,7 +79,7 @@ function outputs = vcd(varargin)
 %                           numbers in a vector. Output will be sorted by
 %                           order of input nr, or names in ascending order 
 %                           if input is empty.
-% 'crossingnumber'        : Provide all crossings between task and stimulus   
+% 'crossingnumbers'       : Provide all crossings between task and stimulus   
 %                           classes used in VCD (use []), or translate 
 %                           crossing name(s) to crossing number(s).
 %                           Crossing name should be a string or
@@ -195,10 +195,10 @@ function outputs = vcd(varargin)
 %
 %
 % Examples:
-% vcd('stimulusclassname',[3 2 2 2 1])  
+% vcd('stimulusclassnames',[3 2 2 2 1])  
 % vcd('taskclassnames',[1 5 3 2 2 2 1])               
 % vcd('crossingnames',[2 3 4 32])   
-% vcd('crossingnumber',{'pc-gabor' 'scc-all'})
+% vcd('crossingnumbers',{'pc-gabor' 'scc-all'})
 % vcd('stimulusnumberstonames',[12 35 3 2 2 2 1])        
 % vcd('taskclassnumbers','FIX')
 % vcd('stimulusclassnumber',{'gabor','obj'})
@@ -212,6 +212,7 @@ function outputs = vcd(varargin)
 % vcd('allstimulusnumbers','rdk')
 % vcd('allstimulusnumbers',{'gabor' 'rdk' 'dot' 'obj' 'ns'})
 % vcd('fullinfo',35) 
+% vcd('stimulusclassname',[3 2 2 2 1],'taskclassnames',[1 5 3 2 2 2 1])  
 %
 % Written by Eline Kupers @ UMN 2025/04
 
