@@ -37,7 +37,7 @@ function [p, condition_master, all_unique_im, all_cond] = vcd_createBlocksAndTri
 %                    unique trial, as there is only one central image.
 %
 %   Columns contains the following information:
-%   1: {'unique_im_nr'   } unique images (parafoveal stimulus patches: 1 trial occupies 2 rows)
+%   1: {'unique_im_nr'   } unique image nr"
 %   2: {'stimloc'        } stimulus location relative to fixation dot: 1 = left, 2 = right, 3 = central
 %   3: {'stimloc_name'   } same as column two but then in text 
 %   4: {'orient_dir'     } orientation (gabor), motion direction (rdk), or angle (dot), or facing direction (obj) in deg
@@ -102,12 +102,31 @@ if load_params
         if length(d) > 1
             warning('[%s]: Multiple .mat files! Will pick the most recent one\n', mfilename);
         end
-        fprintf('[%s]: Loading exp params .mat file: %s\n', mfilename, d.name);
+        fprintf('[%s]: Loading exp params .mat file: %s\n', mfilename, d(end).name);
         load(fullfile(d(end).folder,d(end).name));
     else
         error('[%s]: Can''t find trial params file!\n', mfilename)
     end
 else % Recreate conditions and blocks and trials
+    if ~isfield(p,'exp')
+        warning('[%s]: params.exp doesn''t exist!)',mfilename)
+        warning('[%s]: Will try to loading exp params from file.\n', mfilename);
+        d = dir(fullfile(vcd_rootPath,'workspaces','info',sprintf('exp_%s*.mat',p.disp.name)));
+        if ~isempty(d)
+            fprintf('\n[%s]: Found %d exp params .mat file(s)\n',mfilename,length(d));
+
+            if length(d) > 1
+                warning('[%s]: Multiple .mat files! Will pick the most recent one\n', mfilename);
+            end
+            
+            fprintf('[%s]: Loading exp params .mat file: %s\n', mfilename, d(end).name);
+            tmp = load(fullfile(d(end).folder,d(end).name));
+            p.exp = tmp.exp_session;
+        else
+            error('[%s]: Can''t find exp params file!\n', mfilename)
+        end
+    end
+    
     
     % Bookkeeping structs
     all_unique_im     = struct();
@@ -115,34 +134,39 @@ else % Recreate conditions and blocks and trials
     condition_master  = table();
     
     
-    %% Define block content for each stimulus class
-    for stimClass_idx = 1:length(p.exp.stimClassLabels)
+    % Define block content for each stimulus class
+    for stimClass_idx = 1:length(p.exp.stimclassnames)
         
         stim_table = table();
         
         % Get stimclass name
-        stimClass_name = p.exp.stimClassLabels{stimClass_idx};
+        stimClass_name = p.exp.stimclassnames{stimClass_idx};
         
         % Get corresponding task crossings
-        bsc_idx = cell2mat(cellfun(@(x) strcmp(p.exp.stimClassLabels,x), {stimClass_name}, 'UniformOutput', false));
+        bsc_idx = cell2mat(cellfun(@(x) strcmp(p.exp.stimclassnames,x), {stimClass_name}, 'UniformOutput', false));
         task_crossings = find(p.exp.crossings(bsc_idx,:));
-        
-        % Define the unique images for Gabors
-        [t_cond, n_unique_cases] = vcd_defineUniqueImages(p, stimClass_name);
-        
-        all_unique_im.(stimClass_name) = t_cond;
-        
-        % Add stimclass name and idx to temporary table
-        t_cond.stim_class_name = repmat({stimClass_name}, size(t_cond,1),1);
-        t_cond.stim_class      = repmat(stimClass_idx,    size(t_cond,1),1);
         
         % Loop over each task crossing for this stim class
         for curr_task = 1:length(task_crossings)
+        
+            % Define the unique images for Gabors
+            [t_cond, n_unique_cases] = vcd_defineUniqueImages(p, stimClass_name);
             
+            all_unique_im.(stimClass_name) = t_cond;
+            
+            % Add stimclass name and idx to temporary table
+            t_cond.stim_class_name = repmat({stimClass_name}, size(t_cond,1),1);
+            t_cond.stim_class      = repmat(stimClass_idx,    size(t_cond,1),1);
+        
             % Add task name to temp table
-            taskClass_name         = p.exp.taskClassLabels{task_crossings(curr_task)};
+            taskClass_name         = p.exp.taskclassnames{task_crossings(curr_task)};
             t_cond.task_class_name = repmat({taskClass_name},size(t_cond,1),1);
             t_cond.task_class      = repmat(task_crossings(curr_task),size(t_cond,1),1);
+            
+            % If IMG or LTM, we only want to use a subset of unique images
+            if strcmp(taskClass_name,'ltm') || strcmp(taskClass_name,'img')
+                t_cond = t_cond(t_cond.is_in_img_ltm,:);
+            end
             
             % Get the number of trials and blocks, which depend on task
             if p.exp.trial.single_epoch_tasks(task_crossings(curr_task))
@@ -159,17 +183,19 @@ else % Recreate conditions and blocks and trials
             % contrasts within a block at least once.
             tbl = vcd_createConditionMaster(p, t_cond, n_trials_per_block);
             
-            %% --- Allocate trials to blocks ---
-            block_trials = reshape(1:size(tbl,1),n_trials_per_block,[]);
-            
+            % --- Allocate trials to blocks ---            
             tbl.stim_class_unique_block_nr = NaN(size(tbl,1),1);
             tbl.block_local_trial_nr = NaN(size(tbl,1),1);
             
             % assign block nr
-            for mm = 1:size(block_trials,2)
-                selected_trials = block_trials(:,mm);
-                
-                tbl.stim_class_unique_block_nr(selected_trials)   = mm;
+            block_start_idx = 1:n_trials_per_block:size(tbl,1);
+            for mm = block_start_idx
+                selected_trials = mm:(mm+(n_trials_per_block-1));
+                if mm==block_start_idx(end)
+                    selected_trials = selected_trials(selected_trials<=size(tbl,1));
+                end
+                block_nr = find(mm==block_start_idx);
+                tbl.stim_class_unique_block_nr(selected_trials) = block_nr;
                 tbl.block_local_trial_nr(selected_trials) = 1:length(selected_trials);
             end
 
@@ -185,11 +211,22 @@ else % Recreate conditions and blocks and trials
     end % stim idx
     
     
-    %% ---- IMPORTANT FUNCTION: Shuffle stimuli for SCC task ----
+    % ---- IMPORTANT FUNCTION: Shuffle stimuli for SCC and LTM task ----
     condition_master = vcd_shuffleStimForTaskClass(p,  'scc', condition_master, p.exp.block.n_trials_single_epoch);
-%     condition_master = vcd_shuffleStimForTaskClass(p, condition_master, 'ltm', p.exp.block.n_trials_single_epoch);
+    condition_master = vcd_shuffleStimForTaskClass(p,  'ltm', condition_master, p.exp.block.n_trials_double_epoch);
     
-    
+    % ---- IMPORTANT FUNCTION: Add correct button press ----
+    button_response = NaN(size(condition_master,1),1);
+    for ii = 1:size(condition_master,1)
+        if  condition_master.is_catch(ii)
+            button_response(ii) = 0;
+        else
+            button_response(ii) = vcd_getCorrectButtonResponse(p, condition_master(ii,:));
+        end
+    end
+    condition_master.correct_response = button_response;
+
+
     %% Store structs if requested
     if p.store_params
         fprintf('[%s]:Storing trial data..\n',mfilename)
@@ -202,39 +239,52 @@ else % Recreate conditions and blocks and trials
     %% At last, do some checks:
     
     % Stim class nr should match with params
-    assert(isequal(unique(condition_master.stim_class)',[1:length(p.exp.stimClassLabels),99]))
+    assert(isequal(unique(condition_master.stim_class)',[1:length(p.exp.stimclassnames),99]))
     % Task class nr should match with params
-    assert(isequal(unique(condition_master.task_class)',1:length(p.exp.taskClassLabels)))
-    
+    assert(isequal(unique(condition_master.task_class)',1:length(p.exp.taskclassnames)))
     % Cued vs uncued stimuli should be matched
     assert(isequal(sum(condition_master.is_cued==1),sum(condition_master.is_cued==2)))
     
     % Now dive into each stimulus class
-    N_tbl = NaN(5,30); unique_stim_class_names_in_table = unique(condition_master.stim_class)';
+    unique_im_from_table = [];
+    N_tbl = NaN(5,30); unique_stim_class_names_in_table = unique(condition_master.stim_class_name(:,1),'stable')';
     adjusted_crossings = double(p.exp.crossings);
-    for ii = unique_stim_class_names_in_table(1:5)
-        [N, N_edges] = histcounts([condition_master.stim_nr_left(~condition_master.is_catch & condition_master.stim_class==ii); ...
-                                    condition_master.stim_nr_right(~condition_master.is_catch & condition_master.stim_class==ii)]);
-        N_tbl(ii,1:length(N)) = N;
-        assert(isequal(size(N,2), length(all_unique_im.(p.exp.stimClassLabels{ii}).unique_im_nr)))
+    for ii = 1:length(unique_stim_class_names_in_table)
         
         % Check nr of unique stimuli per stimulus class
-        if ii == unique_stim_class_names_in_table(5)
-            unique_im_from_table(ii) = length(unique(condition_master.stim_nr_left(~condition_master.is_catch & condition_master.stim_class==ii)));
+        if ii == 5
+            tmp = condition_master(~condition_master.is_catch & strcmp(condition_master.stim_class_name(:,1), unique_stim_class_names_in_table{ii}),:);
+        
+            [N, N_edges] = histcounts(tmp.stim_nr_left(strcmp(tmp.stim_class_name(:,1), unique_stim_class_names_in_table{ii})));
+        
+            N_tbl(ii,1:length(N)) = N;
+            assert(isequal(size(N,2), length(all_unique_im.(p.exp.stimclassnames{ii}).unique_im_nr)))
+
+            unique_im_from_table(ii) = length(unique(tmp.stim_nr_left));
             
-            adjusted_crossings(ii,7) = 2*length(p.stim.(p.exp.stimClassLabels{ii}).imagery_im_nr)/length(p.stim.(p.exp.stimClassLabels{ii}).unique_im_nrs);
+            % lower IMG/LTM block contribution (we have less unique images)
+            adjusted_crossings(ii,6) = length(p.stim.(p.exp.stimclassnames{ii}).imagery_im_nr)/length(p.stim.(p.exp.stimclassnames{ii}).unique_im_nrs_core);
+            adjusted_crossings(ii,7) = length(p.stim.(p.exp.stimclassnames{ii}).imagery_im_nr)/length(p.stim.(p.exp.stimclassnames{ii}).unique_im_nrs_core);
             
-            assert(isequal(sum(condition_master.stim_class(~condition_master.is_catch)==ii),...
-                unique_im_from_table(ii) * p.exp.n_unique_trial_repeats*(sum(adjusted_crossings(ii,:)))))
+            assert(isequal(size(tmp,1),...
+                sum(adjusted_crossings(ii,:).* unique_im_from_table(ii)) * p.exp.n_unique_trial_repeats(ii,:)))
             
         else
-            unique_im_from_table(ii) = length([unique(condition_master.stim_nr_left(~condition_master.is_catch & condition_master.stim_class==ii)); ...
-                                    unique(condition_master.stim_nr_right(~condition_master.is_catch & condition_master.stim_class==ii))]);
+            tmp = condition_master(any(~condition_master.is_catch & strcmp(condition_master.stim_class_name, unique_stim_class_names_in_table{ii}),2),:);
+            
+            [N, N_edges] = histcounts(cat(1,tmp.stim_nr_left(strcmp(tmp.stim_class_name(:,1), unique_stim_class_names_in_table{ii})),....
+                                            tmp.stim_nr_right(strcmp(tmp.stim_class_name(:,2), unique_stim_class_names_in_table{ii}))));
+            
+            N_tbl(ii,1:length(N)) = N;
+            assert(isequal(size(N,2), length(all_unique_im.(p.exp.stimclassnames{ii}).unique_im_nr)))
+            colsLR = [tmp.stim_nr_left(strcmp(tmp.stim_class_name(:,1), unique_stim_class_names_in_table{ii})), ...
+                     tmp.stim_nr_right(strcmp(tmp.stim_class_name(:,2), unique_stim_class_names_in_table{ii}))];
+                                            
+            unique_im_from_table(ii) = length(unique(colsLR(:)));
             adjusted_crossings(ii,1) = 0.5;
-            adjusted_crossings(ii,3) = 0;
-            adjusted_crossings(ii,7) = 2*length(p.stim.(p.exp.stimClassLabels{ii}).imagery_im_nr)/length(p.stim.(p.exp.stimClassLabels{ii}).unique_im_nrs);
-            assert(isequal(sum(condition_master.stim_class(~condition_master.is_catch)==ii),...
-                sum(unique_im_from_table(ii).* adjusted_crossings(ii,:)) * p.exp.n_unique_trial_repeats));
+            adjusted_crossings(ii,6) = 2*length(p.stim.(p.exp.stimclassnames{ii}).unique_im_nrs_specialcore)/length(p.stim.(p.exp.stimclassnames{ii}).unique_im_nrs_core);
+            adjusted_crossings(ii,7) = 2*length(p.stim.(p.exp.stimclassnames{ii}).unique_im_nrs_specialcore)/length(p.stim.(p.exp.stimclassnames{ii}).unique_im_nrs_core);
+            assert(isequal(size(colsLR,1), sum(unique_im_from_table(ii).* adjusted_crossings(ii,:)) * p.exp.n_unique_trial_repeats(ii,:)));
         end
     end
     
@@ -265,7 +315,8 @@ else % Recreate conditions and blocks and trials
 %          set(gca,'XTick',[1:30]);
         box off;
         if p.store_imgs
-            saveFigsFolder = fullfile(vcd_rootPath,'figs');
+            saveFigsFolder = fullfile(vcd_rootPath,'figs','condition_master0');
+            if ~exist(saveFigsFolder,'dir'); mkdir(saveFigsFolder); end
             filename = sprintf('vcd_totaluniqueim.png');
             print(gcf,'-dpng','-r300',fullfile(saveFigsFolder,filename));
         end
@@ -275,7 +326,7 @@ else % Recreate conditions and blocks and trials
         C = parula(20); colormap(C); set(gca,'CLim',[0 max(N_tbl(~isnan(N_tbl)))])
         cb = colorbar; cb.Label.String = 'unique im count';
         cb.Ticks = [0,unique(N_tbl(~isnan(N_tbl)))'];
-        set(gca,'YTick',[1:5],'YTickLabel', p.exp.stimClassLabels);  set(gca,'XTick',[1:30]); title('Sum of unique im per stimulus class')
+        set(gca,'YTick',[1:5],'YTickLabel', p.exp.stimclassnames);  set(gca,'XTick',[1:30]); title('Sum of unique im per stimulus class')
         box off;
         if p.store_imgs
             saveFigsFolder = fullfile(vcd_rootPath,'figs');
@@ -289,7 +340,7 @@ else % Recreate conditions and blocks and trials
         C = parula(20); colormap(C); set(gca,'CLim',[0 max(M_tbl(~isnan(M_tbl)))])
         cb = colorbar; cb.Label.String = 'unique im count';
         cb.Ticks = unique(M_tbl(~isnan(M_tbl)))';
-        set(gca,'YTick',[1:10],'YTickLabel', p.exp.taskClassLabels); 
+        set(gca,'YTick',[1:10],'YTickLabel', p.exp.taskclassnames); 
         set(gca,'XTick',[0:25:110]); title('Sum of unique im per task class')
         box off;
         if p.store_imgs
@@ -298,6 +349,7 @@ else % Recreate conditions and blocks and trials
             print(gcf,'-dpng','-r300',fullfile(saveFigsFolder,filename));
         end
         
+        % Stim class distribution in SCC blocks
         foo = [condition_master.stim_nr_left((condition_master.task_class==3),:), ...
             condition_master.stim_nr_right((condition_master.task_class==3),:)]';
         figure; set(gcf,'Position',[1,1,1200,300])
@@ -313,6 +365,24 @@ else % Recreate conditions and blocks and trials
             filename = sprintf('vcd_scc_stimulusclass_trialdistr.png');
             print(gcf,'-dpng','-r300',fullfile(saveFigsFolder,filename));
         end
+        
+        % Stim class distribution in LTM blocks
+        foo = [condition_master.stim_nr_left((condition_master.task_class==6),:), ...
+            condition_master.stim_nr_right((condition_master.task_class==6),:)]';
+        figure; set(gcf,'Position',[1,1,1200,300])
+        imagesc(foo)
+        xlabel('Trial nr'); ylabel('left vs right stim');
+        C = parula(max(foo(:))); colormap(C); set(gca,'CLim',[min(foo(:)),max(foo(:))])
+        cb = colorbar; cb.Label.String = 'unique im nr';
+        cb.Ticks = [min(foo(:)):10:max(foo(:))];
+        set(gca,'YTick',[1:p.exp.block.n_trials_single_epoch]); title('LTM stimulus class distribution')
+        box off;
+        if p.store_imgs
+            saveFigsFolder = fullfile(vcd_rootPath,'figs');
+            filename = sprintf('vcd_ltm_stimulusclass_trialdistr.png');
+            print(gcf,'-dpng','-r300',fullfile(saveFigsFolder,filename));
+        end
+        
     end
 end % load params
 
