@@ -29,9 +29,9 @@ function [t,n_unique_cases] = vcd_defineUniqueImages(p, stimClass)
 %
 % -- 24 Gabors --
 %  3 contrast levels: (Priority 1)
-%                   0.05, 0.10, 1 (fraction) Michelson (low, medium, high)
+%      0.05, 0.10, 1 (fraction) Michelson (low, medium, high)
 %   x 8 gabor orientations: (Priority 2)
-%                   [12 37 51 80 102 121 145 169]
+%     [11.25 33.75 56.25 78.75 101.25 123.75 146.25 168.75] deg
 % where 4 gabor phases (0, 90, 180, 270) and 2 stimulus location
 % (left/right) are assigned across the 24 gabors. Contrast levels are
 % prioritized, such that all 3 levels are shown at least once within a
@@ -39,47 +39,50 @@ function [t,n_unique_cases] = vcd_defineUniqueImages(p, stimClass)
 % 
 % -- 24 RDKs --
 %  3 coherence levels: (Priority 1)
-%                   6.4%, 12.8%, 51.2% of dots (low, medium, high)
+%     6.4%, 12.8%, 51.2% of dots (low, medium, high)
 %   x 8 motion directions: (Priority 2)
-%                   [18 62 98 152 192 236 282 326] deg
-% where RDKs are distributed across 2 stimulus location (left/right). 
-% Coherence levels are prioritized, such that all 3 lecels are shown at 
+%     [22.5,67.5,112.5,157.5,202.5,247.5,292.5,337.5] deg, 
+% where 0 degree angles are at 12 o'clock, and 90 deg is 3 o'clock.
+% RDKs are evenly distributed across 2 stimulus location (left/right). 
+% Coherence levels are prioritized, such that all 3 levels are shown at 
 % least once within a block.
 %
 % -- 16 dots --
 %  32 angles:
-%    Left: [-86,-73,-62,-51,-40,-31,-18,-6,4,16,27,37,49,59,72,82] deg
-%   Right: [94,107,118,129,140,149,162,174,184,196,207,217,229,239,252,262]
-% where 0 degree angles are at 3 o'clock. No prioritization given that 
-% there is only one feature of interest (dot angle).
+%    Left: [11.25 33.75 56.25 78.75] deg
+%    Right: [101.25 123.75 146.25 326.25 348.75] deg
+% where 0 degree angles are at 12 o'clock, and 90 deg is 3 o'clock. No
+% prioritization given that there is only one feature of interest (dot
+% angle).
 %
 % -- 16 complex objects --
 %  4 superordinate categories: 
-%                   'human','animal','object','place' 
+%     'human','animal','object','place' 
 %   x 1/2/3 basic categories: (Priority 2)
-%                   human:  'facemale','facefemale'
-%                   animal: 'small','big'
-%                   object: 'tool','food','vehicle'
-%                   place:  'building'
+%      human:  'facemale','facefemale'
+%      animal: 'small','big'
+%      object: 'tool','food','vehicle'
+%      place:  'building'
 %   x 3/4 subordinate categories  (Priority 1)
-%                   human > facemale: 'damon', 
-%                   human > facefemale: 'lisa','sophia'
-%                   animal > small: 'parrot','cat'
-%                   animal > big: 'bear','giraffe'
-%                   object > tool: 'drill','brush'
-%                   object > food: 'pizza','banana'
-%                   object > vehicle: 'bus','suv'
-%                   place > building: 'church','house','watertower'
-% where objects facing direction (10-170 degrees, where 90 deg is facing
-% you and 0 and 180 deg are sideways) and 2 stimulus location (left/right)
-% are evenly distributed amongst the 16 complex objects.
+%      human > facemale: 'damon', 
+%      human > facefemale: 'lisa','sophia'
+%      animal > small: 'parrot','cat'
+%      animal > big: 'bear','giraffe'
+%      object > tool: 'drill','brush'
+%      object > food: 'pizza','banana'
+%      object > vehicle: 'bus','suv'
+%      place > building: 'church','house','watertower'
+% where objects facing direction (10:10:170 degrees, excl 90 deg), 
+% where 90 deg is facing you and 0 and 180 deg are sideways) and 2 stimulus
+% location (left/right) are evenly distributed amongst the 16 complex
+% objects.
 %
 % -- 30 natural scenes --
 %  5 superordinate category: (Priority 1)
 %                   'human','animal','food','object','place' 
-%   x 2 scene locations:
+%   x 2 basic category (scene locations):
 %                   'indoor', 'outdoor'
-%   x 3 object spatial position: 
+%   x 3 subordinate category (dominant object spatial position): 
 %                   'left', 'central', 'right'
 %
 % Written by Eline Kupers @ UMN (Feb 2025)
@@ -89,12 +92,12 @@ function [t,n_unique_cases] = vcd_defineUniqueImages(p, stimClass)
 
 varNames = {'unique_im_nr','stimloc','stimloc_name',...
             'orient_dir','contrast','gbr_phase','rdk_coherence'...
-            'super_cat','basic_cat','sub_cat',...
-            'super_cat_name','basic_cat_name','sub_cat_name','is_in_img'};
+            'super_cat','basic_cat','sub_cat','affordance_cat',...
+            'super_cat_name','basic_cat_name','sub_cat_name','affordance_name','is_in_img_ltm'};
 varUnits = {'','','',...
             'deg','fraction','deg', 'fraction',...
-            '','','',...
-            '','','',''};
+            '','','','',...
+            '','','','','',};
         
 switch stimClass
     
@@ -117,9 +120,9 @@ switch stimClass
         stimloc_vec = repmat(loc_stim,              1,  n_unique_cases/n_stim_loc);  % stimulus location: machine readible
         stimloc_name_vec = repmat({'left','right'}, 1,  n_unique_cases/n_stim_loc);  % stimulus location: human readible
         con_vec     = repelem(p.stim.gabor.contrast,    n_unique_cases/n_contrasts); % contrast
-        im_nr_vec   = p.stim.gabor.unique_im_nrs;                                    % allocated unique image nrs
+        im_nr_vec   = p.stim.gabor.unique_im_nrs_core;                                    % allocated unique image nrs
         img_vec     = false(size(con_vec));                                          % if image is part of imagery subset
-        img_vec(ismember(p.stim.gabor.unique_im_nrs,p.stim.gabor.imagery_im_nr)) = true;
+        img_vec(ismember(p.stim.gabor.unique_im_nrs_core,p.stim.gabor.unique_im_nrs_specialcore)) = true;
         
         nan_vec = NaN(size(con_vec))';
         
@@ -139,12 +142,14 @@ switch stimClass
         t.super_cat     = nan_vec;
         t.basic_cat     = nan_vec;
         t.sub_cat       = nan_vec;
+        t.affordance_cat = nan_vec;
         t.super_cat_name = num2cell(nan_vec);
         t.basic_cat_name = num2cell(nan_vec);
         t.sub_cat_name   = num2cell(nan_vec);
-        t.is_in_img      = img_vec';
-
+        t.affordance_name = num2cell(nan_vec);
+        t.is_in_img_ltm      = img_vec';
         
+
     case 'rdk'
         
         % Get stim manipulations
@@ -162,9 +167,9 @@ switch stimClass
         stimloc_vec = repmat(loc_stim,                  1, n_unique_cases/n_stim_loc);
         stimloc_name_vec = repmat({'left','right'},     1, n_unique_cases/n_stim_loc);
         coh_vec     = repelem(p.stim.rdk.dots_coherence,   n_unique_cases/n_coh);
-        im_nr_vec   = p.stim.rdk.unique_im_nrs;                                    % allocated unique image nrs
+        im_nr_vec   = p.stim.rdk.unique_im_nrs_core;                                    % allocated unique image nrs
         img_vec     = false(size(coh_vec)); 
-        img_vec(ismember(p.stim.rdk.unique_im_nrs,p.stim.rdk.imagery_im_nr)) = true;
+        img_vec(ismember(p.stim.rdk.unique_im_nrs_core,p.stim.rdk.unique_im_nrs_specialcore)) = true;
         
         contrast_vec = ones(size(stimloc_vec))';
         nan_vec      = NaN(size(stimloc_vec))';
@@ -185,15 +190,17 @@ switch stimClass
         t.super_cat     = nan_vec;
         t.basic_cat     = nan_vec;
         t.sub_cat       = nan_vec;
+        t.affordance_cat = nan_vec;
         t.super_cat_name = num2cell(nan_vec);
         t.basic_cat_name = num2cell(nan_vec);
         t.sub_cat_name   = num2cell(nan_vec);
-        t.is_in_img     = img_vec';
+        t.affordance_name = num2cell(nan_vec);
+        t.is_in_img_ltm     = img_vec';
                 
-    case 'dot' %% EK START HERE
+    case 'dot' 
         
         % Get stim manipulations
-        n_dot_loc  = length(p.stim.dot.loc_deg)/2; % per hemifield
+        n_dot_loc  = length(p.stim.dot.ang_deg)/2; % per hemifield
         
         loc_stim   = [1,2]; %{'L','R'};
         n_stim_loc = length(loc_stim); % 2 locations
@@ -203,12 +210,12 @@ switch stimClass
         
         % Create vectors for each stimulus manipulation where conditions
         % are repeated and cross-combined
-        dot_loc_vec = repmat(p.stim.dot.loc_deg,    1, n_unique_cases/(n_stim_loc*n_dot_loc));
+        dot_loc_vec = repmat(p.stim.dot.ang_deg,    1, n_unique_cases/(n_stim_loc*n_dot_loc));
         stimloc_vec = repelem(loc_stim,  n_unique_cases/n_stim_loc);
         stimloc_name_vec = repelem({'left','right'}, n_unique_cases/n_stim_loc);
-        im_nr_vec   = p.stim.dot.unique_im_nrs;                                    % allocated unique image nrs
+        im_nr_vec   = p.stim.dot.unique_im_nrs_core;                                    % allocated unique image nrs
         img_vec     = false(size(dot_loc_vec)); 
-        img_vec(ismember(p.stim.dot.unique_im_nrs,p.stim.dot.imagery_im_nr)) = true;
+        img_vec(ismember(p.stim.dot.unique_im_nrs_core,p.stim.dot.unique_im_nrs_specialcore)) = true;
         
         contrast_vec = ones(size(stimloc_vec))';
         nan_vec      = NaN(size(stimloc_vec))';
@@ -229,10 +236,12 @@ switch stimClass
         t.super_cat     = nan_vec;
         t.basic_cat     = nan_vec;
         t.sub_cat       = nan_vec;
+        t.affordance_cat = nan_vec;
         t.super_cat_name = num2cell(nan_vec);
         t.basic_cat_name = num2cell(nan_vec);
         t.sub_cat_name   = num2cell(nan_vec);
-        t.is_in_img      = img_vec';
+        t.affordance_name = num2cell(nan_vec);
+        t.is_in_img_ltm      = img_vec';
                 
     case 'obj'
         
@@ -257,34 +266,38 @@ switch stimClass
         end
         
         % Get super and sub category info
-        super_cat_vec = []; sub_cat_vec = []; sub_cat_name = [];
+        unique_affordances = {'greet','grasp','enter','observe'};
+        super_cat_vec = []; sub_cat_vec = []; sub_cat_name = []; affordance_cat = []; affordance_name = [];
         for ii = 1:length(n_basic_cat)
+            n_affordances(ii) = length(p.stim.obj.affordance{ii});
             n_sub_cat(ii) = length(p.stim.obj.sub_cat{ii});
             super_cat_vec = cat(2, super_cat_vec, repelem(ii,n_sub_cat(ii)));
             sub_cat_vec = cat(2, sub_cat_vec, 1:n_sub_cat(ii));
             sub_cat_name = cat(2, sub_cat_name, p.stim.obj.sub_cat{ii});
+            [~,af_idx] = ismember(p.stim.obj.affordance{ii},unique_affordances);
+            affordance_cat  = cat(2, affordance_cat, af_idx);
+            affordance_name = cat(2, affordance_name, p.stim.obj.affordance{ii});
         end
-
-        % 
+        % 16 objects
         n_unique_cases = length(sub_cat_name);
         super_cat_name = p.stim.obj.super_cat(super_cat_vec);
-                
+        
         % Create vectors for each stimulus manipulation where conditions
         % are repeated and cross-combined
         stimloc_vec      = repmat(loc_stim,         1, n_unique_cases/n_stim_loc);
         stimloc_name_vec = repmat({'left','right'}, 1, n_unique_cases/n_stim_loc);
-        facing_dir_vec   = shuffle_concat(p.stim.obj.facing_dir_deg,1);
+        facing_dir_vec   = p.stim.obj.facing_dir_deg; % no shuffling! we already shuffled during stim param creation!!
         
         % flatten and transpose
         stimloc_vec      = stimloc_vec(:)';
         stimloc_name_vec = stimloc_name_vec(:)';
         
         % Obtain unique image nrs
-        im_nr_vec        = p.stim.obj.unique_im_nrs;                                    % allocated unique image nrs
+        im_nr_vec        = p.stim.obj.unique_im_nrs_core;                                    % allocated unique image nrs
 
         % add imagery image selection
         img_vec          = false(size(stimloc_vec)); 
-        img_vec(ismember(p.stim.obj.unique_im_nrs,p.stim.obj.imagery_im_nr)) = true;
+        img_vec(ismember(p.stim.obj.unique_im_nrs_core,p.stim.obj.unique_im_nrs_specialcore)) = true;
         
         % create filler vectors
         contrast_vec = ones(size(stimloc_vec))';
@@ -307,10 +320,12 @@ switch stimClass
         t.super_cat     = super_cat_vec';
         t.basic_cat     = basic_cat_vec';
         t.sub_cat       = sub_cat_vec';
+        t.affordance_cat = affordance_cat';
         t.super_cat_name = super_cat_name';
         t.basic_cat_name = basic_cat_name';
         t.sub_cat_name   = sub_cat_name';
-        t.is_in_img     = img_vec';
+        t.affordance_name = affordance_name';
+        t.is_in_img_ltm     = img_vec';
                 
     case 'ns'
         
@@ -322,6 +337,7 @@ switch stimClass
             n_basic_cat(ni) = length(p.stim.ns.basic_cat{ni});
             for nj = 1:n_basic_cat(ni)
                 n_sub_cat(ni,nj) = length(p.stim.ns.sub_cat{ni,nj});
+                n_affordances(ni,nj) = length(p.stim.ns.affordance{ni,nj});
             end
         end
         
@@ -330,16 +346,21 @@ switch stimClass
         loc_stim = 3; %{'central'};
         
         % Get vectors for each stimulus manipulation in one repeat of the unique cases
-        super_cat_vec = []; basic_cat_vec = []; sub_cat_vec = []; 
+        unique_affordances = {'greet','grasp','walk','observe'};
+        super_cat_vec = []; basic_cat_vec = []; sub_cat_vec = [];  affordance_cat = []; affordance_name = {};
         for ii = 1:length(n_basic_cat)
             super_cat_vec = cat(2, super_cat_vec, repelem(ii,sum(n_sub_cat(ii,:))));
             basic_cat_vec = cat(2, basic_cat_vec, repmat(1:n_basic_cat(ii),1,n_sub_cat(ii,1)));
             sub_cat_vec   = cat(2, sub_cat_vec, repelem(1:n_sub_cat(ii,1), length(n_sub_cat(ii,:))));
+            
+            [~,af_idx] = ismember(cat(2,p.stim.ns.affordance{ii,:}),unique_affordances);
+            affordance_cat  = cat(2, affordance_cat, af_idx);
+            affordance_name = cat(2, affordance_name, cat(2,p.stim.ns.affordance{ii,:}));
         end
         stimloc_vec      = repmat(loc_stim, 1, n_unique_cases);
         stimloc_name_vec = repmat({'center'}, 1, n_unique_cases);
         img_vec          = false(size(stimloc_vec));
-        img_vec(ismember(p.stim.ns.unique_im_nrs,p.stim.ns.imagery_im_nr)) = true;
+        img_vec(ismember(p.stim.ns.unique_im_nrs_core,p.stim.ns.unique_im_nrs_specialcore)) = true;
 
         super_cat_name = p.stim.ns.super_cat(super_cat_vec);
         basic_cat_name = {}; sub_cat_name ={};
@@ -355,7 +376,7 @@ switch stimClass
         end
         
         % Obtain unique image nrs
-        im_nr_vec        = p.stim.ns.unique_im_nrs;                                    % allocated unique image nrs
+        im_nr_vec        = p.stim.ns.unique_im_nrs_core;                                    
             
         % create filler vectors
         contrast_vec = ones(size(stimloc_vec))';
@@ -377,12 +398,14 @@ switch stimClass
         t.super_cat     = super_cat_vec';
         t.basic_cat     = basic_cat_vec';
         t.sub_cat       = sub_cat_vec';
+        t.affordance_cat = affordance_cat';
         t.super_cat_name = super_cat_name';
         t.basic_cat_name = basic_cat_name';
         t.sub_cat_name   = sub_cat_name';
-        t.is_in_img      = img_vec';
+        t.affordance_name = affordance_name';
+        t.is_in_img_ltm  = img_vec';
                 
-        assert(isequal(t.unique_im_nr, p.stim.ns.unique_im_nrs'))
+        assert(isequal(t.unique_im_nr, p.stim.ns.unique_im_nrs_core'))
         assert(isequal(n_unique_cases,size(t,1)))
         assert(isequal(unique(t.super_cat)',1:length(p.stim.ns.super_cat)))
         assert(isequal(unique(t.basic_cat)',1:length(p.stim.ns.basic_cat{1})))
@@ -395,6 +418,7 @@ switch stimClass
                                                        reshape(cat(1,p.stim.ns.sub_cat{4,:}),1,[]), ...
                                                        reshape(cat(1,p.stim.ns.sub_cat{5,:}),1,[]))))
 end
+
 
 
 return
