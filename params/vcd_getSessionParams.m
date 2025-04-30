@@ -47,7 +47,7 @@ clear rename_me ff p0
 
 %% Load params if requested
 if load_params
-    d = dir(fullfile(vcd_rootPath,'workspaces','info',sprintf('exp_session_%s*.mat',disp_name)));
+    d = dir(fullfile(vcd_rootPath,'workspaces','info',sprintf('exp_%s*.mat',disp_name)));
     if ~isempty(d)
         if verbose
             fprintf('[%s]: Found %d exp params .mat file(s)\n',mfilename,length(d));
@@ -56,7 +56,7 @@ if load_params
             end
             fprintf('[%s]: Loading exp params .mat file: %s\n', mfilename, d(end).name);
         end
-        load(fullfile(d(end).folder,d(end).name),'exp_session');
+        load(fullfile(d(end).folder,d(end).name),'exp');
     else
         error('[%s]: Can''t find experiment session params file!\n', mfilename)
     end
