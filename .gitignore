@@ -1,10 +1,15 @@
 *~
-*.m~
-*.asv
-*.DS_Store
-*.log
-workspaces/
-!workspaces/info/trials*.mat
-figs/
-data/
+**.m~
+**.asv
+**/.DS_Store
+**/.log
+!workspaces/
+workspaces/*
+!workspaces/info/
+workspaces/info/*
+!workspaces/info/deleteme.txt
+workspaces/instructions/*
+workspaces/stimuli/*
+figs/*
+data/*
 
