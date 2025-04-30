@@ -6,8 +6,13 @@ function outputs = vcd(varargin)
 %   outputs = vcd('varname1',var1,'varname2',var2, ...'varnameN',varN);
 %
 % Note that 'fullinfo', 'stimulusnumberstonames', and
-% 'stimulusnamestonumbers' requires the condition_master table, stored as
-% vcd_rootPath/workspaces/info/trials*.mat.
+% 'stimulusnamestonumbers' requires the condition_master table. This
+% variable is stored here: 
+%   vcd_rootPath/workspaces/info/trials_7TASBOLDSCREEN_YYYYMMDDTHHMMSS.mat.
+% You can re-generate a new trials_*.mat file by running (see also
+% s_createDesignMatrix.m.):
+% [~, condition_master] = vcd_createBlocksAndTrials(params, ...
+%   'load_params', false, 'store_params', true);
 % 
 % Abbreviations for stimulus classes are: 
 %  1:'gabor'  - Gabor (grating subject to Gaussian window).
