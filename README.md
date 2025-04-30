@@ -57,49 +57,65 @@ This stimulus presentation code has also been tested on a MacbookPro with macOS 
 The content of the `workspaces` folder is ignored, as the files are too big. You can view a stored version of the workspace [here](https://drive.google.com/drive/folders/1Boahkioyk5sLrlVFPKiTmLR2RoDlDeaS?usp=sharing).
 
 ## Code and folder overview
+Base functions:
+* `runme_vcdcore.m` : This is the main function to run the core experiment of VCD.
+* `vcd_rootPath.m` : Function to set the rootpath to relative to the base of this folder.
+* `vcd.m` : Function to get basic info about the stimulus classes, task classes, and stimuli used in VCD.
 
-* `runme_vcdcore.m`	 :	This is the main function to run the core experiment of VCD.
-* `vcd_rootPath.m` 	 : 	Function to set the rootpath to relative to the base of this folder.
-
-* `bookkeeping`		 :	Folder with standalone script and vcd related functions to create experimental design and keep track of stimulus conditions during stimulus presentation.
-* `external`		 :	Folder with external functions from other toolboxes.
-* `params` 			 :	Folder with vcd functions that define display, stimulus, and experimental session parameters.
-* `stimpresentation` :	Folder with vcd functions that run stimulus presentation with psychtoolbox.
-* `stimcreation`	 : 	Folder with standalone script and functions to create stimuli.
-* `tinkers`			 : 	Folder with code tinkering around and such (probably should be removed at some point)
-* `utils` 			 : 	Folder with small and simple utility functions.
+Folders:
+* `bookkeeping` : Folder with standalone script and vcd related functions to create experimental design and keep track of stimulus conditions during stimulus presentation.
+* `external` : Folder with external functions from other toolboxes.
+* `params` : Folder with vcd functions that define display, stimulus, and experimental session parameters.
+* `stimpresentation` : Folder with vcd functions that run stimulus presentation with psychtoolbox.
+* `stimcreation` : Folder with standalone script and functions to create stimuli.
+* `tinkers` : Folder with code tinkering around and such (probably should be removed at some point)
+* `utils` : Folder with small and simple utility functions.
 
 
 Folders ignored by git (see .gitignore):
-* `workspaces`		:	Folder where the created stimuli, condition tables, and instructions live.
-	* `stimuli`		: 	Subfolder where stimuli are stored in matlab (.mat) files
-	* `info`		: 	Subfolder where logged stimulus information is stored in csv files, as well as stimulus, display, experiment session params are stored in matlab (.mat) files.	
-	* `instructions`: 	Subfolder where instructions are stored in text (.txt) files
-* `figs`		    : 	Folder where debug figures are stored
-* `data` 		    : 	Folder where subject's button presses and created stimuli are stored (if requested).
+* `workspaces` : Folder where the created stimuli, condition tables, and instructions live.
+	* `stimuli` : Subfolder where stimuli are stored in matlab (.mat) files
+	* `info` : Subfolder where logged stimulus information is stored in csv files, as well as stimulus, display, experiment session params are stored in matlab (.mat) files. (ONE EXCEPTION: we do not ignore the trials_*.mat file as this file is used by vcd.m)
+	* `instructions` : Subfolder where instructions are stored in text (.txt) files
+* `figs` : Folder where debug figures are stored
+* `data` : Folder where subject's button presses and created stimuli are stored (if requested).
 
 
 ## Examples
 
-* Example 1: Create stimuli
-  
+Example 0: Get all stimulus class names
+
+`vcd('stimulusclassnames',[])`
+
+Example 1: Create stimuli
+
 `s_createStimuli.m`
 
-* Example 2: Create experimental design
-  
+
+
+Example 2: Create experimental design
+
 `s_createDesignMatrix.m`
 
-* Example 3: Present run 01 of session 01 for subject 001:
+
+
+Example 3: Present run 01 of session 01 for subject 001:
   
 `runme_vcdcore(1,1,1)`
 
-* Example 4: Present run 01 of session 01 for subject 001 in debug mode:
+
+
+Example 4: Present run 01 of session 01 for subject 001 in debug mode:
   
 `runme_vcdcore(1,1,1, 'debugmode', true)`
 
-* Example 5: Present run 01 of session 01 for subject 001 in debug mode using the psychophysics room monitor:
+
+
+Example 5: Present run 01 of session 01 for subject 001 in debug mode using the psychophysics room monitor:
   
 `runme_vcdcore(1,1,1, 'dispName','PPROOM_EIZOFLEXSCAN')`
+
+
 
 ## Terminology
 
@@ -150,6 +166,8 @@ Folders ignored by git (see .gitignore):
 ![Single dot stimulus display for 7TAS BOLDScreen](https://github.com/user-attachments/assets/86950a17-e335-4a00-9a81-0da6b0ce068b)
 
 ![Natural scenes stimulus display for 7TAS BOLDScreen](https://github.com/user-attachments/assets/7a6326b2-1b09-4bd2-adb1-66c81b39fcd6)
+
+
 
 
 ## MIT License
