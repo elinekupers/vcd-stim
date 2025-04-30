@@ -133,7 +133,7 @@ base_rot        = info.rot_abs(idx0);  % alternating 2 view ± 4 steps spaced 2 
 rotations       = [0, params.stim.obj.delta_from_ref];
 
 % reshape unique image nr for WM test images
-unique_ref_im   = reshape(params.stim.obj.unique_im_nrs_WM, [],sum(idx0));
+unique_ref_im   = reshape(params.stim.obj.unique_im_nrs_wm_test, [],sum(idx0));
 
 % Get (rescaled) image extent
 extent   = params.stim.obj.img_sz_pix.*params.stim.obj.dres;
@@ -199,7 +199,7 @@ for sub = 1:length(subordinate(idx0))
         im_order.abs_rot(counter)        = base_rot(sub)+rotations(rr);
         im_order.rel_rot(counter)        = rotations(rr);
         if rr == 1
-            im_order.unique_im(counter)   = params.stim.obj.unique_im_nrs(sub);
+            im_order.unique_im(counter)   = params.stim.obj.unique_im_nrs_core(sub);
         else 
             im_order.unique_im(counter)  = unique_ref_im(rr-1,sub);
         end

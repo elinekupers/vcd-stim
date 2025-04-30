@@ -55,8 +55,8 @@ function [rdks, masks, info] = vcd_rdk(params)
 %    rdk.dots_lifetime      : (double) how long will a single dot be on the
 %                               screen and move before we kill it and draw
 %                               a new dot? (frames)
-%    rdk.unique_im_nrs      : (int) number for each unique core rdk
-%    rdk.unique_im_nrs_WM   : (int) number for each unique WM test rdk
+%    rdk.unique_im_nrs_core      : (int) number for each unique core rdk
+%    rdk.unique_im_nrs_wm_test   : (int) number for each unique WM test rdk
 %
 % OUTPUTS:
 %   rdks         : (uint8) unique RDK images used for VCD experiment, 
@@ -119,7 +119,7 @@ else
 end
 
 % Organize unique image numbers for core and WM test images
-img_im_nrs = reshape(params.stim.rdk.unique_im_nrs_WM,length(params.stim.rdk.delta_from_ref),[]);
+img_im_nrs = reshape(params.stim.rdk.unique_im_nrs_wm_test,length(params.stim.rdk.delta_from_ref),[]);
 img_im_nrs2{1} = img_im_nrs(1,1:length(params.stim.rdk.dots_direction)); % dir 1:8, coherence 1, delta = nr+dd
 img_im_nrs2{2} = img_im_nrs(1,(length(params.stim.rdk.dots_direction)+1):(length(params.stim.rdk.dots_direction)*2)); % dir 1:8, coherence 2, delta = nr+dd
 img_im_nrs2{3} = img_im_nrs(1,(2*(length(params.stim.rdk.dots_direction))+1):(length(params.stim.rdk.dots_direction)*3)); % dir 1:8, coherence 3, delta = nr+dd
@@ -350,14 +350,14 @@ for cc = 1:length(params.stim.rdk.dots_coherence)
             if dd == 0
                 info.rel_motdir_deg(counter) = 0;
                 info.rel_motdir_deg_i(counter) = 0;
-                info.unique_im(counter) = params.stim.rdk.unique_im_nrs(bb + ((cc-1)*length(params.stim.rdk.dots_direction)));
+                info.unique_im(counter) = params.stim.rdk.unique_im_nrs_core(bb + ((cc-1)*length(params.stim.rdk.dots_direction)));
             else
                 info.rel_motdir_deg(counter) = params.stim.gabor.delta_from_ref(dd);
                 info.rel_motdir_deg_i(counter) = dd;
                 info.unique_im(counter) = img_im_nrs2{cc}(bb)+(dd-1);
             end
 
-            info.is_in_img_ltm(counter) = (info.unique_im(counter)==params.stim.rdk.imagery_im_nr);
+            info.is_in_img_ltm(counter) = (info.unique_im(counter)==params.stim.rdk.unique_im_nrs_specialcore);
             
             % Create binary circular alpha mask for rdk frames
             [XX,YY]       = meshgrid((1:size(frames,1))-(size(frames,1)/2),(1:size(frames,1))-(size(frames,1)/2)); 

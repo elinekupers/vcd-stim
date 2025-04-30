@@ -167,9 +167,9 @@ dot_ypos_pix   = reshape(all_ypos_pix',1,[])';
 dot_radians   = reshape(all_angles_rad',1,[])';
 dot_ref_locs  = repelem(dot_ref_locs,length(params.stim.dot.ang_deg))';
 dot_ref_loc_idx = repelem([0:length(params.stim.dot.delta_from_ref)],length(params.stim.dot.ang_deg))';
-unique_ref_im = reshape(params.stim.dot.unique_im_nrs_WM,4,[])';
-unique_im     = [params.stim.dot.unique_im_nrs, unique_ref_im(:)'];
-ltm_img_bool  = ismember(unique_im,params.stim.dot.imagery_im_nr)';
+unique_ref_im = reshape(params.stim.dot.unique_im_nrs_wm_test,4,[])';
+unique_im     = [params.stim.dot.unique_im_nrs_core, unique_ref_im(:)'];
+ltm_img_bool  = ismember(unique_im,params.stim.dot.unique_im_nrs_specialcore)';
 assert(sum(ltm_img_bool)==8);
 
 info = table(unique_im(:), ... 
@@ -232,7 +232,7 @@ if params.verbose
     %% Visualize reference location vs offset locations for WM images
     cmap = [0,0,0; lines(4)];
     sz = 50*ones(1,5);
-    for ii = params.stim.dot.unique_im_nrs
+    for ii = params.stim.dot.unique_im_nrs_core
         
         idx1 = find(info.unique_im==ii);
         idx2 = find(info.angle_i==info.angle_i(idx1) &  sum(info.delta_deg_ref==params.stim.dot.delta_from_ref,2));

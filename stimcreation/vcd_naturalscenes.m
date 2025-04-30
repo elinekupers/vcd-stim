@@ -103,7 +103,7 @@ end
 
 % Read info table
 info = readtable(fullfile(d(end).folder, d(end).name));
-[~,idx0] = intersect(params.stim.ns.unique_im_nrs,info.unique_im);
+[~,idx0] = intersect(params.stim.ns.unique_im_nrs_core,info.unique_im);
 
 % Define superordinate and basic categories, and number of exemplars per basic category
 superordinate = unique(info.superordinate,'stable'); % 5 superordinate categories
@@ -118,7 +118,7 @@ subordinate(cellfun(@isempty, subordinate)) = [];
 wm_test_im_name = repmat(params.stim.ns.change_im,1,length(idx0));
 
 % unique image nrs
-unique_im       = params.stim.ns.unique_im_nrs;
+unique_im       = params.stim.ns.unique_im_nrs_core;
 
 % Get info about images
 n_scenes     = length(idx0)*length(basic)*length(subordinate);
@@ -199,7 +199,7 @@ for ss = 1:length(superordinate)
                 im_order.affordance(counter)= info.obj_act(bb);
                 im_order.basic_cat(counter) = basic(ex);
                 im_order.sub_cat(counter)   = subordinate(bb);
-                im_order.unique_im(counter) = params.stim.ns.unique_im_nrs_WM(cb_idx+((ex-1)*length(subordinate) + bb + (ss-1)*(length(basic)*length(subordinate))));
+                im_order.unique_im(counter) = params.stim.ns.unique_im_nrs_wm_test(cb_idx+((ex-1)*length(subordinate) + bb + (ss-1)*(length(basic)*length(subordinate))));
                 im_order.lure_im(counter)   = false;
                 im_order.change_im(counter) = cb_idx;
                 
@@ -349,11 +349,11 @@ if params.verbose
         if params.stim.store_imgs
             saveFigDir1 = fullfile(vcd_rootPath,'figs',params.disp.name,'ns','visual_checks','resized_with_axes');
             if ~exist(saveFigDir1,'dir'), mkdir(saveFigDir1); end
-            print(fullfile(saveFigDir1, sprintf('%03d_vcd_ns%02d', params.stim.ns.unique_im_nrs(ss), ss)),'-dpng','-r150');
+            print(fullfile(saveFigDir1, sprintf('%03d_vcd_ns%02d', params.stim.ns.unique_im_nrs_core(ss), ss)),'-dpng','-r150');
             
             saveFigDir2 = fullfile(vcd_rootPath,'figs',params.disp.name,'ns','visual_checks','resized');
             if ~exist(saveFigDir2,'dir'), mkdir(saveFigDir2); end
-            imwrite(scenes0(:,:,:,ss), fullfile(saveFigDir2, sprintf('%03d_vcd_ns%02d.png', params.stim.ns.unique_im_nrs(ss), ss)));
+            imwrite(scenes0(:,:,:,ss), fullfile(saveFigDir2, sprintf('%03d_vcd_ns%02d.png', params.stim.ns.unique_im_nrs_core(ss), ss)));
         end
         
         for ll = 1:size(ltmlures0,5)
@@ -366,7 +366,7 @@ if params.verbose
                 
                 if params.stim.store_imgs
                     print(fullfile(saveFigDir1, sprintf('%03d_vcd_ns%02d_ltm_lure%02d', params.stim.ns.unique_im_nrs_LTM_lures(ss), ss,ll)),'-dpng','-r150');
-                    imwrite(ltmlures0(:,:,:,ss,ll), fullfile(saveFigDir2, sprintf('%03d_vcd_ns%02d_ltm_lure%02d.png', params.stim.ns.unique_im_nrs_LTM_lures(ss), ss,ll)));
+                    imwrite(ltmlures0(:,:,:,ss,ll), fullfile(saveFigDir2, sprintf('%03d_vcd_ns%02d_ltm_lure%02d.png', params.stim.ns.unique_im_nrs_ltm_lures(ss), ss,ll)));
                 end
             end
             % Plot WM image
@@ -377,8 +377,8 @@ if params.verbose
             set(gca,'CLim',[1 255]);
             
             if params.stim.store_imgs
-                print(fullfile(saveFigDir1, sprintf('%03d_vcd_ns%02d_wm_im%02d',params.stim.ns.unique_im_nrs_WM(ss), ss,ll)),'-dpng','-r150');
-                imwrite(wmtest0(:,:,:,ss,ll), fullfile(saveFigDir2, sprintf('%03d_vcd_ns%02d_wm_im%02d.png', params.stim.ns.unique_im_nrs_WM(ss), ss,ll)));
+                print(fullfile(saveFigDir1, sprintf('%03d_vcd_ns%02d_wm_im%02d',params.stim.ns.unique_im_nrs_wm_test(ss), ss,ll)),'-dpng','-r150');
+                imwrite(wmtest0(:,:,:,ss,ll), fullfile(saveFigDir2, sprintf('%03d_vcd_ns%02d_wm_im%02d.png', params.stim.ns.unique_im_nrs_wm_test(ss), ss,ll)));
             end
         end
     end
@@ -426,11 +426,11 @@ if any(strcmp(params.disp.name, {'7TAS_BOLDSCREEN32', 'PPROOM_EIZOFLEXSCAN'}))
             if params.stim.store_imgs
                 saveFigDir1 = fullfile(vcd_rootPath,'figs',params.disp.name,'ns','visual_checks','resized_and_squared_with_axes');
                 if ~exist(saveFigDir1,'dir'), mkdir(saveFigDir1); end
-                print(fullfile(saveFigDir1, sprintf('%03d_vcd_ns%02d', params.stim.ns.unique_im_nrs(ss), ss)),'-dpng','-r150');
+                print(fullfile(saveFigDir1, sprintf('%03d_vcd_ns%02d', params.stim.ns.unique_im_nrs_core(ss), ss)),'-dpng','-r150');
                 
                 saveFigDir2 = fullfile(vcd_rootPath,'figs',params.disp.name,'ns','visual_checks','resized_and_squared');
                 if ~exist(saveFigDir2,'dir'), mkdir(saveFigDir2); end
-                imwrite(temp_sc(:,:,:,ss), fullfile(saveFigDir2, sprintf('%03d_vcd_ns%02d.png', params.stim.ns.unique_im_nrs(ss), ss)));
+                imwrite(temp_sc(:,:,:,ss), fullfile(saveFigDir2, sprintf('%03d_vcd_ns%02d.png', params.stim.ns.unique_im_nrs_core(ss), ss)));
             end
             
             for ll = 1:size(lures_sq,5)
@@ -442,7 +442,7 @@ if any(strcmp(params.disp.name, {'7TAS_BOLDSCREEN32', 'PPROOM_EIZOFLEXSCAN'}))
                     set(gca,'CLim',[1 255]);
                     if params.stim.store_imgs
                         print(fullfile(saveFigDir1, sprintf('%03d_vcd_ns%02d_ltm_lure%02d', params.stim.ns.unique_im_nrs_LTM_lures(ss),ss,ll)),'-dpng','-r150');
-                        imwrite(temp_ltm(:,:,:,ss,ll), fullfile(saveFigDir2, sprintf('%03d_vcd_ns%02d_ltm_lure%02d.png', params.stim.ns.unique_im_nrs_LTM_lures(ss), ss,ll)));
+                        imwrite(temp_ltm(:,:,:,ss,ll), fullfile(saveFigDir2, sprintf('%03d_vcd_ns%02d_ltm_lure%02d.png', params.stim.ns.unique_im_nrs_ltm_lures(ss), ss,ll)));
                     end
                 end
                 clf;
@@ -452,8 +452,8 @@ if any(strcmp(params.disp.name, {'7TAS_BOLDSCREEN32', 'PPROOM_EIZOFLEXSCAN'}))
                 set(gca,'CLim',[1 255]);
                 
                 if params.stim.store_imgs
-                    print(fullfile(saveFigDir1, sprintf('%03d_vcd_ns%02d_wm_im%02d', params.stim.ns.unique_im_nrs_WM(ss),ss,ll)),'-dpng','-r150');
-                    imwrite(temp_wm(:,:,:,ss,ll), fullfile(saveFigDir2, sprintf('%03d_vcd_ns%02d_wm_im%02d.png', params.stim.ns.unique_im_nrs_WM(ss), ss,ll)));
+                    print(fullfile(saveFigDir1, sprintf('%03d_vcd_ns%02d_wm_im%02d', params.stim.ns.unique_im_nrs_wm_test(ss),ss,ll)),'-dpng','-r150');
+                    imwrite(temp_wm(:,:,:,ss,ll), fullfile(saveFigDir2, sprintf('%03d_vcd_ns%02d_wm_im%02d.png', params.stim.ns.unique_im_nrs_wm_test(ss), ss,ll)));
                 end
             end
         end
