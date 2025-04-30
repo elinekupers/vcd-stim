@@ -7,7 +7,7 @@
 workspaces/*
 !workspaces/info/
 workspaces/info/*
-!workspaces/info/deleteme.txt
+!workspaces/info/trials_*.mat
 workspaces/instructions/*
 workspaces/stimuli/*
 figs/*
