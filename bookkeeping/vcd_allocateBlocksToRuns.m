@@ -6,7 +6,7 @@ function condition_master = vcd_allocateBlocksToRuns(params)
 % INPUTS:
 %   params              : 	(struct) parameter struct needed to get subject
 %                           nrs and run type params. REQUIRES params.trials 
-%                           to exist and contain condition_master v0.                   
+%                           to exist and contain condition_master v0. 
 %   
 % OUTPUTS:
 %   condition_master    :  (struct) updated condition master table with
@@ -21,6 +21,7 @@ condition_master = params.trials;
 if sum(strcmp(condition_master.Properties.VariableNames,'session_nr'))==0
     t_session = table( ...
         NaN(size(condition_master,1),1), ... session_nr
+        num2cell(NaN(size(condition_master,1),2)), ... session_name
         NaN(size(condition_master,1),1), ... run_nr
         NaN(size(condition_master,1),1), ... block_nr
         NaN(size(condition_master,1), params.exp.total_subjects), ...
@@ -31,6 +32,7 @@ if sum(strcmp(condition_master.Properties.VariableNames,'session_nr'))==0
         NaN(size(condition_master,1),1)); %  global_block_nr
     t_session.Properties.VariableNames = {...
         'session_nr',...
+        'session_name', ...
         'run_nr',...
         'block_nr',...
         'subj_block_nr', ...
@@ -41,7 +43,7 @@ if sum(strcmp(condition_master.Properties.VariableNames,'session_nr'))==0
         'global_block_nr', ...
         };
     
-    condition_master = cat(2, t_session(:,[1:6]), condition_master,t_session(:,[7,8]));
+    condition_master = cat(2, t_session(:,[1:7]), condition_master,t_session(:,[8,9]));
 end
 
 
@@ -58,17 +60,23 @@ stim_class_abbr = upper(params.exp.stimClassLabels);
 stim_class_abbr{1} = 'GBR';
 task_class_abbr = upper(params.exp.taskClassLabels);
 
-for ses = 1:params.exp.n_sessions
+all_sessions = cat(3, params.exp.session.wide.ses_blocks, params.exp.session.deep.ses_blocks);
+
+session_names = {'WIDE1A', 'WIDE1B'};
+for ii = params.exp.session.deep.session_nrs, session_names = cat(2,session_names{:},{sprintf('DEEP%02d',ii)}); end
+
+for ses = 1:size(all_sessions,3)
     
     %% First we check how many repeats of stim-task crossings we want to run within a session
-    fprintf('\nSESSION %d:',ses)
+    fprintf('\nSESSION %s:',session_names{ses})
     
     % also keep track of local stim-task block allocation
     stimtask_tracker_local = ones(length(params.exp.stimClassLabels), length(params.exp.taskClassLabels));
 
+    
     % Nr of blocks for each stim-task crossing. We use the nr of blocks,
     % same trials, and same unique image for each subject
-    block_distr = params.exp.ses_blocks(:,:,ses);
+    block_distr = all_sessions(:,:,ses);
     
     bb = 1; % block tracker
     scc_bb = 0; % separate counter for scc task, because it is spread across stimulus classes
@@ -76,7 +84,13 @@ for ses = 1:params.exp.n_sessions
     for sc = 1:length(params.exp.stimClassLabels)
         for tc = 1:length(params.exp.taskClassLabels)
             
-            if  ses >= params.exp.session.task_start(tc)
+            if ismember(ses, params.exp.session.wide.session_nrs)
+                task_start = params.exp.session.wide.task_start(tc);
+            else
+                task_start = params.exp.session.deep.task_start(tc);
+            end
+            
+            if  ses >= task_start
                 % get nr of blocks for this specific crossing
                 n_blocks = block_distr(sc,tc);
                 
@@ -88,8 +102,8 @@ for ses = 1:params.exp.n_sessions
                     
                     for ii = 1:length(curr_blocks)
                         
-                        if strcmp(params.exp.taskClassLabels{tc},'scc')
-                            % We can't sort on stim class name for SCC,
+                        if ismember(params.exp.taskClassLabels{tc},{'scc','ltm'})
+                            % We can't sort on stim class nr for SCC, LTM,
                             % otherwise stim will be allocated to different
                             % blocks. Hence we use an if statement and call
                             % the block_name 'scc-all'
@@ -103,8 +117,9 @@ for ses = 1:params.exp.n_sessions
                         end
                         % get block numbers for this stim-task crossing
                         condition_master.session_nr(idx)        = ses;
+                        condition_master.session_name(idx)      = session_names(ses);
                         blck_name                               = condition_master.block_name(idx);
-                        blck_name = blck_name(1);
+                        blck_name                               = blck_name(1);
                         condition_master.block_ID(idx)          = find(strcmp(blck_name,params.exp.stimTaskLabels));
                         condition_master.block_nr(idx)          = bb;
                         condition_master.global_block_nr(idx)   = global_block_counter;
@@ -195,7 +210,7 @@ for ses = 1:params.exp.n_sessions
     %     end
     
     %% SHUFFLE RUN AND BLOCK ORDER WITHIN RUNS
-    % 
+
     block_vec      = condition_master.block_nr;
     trialtype_vec  = condition_master.trial_type;
     ses_idx        = (condition_master.session_nr==ses);
@@ -206,19 +221,24 @@ for ses = 1:params.exp.n_sessions
     % get unique block nrs and associated trial types
     [unique_blocks, ia] = unique(ses_blocks);
     unique_trialtypes = ses_trialtype(ia);
-    n_type1 = sum(unique_trialtypes==1); % single
-    n_type2 = sum(unique_trialtypes==2); % double
+    n_trialtype1 = sum(unique_trialtypes==1); % single
+    n_trialtype2 = sum(unique_trialtypes==2); % double
+    
+    runtype1 = cat(2,params.exp.session.wide.nr_of_type1_runs,params.exp.session.deep.nr_of_type1_runs);
+    runtype2 = cat(2,params.exp.session.wide.nr_of_type2_runs,params.exp.session.deep.nr_of_type2_runs);
+    runtype3 = cat(2,params.exp.session.wide.nr_of_type3_runs,params.exp.session.deep.nr_of_type3_runs);
+    runtype4 = cat(2,params.exp.session.wide.nr_of_type4_runs,params.exp.session.deep.nr_of_type4_runs);
     
     block_type_allocation  = [params.exp.run.run_type1,params.exp.run.run_type2,params.exp.run.run_type3,params.exp.run.run_type4];
-    ses_run_types          = [params.exp.session.nr_of_type1_runs(ses),params.exp.session.nr_of_type2_runs(ses),params.exp.session.nr_of_type3_runs(ses),params.exp.session.nr_of_type4_runs(ses)];
+    ses_run_types          = [runtype1(ses),runtype2(ses),runtype3(ses),runtype4(ses)];
     nr_blocks_per_run_type = ses_run_types * block_type_allocation';
     
     assert(isequal(unique_blocks,[1:length(unique_blocks)]'))
     assert(isequal(length(unique_blocks), sum(nr_blocks_per_run_type)))
-    assert(isequal(n_type1 , nr_blocks_per_run_type(1)))
-    assert(isequal(n_type2 , nr_blocks_per_run_type(2)))
+    assert(isequal(n_trialtype1 , nr_blocks_per_run_type(1)))
+    assert(isequal(n_trialtype2 , nr_blocks_per_run_type(2)))
     
-    runs_to_fill = [ones(1, params.exp.session.nr_of_type1_runs(ses)), 2*ones(1,params.exp.session.nr_of_type2_runs(ses)),3*ones(1,params.exp.session.nr_of_type3_runs(ses)),3*ones(1,params.exp.session.nr_of_type4_runs(ses))];
+    runs_to_fill = [ones(1, runtype1(ses)), 2*ones(1,runtype2(ses)),3*ones(1,runtype3(ses)),3*ones(1,runtype4(ses))];
   
     curr_runs = zeros(length(runs_to_fill),7);
 
