@@ -39,7 +39,7 @@ assert(length(left_stim)==length(right_stim))
 trial_vec_i = NaN(size(conds_master,1)/2,2);
 
 % Add the condition master to struct
-trial_vec = repelem(1:size(trial_vec_i,1),2); % or     trial_vec = repelem(1:(n_unique_cases/2),2); ????
+trial_vec = repelem(1:size(trial_vec_i,1),2); 
 
 nr_cueing_conds = 4; %left/right x cued/uncued
 
@@ -50,27 +50,26 @@ if ~strcmp(unique(conds_master.task_class_name),{'fix'})
     thickening_dir = zeros(length(trial_vec),1);
     th_count = 1;
     
-    if strcmp(unique(conds_master.task_class_name),{'img'})  
-        left_cued    = find((conds_master.is_cued == 1) & (conds_master.stimloc == 1) & (conds_master.is_in_img == 1 | conds_master.is_catch == 1));
-        left_uncued  = find((conds_master.is_cued == 0) & (conds_master.stimloc == 1) & (conds_master.is_in_img == 1 | conds_master.is_catch == 1));
-        right_cued   = find((conds_master.is_cued == 1) & (conds_master.stimloc == 2) & (conds_master.is_in_img == 1 | conds_master.is_catch == 1));
-        right_uncued = find((conds_master.is_cued == 0) & (conds_master.stimloc == 2) & (conds_master.is_in_img == 1 | conds_master.is_catch == 1));
-        assert(isequal(length(left_cued),length(right_uncued)))
-        assert(isequal(length(left_uncued),length(right_cued)))
-        
-        % double the nr of trials for imagery, given that we only selected a subset
-        left_cued    = [shuffle_concat(left_cued(ismember(left_cued,find(conds_master.is_in_img)))', 2)'; left_cued(ismember(left_cued,find(conds_master.is_catch)))];
-        left_uncued  = [shuffle_concat(left_uncued(ismember(left_uncued,find(conds_master.is_in_img)))', 2)'; left_uncued(ismember(left_uncued,find(conds_master.is_catch)))];
-        right_cued   = [shuffle_concat(right_cued(ismember(right_cued,find(conds_master.is_in_img)))', 2)'; right_cued(ismember(right_cued,find(conds_master.is_catch)))];
-        right_uncued = [shuffle_concat(right_uncued(ismember(right_uncued,find(conds_master.is_in_img)))', 2)';right_uncued(ismember(right_uncued,find(conds_master.is_catch)))];
-        
-        trial_vec_i(((length(left_cued)*2)+1):end,:) = [];
-        
-    else
-        left_cued    = find((conds_master.is_cued == 1) & (conds_master.stimloc == 1));
-        left_uncued  = find((conds_master.is_cued == 0) & (conds_master.stimloc == 1));
-        right_cued   = find((conds_master.is_cued == 1) & (conds_master.stimloc == 2));
-        right_uncued = find((conds_master.is_cued == 0) & (conds_master.stimloc == 2));
+    left_cued    = find((conds_master.is_cued == 1) & (conds_master.stimloc == 1));
+    left_uncued  = find((conds_master.is_cued == 0) & (conds_master.stimloc == 1));
+    right_cued   = find((conds_master.is_cued == 1) & (conds_master.stimloc == 2));
+    right_uncued = find((conds_master.is_cued == 0) & (conds_master.stimloc == 2));
+    
+    assert(isequal(length(left_cued),length(right_uncued)))
+    assert(isequal(length(left_uncued),length(right_cued)))
+    
+    if ismember(unique(conds_master.task_class_name),{'img','ltm'})  
+
+        % double the nr of trials for imagery, but not catch trials, given that we only selected a subset
+        left_cued    = [shuffle_concat(left_cued(ismember(left_cued,find(conds_master.is_in_img_ltm)))', 2)'; left_cued(ismember(left_cued,find(conds_master.is_catch)))];
+        left_uncued  = [shuffle_concat(left_uncued(ismember(left_uncued,find(conds_master.is_in_img_ltm)))', 2)'; left_uncued(ismember(left_uncued,find(conds_master.is_catch)))];
+        right_cued   = [shuffle_concat(right_cued(ismember(right_cued,find(conds_master.is_in_img_ltm)))', 2)'; right_cued(ismember(right_cued,find(conds_master.is_catch)))];
+        right_uncued = [shuffle_concat(right_uncued(ismember(right_uncued,find(conds_master.is_in_img_ltm)))', 2)';right_uncued(ismember(right_uncued,find(conds_master.is_catch)))];
+
+        % update trial vec and trial vec idx 
+        trial_vec_i = NaN(length(left_cued)*2,2);
+        trial_vec   = repelem(1:size(trial_vec_i,1),2); 
+
     end
     
     cuing_conditions = [ones(1,length(left_cued)), 2.*ones(1,length(left_uncued)), ...
@@ -327,7 +326,7 @@ if ~isempty(catch_trials)
     assert(isequal(size(conds_master_reordered_merged),sz))
 end
 
-% update trial nr
+% update trial nr, move more general columns to the left of the table
 assert(isequal(sort(conds_master_reordered_merged.unique_trial_nr), [1:size(conds_master_reordered_merged.unique_trial_nr,1)]'))
 conds_master_reordered_merged.unique_trial_nr = sort(conds_master_reordered_merged.unique_trial_nr);
 [~,~,idx0] = intersect({'unique_trial_nr','stim_class','task_class','stim_nr_left','stim_nr_right','is_cued','is_catch','stim_class_name','task_class_name'}, ...
