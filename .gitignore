@@ -4,6 +4,7 @@
 *.DS_Store
 *.log
 workspaces/
+!workspaces/info/trials*.mat
 figs/
 data/
 
