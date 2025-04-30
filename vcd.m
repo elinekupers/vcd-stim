@@ -90,10 +90,10 @@ function outputs = vcd(varargin)
 %                           'wm-rdk','img-rdk','fix-dot','cd-dot','pc-dot',
 %                           'wm-dot','img-dot''fix-obj','cd-obj','pc-obj',
 %                           'wm-obj','img-obj','what-obj','how-obj',
-%                           'fix-ns','cd-ns','pc-ns','wm-ns','ltm-ns',
-%                           'img-ns','what-ns','where-ns','how-ns'. 
+%                           'fix-ns','cd-ns','pc-ns','wm-ns','img-ns',
+%                           'what-ns','where-ns','how-ns'. 
 %                           Note that for 'ltm' and 'scc' task classes, 
-%                           we mix classic stimulus classes (1-4) and use
+%                           we mix classic stimulus classes and use
 %                           crossing names: 'ltm-all','scc-all'.
 %                           Name can be lower case or upper case. Name can 
 %                           be a single name ('fix-gabor') or cell with 

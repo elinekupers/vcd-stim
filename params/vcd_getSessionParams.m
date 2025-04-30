@@ -83,7 +83,7 @@ else
             % SCC and LTM will mix 4 stim classes (GBR, RDK, DOT, OBJ), NS
             % doesn't cross with SCC and will be treated separately in LTM
             % crossing (so only scenes in a LTM-NS block).
-            if ismember(exp.taskclassnames{col},{'scc','ltm'}) && ismember(exp.stimclassnames{row},{'gabor','rdk','dot','obj'}) 
+            if ismember(exp.taskclassnames{col},{'scc','ltm'})
                 exp.crossingnames{col,row} = sprintf('%s-all',lower(exp.taskclassnames{col}));
             else
                 exp.crossingnames{col,row} = sprintf('%s-%s',lower(exp.taskclassnames{col}),lower(exp.stimclassnames{row}));
