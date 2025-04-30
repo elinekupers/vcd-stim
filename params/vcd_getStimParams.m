@@ -4,7 +4,8 @@ function stim = vcd_getStimParams(varargin)
 %   stim = vcd_getStimParams(['disp_name','7TAS_BOLDSCREEN32',] ...
 %                            ['load_params',false,] ...
 %                            ['store_params',true,], ...
-%                            ['saveInfoDir', fullfile(vcd_rootPath,'workspaces','info')]);
+%                            ['saveInfoDir', fullfile(vcd_rootPath,'workspaces','info')], ...
+%                            ['verbose',true]);
 %
 % Stimulus params such as size and location will depend on display params.
 %
@@ -18,6 +19,8 @@ function stim = vcd_getStimParams(varargin)
 %  store_params   : Store generated parameters or not. Default: true
 %  save_info_dir  : Where to store generated parameters?. 
 %                   Default: fullfile(vcd_rootPath,'workspaces','info')
+%  verbose        : Print info in the command window (true) or not (false).
+%                   Default: true
 %
 % OUTPUT:
 %  stim           : struct with stimulus params, including:
@@ -39,6 +42,7 @@ p0.addParameter('disp_name'    , '7TAS_BOLDSCREEN32', @(x) any(strcmp(x,{'7TAS_B
 p0.addParameter('load_params'  , true, @islogical);                    
 p0.addParameter('store_params' , true, @islogical); 
 p0.addParameter('save_info_dir', fullfile(vcd_rootPath,'workspaces','info'), @ischar);
+p0.addParameter('verbose'      , true, @islogical); 
 
 % Parse inputs
 p0.parse(varargin{:});
@@ -60,18 +64,20 @@ disp_params = vcd_getDisplayParams(disp_name);
 if load_params
     d = dir(fullfile(vcd_rootPath,'workspaces','info',sprintf('stim_%s*.mat',disp_name)));
     if ~isempty(d)
-        fprintf('[%s]: Found %d stim params .mat file(s)\n',mfilename,length(d));
-        if length(d) > 1
-            warning('[%s]: Multiple .mat files! Will pick the most recent one\n', mfilename);
+        if verbose
+            fprintf('[%s]: Found %d stim params .mat file(s)\n',mfilename,length(d));
+            if length(d) > 1
+                warning('[%s]: Multiple .mat files! Will pick the most recent one\n', mfilename);
+            end
+            fprintf('[%s]: Loading stim params .mat file: %s\n', mfilename, d(end).name);
         end
-        fprintf('[%s]: Loading stim params .mat file: %s\n', mfilename, d(end).name);
         load(fullfile(d(end).folder,d(end).name),'stim');
     else
         error('[%s]: Can''t find stim params file!\n', mfilename)
     end
 else 
     %% We will load params if requested
-    fprintf('[%s]: Define stim params\n', mfilename);
+    if verbose, fprintf('[%s]: Define stim params\n', mfilename); end
     
     % Setup struct
     stim = struct();
@@ -136,8 +142,9 @@ else
     stim.bckground.mode             = 0;                                    % mode of pinknoise function, 0 means fixed amplitude spectrum + random phase
     stim.bckground.std_clip_range   = 3.5;                                  % when converting pixel values to 1-255 range, how many std's of image values do we allow before clipping the range
     
-    fprintf('*** %s SCREEN SIZE (height x width): FoV: [%2.2f,%2.2f] degrees visual angle. Resolution = [%02d,%02d] pixels.***\n', disp_params.name, disp_params.h_deg,disp_params.w_deg ,disp_params.h_pix,disp_params.w_pix);
- 
+    if verbose,
+        fprintf('*** %s SCREEN SIZE (height x width): FoV: [%2.2f,%2.2f] degrees visual angle. Resolution = [%02d,%02d] pixels.***\n', disp_params.name, disp_params.h_deg,disp_params.w_deg ,disp_params.h_pix,disp_params.w_pix);
+    end
     %% FIXATION CIRCLE
     
     % General
@@ -171,9 +178,10 @@ else
     stim.fix.dotopacity             = 0.5;                                 % dot and border have 50% opacity
     stim.fix.color                  = [255, 255, 255; 255 0 0];            % white and red (for spatial cue)
    
-    fprintf('*** FIXATION CIRCLE: inner center diameter = %d, inner+thin rim = %d, inner+thick rim = %d pixels ***\n', ...
+    if verbose
+        fprintf('*** FIXATION CIRCLE: inner center diameter = %d, inner+thin rim = %d, inner+thick rim = %d pixels ***\n', ...
         stim.fix.dotcenterdiam_pix,stim.fix.dotthinborderdiam_pix,stim.fix.dotthickborderdiam_pix);
-    
+    end
     
     %% CONTRAST DECREMENT -- INVERTED GAUSSIAN TEMPORAL WINDOW
     % We treat timepoint t=0 as the onset time of a frame flip, and t=1 is 
@@ -242,7 +250,7 @@ else
                 p.infofile = fullfile(vcd_rootPath,'workspaces','info',sprintf('gabor_info_%s',disp_params.name)); % csv file
                 
                 % GENERAL
-                p.unique_im_nrs   = [1:24];                                     % Unique image nrs associated with the CORE 24 Gabors
+                p.unique_im_nrs_core   = [1:24];                                     % Unique image nrs associated with the CORE 24 Gabors
 
                 % TEMPORAL -- Fixed params
                 p.duration        = stimdur_frames;                             % frames (nr of monitor refreshes)
@@ -266,7 +274,7 @@ else
                 p.y0_deg          = y0_deg;                                     % y-center loc in deg (translation from 0,0)
                 p.x0_pix          = x0_pix;                                     % x-center loc in pix (translation from 0,0)
                 p.y0_pix          = y0_pix;                                     % y-center loc in pix (translation from 0,0)
-                p.ph_deg          = [0:(180/4):179];                            % 4 quadrature Gabor phases
+                p.ph_deg          = [0:(180/2):359];                            % 4 quadrature Gabor phases (deg) (0,90,180,270)
                 
                 % SPATIAL -- Manipulated params
                 p.contrast        = [0.05, 0.10, 1];                            % Michelson contrasts [0-1] (fraction)
@@ -281,7 +289,7 @@ else
                 % WORKING MEMORY: gabor orientation deltas for test images
                 p.delta_from_ref   = [-15, -5, 5, 15];                          % how much should stim iso-eccen loc deviate from reference (WM: double epochs)
                                                                                 % the bigger the delta, the easier the judgement in a trial
-                p.unique_im_nrs_WM = [111:206];                                 % Unique image nrs associated with the 96 WM test images
+                p.unique_im_nrs_wm_test = [111:206];                                 % Unique image nrs associated with the 96 WM test images
 
                 % check if all test images for WM have unique orientations
                 tmp = p.ori_deg + [0, p.delta_from_ref]';
@@ -290,12 +298,15 @@ else
                 assert(isequal(length(unique(tmp(:))), length(tmp(:))));
                 clear tmp
 
-                % IMAGERY
-                p.imagery_im_nr   = p.unique_im_nrs(17:end);                    % SELECTED UNIQUE IMAGES (SUBSET of all 24) (only high contrast)
-                p.imagery_sz_deg  = 5.658;                                      % QUIZ DOT PARAMS (STIM 2) desired diameter (deg) of the quiz dots image in an imagery trial to encourage subjects to create a vidid mental image.
-                p.imagery_sz_pix  = (round(p.img_sz_deg* disp_params.ppd)/2)*2; % QUIZ DOT PARAMS (STIM 2) diameter of quiz dot image in pixels (ensure even nr of pixels)
+                % LTM
+                p.ltm_pairs = [];
                 
-                p.unique_im_nrs_IMG_test  = [551:710];                          % Unique image nrs associated with the 8*20=160 IMG gabor test dot images
+                % IMAGERY
+                p.unique_im_nrs_specialcore   = p.unique_im_nrs_core(17:end);                    % SELECTED UNIQUE IMAGES (SUBSET of all 24) (only high contrast)
+                p.imagery_sz_deg  = 5.658;                                      % QUIZ DOT PARAMS (STIM 2) desired diameter (deg) of the quiz dots image in an imagery trial to encourage subjects to create a vidid mental image.
+                p.imagery_sz_pix  = (round(p.img_sz_deg* disp_params.ppd)/2)*2; % QUIZ DOT PARAMS (STIM 2) diameter of quiz dot image in pixels (ensure even nr of pixels)                
+                p.unique_im_nrs_img_test  = [551:710];                          % Unique image nrs associated with the 8*20=160 IMG gabor test dot images
+                p.imagery_quiz_images = [ones(1,20),2.*ones(1,20)];          % quiz dots overlap (1) or not (2)
 
                 % Add params to struct
                 stim.gabor = p;
@@ -307,7 +318,7 @@ else
                 p.infofile = fullfile(vcd_rootPath,'workspaces','info',sprintf('rdk_info_%s',disp_params.name)); % csv file
                 
                 % GENERAL
-                p.unique_im_nrs    = [25:48];                                  % Unique image nrs associated with the CORE 24 RDK stimuli
+                p.unique_im_nrs_core    = [25:48];                                  % Unique image nrs associated with the CORE 24 RDK stimuli
                 p.iscolor          = false;                                    % Use color or not? 
                 if p.iscolor
                     p.square_pix_val = true;                                   % [IF YES: MAKE SURE TO SQUARE IMAGE VALS FOR CLUT]
@@ -342,7 +353,7 @@ else
                 % SPATIAL -- manipulated
                 p.num_mot_dir      = 8;                                        % number of sampled motion directions
                 p.dots_direction   = [0:(360/p.num_mot_dir):359]+(0.5*(360/p.num_mot_dir)); % sample direction of coherent motion from [0-359] in deg (0 deg is aligned with 12 o'clock)
-                                                                               % turns out to be: [22.5   67.5  112.5  157.5  202.5  247.5  292.5 337.5]
+                                                                               % turns out to be: [22.5,67.5,112.5,157.5,202.5,247.5,292.5,337.5]
                 % ensure equal distance from cardinal meridians
                 assert(isequal(abs(0-p.dots_direction(1:(p.num_mot_dir/2))), abs(180-p.dots_direction(((p.num_mot_dir/2)+1):p.num_mot_dir))));
                 assert(isequal(abs(90-p.dots_direction(1:(p.num_mot_dir/2))), abs(270-p.dots_direction(((p.num_mot_dir/2)+1):p.num_mot_dir))));
@@ -350,7 +361,7 @@ else
                 
                 % WORKING MEMORY: motion direction deltas for test images
                 p.delta_from_ref   = [-15, -5, 5, 15];                          % how much should stim iso-eccen loc deviate from reference (WM: double epochs)
-                p.unique_im_nrs_WM = [207:302];                                 % Unique image nrs associated with the 96 WM RDK test stimuli
+                p.unique_im_nrs_wm_test = [207:302];                                 % Unique image nrs associated with the 96 WM RDK test stimuli
  
                 % check if all test images for WM have unique orientations
                 tmp          = p.dots_direction+[0, p.delta_from_ref]';
@@ -359,12 +370,16 @@ else
                 assert(isequal(length(unique(tmp(:))), length(tmp(:))));
                 clear tmp 
 
+                % LTM
+                p.ltm_pairs = [];
+                
                 % IMAGERY: 
-                p.imagery_im_nr    = p.unique_im_nrs(17:end);                  % SELECTED UNIQUE IMAGES (SUBSET of all 24) (only high coherence) 
+                p.unique_im_nrs_specialcore    = p.unique_im_nrs_core(17:end);                  % SELECTED UNIQUE IMAGES (SUBSET of all 24) (only high coherence) 
                 p.imagery_sz_deg   = 5.658;                                    % desired diameter (degree) of the second, quiz dots image in an imagery trial to encourage subjects to create a vidid mental image.
                 p.imagery_sz_pix   = (round(p.img_sz_deg* disp_params.ppd)/2)*2; % diameter of quiz dot image (pixels) (ensure even nr of pixels)
-                p.unique_im_nrs_IMG_test  = [711:870];                         % Unique image nrs associated with the 8*20=60 IMG RDK test dot images
-
+                p.unique_im_nrs_img_test  = [711:870];                         % Unique image nrs associated with the 8*20=60 IMG RDK test dot images
+                p.imagery_quiz_images = [ones(1,20),2.*ones(1,20)];            % quiz dots overlap (1) or not (2)
+                
                 % Add params to struct
                 stim.rdk = p;
                 
@@ -380,7 +395,7 @@ else
                 end
                 
                 % GENERAL
-                p.unique_im_nrs   = [49:64];                                     % Unique image nrs associated with the 16 single dot stimuli
+                p.unique_im_nrs_core   = [49:64];                                     % Unique image nrs associated with the 16 single dot stimuli
                 
                 % TEMPORAL
                 p.duration        = stimdur_frames;                              % frames (nr of monitor refreshes)
@@ -415,7 +430,7 @@ else
                 % DOT LOCATIONS
                 p.num_loc         = 16;                                          % number of equally spaced dot angles (deg), 0 = 12 o'clock
                 p.ang_deg         = [0:(360/p.num_loc):359]+(0.5*(360/p.num_loc)); % idealized angle of center dot loc in deg, 0 deg = 12 o'clock. rotate half a shift away from vertical, to avoid ill-defined response options
-                                                                                   % location angles turn out to be: 11.25 33.75 56.25 78.75 101.25 123.75 146.25 11.25 33.75 56.25 78.75 101.25 123.75 146.25 326.25 348.75
+                                                                                   % location angles turn out to be: 11.25 33.75 56.25 78.75 101.25 123.75 146.25 168.75 191.25 213.75 236.25 258.75 281.25 303.75 326.25 348.75
                 p.iso_eccen       = 4.0;                                         % desired iso-eccentric dot location (for all angles)
                 p.eccen_deg       = repmat(p.iso_eccen,1,length(p.ang_deg));     % desired eccen of center dot loc in deg (translation from center screen 0,0)
                 
@@ -431,7 +446,7 @@ else
                 % WORKING MEMORY: dot angle position deltas for test images
                 p.delta_from_ref  = [-15, -5, 5, 15];                              % how much should stim iso-eccen loc deviate from reference (WM: double epochs)
                                                                                    % the bigger the delta, the easier the trial
-                p.unique_im_nrs_WM = [303:366];                                    % Unique image nrs associated with the 64 WM DOT test stimuli
+                p.unique_im_nrs_wm_test = [303:366];                                    % Unique image nrs associated with the 64 WM DOT test stimuli
                                 
                 % check if all test images for WM have unique angles
                 tmp          = p.ang_deg+[0, p.delta_from_ref]';
@@ -454,12 +469,13 @@ else
                 p.ltm_pairs          = [];                                       %%
 
                 % IMAGERY: 
-                p.imagery_im_nr    = p.unique_im_nrs(1:2:p.num_loc);             % SELECTED UNIQUE IMAGES (SUBSET of all 16 dots)
+                p.unique_im_nrs_specialcore    = p.unique_im_nrs_core(1:2:p.num_loc);             % SELECTED UNIQUE IMAGES (SUBSET of all 16 dots)
                 
                 % IMAGERY: QUIZ DOT PARAMS
                 p.imagery_sz_deg   = [disp_params.w_deg/2, disp_params.h_deg];   % desired diameter (deg) of the second, quiz dots image in an imagery trial to encourage subjects to create a vidid mental image.
                 p.imagery_sz_pix   = [disp_params.xc,disp_params.h_pix];         % diameter of quiz dot image (pixels) (we already ensured even nr of pixels in display params function)
-                p.unique_im_nrs_IMG_test = [871:1030];                            % Unique image nrs associated with the 8*20=60 IMG DOT test dot images
+                p.unique_im_nrs_img_test = [871:1030];                           % Unique image nrs associated with the 8*20=60 IMG DOT test dot images
+                p.imagery_quiz_images = [ones(1,20),2.*ones(1,20)];              % quiz dots overlap (1) or not (2)
                 
                 % Add params to struct
                 stim.dot = p;
@@ -472,7 +488,7 @@ else
                 p.infofile       = fullfile(vcd_rootPath,'workspaces','info',sprintf('object_info_%s',disp_params.name));  % csv-file Where to find stimulus info?
 
                 % GENERAL
-                p.unique_im_nrs      = [65:80];                             % Unique image nrs associated with the 16 single dot stimuli
+                p.unique_im_nrs_core      = [65:80];                             % Unique image nrs associated with the 16 single dot stimuli
                 p.iscolor = false;                                          % Use color or not? 
                 if p.iscolor
                     p.square_pix_val     = true;                             % [IF YES: MAKE SURE TO SQUARE IMAGE VALS FOR CLUT]
@@ -538,7 +554,7 @@ else
                                                                             %  the bigger the delta, the easier the trial. 
                                                                             % for 1-89 deg rotations: Negative values are leftwards, positive values is rightwards
                                                                             % for 91-180 deg rotations: Negative values are rightward, positive values is leftward
-                p.unique_im_nrs_WM   = [367:430];                           % Unique image nrs associated with the 64 WM OBJ test stimuli
+                p.unique_im_nrs_wm_test   = [367:430];                           % Unique image nrs associated with the 64 WM OBJ test stimuli
                                                                             
                 % check if all test images for WM have unique rotations
                 tmp          = p.facing_dir_deg+[0, p.delta_from_ref]';
@@ -546,13 +562,14 @@ else
                 clear tmp
                                                        
                 % IMAGERY: 
-                p.imagery_im_nr = p.unique_im_nrs([1,3,5,7,8,10,12,14]);   % SELECTED IMAGES USED (SUBSET of 16 IMAGES)--these are hand picked!
+                p.unique_im_nrs_specialcore = p.unique_im_nrs_core([1,3,5,7,8,10,12,14]);   % SELECTED IMAGES USED (SUBSET of 16 IMAGES)--these are hand picked!
                 
                 % IMAGERY QUIZ DOT PARAMS
                 p.imagery_sz_deg      = 5.658;                              % desired diameter (degree) of the second, quiz dots image in an imagery trial to encourage subjects to create a vidid mental image.
                 p.imagery_sz_pix      = (round(p.img_sz_deg* disp_params.ppd)/2)*2; % pixel diameter of quiz dot image (ensure even nr of pixels)
-                p.unique_im_nrs_IMG_test = [1031:1190];                      % Unique image nrs associated with the 8*20=60 IMG OBJ test dot images
-
+                p.unique_im_nrs_img_test = [1031:1190];                      % Unique image nrs associated with the 8*20=60 IMG OBJ test dot images
+                p.imagery_quiz_images = [ones(1,20),2.*ones(1,20)];          % quiz dots overlap (1) or not (2)
+                
                 % LTM PAIR
                 p.ltm_pairs          = [];                                       %%
                 
@@ -565,7 +582,7 @@ else
                 p.indivscenefile = fullfile(vcd_rootPath,'workspaces','stimuli','RAW','vcd_natural_scenes'); % mat-file Where to load indiv pngs?
                 p.stimfile = fullfile(vcd_rootPath,'workspaces','stimuli',disp_params.name,sprintf('scene_%s',disp_params.name)); % mat-file Where to store stimulus images?
                 p.infofile = fullfile(vcd_rootPath,'workspaces','info',sprintf('scene_info_%s',disp_params.name)); % csv-file Where to find stimulus info?
-                p.unique_im_nrs      = [81:110];                             % Unique image nrs associated with the 16 single dot stimuli
+                p.unique_im_nrs_core      = [81:110];                             % Unique image nrs associated with the 16 single dot stimuli
 
                 p.iscolor = true;                                            % Use color or not? 
                 if p.iscolor
@@ -635,35 +652,57 @@ else
                 % These changes can be obvious (easy) or subtle (hard) to
                 % detect:
                 p.change_im         = {'easy_add', 'hard_add','easy_remove', 'hard_remove'};
-                p.unique_im_nrs_WM  = [431:550];                            % Unique image nrs associated with the 120 WM NS changed stimuli
+                p.unique_im_nrs_wm_test  = [431:550];                            % Unique image nrs associated with the 120 WM NS changed stimuli
 
                 % FOR LTM incorrect trials, we have very similar looking images called "lures":
                 p.lure_im       = {'lure01', 'lure02', 'lure03', 'lure04'};
-                p.unique_im_nrs_LTM_lures  = [1491:1550];                   % Unique image nrs associated with the 15*4=60 WM NS lure images
+                p.unique_im_nrs_ltm_lures  = [1491:1550];                   % Unique image nrs associated with the 15*4=60 WM NS lure images
 
                 % LTM PAIRED ASSOCIATES
                 p.ltm_pairs     = [];                                       %
                 
                 % IMAGERY 
-                p.imagery_im_nr          = p.unique_im_nrs([2,4,5,8,10,11,13,15,18,20,21,23,26,27,30]); % Half of the images will be used for  IMG/LTM pairing (these are carefully handpicked! see scene_info csv file)
-                p.imagery_sz_deg         = p.img_sz_deg;                    % desired diameter (degree) of the second, quiz dots image in an imagery trial to encourage subjects to create a vidid mental image.
-                p.imagery_sz_pix         = p.img_sz_pix;                    % diameter of quiz dot image (pixels) (we already ensured even nr of pixels)
-                p.unique_im_nrs_IMG_test = [1191:1490];                     % Unique image nrs associated with the 15*20=300 IMG NS test dot images
+                p.unique_im_nrs_specialcore      = p.unique_im_nrs_core([2,4,5,8,10,11,13,15,18,20,21,23,26,27,30]); % Half of the images will be used for  IMG/LTM pairing (these are carefully handpicked! see scene_info csv file)
+                p.imagery_sz_deg                = p.img_sz_deg;                    % desired diameter (degree) of the second, quiz dots image in an imagery trial to encourage subjects to create a vidid mental image.
+                p.imagery_sz_pix                = p.img_sz_pix;                    % diameter of quiz dot image (pixels) (we already ensured even nr of pixels)
+                p.unique_im_nrs_img_test        = [1191:1490];                     % Unique image nrs associated with the 15*20=300 IMG NS test dot images
+                p.imagery_quiz_images = [ones(1,20),2.*ones(1,20)];          % quiz dots overlap (1) or not (2)
                 
                 % Add params to struct
                 stim.ns = p;
                 
-                fprintf('*** %s: dres (scale factor) = %.4f ***\n',upper(stim_class{ii}),stim.ns.dres);
+                if verbose, fprintf('*** %s: dres (scale factor) = %.4f ***\n',upper(stim_class{ii}),stim.ns.dres); end
         end
-        % Print out stimulus params
-        fprintf('*** %s: Using a stimulus size of %2.2f deg (%3.2f pixels). ***\n', upper(stim_class{ii}), p.img_sz_deg, p.img_sz_pix);
-        fprintf('*** %s: Using a stimulus duration of %d frames (%3.2f seconds), where one frame relates to %d monitor refreshes (%d Hz) ***\n', ...
-            upper(stim_class{ii}), p.duration, p.duration*stim.framedur_s, stim.f2f, disp_params.refresh_hz);
+        if verbose
+            % Print out stimulus params
+            fprintf('*** %s: Using a stimulus size of %2.2f deg (%3.2f pixels). ***\n', upper(stim_class{ii}), p.img_sz_deg, p.img_sz_pix);
+            fprintf('*** %s: Using a stimulus duration of %d frames (%3.2f seconds), where one frame relates to %d monitor refreshes (%d Hz) ***\n', ...
+                upper(stim_class{ii}), p.duration, p.duration*stim.framedur_s, stim.f2f, disp_params.refresh_hz);
+        end
     end
 
+    stim.all_core_im_nrs         = sort(cat(2, stim.gabor.unique_im_nrs_core, stim.rdk.unique_im_nrs_core, stim.dot.unique_im_nrs_core, stim.obj.unique_im_nrs_core, stim.ns.unique_im_nrs_core));
+    stim.all_specialcore_im_nrs  = sort(cat(2, stim.gabor.unique_im_nrs_specialcore, stim.rdk.unique_im_nrs_specialcore, stim.dot.unique_im_nrs_specialcore, stim.obj.unique_im_nrs_specialcore, stim.ns.unique_im_nrs_specialcore));
+    stim.all_wm_test_im_nrs      = sort(cat(2, stim.gabor.unique_im_nrs_wm_test, stim.rdk.unique_im_nrs_wm_test, stim.dot.unique_im_nrs_wm_test, stim.obj.unique_im_nrs_wm_test, stim.ns.unique_im_nrs_wm_test));
+    stim.all_ltm_pairs           = sort(cat(2, stim.gabor.ltm_pairs, stim.rdk.ltm_pairs, stim.dot.ltm_pairs, stim.obj.ltm_pairs, stim.ns.ltm_pairs));
+    stim.all_img_test_im_nrs     = sort(cat(2, stim.gabor.unique_im_nrs_img_test, stim.rdk.unique_im_nrs_img_test, stim.dot.unique_im_nrs_img_test, stim.obj.unique_im_nrs_img_test, stim.ns.unique_im_nrs_img_test));
+    stim.all_ltm_lure_im_nrs     = sort(stim.ns.unique_im_nrs_ltm_lures);
+    stim.all_test_im_nrs         = sort(cat(2, stim.all_wm_test_im_nrs, stim.all_img_test_im_nrs, stim.all_ltm_lure_im_nrs));
+    stim.all_im_nrs              = sort(cat(2, stim.all_core_im_nrs, stim.all_test_im_nrs));
+
+    
+    % do some checks
+    assert(isequal(1:length(stim.all_core_im_nrs),stim.all_core_im_nrs));
+    assert(all(ismember(stim.all_specialcore_im_nrs,stim.all_core_im_nrs)));
+%     assert(all(ismember(stim.all_ltm_pairs,stim.all_core_im_nrs)));
+    assert(all(~ismember(stim.all_wm_test_im_nrs,stim.all_core_im_nrs)));
+    assert(all(~ismember(stim.all_img_test_im_nrs,stim.all_core_im_nrs)));
+    assert(all(~ismember(stim.all_ltm_lure_im_nrs,stim.all_core_im_nrs)));
+
+    
     % Store params if requested
     if store_params
-        fprintf('[%s]: Storing params..\n',mfilename)
+        if verbose, fprintf('[%s]: Storing params..\n',mfilename); end
         if ~exist(save_info_dir,'dir'); mkdir(save_info_dir); end
         save(fullfile(save_info_dir,sprintf('stim_%s_%s.mat',disp_params.name,datestr(now,30))),'stim')
     end
