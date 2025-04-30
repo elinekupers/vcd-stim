@@ -74,15 +74,15 @@ else
     if ~isfield(params,'exp') || isempty(params.exp)
         
         % load trial info
-        d = dir(fullfile(vcd_rootPath,'workspaces','info','exp_session*.mat'));
+        d = dir(fullfile(vcd_rootPath,'workspaces','info','exp*.mat'));
         
         if length(d) == 1
-            load(fullfile(d(end).folder,d(end).name),'exp_session');
-            params.exp = exp_session;
+            load(fullfile(d(end).folder,d(end).name),'exp');
+            params.exp = exp;
         elseif length(d) > 1
             warning('[%s]: Multiple trial.mat files! Will pick the most recent one', mfilename);
-            load(fullfile(d(end).folder,d(end).name),'exp_session');
-            params.exp = exp_session;
+            load(fullfile(d(end).folder,d(end).name),'exp');
+            params.exp = exp;
         else
             error('[%s]: Can''t find exp session .mat files! Please check or run vcd_getSessionParams.m', mfilename);
         end
@@ -94,6 +94,8 @@ else
     % Different trial order per block (already accomplished in vcd_makeTrials.m)
     % Across a single session, each subject will experience the same
     % blocks and unique images
+    
+    % WIDE SESSIONS
     params.trials = vcd_allocateBlocksToRuns(params);
 
     %% We expand the condition master table and add all trial events (in units of presentationrate_hz frames), 
