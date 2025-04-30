@@ -53,51 +53,40 @@ dispname = '7TAS_BOLDSCREEN32'; % Choose from: '7TAS_BOLDSCREEN32' or 'KKOFFICE_
 params.disp   = vcd_getDisplayParams(dispname);
 
 % Get stimulus parameters
-params.load_params                 = true; % load stored params
+params.load_params                 = false; % load stored params
 params.store_params                = true;
-params.overwrite_randomized_params = false; % DO NOT OVERWRITE PARAMS
 
-% SETUP RNG (EK Q: why not set rng itself? will that work for older matlab versions?)
+% SETUP RNG
 params.rng.rand_seed = sum(100*clock);
 rand('seed', params.rng.rand_seed);
 params.rng.randn_seed = sum(100*clock);
 randn('seed', params.rng.randn_seed);
 
 %% Define/Load stimulus params 
-% !!WARNING!! There is a randomization component involved in creating some
-% stimuli (e.g., orientation of gabor stimuli or dot locations). If you
-% don't want this, this leave the fifth argument
-% (overwrite_randomized_params) empty (default is set to false) or set to
-% false.
-%
-% If you do want regenerate probabilistic params, set the fifth argument to
-% true and some stimulus values will change.
-%
-% Input 1: Stimulus class, choose from
-% 'gabor','rdk','dot','obj','ns','all' (default is 'all') 
-% Input 2: Display name to load disp params struct (see vcd_getDisplayParams.m) 
-% Input 3: Load prior stored parameters or not? (logical)
-% Input 4: Store generated parameters or not? (logical)
-% Input 5: Overwrite stored parameters and regenerate probabilistic params?
-% (logical)
-params.stim   = vcd_getStimParams('stim_class','all',...
-                            'disp_name', params.disp.name, ...
+% Input 1: Display name to load disp params struct (see vcd_getDisplayParams.m) 
+% Input 2: Load prior stored parameters or not? (logical)
+% Input 3: Store generated parameters or not? (logical)
+params.stim   = vcd_getStimParams('disp_name', params.disp.name, ...
                             'load_params', params.load_params, ...
-                            'store_params', params.store_params, ...
-                            'overwrite_randomized_params', params.overwrite_randomized_params); 
+                            'store_params', params.store_params); 
 
 %% Define/Load experiment session params
 params.exp    = vcd_getSessionParams('disp_name', params.disp.name, ...
                                 'presentationrate_hz',params.stim.presentationrate_hz, ...
-                                'load_params', false,...params.load_params, ...
+                                'load_params', params.load_params, ...
                                 'store_params', params.store_params);
 
 %% Make/Load blocks with trials that sample unique stimuli from each class
 % !!WARNING!! There is a randomization component involved in creating the 
 % trial sequence (e.g., order of unique images within a block). If you
 % don't want this, set second input (load_params) to true.
+%
+% This function contains the following important steps/functions:
+% * vcd_defineUniqueImages
+% * vcd_createConditionMaster
+% * vcd_shuffleStimForTaskClass
 [params, condition_master, all_unique_im, all_cond] = ...
-            vcd_createBlocksAndTrials(params,'load_params', false, ...params.load_params, ...
+            vcd_createBlocksAndTrials(params,'load_params', params.load_params, ...
                                           'store_params', params.store_params);
 params.trials =  condition_master;
 
@@ -105,6 +94,10 @@ params.trials =  condition_master;
 % !!WARNING!! There is a randomization component involved in creating the
 % block order within a run. If you don't want this, set second input
 % (load_params) to true.
+%
+% This function contains the following important steps/functions:
+% * vcd_allocateBlocksToRuns
+% * vcd_createRunTimeTables
 [params,time_table_master] = vcd_createSessions(params,'load_params', false, ...params.load_params, ...
                                           'store_params', params.store_params);
                                       
