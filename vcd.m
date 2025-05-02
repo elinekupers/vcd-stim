@@ -203,7 +203,7 @@ function outputs = vcd(varargin)
 % vcd('taskclassnumbers','FIX')
 % vcd('stimulusclassnumber',{'gabor','obj'})
 % vcd('stimtostimclassname',12)
-% vcd('stimulusnamestostimulusnumbers',{'GBR-023-L'})
+% vcd('stimulusnamestonumbers',{'GBR-023-L'})
 % vcd('allcore',{'gabor' 'rdk'})                  
 % vcd('specialcore','rdk')
 % vcd('allwmteststimulusnumbers',{'rdk' 'ns'})
@@ -226,6 +226,7 @@ stim = vcd_getStimParams('load_params',false,'store_params',false, 'verbose',fal
 p0 = inputParser;
 % General
 p0.addParameter('verbose'               , true, @islogical);  
+p0.addParameter('displayname'           , '7TAS_BOLDSCREEN32', @(x) any(strcmp(x,{'7TAS_BOLDSCREEN32', 'KKOFFICE_AOCQ3277', 'PPROOM_EIZOFLEXSCAN', 'EKHOME_ASUSVE247'})));                   
 
 % Broad stimulus class & task class names and numbers
 p0.addParameter('stimulusclassnames'    , [], @(x) isempty(x) | all(isnumeric(x) & (x>=1 & x <=5)));                            
@@ -237,7 +238,7 @@ p0.addParameter('crossingnumbers'       , [], @(x) isempty(x) | all(ismember(low
 
 % Stimulus specific
 p0.addParameter('allstimulusnumbers'    , [], @(x) isempty(x) | all(ismember(lower(x), exp.stimclassnames))); 
-p0.addParameter('stimulusnumberstonames', [], @(x) all(ismember(lower(x), exp.stimclassnames)));
+p0.addParameter('stimulusnumberstonames', [], @(x) all(isnumeric(x) & (stim.all_im_nrs(1) >=1 & x <= stim.all_im_nrs(end))));   
 p0.addParameter('stimulusnamestonumbers', [], @(x) all(iscell(x)) | ischar(x));
 p0.addParameter('allcore'               , [], @(x) isempty(x) | all(ismember(lower(x), exp.stimclassnames)));                 
 p0.addParameter('specialcore'           , [], @(x) isempty(x) | all(ismember(lower(x), exp.stimclassnames)));                 
@@ -254,7 +255,8 @@ p0.addParameter('allimgteststimulusnumbers', [], @(x) isempty(x) | all(ismember(
 
 % Parse inputs
 p0.parse(varargin{:});
-verbose = p0.Results.verbose;
+verbose     = p0.Results.verbose;
+displayname = p0.Results.displayname;
 
 % Check which info was requested
 requested_info = {};
@@ -273,10 +275,10 @@ if isempty(vcd_info) || ~exist('vcd_info','var')
         error('[%s]: Please navigate to vcd-stim folder',mfilename)
     end
     
-    d = dir(fullfile(vcd_rootPath,'workspaces','info','trials*.mat'));
+    d = dir(fullfile(vcd_rootPath,'workspaces','info',sprintf('trials*%s*.mat',displayname)));
     
     if isempty(d)
-        error('[%s]: Can''t find vcd_info! Looking for a file called: "vcd_rootPath/workspaces/info/trials*.mat"',mfilename)
+        error('[%s]: Can''t find vcd_info! Looking for a file called: "vcd_rootPath/workspaces/info/trials*%s.mat"',mfilename,displayname)
     else
         if verbose
         fprintf('[%s]: Found %d vcd info file(s)\n',mfilename,length(d));
@@ -354,11 +356,15 @@ for ii = 1:2:length(requested_info)
                 end
  
             elseif iscell(info_val)
-                if strcmp(info_val{:},'all')                    % provide all stimulus class numbers: 1-5
+                if strcmp(info_val,'all')                    % provide all stimulus class numbers: 1-5
                     out = 1:length(exp.stimclassnames); 
                 else                                            % provide specific stimulus class number(s)
                     [~,out] = ismember(lower(info_val(:)),exp.stimclassnames);
                 end
+            end
+            
+            if size(out,1)>size(out,2)
+                out = out';
             end
 
             
@@ -473,7 +479,14 @@ for ii = 1:2:length(requested_info)
                 out = NaN(1,length(info_val));
             end
             
-            for nn = 1:length(info_val)
+            if isnumeric(info_val) % if user provides singleton or vector
+                stim_nr = info_val;
+
+            elseif iscell(info_val)  % if user provides cell
+                stim_nr = cell2mat(info_val);
+            end
+            
+            for nn = 1:length(stim_nr)
                 
                 % if we deal with a core stimulus
                 if ismember(stim_nr(nn), stim.all_core_im_nrs)  
@@ -504,8 +517,18 @@ for ii = 1:2:length(requested_info)
                 if strcmp(stimclassname,'GABOR')
                     stimclassname = regexprep('GABOR','[AO]','');
                 end
+                stimnumber = num2str(stimnumber);
                 stimlocation  = choose((im_loc==1),'L','R');
-                out(nn)    = sprintf('%s-%03d-%s',stimclassname,stimnumber,stimlocation);
+                if ischar(stimnumber)
+                    stimnumber = sprintf('%03d',str2double(stimnumber));
+                elseif isnumeric(stimnumber)
+                    stimnumber = sprintf('%03d',stimnumber);
+                end
+                if iscell(out)
+                    out{nn} = sprintf('%s-%s-%s',stimclassname,stimnumber,stimlocation);
+                else
+                    out(nn) = sprintf('%s-%s-%s',stimclassname,stimnumber,stimlocation);
+                end
             end
             
         case 'stimulusnamestonumbers'
