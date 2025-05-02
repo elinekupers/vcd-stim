@@ -285,7 +285,7 @@ if isempty(vcd_info) || ~exist('vcd_info','var')
             end
             fprintf('[%s]: Loading exp params .mat file: %s\n', mfilename, d(end).name);
         end
-        vcd_info = load(fullfile(d(end).folder,d(end).name),'vcd_info.condition_master');
+        vcd_info = load(fullfile(d(end).folder,d(end).name),'condition_master');
     end
 end
 
