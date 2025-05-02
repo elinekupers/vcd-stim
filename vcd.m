@@ -22,16 +22,16 @@ function outputs = vcd(varargin)
 %  5:'ns'     - Natural scenes
 %
 % Abbreviations for task classes are: 
-%   1:'fix'   - Fixation task (Did fixation circle luminance become dimmer or brighter?)
-%   2:'cd'    - Contrast decrement Detection (Did the stimulus decrease slightly in contrast or not?)
-%   3:'scc'   - Stimulus Class Categorization (What is the stimulus class of the cued stimulus location?)
-%   4:'pc'    - Perceptual Categorization (Does <stimulus feature> belong to category option A or option B?)
-%   5:'wm'    - Working Memory (Did the <stimulus feature> of the test stimulus change to option A or B relative to the first (reference) stimulus?)
-%   6:'ltm'   - Long-Term Memory (Recall paired associates: is the test stimulus the paired associate of the first (reference) stimulus?)
-%   7:'img'   - Imagery (Imagine the cued stimulus)
-%   8:'what'  - What  (What is the (dominant) object?) 
-%   9:'where' - Where (Where is the (dominant) object in this scene?) 
-%   10:'how'  - How (How would you interact with this object/in this scene?)
+%   1:'fix'   - Fixation brightness task
+%   2:'cd'    - Contrast change task
+%   3:'scc'   - Categorization task
+%   4:'pc'    - Perceptual categorization tasks (tilt, motion direction, dot position, object rotation, indoor/outdoor)
+%   5:'wm'    - Working memory tasks (tilt, motion direction, position, rotation, scene)
+%   6:'ltm'   - Matching task
+%   7:'img'   - Imagery task
+%   8:'what'  - "What?" task
+%   9:'where' - "Where?" task
+%   10:'how'  - "How?" task
 %
 % Possible inputs:
 % 'stimulusclassnames'    : Provide all stimulus class names (use []), or
