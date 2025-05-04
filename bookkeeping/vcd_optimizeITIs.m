@@ -20,25 +20,14 @@ function optimized_ITIs = vcd_optimizeITIs(block_dur, trial_dur, itis, nr_trials
 % Calculate how much time we need to account for
 dur_to_optimize = block_dur - sum(trial_dur*nr_trials);
 
-% get the possible combinations of requested itis, given all itis
-C = nchoosek(itis,nr_trials-1);
+% Find a distributed combination of possible IBIs
+f = distributewithconstraints(dur_to_optimize,itis,nr_trials-1,0);
 
-% get the sum of each combination of itis
-total_dur = sum(C,2);
-
-% Find those equal to the time we want
-optimized_ITIs = C((total_dur == dur_to_optimize),:);
-
-if isempty(optimized_ITIs)
+if isempty(f)
     error('[%s]: Cannot find a combination of ITIs that works!!')
+else
+    % shuffle the order of the possible iti combinations
+    optimized_ITIs = shuffle_concat(f,1);
 end
-    
-% randomly select one combinaton, if we have multiple
-if size(optimized_ITIs,1)>1
-    optimized_ITIs = optimized_ITIs(randi(size(optimized_ITIs,1),1),:);
-end
-
-% shuffle the order of the possible iti combinations
-optimized_ITIs = shuffle_concat(optimized_ITIs,1);
 
 return
