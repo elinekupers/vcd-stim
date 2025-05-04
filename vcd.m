@@ -34,93 +34,100 @@ function outputs = vcd(varargin)
 %   10:'how'  - "How?" task
 %
 % Possible inputs:
-% 'stimulusclassnames'    : Provide all stimulus class names (use []), or
-%                           translate stimulus class number(s) to name(s)
-%                           Stimulus class number should be an integral 
-%                           number between 1 and 5, can be a single number
-%                           or vector. Output will be sorted by order of 
-%                           input nr, or ascending if input is empty.
-% 'stimulusclassnumbers'  : Provide all stimulus class numbers (use []), or
-%                           translate stimulus class name(s) to number(s).
-%                           Stimulus class name should be a string or
-%                           character class, and should be part of the 5 
-%                           stimulus classes, where 1:'gabor', 2:'rdk',
-%                           3:'dot',4:'obj',5:'ns'.
-%                           Name can be lower case or upper case, and can 
-%                           be a single string ('rdk') or cell with multiple 
-%                           names {'rdk','gabor'}). 
-%                           Output will be sorted by order of input name, 
-%                           or ascending if input is empty.                   
-% 'taskclassnames'        : Provide all task class names (use []), or 
-%                           translate task class number(s) to name(s). 
-%                           Task class number should be an integral 
-%                           number between 1 and 10, can be a single number
-%                           or vector. Output will be sorted by order of 
-%                           input nr or ascending number if input 
-%                           is empty, where 1:'fix',2:'cd',:'scc',4:'pc',
-%                           5:'wm',6:'ltm',7:'img',8:'what', 9:'where',
-%                           10:'how'.
-% 'taskclassnumbers'      : Provide all task class numbers, or translate 
-%                           task class name(s) to number(s).
-%                           Task class name should be a string or
-%                           character class, and should be part of the 10 
-%                           task classes: 'fix','cd','scc','pc','wm', 'ltm'
-%                           'img','what','where','how'.
-%                           Name can be lower case or upper case. Name can 
-%                           be a single name ('fix') or cell with multiple 
-%                           names {'scc','wm'}). Output will be sorted by 
-%                           order of input nr or names in ascending order 
+% 'stimulusclassnames'    : Provide all stimulus class names (use []),
+%                           or translate stimulus class number(s) to
+%                           name(s). Stimulus class number should be an
+%                           integral number between 1 and 5, can be a
+%                           single number or vector. Output will preserve
+%                           the order specified by the user's input(s), or
+%                           ascending if input is empty.
+% 'stimulusclassnumbers'  : Provide all stimulus class numbers (use []),
+%                           or translate provided stimulus class name(s) to
+%                           number(s). Stimulus class name should be a
+%                           string or character class, and should be part
+%                           of the 5 stimulus classes, where 1:'gabor',
+%                           2:'rdk', 3:'dot',4:'obj',5:'ns'. Name can be
+%                           lower case or upper case, and can be a single
+%                           string char 'rdk' or cell with one or multiple
+%                           names {'rdk','gabor'}). Output will preserve
+%                           the order specified by the user's input(s), or
+%                           ascending if input is empty.
+% 'taskclassnames'        : Provide all task class names (use [] or {})
+%                           or translate task class number(s) to name(s).
+%                           Task class number should be an integral number
+%                           between 1 and 10, can be a single number or
+%                           vector. Output will preserve the order
+%                           specified by the user's input(s) or ascending
+%                           if input is empty, where 1:'fix', 2:'cd',
+%                           3:'scc', 4:'pc', 5:'wm', 6:'ltm', 7:'img',
+%                           8:'what', 9:'where', 10:'how'.
+% 'taskclassnumbers'      : Provide all task class numbers (use [] or {}),
+%                           or translate task class name(s) to number(s). 
+%                           Task class name should be a string or character
+%                           class, and should be part of the 10 task
+%                           classes: 'fix','cd','scc','pc','wm', 'ltm'
+%                           'img','what','where','how'. Name can be lower
+%                           case or upper case. Name can be a single name
+%                           ('fix') or cell with multiple names
+%                           {'scc','wm'}). Output will preserve the order
+%                           specified by the user's input(s). or ascending
 %                           if input is empty.
 % 'crossingnames'         : Provide all task-stimulus class crossing names,
-%                           (use []) or translate crossing numbers(s) to  
-%                           crossing names(s). Crossing numbers should be an  
-%                           integral number between 1 and 32. Inputs can be  
-%                           empty vector, a single number or a list of 
-%                           numbers in a vector. Output will be sorted by
-%                           order of input nr, or names in ascending order 
-%                           if input is empty.
-% 'crossingnumbers'       : Provide all crossings between task and stimulus   
-%                           classes used in VCD (use []), or translate 
-%                           crossing name(s) to crossing number(s).
-%                           Crossing name should be a string or
+%                           (use [] or {}) or translate crossing
+%                           numbers(s) to crossing names(s). Crossing
+%                           numbers should be an integral number between 1
+%                           and 32. Inputs can be empty vector, a single
+%                           number or a list of numbers in a vector. Output
+%                           will preserve the order specified by the user's
+%                           input(s) or ascending if input is empty.
+% 'crossingnumbers'       : Provide all crossings between task and stimulus
+%                           classes used in VCD (use [] or []), 
+%                           or translate, crossing name(s) to crossing 
+%                           number(s). Crossing name should be a string or 
 %                           character class in the format <'task-stim'>, 
 %                           and should be part of the 32 crossings:
-%                           'fix-gabor','cd-gabor','pc-gabor','wm-gabor', 
+%                           'fix-gabor','cd-gabor','pc-gabor','wm-gabor',
 %                           'img-gabor','fix-rdk','cd-rdk','pc-rdk',
 %                           'wm-rdk','img-rdk','fix-dot','cd-dot','pc-dot',
 %                           'wm-dot','img-dot''fix-obj','cd-obj','pc-obj',
 %                           'wm-obj','img-obj','what-obj','how-obj',
 %                           'fix-ns','cd-ns','pc-ns','wm-ns','img-ns',
-%                           'what-ns','where-ns','how-ns'. 
-%                           Note that for 'ltm' and 'scc' task classes, 
-%                           we mix classic stimulus classes and use
-%                           crossing names: 'ltm-all','scc-all'.
-%                           Name can be lower case or upper case. Name can 
-%                           be a single name ('fix-gabor') or cell with 
-%                           multiple names {'scc-all','wm-obj'}). Output 
-%                           will be sorted by order of input name, of
-%                           ascending crossing number if input is empty.
-% 'allstimulusnumbers'	  : Provide all stimulus numbers associated with 
-%                           given stimulus class name or number. Stimulus
-%                           class name should be a string or character
-%                           class, and should be part of the 5 stimulus
+%                           'what-ns','where-ns','how-ns'. Note that for
+%                           'ltm' and 'scc' task classes, we mix classic
+%                           stimulus classes and use crossing names:
+%                           'ltm-all','scc-all'. Name can be lower case or
+%                           upper case. Name can be a single name
+%                           ('fix-gabor') or cell with multiple names
+%                           {'scc-all','wm-obj'}). Output will preserve the
+%                           order specified by the user's input(s), or
+%                           ascending if input is empty,
+% 'allstimulusnumbers'	  : Provide all stimulus numbers associated with
+%                           given stimulus class name or number. To get all
+%                           stimulus numbers of all stimulus classes, use
+%                           [] or {}. For stimulus numbers
+%                           associated with one stimulus class, the name
+%                           should be a string or character class (e.g.,
+%                           'rdk'), and should be part of the 5 stimulus
 %                           classes: 'gbr','rdk','dot','obj','ns'. Name can
-%                           be lower case or upper case, and can be a
-%                           single string ('rdk') or cell with multiple
-%                           names {'rdk','gabor'}). Stimulus class number
-%                           should be an integral number between 1 and 5,
-%                           can be a single number or vector. Output will
-%                           be integral, sorted by ascending stimulus 
-%                           number, and range between 1-1550.
+%                           be lower case or upper case. To get stimulus
+%                           numbers associated with multiple stimulus
+%                           classes, use a cell vector with multiple names
+%                           , e.g.: {'rdk','gabor'}).  Output will be
+%                           integral numbers, range between 1-1550, and
+%                           preserve the order specified by the user's
+%                           input (or ascending if input is {}).
 % 'stimulusnumberstonames' : Provide stimulus name(s) associated with 
 %                           given image number(s). Stimulus number should
-%                           be be integral and range between 1-1550. Input
-%                           can be a single number or a vector. Output is a
-%                           string or cell vector with strings in format:
-%                            <stimclassname>-<stimnumber>-<stimlocation>. 
-%                           Note that for stimclassname: "gabor" is 
-%                           shortened to "GBR".
-% 'stimulusnamestonumbers' : Provide stimulus numbers(s) associated with 
+%                           be an integral number and range between 1-1550.
+%                           Input can be a single number or a vector. Input
+%                           cannot be an empty array.
+%                           Output is a string or cell vector with strings
+%                           in format:
+%                            <stimclassname>-<stimnumber>-<stimlocation>.
+%                           Note that for stimclassname: "gabor" is
+%                           shortened to "GBR". Output will preserve the
+%                           order specified by the user's input(s).
+% 'stimulusnamestonumbers' : Provide stimulus numbers(s) associated with
 %                           stimulus name(s). Input stimulus name(s) should
 %                           be a string in the format:
 %                           <stimclassname>-<stimnumber>-<stimlocation>,
@@ -131,64 +138,80 @@ function outputs = vcd(varargin)
 %                           location in the stimulus name does not
 %                           correspond to the actual stimulus class and/or
 %                           location, the function will throw a warning and
-%                           return NaN.
-% 'stimtostimclassname'   : Provide stimulus class name(s) for given 
-%                           stimulus number(s). Stimulus number should
-%                           be be integral and range between 1-1550. Input
-%                           can be a single number or a vector. Output is a
-%                           string or cell vector with stimulus class
-%                           names: 'gabor','rdk','dot','obj','ns'.
-% 'stimtostimclassnumber' : Provide stimulus class number(s) for given 
-%                           stimulus number(s). Stimulus number should be
+%                           return NaN. Output will preserve the order
+%                           specified by the user's input(s).
+% 'stimtostimclassname'   : Provide stimulus class name(s) for given
+%                           stimulus number(s). Input stimulus number(s) should be
 %                           be integral and range between 1-1550. Input can
-%                           be a single number or a vector. Output is a
-%                           singleton or vector with stimulus class numbers
-%                           ranging from 1-5 corresponding to 1:'gabor',
-%                           2:'rdk',3:'dot',4:'obj',5:'ns'.
-% 'stimtotaskclassname'   : Provide task class name(s) for given 
+%                           be a single number or a vector, and cannot be empty. Output is a
+%                           string or cell vector with stimulus class
+%                           names: 'gabor','rdk','dot','obj','ns'. Output
+%                           will preserve the order specified by the user's
+%                           input(s).
+% 'stimtostimclassnumber' : Provide stimulus class number(s) for given
+%                           stimulus number(s). Input stimulus number
+%                           should be be a single integral number or a
+%                           vector of integral numbers that range between
+%                           1-1550. Input cannot be an empty vector or
+%                           array. Output is a singleton or vector with
+%                           stimulus class numbers ranging from 1-5 where
+%                           1:'gabor', 2:'rdk',3:'dot',4:'obj',5:'ns'.
+%                           Output will preserve the order specified by the
+%                           user's input(s).
+% 'stimtotaskclassname'   : Provide task class name(s) for given
 %                           stimulus number(s). Stimulus number should
 %                           be be integral and range between 1-1550. Input
 %                           can be a single number or a vector. Output is a
 %                           string or cell vector with task class names: 
 %                           'fix','cd','scc','pc','wm', 'ltm','img','what',
-%                           'where','how'.
-% 'stimtotaskclassnumber' : Provide task class number(s) for given 
+%                           'where','how'. Output will preserve the order
+%                           specified by the user's input(s).
+% 'stimtotaskclassnumber' : Provide task class number(s) for given
 %                           stimulus number(s). Stimulus number should be
 %                           be integral and range between 1-1550. Input can
-%                           be a single number or a vector. Output is a
-%                           singleton or vector with task class numbers.
-%                           ranging from 1-10 corresponding to 1:'fix',
+%                           be a single number or a vector with multiple
+%                           numbers. Input cannot be an empty vector or
+%                           array. Output is a singleton or vector with
+%                           task class numbers. ranging from 1-10, where
+%                           1:'fix',
 %                           2:'cd',3:'scc',4:'pc',5:'wm',6:'ltm',7:'img',
-%                           8:'what', 9:'where',10:'how'.
+%                           8:'what', 9:'where',10:'how'. Output will
+%                           preserve the order specified by the user's
+%                           input(s).
 % 'allcore'               : Provide all core stimulus number(s) for one (or
 %                           more) stimulus class(es). Input names should be
 %                           lower case and any of the stimulus class names:
 %                           'gabor','rdk','dot','obj','ns'. Output is a
-%                           vector of integers, sorted in ascending order.
+%                           vector of integers, preserving the order
+%                           specified by the user's input(s).
 % 'specialcore'           : Provide subset of core stimulus number(s) used 
-%                           in LTM-[stimclass] and IMG-[stimclass] crossings.
-%                           Input names should be lower case and any of the
-%                           stimulus class names:'gabor','rdk','dot','obj',
-%                           'ns'. Output is a vector of integers, sorted 
-%                           in ascending order.
+%                           in LTM-[stimclass] and IMG-[stimclass]
+%                           crossings. Input names should be lower case and
+%                           any of the stimulus class names: 'gabor',
+%                           'rdk', 'dot', 'obj', 'ns'. Output is a vector
+%                           of integers, preserving the order specified 
+%                           by the user's input(s).
 % 'allwmtestimages'       : Provide all (non-core) stimulus number(s) of
 %                           test images used in WM-[stimclass] crossings.
 %                           Input names should be lower case and any of the
 %                           stimulus class names:'gabor','rdk','dot','obj',
-%                           'ns'. Output is a vector of integers, sorted 
-%                           in ascending order.
+%                           'ns'. Output is a vector of integers,
+%                           preserving the order specified by the user's
+%                           input(s).
 % 'allimgtestimages'      : Provide all (non-core) stimulus number(s) of 
 %                           test images used in LTM-[stimclass] crossings.
 %                           Input names should be lower case and any of the
 %                           stimulus class names:'gabor','rdk','dot','obj',
-%                           'ns'. Output is a vector of integers, sorted 
-%                           in ascending order.
+%                           'ns'. Output is a vector of integers,
+%                           preserving the order specified by the user's
+%                           input(s).
 % 'allltmtestimages'      : Provide all (non-core) stimulus number(s) of 
-%                           test images used in IMG-[stimclass] crossings. 
+%                           test images used in IMG-[stimclass] crossings.
 %                           Input names should be lower case and any of the
 %                           stimulus class names:'gabor','rdk','dot','obj',
-%                           'ns'. Output is a vector of integers, sorted 
-%                           in ascending order.
+%                           'ns'. Output is a vector of integers,
+%                           preserving the order specified by the user's
+%                           input(s).
 % 'fullinfo'              : Provide all info (data dump) for a given 
 %                           stimulus number. Input should be an integral
 %                           number between 1-1550.
@@ -196,12 +219,15 @@ function outputs = vcd(varargin)
 %
 % Examples:
 % vcd('stimulusclassnames',[3 2 2 2 1])  
-% vcd('taskclassnames',[1 5 3 2 2 2 1])               
+% vcd('stimulusclassnames',[])  
+% vcd('taskclassnames',[1 5 3 2 2 2 1]) 
+% vcd('taskclassnames',{}) 
 % vcd('crossingnames',[2 3 4 32])   
 % vcd('crossingnumbers',{'pc-gabor' 'scc-all'})
 % vcd('stimulusnumberstonames',[12 35 3 2 2 2 1])        
 % vcd('taskclassnumbers','FIX')
 % vcd('stimulusclassnumber',{'gabor','obj'})
+% vcd('allstimulusnumbers',{})
 % vcd('stimtostimclassname',12)
 % vcd('stimulusnamestonumbers',{'GBR-023-L'})
 % vcd('allcore',{'gabor' 'rdk'})                  
@@ -212,7 +238,9 @@ function outputs = vcd(varargin)
 % vcd('allstimulusnumbers','rdk')
 % vcd('allstimulusnumbers',{'gabor' 'rdk' 'dot' 'obj' 'ns'})
 % vcd('fullinfo',35) 
-% vcd('stimulusclassname',[3 2 2 2 1],'taskclassnames',[1 5 3 2 2 2 1])  
+% vcd('stimulusclassname',[3 2 2 2 1],'taskclassnames',[1 5 3 2 2 2 1]) 
+% vcd('stimulusnumberstonames',[10])
+% vcd('stimulusnumberstonames',[900, 451])
 %
 % Written by Eline Kupers @ UMN 2025/04
 
@@ -224,34 +252,39 @@ exp  = vcd_getSessionParams('load_params',false,'store_params',false, 'verbose',
 stim = vcd_getStimParams('load_params',false,'store_params',false, 'verbose',false);
 
 p0 = inputParser;
+
+f_stimclassname = @(x) all(ismember(lower(x), exp.stimclassnames));
+f_taskclassname = @(x) all(ismember(lower(x), exp.taskclassnames));
+f_crossname     = @(x) all(ismember(lower(x), exp.crossingnames));
+
 % General
 p0.addParameter('verbose'               , true, @islogical);  
 p0.addParameter('displayname'           , '7TAS_BOLDSCREEN32', @(x) any(strcmp(x,{'7TAS_BOLDSCREEN32', 'KKOFFICE_AOCQ3277', 'PPROOM_EIZOFLEXSCAN', 'EKHOME_ASUSVE247'})));                   
 
 % Broad stimulus class & task class names and numbers
-p0.addParameter('stimulusclassnames'    , [], @(x) isempty(x) | all(isnumeric(x) & (x>=1 & x <=5)));                            
-p0.addParameter('stimulusclassnumbers'  , [], @(x) isempty(x) | all(ismember(lower(x), exp.stimclassnames))); 
-p0.addParameter('taskclassnames'        , [], @(x) isempty(x) | all(isnumeric(x) & (x>=1 & x <=10)));           
-p0.addParameter('taskclassnumbers'      , [], @(x) isempty(x) | all(ismember(lower(x), exp.taskclassnames))); 
-p0.addParameter('crossingnames'         , [], @(x) isempty(x) | all((isnumeric(x) & (x>=1 & x <=32))));           
-p0.addParameter('crossingnumbers'       , [], @(x) isempty(x) | all(ismember(lower(x), exp.crossingnames)));  
+p0.addParameter('stimulusclassnames'    , [], @(x) choose_isempty(x) || isstimclassnr(x));    
+p0.addParameter('stimulusclassnumbers'  , [], @(x) choose_isempty(x) || f_stimclassname(x)); 
+p0.addParameter('taskclassnames'        , [], @(x) choose_isempty(x) || istaskclassnr(x));           
+p0.addParameter('taskclassnumbers'      , [], @(x) choose_isempty(x) || f_taskclassname(x)); 
+p0.addParameter('crossingnames'         , [], @(x) choose_isempty(x) || iscrossnr(x));           
+p0.addParameter('crossingnumbers'       , [], @(x) choose_isempty(x) || f_crossname(x));  
 
 % Stimulus specific
-p0.addParameter('allstimulusnumbers'    , [], @(x) isempty(x) | all(ismember(lower(x), exp.stimclassnames))); 
-p0.addParameter('stimulusnumberstonames', [], @(x) all(isnumeric(x) & (stim.all_im_nrs(1) >=1 & x <= stim.all_im_nrs(end))));   
-p0.addParameter('stimulusnamestonumbers', [], @(x) all(iscell(x)) | ischar(x));
-p0.addParameter('allcore'               , [], @(x) isempty(x) | all(ismember(lower(x), exp.stimclassnames)));                 
-p0.addParameter('specialcore'           , [], @(x) isempty(x) | all(ismember(lower(x), exp.stimclassnames)));                 
-p0.addParameter('stimtostimclassname'   , [], @(x) all(isnumeric(x) & (stim.all_im_nrs(1) >=1 & x <= stim.all_im_nrs(end))));   
-p0.addParameter('stimtostimclassnumber' , [], @(x) all(isnumeric(x) & (stim.all_im_nrs(1) >=1 & x <= stim.all_im_nrs(end))));   
-p0.addParameter('stimtotaskclassname'   , [], @(x) all(isnumeric(x) & (stim.all_im_nrs(1) >=1 & x <= stim.all_im_nrs(end))));   
-p0.addParameter('stimtotaskclassnumber' , [], @(x) all(isnumeric(x) & (stim.all_im_nrs(1) >=1 & x <= stim.all_im_nrs(end))));   
-p0.addParameter('fullinfo'              , [], @(x) all(isnumeric(x) & (stim.all_im_nrs(1) >=1 & x <= stim.all_im_nrs(end))));  
+p0.addParameter('allstimulusnumbers'    , [], @(x) choose_isempty(x) || (isstimclassnr(x) || f_stimclassname(x)));
+p0.addParameter('stimulusnumberstonames', [], @(x) isstimnr(x));   
+p0.addParameter('stimulusnamestonumbers', [], @(x) all(iscell(x)) || ischar(x));
+p0.addParameter('allcore'               , [], @(x) choose_isempty(x) || f_stimclassname(x));                 
+p0.addParameter('specialcore'           , [], @(x) choose_isempty(x) || f_stimclassname(x));                 
+p0.addParameter('stimtostimclassname'   , [], @(x) isstimnr(x));   
+p0.addParameter('stimtostimclassnumber' , [], @(x) isstimnr(x));   
+p0.addParameter('stimtotaskclassname'   , [], @(x) isstimnr(x));   
+p0.addParameter('stimtotaskclassnumber' , [], @(x) isstimnr(x));   
+p0.addParameter('fullinfo'              , [], @(x) isstimnr(x));   
 
 % Test image specific (only for WM, LTM, IMG task crossings)
-p0.addParameter('allwmteststimulusnumbers' , [], @(x) isempty(x) | all(ismember(lower(x), exp.stimclassnames)));   
-p0.addParameter('allltmteststimulusnumbers', [], @(x) isempty(x) | all(ismember(lower(x), exp.stimclassnames)));  
-p0.addParameter('allimgteststimulusnumbers', [], @(x) isempty(x) | all(ismember(lower(x), exp.stimclassnames)));  
+p0.addParameter('allwmteststimulusnumbers' , [], @(x) choose_isempty(x) || f_stimclassname(x));   
+p0.addParameter('allltmteststimulusnumbers', [], @(x) choose_isempty(x) || f_stimclassname(x));  
+p0.addParameter('allimgteststimulusnumbers', [], @(x) choose_isempty(x) || f_stimclassname(x));  
 
 % Parse inputs
 p0.parse(varargin{:});
@@ -334,16 +367,14 @@ for ii = 1:2:length(requested_info)
                 out = exp.stimclassnames; % {'gabor','rdk','dot','obj','ns'};
             elseif iscell(info_val) && all(cellfun(@isnumeric, info_val))
                 info_val = cell2mat(info_val);
-                idx    = sort(info_val,'ascend');
-                out = exp.stimclassnames(idx);
+                out = exp.stimclassnames(info_val);
             elseif isnumeric(info_val)
-                idx    = sort(info_val,'ascend');
-                out = exp.stimclassnames(idx);
+                out = exp.stimclassnames(info_val);
             end
             
         case 'stimulusclassnumbers'
                         
-            if isempty(info_val)                                % provide all stimulus class numbers: 1-5
+            if choose_isempty(info_val)                                % provide all stimulus class numbers: 1-5
                 out = 1:length(exp.stimclassnames); 
                 
             elseif ischar(info_val)
@@ -370,20 +401,18 @@ for ii = 1:2:length(requested_info)
             
         case 'taskclassnames'
             
-            if isempty(info_val)
+            if choose_isempty(info_val)
                 out = exp.taskclassnames;                    % provide all task class names: {'fix','cd','scc','pc','wm','ltm','img','what','where','how'};
             elseif iscell(info_val) && all(cellfun(@isnumeric, info_val))
                 info_val = cell2mat(info_val);
-                idx    = info_val;
-                out = exp.taskclassnames(idx);    
+                out = exp.taskclassnames(info_val);    
             elseif isnumeric(info_val)                          % provide specific task class name(s)
-                idx    = info_val;
-                out = exp.taskclassnames(idx);
+                out = exp.taskclassnames(info_val);
             end
             
         case 'taskclassnumbers'
             
-            if isempty(info_val)                               % provide all task class numbers: 1-10
+            if choose_isempty(info_val)                               % provide all task class numbers: 1-10
                 out = 1:length(exp.taskclassnames);         
                 
             elseif ischar(info_val)
@@ -395,24 +424,25 @@ for ii = 1:2:length(requested_info)
                     [~,out] = ismember(info_val,exp.taskclassnames);
                 end  
             elseif iscell(info_val)
-                if strcmp(info_val{:},'all')                    % provide all task class numbers: 1-10
+                if strcmp(info_val(:),'all')                    % provide all task class numbers: 1-10
                     out = 1:length(exp.taskclassnames);
                 else                                            % provide specific task class number(s)
                     [~,out] = ismember(lower(info_val(:)),exp.taskclassnames);
                 end
             end
+            if size(out,1) > size(out,2)
+                out = out';
+            end
             
         case 'crossingnames'
             
-            if isempty(info_val)                % provide all task-stimulus class crossing names: {'fix-gbr',...,'how-ns'};
+            if choose_isempty(info_val)                % provide all task-stimulus class crossing names: {'fix-gbr',...,'how-ns'};
                 out = exp.crossingnames; 
             elseif iscell(info_val) && all(cellfun(@isnumeric, info_val)) 
                 info_val = cell2mat(info_val);
-                idx    = info_val;
-                out = exp.crossingnames(idx);    
+                out = exp.crossingnames(info_val);    
             elseif isnumeric(info_val)           % provide specific task-stimulus class crossing name(s)
-                idx    = info_val;
-                out = exp.crossingnames(idx);
+                out = exp.crossingnames(info_val);
             end
             if size(out,1) > size(out,2)
                 out = out';
@@ -420,7 +450,7 @@ for ii = 1:2:length(requested_info)
             
         case 'crossingnumbers'
             
-            if isempty(info_val) % provide all task-stimulus class crossing numbers (1-32), if user doesn't specify
+            if choose_isempty(info_val) % provide all task-stimulus class crossing numbers (1-32), if user doesn't specify
                 out = 1:length(exp.crossingnames);           
                 
             elseif ischar(info_val)
@@ -447,11 +477,20 @@ for ii = 1:2:length(requested_info)
             
         case 'allstimulusnumbers'
             % provide all stimulus numbers associated with given stimulus class name or number
-            if isempty(info_val) % provide all image nrs 1-1550, if user doesn't specifiy
+            if choose_isempty(info_val) % provide all image nrs 1-1550, if user doesn't specifiy
                 out = stim.all_im_nrs;
             else
+                if iscell(info_val)
+                    if all(cellfun(@isnumeric, info_val))
+                        info_val = cell2mat(info_val);
+                    elseif all(cellfun(@ischar, info_val))
+                        % do nothing
+                    end
+                end
+                
                 if isnumeric(info_val) % if user provides stim class number
-                    stimclassname = exp.stimclassnames(ismember(info_val,1:length(exp.stimclassnames)));
+                    [~,idx] = ismember(info_val,1:length(exp.stimclassnames),'legacy');
+                    stimclassname = exp.stimclassnames(idx);
                 elseif ischar(info_val) % if user provides stim class name 
                     stimclassname = {info_val};
                 elseif iscell(info_val)  % if user provides multiple stim class names 
@@ -466,7 +505,6 @@ for ii = 1:2:length(requested_info)
                         out = cat(2, out, stim.(stimclassname{sc}).unique_im_nrs_core, stim.(stimclassname{sc}).unique_im_nrs_wm_test, stim.(stimclassname{sc}).unique_im_nrs_img_test);
                     end
                 end
-                out = sort(out,'ascend');
             end
             
         case 'stimulusnumberstonames'
@@ -476,7 +514,7 @@ for ii = 1:2:length(requested_info)
             if length(info_val) > 1
                 out = cell(1,length(info_val));
             else
-                out = NaN(1,length(info_val));
+                out = [];
             end
             
             if isnumeric(info_val) % if user provides singleton or vector
@@ -491,9 +529,9 @@ for ii = 1:2:length(requested_info)
                 % if we deal with a core stimulus
                 if ismember(stim_nr(nn), stim.all_core_im_nrs)  
                     
-                    [~,idx] = ismember(stim_nr(nn),vcd_info.condition_master.stim_nr_left);
+                    [~,idx] = ismember(stim_nr(nn),vcd_info.condition_master.stim_nr_left,'legacy');
                     if idx == 0
-                        [~,idx] = ismember(stim_nr(nn), vcd_info.condition_master.stim_nr_right);
+                        [~,idx] = ismember(stim_nr(nn), vcd_info.condition_master.stim_nr_right,'legacy');
                         im_loc = 2; % right stim
                         stimnumber = vcd_info.condition_master.stim_nr_right(idx);
                     else
@@ -503,9 +541,9 @@ for ii = 1:2:length(requested_info)
 
                 elseif ismember(stim_nr(nn), stim.all_test_im_nrs)  
                     % find unique stimulus number for test image
-                    [~,idx] = ismember(stim_nr(nn),vcd_info.condition_master.stim2(:,1));
+                    [~,idx] = ismember(stim_nr(nn),vcd_info.condition_master.stim2(:,1),'legacy');
                     if idx == 0
-                        [~,idx] = ismember(stim_nr(nn), vcd_info.condition_master.stim2(:,2));
+                        [~,idx] = ismember(stim_nr(nn), vcd_info.condition_master.stim2(:,2),'legacy');
                         im_loc = 2; % right stim
                         stimnumber = vcd_info.condition_master.stim_nr_right(idx);
                     else
@@ -527,7 +565,7 @@ for ii = 1:2:length(requested_info)
                 if iscell(out)
                     out{nn} = sprintf('%s-%s-%s',stimclassname,stimnumber,stimlocation);
                 else
-                    out(nn) = sprintf('%s-%s-%s',stimclassname,stimnumber,stimlocation);
+                    out = sprintf('%s-%s-%s',stimclassname,stimnumber,stimlocation);
                 end
             end
             
@@ -548,7 +586,8 @@ for ii = 1:2:length(requested_info)
                 input_stim_pos        = input_name0{3};
                 
                 % check if stim nr matches stim class and stim location
-                true_stim_class_name = all_im_stimclassnames(input_stim_nr==stim.all_im_nrs);
+                [~,idx] = ismember(input_stim_nr,stim.all_im_nrs,'legacy');
+                true_stim_class_name = all_im_stimclassnames(idx);
                 
                 if strcmp(true_stim_class_name,'gabor')
                     true_stim_class_name = 'GBR';
@@ -560,8 +599,8 @@ for ii = 1:2:length(requested_info)
                 end
                
                 % Check position of stimulus
-                [~,idx_l] = ismember(input_stim_nr, vcd_info.condition_master.stim_nr_left);
-                [~,idx_r] = ismember(input_stim_nr, vcd_info.condition_master.stim_nr_right);
+                [~,idx_l] = ismember(input_stim_nr, vcd_info.condition_master.stim_nr_left,'legacy');
+                [~,idx_r] = ismember(input_stim_nr, vcd_info.condition_master.stim_nr_right,'legacy');
                 if (idx_l == 0) && (idx_r > 0) % if right stimulus nr matches
                     true_stim_pos = 'R'; % right stim
                 elseif (idx_l > 0) && (idx_r == 0) % if left stimulus nr matches
@@ -582,11 +621,12 @@ for ii = 1:2:length(requested_info)
             
         case 'allcore' 
            % provide all core stimulus number(s) for one (or more) stimulus class(es)
-           if isempty(info_val) % provide all coreimage nrs (1-110), if user doesn't specifiy stimulus class
+           if choose_isempty(info_val) % provide all coreimage nrs (1-110), if user doesn't specifiy stimulus class
                 out = stim.all_core_im_nrs;
             else
                 if isnumeric(info_val) % if user provides stim class number
-                    stimclassname = exp.stimclassnames(ismember(info_val,1:length(exp.stimclassnames)));
+                    [~,idx] = ismember(info_val,1:length(exp.stimclassnames),'legacy');
+                    stimclassname = exp.stimclassnames(idx);
                 elseif ischar(info_val) % if user provides stim class name 
                     stimclassname = {info_val};
                 elseif iscell(info_val)  % if user provides multiple stim class names 
@@ -601,7 +641,6 @@ for ii = 1:2:length(requested_info)
                 for sc = 1:length(stimclassname)
                     out = cat(2, out, stim.(stimclassname{sc}).unique_im_nrs_core);
                 end
-                out = sort(out,'ascend');
            end 
             
         case 'specialcore'
@@ -610,7 +649,8 @@ for ii = 1:2:length(requested_info)
                 out = stim.all_specialcore_im_nrs;
             else
                 if isnumeric(info_val) % if user provides stim class number
-                    stimclassname = exp.stimclassnames(ismember(info_val,1:length(exp.stimclassnames)));
+                    [~,idx] = ismember(info_val,1:length(exp.stimclassnames),'legacy');
+                    stimclassname = exp.stimclassnames(idx);
                 elseif ischar(info_val) % if user provides stim class name
                     stimclassname = {info_val};
                 elseif iscell(info_val)  % if user provides multiple stim class names
@@ -625,7 +665,6 @@ for ii = 1:2:length(requested_info)
                 for sc = 1:length(stimclassname)
                     out = cat(2, out, stim.(stimclassname{sc}).unique_im_nrs_specialcore);
                 end
-                out = sort(out,'ascend');
             end
             
         case 'stimtostimclassname'
@@ -687,11 +726,12 @@ for ii = 1:2:length(requested_info)
             
         case 'allwmteststimulusnumbers'       
             % provide all (non-core) stimulus number(s) of test images used in WM-[stimclass] crossings 
-           if isempty(info_val) % provide all wm test image nrs (1-110), if user doesn't specifiy stimulus class
+           if choose_isempty(info_val) % provide all wm test image nrs (1-110), if user doesn't specifiy stimulus class
                 out = stim.all_wm_test_im_nrs;
             else
                 if isnumeric(info_val) % if user provides stim class number
-                    stimclassname = exp.stimclassnames(ismember(info_val,1:length(exp.stimclassnames)));
+                    [~,idx] = ismember(info_val,1:length(exp.stimclassnames),'legacy');
+                    stimclassname = exp.stimclassnames(idx);
                 elseif ischar(info_val) % if user provides stim class name 
                     stimclassname = {info_val};
                 elseif iscell(info_val)  % if user provides multiple stim class names 
@@ -704,7 +744,6 @@ for ii = 1:2:length(requested_info)
                         out = cat(2, out, stim.(stimclassname{sc}).unique_im_nrs_wm_test);
                     end
                 end
-                out = sort(out,'ascend');
            end 
             
             
@@ -714,7 +753,8 @@ for ii = 1:2:length(requested_info)
                 out = stim.all_ltm_lure_im_nrs;
             else
                 if isnumeric(info_val) % if user provides stim class number
-                    stimclassname = exp.stimclassnames(ismember(info_val,1:length(exp.stimclassnames)));
+                    [~,idx] = ismember(info_val,1:length(exp.stimclassnames),'legacy');
+                    stimclassname = exp.stimclassnames(idx);
                 elseif ischar(info_val) % if user provides stim class name
                     stimclassname = {info_val};
                 elseif iscell(info_val)  % if user provides multiple stim class names
@@ -727,7 +767,6 @@ for ii = 1:2:length(requested_info)
                         out = cat(2, out, stim.(stimclassname{sc}).unique_im_nrs_ltm_lures);
                     end
                 end
-                out = sort(out,'ascend');
             end
             
         case 'allimgteststimulusnumbers'      
@@ -736,7 +775,8 @@ for ii = 1:2:length(requested_info)
                 out = stim.all_img_test_im_nrs;
             else
                 if isnumeric(info_val) % if user provides stim class number
-                    stimclassname = exp.stimclassnames(ismember(info_val,1:length(exp.stimclassnames)));
+                    [~,idx] = ismember(info_val,1:length(exp.stimclassnames),'legacy');
+                    stimclassname = exp.stimclassnames(idx);
                 elseif ischar(info_val) % if user provides stim class name
                     stimclassname = {info_val};
                 elseif iscell(info_val)  % if user provides multiple stim class names
@@ -749,7 +789,6 @@ for ii = 1:2:length(requested_info)
                         out = cat(2, out, stim.(stimclassname{sc}).unique_im_nrs_img_test);
                     end
                 end
-                out = sort(out,'ascend');
             end
 
         case 'fullinfo'              
@@ -764,11 +803,11 @@ for ii = 1:2:length(requested_info)
             for nn = 1:length(stim_nr)
                 
                 % if we deal with a core stimulus
-                if ismember(stim_nr(nn), stim.all_core_im_nrs)  
+                if ismember(stim_nr(nn), stim.all_core_im_nrs,'legacy')  
                     
-                    [~,idx] = ismember(stim_nr(nn),vcd_info.condition_master.stim_nr_left);
+                    [~,idx] = ismember(stim_nr(nn),vcd_info.condition_master.stim_nr_left,'legacy');
                     if idx == 0
-                        [~,idx] = ismember(stim_nr(nn), vcd_info.condition_master.stim_nr_right);
+                        [~,idx] = ismember(stim_nr(nn), vcd_info.condition_master.stim_nr_right,'legacy');
                         im_loc = 2; % right stim
                     else
                         im_loc = 1; % left stim
@@ -776,9 +815,9 @@ for ii = 1:2:length(requested_info)
 
                 elseif ismember(stim_nr(nn), stim.all_test_im_nrs)  
                     % find unique stim number for test image
-                    [~,idx] = ismember(stim_nr(nn),vcd_info.condition_master.stim2(:,1));
+                    [~,idx] = ismember(stim_nr(nn),vcd_info.condition_master.stim2(:,1),'legacy');
                     if idx == 0
-                        [~,idx] = ismember(stim_nr(nn), vcd_info.condition_master.stim2(:,2));
+                        [~,idx] = ismember(stim_nr(nn), vcd_info.condition_master.stim2(:,2),'legacy');
                         im_loc = 2; % right stim
                     else
                         im_loc = 1; % left stim
@@ -811,12 +850,12 @@ for ii = 1:2:length(requested_info)
                     'unique_trial_nr','stim_class_unique_block_nr','block_local_trial_nr'};
                 if im_loc==1
                     info_to_delete = cat(2,info_to_delete,'stim_nr_right');
-                    if ismember(stim_nr(nn), stim.all_test_im_nrs)
+                    if ismember(stim_nr(nn), stim.all_test_im_nrs,'legacy')
                         stim_info.stim1 = stim_info.stim_nr_left;
                     end
                 elseif im_loc==2
                     info_to_delete = cat(2,info_to_delete,'stim_nr_left');
-                    if ismember(stim_nr(nn), stim.all_test_im_nrs)
+                    if ismember(stim_nr(nn), stim.all_test_im_nrs,'legacy')
                         stim_info.stim1 = stim_info.stim_nr_right;
                     end
                 end
