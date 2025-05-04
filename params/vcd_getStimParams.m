@@ -306,7 +306,7 @@ else
                 p.imagery_sz_deg  = 5.658;                                      % QUIZ DOT PARAMS (STIM 2) desired diameter (deg) of the quiz dots image in an imagery trial to encourage subjects to create a vidid mental image.
                 p.imagery_sz_pix  = (round(p.img_sz_deg* disp_params.ppd)/2)*2; % QUIZ DOT PARAMS (STIM 2) diameter of quiz dot image in pixels (ensure even nr of pixels)                
                 p.unique_im_nrs_img_test  = [551:710];                          % Unique image nrs associated with the 8*20=160 IMG gabor test dot images
-                p.imagery_quiz_images = [ones(1,20),2.*ones(1,20)];          % quiz dots overlap (1) or not (2)
+                p.imagery_quiz_images = [ones(1,10),2.*ones(1,10)];             % quiz dots overlap (1) or not (2)
 
                 % Add params to struct
                 stim.gabor = p;
@@ -378,7 +378,7 @@ else
                 p.imagery_sz_deg   = 5.658;                                    % desired diameter (degree) of the second, quiz dots image in an imagery trial to encourage subjects to create a vidid mental image.
                 p.imagery_sz_pix   = (round(p.img_sz_deg* disp_params.ppd)/2)*2; % diameter of quiz dot image (pixels) (ensure even nr of pixels)
                 p.unique_im_nrs_img_test  = [711:870];                         % Unique image nrs associated with the 8*20=60 IMG RDK test dot images
-                p.imagery_quiz_images = [ones(1,20),2.*ones(1,20)];            % quiz dots overlap (1) or not (2)
+                p.imagery_quiz_images = [ones(1,10),2.*ones(1,10)];            % quiz dots overlap (1) or not (2)
                 
                 % Add params to struct
                 stim.rdk = p;
@@ -475,7 +475,7 @@ else
                 p.imagery_sz_deg   = [disp_params.w_deg/2, disp_params.h_deg];   % desired diameter (deg) of the second, quiz dots image in an imagery trial to encourage subjects to create a vidid mental image.
                 p.imagery_sz_pix   = [disp_params.xc,disp_params.h_pix];         % diameter of quiz dot image (pixels) (we already ensured even nr of pixels in display params function)
                 p.unique_im_nrs_img_test = [871:1030];                           % Unique image nrs associated with the 8*20=60 IMG DOT test dot images
-                p.imagery_quiz_images = [ones(1,20),2.*ones(1,20)];              % quiz dots overlap (1) or not (2)
+                p.imagery_quiz_images = [ones(1,10),2.*ones(1,10)];              % quiz dots overlap (1) or not (2)
                 
                 % Add params to struct
                 stim.dot = p;
@@ -527,27 +527,35 @@ else
                 assert(isequal(abs(45-p.facing_dir_deg(1:(p.num_unique_objects/2))), fliplr(abs(135-p.facing_dir_deg(((p.num_unique_objects/2)+1):p.num_unique_objects)))));
                 
                 % we carefully assign a unique rotation to an object
-                obj_idx                    = [6,4,14,3,9,12,8,2,1,16,10,7,11,15,5,13]; 
+                obj_idx                    = [6,4,14, ... 60 deg: damon, 40 deg: lisa, 140 deg:  sophia
+                                              3,9,12,8, ... 30 deg: parrot, 100 deg: cat, 130 deg: bear, 80 deg: giraffe
+                                              2,1, ... 20 deg: drill, 10 deg: brush
+                                              7, 11, ... 70 deg: bus, 120 deg: suv
+                                              16, 10, ... 170 deg: pizza, 110 deg: banana
+                                              15,5,13]; % 160 deg: church, 50 deg: house 140 deg: watertower
                 p.facing_dir_deg           = p.facing_dir_deg(obj_idx);
                 
-                % Define the 4 superordinate, 8 basic, and 16 subordinate categories
-                p.super_cat          = {'human','animal','object','place'};     
+                % Define the 5 superordinate, 1-3 basic, and 16 subordinate categories
+                p.super_cat          = {'human','animal','object','food','place'};     
                 
                 p.basic_cat{1}       = {'facemale','facefemale','facefemale'};
                 p.basic_cat{2}       = {'small','small','large','large'};
-                p.basic_cat{3}       = {'tool','tool','food','food','vehicle','vehicle'};
-                p.basic_cat{4}       = {'building','building','building'};
+                p.basic_cat{3}       = {'tool','tool','vehicle','vehicle'};
+                p.basic_cat{4}       = {'food','food'};
+                p.basic_cat{5}       = {'building','building','building'};
                 
                 p.sub_cat{1}         = {'damon','lisa','sophia'};
                 p.sub_cat{2}         = {'parrot','cat','bear','giraffe'};
-                p.sub_cat{3}         = {'drill','brush','pizza','banana','bus','suv'};
-                p.sub_cat{4}         = {'church','house','watertower'};
+                p.sub_cat{3}         = {'drill','brush','bus','suv'};
+                p.sub_cat{4}         = {'pizza','banana'};
+                p.sub_cat{5}         = {'church','house','watertower'};
                 
                 % Define the affordances for each object subcategory (for HOW task) 
                 p.affordance{1}      = {'greet','greet','greet'};
                 p.affordance{2}      = {'greet','greet','observe','observe'};
-                p.affordance{3}      = {'grasp','grasp','grasp','grasp','enter','enter'};
-                p.affordance{4}      = {'enter','enter','observe'};
+                p.affordance{3}      = {'grasp','grasp','enter','enter'};
+                p.affordance{4}      = {'grasp','grasp'};
+                p.affordance{5}      = {'enter','enter','observe'};
 
                 % WORKING MEMORY: dot angle position deltas for test images
                 p.delta_from_ref     = [-8, -4, 4, 8];                      % Relative rotation from reference image for WM test image
@@ -568,7 +576,7 @@ else
                 p.imagery_sz_deg      = 5.658;                              % desired diameter (degree) of the second, quiz dots image in an imagery trial to encourage subjects to create a vidid mental image.
                 p.imagery_sz_pix      = (round(p.img_sz_deg* disp_params.ppd)/2)*2; % pixel diameter of quiz dot image (ensure even nr of pixels)
                 p.unique_im_nrs_img_test = [1031:1190];                      % Unique image nrs associated with the 8*20=60 IMG OBJ test dot images
-                p.imagery_quiz_images = [ones(1,20),2.*ones(1,20)];          % quiz dots overlap (1) or not (2)
+                p.imagery_quiz_images = [ones(1,10),2.*ones(1,10)];          % quiz dots overlap (1) or not (2)
                 
                 % LTM PAIR
                 p.ltm_pairs          = [];                                       %%
@@ -611,14 +619,14 @@ else
                 % 5 superordinate semantic object categories
                 p.super_cat     = {'human','animal','food','object','place'};      
                 
-                % 5 x 2 basic semantic object categories (scene location)
+                %  x 2 basic semantic object categories (scene location)
                 p.basic_cat{1}  = {'indoor','outdoor'};
                 p.basic_cat{2}  = {'indoor','outdoor'};
                 p.basic_cat{3}  = {'indoor','outdoor'};
                 p.basic_cat{4}  = {'indoor','outdoor'};
                 p.basic_cat{5}  = {'indoor','outdoor'};
                 
-                % 5 x 1 or 2 exemplars + subordinate categories (object spatial location)
+                %  x 3 subordinate categories (object spatial location)
                 p.sub_cat{1,1}  = {'face1_left','face2_center','face3_right'};
                 p.sub_cat{1,2}  = {'face1_left','face2_center','face3_right'};
                 
@@ -651,7 +659,8 @@ else
                 % NSD image by adding or removing something in the image.
                 % These changes can be obvious (easy) or subtle (hard) to
                 % detect:
-                p.change_im         = {'easy_add', 'hard_add','easy_remove', 'hard_remove'};
+                p.change_im              = [2,1,-1,2];
+                p.change_im_name         = {'easy_add', 'hard_add','easy_remove', 'hard_remove'};
                 p.unique_im_nrs_wm_test  = [431:550];                            % Unique image nrs associated with the 120 WM NS changed stimuli
 
                 % FOR LTM incorrect trials, we have very similar looking images called "lures":
@@ -662,11 +671,11 @@ else
                 p.ltm_pairs     = [];                                       %
                 
                 % IMAGERY 
-                p.unique_im_nrs_specialcore      = p.unique_im_nrs_core([2,4,5,8,10,11,13,15,18,20,21,23,26,27,30]); % Half of the images will be used for  IMG/LTM pairing (these are carefully handpicked! see scene_info csv file)
+                p.unique_im_nrs_specialcore     = p.unique_im_nrs_core([2,4,5,8,10,11,13,15,18,20,21,23,26,27,30]); % Half of the images will be used for  IMG/LTM pairing (these are carefully handpicked! see scene_info csv file)
                 p.imagery_sz_deg                = p.img_sz_deg;                    % desired diameter (degree) of the second, quiz dots image in an imagery trial to encourage subjects to create a vidid mental image.
                 p.imagery_sz_pix                = p.img_sz_pix;                    % diameter of quiz dot image (pixels) (we already ensured even nr of pixels)
                 p.unique_im_nrs_img_test        = [1191:1490];                     % Unique image nrs associated with the 15*20=300 IMG NS test dot images
-                p.imagery_quiz_images = [ones(1,20),2.*ones(1,20)];          % quiz dots overlap (1) or not (2)
+                p.imagery_quiz_images           = [ones(1,10),2.*ones(1,10)];          % quiz dots overlap (1) or not (2)
                 
                 % Add params to struct
                 stim.ns = p;
