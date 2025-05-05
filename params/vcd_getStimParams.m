@@ -659,7 +659,7 @@ else
                 % NSD image by adding or removing something in the image.
                 % These changes can be obvious (easy) or subtle (hard) to
                 % detect:
-                p.change_im              = [2,1,-1,2];
+                p.change_im              = [2,1,-1,-2];
                 p.change_im_name         = {'easy_add', 'hard_add','easy_remove', 'hard_remove'};
                 p.unique_im_nrs_wm_test  = [431:550];                            % Unique image nrs associated with the 120 WM NS changed stimuli
 
