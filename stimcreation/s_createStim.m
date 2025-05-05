@@ -35,7 +35,7 @@ params.store_imgs   = true; % store visualization figures (true) or not (false)
 %  * 'EKHOME_ASUSVE247'   : ASUS monitor in Eline's home (only used for testing purposes).
 % This function will use field of view and native refresh rate of monitor
 % to adjust stimulus pixel size and frame duration.
-dispname    = '7TAS_BOLDSCREEN32';
+dispname    = 'PPROOM_EIZOFLEXSCAN';
 params.disp = vcd_getDisplayParams(dispname);
 
 % Where to store visualization of stimuli (debug figures and PNGs)?
@@ -100,7 +100,13 @@ params.stim   = vcd_getStimParams('disp_name',params.disp.name, ...
 
 gaptype     = 'comb';
 borderwidth = 'fat';
-num         = 272; % 271 MRI runs + 1 behavioral session
+if strcmp(dispname,'PPROOM_EIZOFLEXSCAN')
+    num = 15*1; % 15 runs * 1 sessions (BEHAVIORAL001)
+elseif strcmp(dispname,'7TAS_BOLDSCREEN32')
+    num = 268; % 264 MRI runs: 10 runs * 26 sessions (WIDE01A + WIDE01B + DEEP001-25) + 4 runs * 2 (DEEP26A/26Bp)
+else
+    num = 1;
+end
 bckgrnd_im  = vcd_pinknoisebackground(params, ...
                                      'gaptype', gaptype, ...
                                      'borderwidth', borderwidth,...

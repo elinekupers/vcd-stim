@@ -146,7 +146,7 @@ info = table(NaN(n_unique_videos,1), ... unique_im
              NaN(n_unique_videos,1), ... is_in_img_ltm
              cell(n_unique_videos,1)); % dot_pos
 info.Properties.VariableNames = {'unique_im','dot_motdir_deg','dot_motdir_deg_i',...
-    'dot_coh','dot_coh_i','rel_motdir_deg','rel_motdir_deg_i','dot_pos','is_in_img_ltm'};
+    'dot_coh','dot_coh_i','rel_motdir_deg','rel_motdir_deg_i','is_in_img_ltm','dot_pos'};
 
 %% RNG seed parameters
 rseed = [1000 2010];
@@ -186,7 +186,8 @@ for cc = 1:length(params.stim.rdk.dots_coherence)
             % TRICKY STUFF: Subtract 90 deg to ensure 0 deg desired motion direction is 12 o'clock in x,y-pixel space 
             curr_motdir_deg = curr_motdir_deg-90;
 
-            % Initialize and reset rng for each RDK video
+            % Initialize and reset rng for each RDK video (will apply to
+            % rand, randn, and randi)
             RandStream.setGlobalStream(RandStream('mt19937ar','seed',prod(rseed)));
             clock_seed = sum(100*clock);
             RandStream.setGlobalStream(RandStream('mt19937ar','seed',clock_seed));
@@ -317,11 +318,14 @@ for cc = 1:length(params.stim.rdk.dots_coherence)
                 % store location in case we want to check it later
                 stored_coh_dot_pos(:,:,curr_frame) = dots;
                 
+                % Check size of background image
                 offsetRect = ax.Children(end).Parent.Position;
-                if mod(round(offsetRect(3)),2)==1
-                    scf = floor(offsetRect(3))/offsetRect(3);
-                    offsetRect = [0,0,scf*offsetRect(3),scf*offsetRect(3)];
-                end
+                scf = floor(offsetRect(3))/offsetRect(3);
+                offsetRect = [0,0,scf*offsetRect(3),scf*offsetRect(3)];
+                
+                % ensure even nr of pixels
+                offsetRect(3:4) = 2*ceil(offsetRect(3:4)./2);
+                
                 f = getframe(ax,offsetRect);
                 im = frame2im(f);
                 
@@ -357,7 +361,12 @@ for cc = 1:length(params.stim.rdk.dots_coherence)
                 info.unique_im(counter) = img_im_nrs2{cc}(bb)+(dd-1);
             end
 
-            info.is_in_img_ltm(counter) = (info.unique_im(counter)==params.stim.rdk.unique_im_nrs_specialcore);
+            special_core_idx = find(info.unique_im(counter)==params.stim.rdk.unique_im_nrs_specialcore);
+            if ~isempty(special_core_idx)
+                info.is_in_img_ltm(counter) = true;
+            else
+                info.is_in_img_ltm(counter) = false;
+            end
             
             % Create binary circular alpha mask for rdk frames
             [XX,YY]       = meshgrid((1:size(frames,1))-(size(frames,1)/2),(1:size(frames,1))-(size(frames,1)/2)); 
@@ -388,6 +397,7 @@ stim_pos    = repmat(repelem({'left','right'},1+length(params.stim.gabor.delta_f
 stim_pos_i  = repmat(repelem([1,2],1+length(params.stim.gabor.delta_from_ref)), 1, length(params.stim.rdk.dots_direction)/2*length(params.stim.rdk.dots_coherence))';
 info.stim_pos   = stim_pos;
 info.stim_pos_i = stim_pos_i;
+info = info(:,[1, 10, 11, 2:9]);
 
 if params.store_imgs
     % in addition to storing separate conditions, we also store larger rdk file 
@@ -430,47 +440,47 @@ if params.verbose
     for dd = 1:size(rdks,3)
         
         % Loop over coherence levels
-        for cc = 1:size(rdks,1)
+        for cc = 1:size(rdks,2)
             
             % Loop over motion directions
             for bb = 1:size(rdks,1)
                 
-                im_idx = (info.dot_motdir_deg_i == params.stim.rdk.dots_direction(dd) & ...
-                          info.dot_coh_i == params.stim.rdk.dots_coherence(cc) & ...
-                          info.dot_motdir_deg_i == rdk_motdir_ref);
+                im_idx = ismember(info.dot_motdir_deg_i, bb) & ...
+                         ismember(info.dot_coh,params.stim.rdk.dots_coherence(cc)) & ...
+                         ismember(info.rel_motdir_deg_i,rdk_motdir_ref(dd));
                 im_nr  = info.unique_im(im_idx); 
                 
                 % Create RDK movie (mp4, with compression)
                 vcd_createStimVideo(rdks{bb,cc,dd}, 1/params.stim.presentationrate_hz, ...
                     fullfile(vcd_rootPath,'figs',params.disp.name,'rdk'),sprintf('%03d_vcd_rdk_coh%02d_dir%02d_delta%02d',im_nr,cc,bb,dd-1));
 
-                % Plot dot position & motion vector
-                dot_pos = dotlocs{bb, cc, dd};
-                dxdy    = dot_pos(:,:,2:end)-dot_pos(:,:,1:end-1);
-                dxdy    = cat(3,zeros(size(dot_pos,1),size(dot_pos,2)),dxdy);
-
-                for tt = 1:size(dot_pos,3) % loop over time
-                    figure(fH1); cla;
-                    xlim([-250, 250]); ylim([-250, 250]); box off;
-                    plot(dot_pos(~isnan(dot_pos(:,1,tt)),1,tt),dot_pos(~isnan(dot_pos(:,2,tt)),2,tt),'o'); hold on;
-                    quiver(dot_pos(~isnan(dot_pos(:,1,tt)),1,tt),dot_pos(~isnan(dot_pos(:,2,tt)),2,tt), ...
-                        dxdy(~isnan(dot_pos(:,1,tt)),1,tt),dxdy(~isnan(dot_pos(:,2,tt)),2,tt));
-                    title(sprintf('frame %02d: coh: %3.2f%% dir:%02d delta: %s',...
-                            tt, params.stim.rdk.dots_coherence(cc)*100,params.stim.rdk.dots_direction(dd), deltalabels{dd})); 
-                    axis square;
-                    
-                    if params.store_imgs
-                        % store motion vector figure
-                        if ~exist(fullfile(saveFigDir,sprintf('motdir%02d',dd)), 'dir')
-                            mkdir(fullfile(saveFigDir,sprintf('motdir%02d',dd))); end
-                        print(gcf,'-dpng','-r300',fullfile(saveFigDir1,sprintf('motdir%02d',dd),...
-                            sprintf('%02d_vcd_rdk_coh%03d_dir%02d_delta%02d_motionvec%d.png',im_nr,cc,bb,dd,ii)));
-                        
-                        % store PNG of movie frame
-                        imwrite(rdks{bb,cc,dd}, fullfile(saveFigDir2, ...
-                            sprintf('%03d_vcd_rdk_coh%02d_dir%02d_delta%02d',im_nr,cc,bb,dd-1)));
-                    end
-                end
+%                 % Plot dot position & motion vector
+%                 dot_pos = dotlocs{bb, cc, dd};
+%                 dxdy    = dot_pos(:,:,2:end)-dot_pos(:,:,1:end-1);
+%                 dxdy    = cat(3,zeros(size(dot_pos,1),size(dot_pos,2)),dxdy);
+% 
+%                 for tt = 1:size(dot_pos,3) % loop over time
+%                     figure(fH1); cla;
+%                     xlim([-250, 250]); ylim([-250, 250]); box off;
+%                     plot(dot_pos(~isnan(dot_pos(:,1,tt)),1,tt),dot_pos(~isnan(dot_pos(:,2,tt)),2,tt),'o'); hold on;
+%                     quiver(dot_pos(~isnan(dot_pos(:,1,tt)),1,tt),dot_pos(~isnan(dot_pos(:,2,tt)),2,tt), ...
+%                         dxdy(~isnan(dot_pos(:,1,tt)),1,tt),dxdy(~isnan(dot_pos(:,2,tt)),2,tt));
+%                     title(sprintf('frame %02d: coh: %3.2f%% dir:%3.2f delta: %s',...
+%                             tt, params.stim.rdk.dots_coherence(cc)*100,params.stim.rdk.dots_direction(dd), deltalabels{dd})); 
+%                     axis square;
+%                     
+%                     if params.store_imgs
+%                         % store motion vector figure
+%                         if ~exist(fullfile(saveFigDir1,sprintf('motdir%02d',dd)), 'dir')
+%                             mkdir(fullfile(saveFigDir1,sprintf('motdir%02d',dd))); end
+%                         print(gcf,'-dpng','-r300',fullfile(saveFigDir1,sprintf('motdir%02d',dd),...
+%                             sprintf('%02d_vcd_rdk_coh%03d_dir%02d_delta%02d_motionvec%d.png',im_nr,cc,bb,dd,tt)));
+%                         
+% %                         % store PNG of movie frame
+% %                         imwrite(rdks{bb,cc,dd}(:,:,3,tt), fullfile(saveFigDir2, ...
+% %                             sprintf('%03d_vcd_rdk_coh%02d_dir%02d_delta%02d.png',im_nr,cc,bb,dd-1)));
+%                     end
+%                 end
                 
             end
         end

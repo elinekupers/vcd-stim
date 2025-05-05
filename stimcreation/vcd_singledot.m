@@ -235,7 +235,7 @@ if params.verbose
     for ii = params.stim.dot.unique_im_nrs_core
         
         idx1 = find(info.unique_im==ii);
-        idx2 = find(info.angle_i==info.angle_i(idx1) &  sum(info.delta_deg_ref==params.stim.dot.delta_from_ref,2));
+        idx2 = find(info.angle_i==info.angle_i(idx1) &  sum(info.delta_deg==params.stim.dot.delta_from_ref,2));
         
         figure(1); clf;
         pax = polaraxes;
@@ -290,7 +290,7 @@ if params.verbose
         im_nr = info.unique_im(aa);
         xpos_dots_to_plot = info.dot_xpos_pix(aa);
         ypos_dots_to_plot = info.dot_ypos_pix(aa);
-        dlta = find(info.delta_deg_ref(aa)==[0,params.stim.dot.delta_from_ref]);
+        dlta = find(info.delta_deg(aa)==[0,params.stim.dot.delta_from_ref]);
         
         figure(99); clf;
         imshow(im1,[0 1]);

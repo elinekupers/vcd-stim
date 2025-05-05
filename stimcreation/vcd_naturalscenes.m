@@ -115,7 +115,7 @@ basic(cellfun(@isempty, basic)) = [];
 subordinate(cellfun(@isempty, subordinate)) = [];
 
 % WM image filenames
-wm_test_im_name = repmat(params.stim.ns.change_im,1,length(idx0));
+wm_test_im_name = repmat(params.stim.ns.change_im_name,1,length(idx0));
 
 % unique image nrs
 unique_im       = params.stim.ns.unique_im_nrs_core;
@@ -234,7 +234,7 @@ for ss = 1:length(superordinate)
                     im_order.affordance(counter)= info.obj_act(bb);
                     im_order.basic_cat(counter) = basic(ex);
                     im_order.sub_cat(counter)   = subordinate(bb);
-                    im_order.unique_im(counter) = params.stim.ns.unique_im_nrs_LTM_lures((ex-1)*length(subordinate) + bb +  (ss-1)*(length(basic)*length(subordinate)));
+                    im_order.unique_im(counter) = params.stim.ns.unique_im_nrs_ltm_lures((ex-1)*length(subordinate) + bb +  (ss-1)*(length(basic)*length(subordinate)));
                     im_order.lure_im(counter)   = lure_idx;
                     im_order.change_im(counter) = false;
                     
@@ -365,7 +365,7 @@ if params.verbose
                 set(gca,'CLim',[1 255]);
                 
                 if params.stim.store_imgs
-                    print(fullfile(saveFigDir1, sprintf('%03d_vcd_ns%02d_ltm_lure%02d', params.stim.ns.unique_im_nrs_LTM_lures(ss), ss,ll)),'-dpng','-r150');
+                    print(fullfile(saveFigDir1, sprintf('%03d_vcd_ns%02d_ltm_lure%02d', params.stim.ns.unique_im_nrs_ltm_lures(ss), ss,ll)),'-dpng','-r150');
                     imwrite(ltmlures0(:,:,:,ss,ll), fullfile(saveFigDir2, sprintf('%03d_vcd_ns%02d_ltm_lure%02d.png', params.stim.ns.unique_im_nrs_ltm_lures(ss), ss,ll)));
                 end
             end
@@ -441,7 +441,7 @@ if any(strcmp(params.disp.name, {'7TAS_BOLDSCREEN32', 'PPROOM_EIZOFLEXSCAN'}))
                     axis image; box off
                     set(gca,'CLim',[1 255]);
                     if params.stim.store_imgs
-                        print(fullfile(saveFigDir1, sprintf('%03d_vcd_ns%02d_ltm_lure%02d', params.stim.ns.unique_im_nrs_LTM_lures(ss),ss,ll)),'-dpng','-r150');
+                        print(fullfile(saveFigDir1, sprintf('%03d_vcd_ns%02d_ltm_lure%02d', params.stim.ns.unique_im_nrs_ltm_lures(ss),ss,ll)),'-dpng','-r150');
                         imwrite(temp_ltm(:,:,:,ss,ll), fullfile(saveFigDir2, sprintf('%03d_vcd_ns%02d_ltm_lure%02d.png', params.stim.ns.unique_im_nrs_ltm_lures(ss), ss,ll)));
                     end
                 end

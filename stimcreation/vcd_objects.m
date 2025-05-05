@@ -271,7 +271,7 @@ if params.verbose
     counter = 1;
     if params.stim.store_imgs
         saveFigDir = fullfile(vcd_rootPath,'figs',params.disp.name, 'obj','visual_checks');
-        if ~exist(saveDir,'dir'); mkdir(saveDir); end
+        if ~exist(saveFigDir,'dir'); mkdir(saveFigDir); end
     end
     
     figure(99); set(gcf, 'Position', [300   584   868   753]);
@@ -279,9 +279,9 @@ if params.verbose
         for rot = 1:size(objects,5)
             
             if rot == 1
-                im_nr = info.unique_im_nr(objectNr);
+                im_nr = info.unique_im(objectNr);
             else 
-                im_nr = info.unique_im_nr(size(objects,4) + ((objectNr-1)*4) + rot-1);
+                im_nr = info.unique_im(size(objects,4) + ((objectNr-1)*4) + rot-1);
             end
             cla;
             I = imshow(objects(:,:,:,objectNr,rot),[1 255]);

@@ -196,7 +196,7 @@ if params.stim.store_imgs
 end
 
 if params.verbose
-    vcd_visualizeBackground(params, bckgrnd_im, [])
+    vcd_visualizeBackground(params, bckgrnd_im, [], gaptype, borderwidth)
 end
 
 return
