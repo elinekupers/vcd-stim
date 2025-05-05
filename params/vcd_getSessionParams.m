@@ -125,11 +125,11 @@ else
     % least one FIX block per session.
     
                                    % fix cd  scc  pc  wm ltm img what where how
-    exp.n_unique_trial_repeats_mri = [19  11  11  11  11  23  23   0   0   0;  % gabor
-                                      19  11  11  11  11  23  23   0   0   0;  % rdk
-                                      27  11  11  11  11  23  23   0   0   0;  % dot
-                                      27  11  11  11  11  23  23   11  0   11; % obj
-                                      11  11  0   11  11  11  11   11  11  11]; % ns
+    exp.n_unique_trial_repeats_mri = [18  11  11  11  11  22  22   0   0   0;  % gabor
+                                      18  11  11  11  11  22  22   0   0   0;  % rdk
+                                      26  11  11  11  11  22  22   0   0   0;  % dot
+                                      26  11  11  11  11  22  22   11  0   11; % obj
+                                      11  11  0   11  11  22  22   11  11  11]; % ns
                                   
                                         % fix  cd  scc  pc  wm ltm img what where how
     exp.n_unique_trial_repeats_behavior = [3	3	3	3	3	0	0	0	0	0; % Gabor
@@ -154,7 +154,7 @@ else
 
     % DEEP
     exp.session.deep.n_runs_per_session = [repmat(10,1,25),4,4];            % there are 10x 6.05 min runs for DEEP sessions 1-25, 26A and 26B have 4 runs each
-    exp.session.deep.session_nrs        = 1:26;                             % Sessions dedicated to deep subject sampling
+    exp.session.deep.session_nrs        = 4; %1:27;                             % Sessions dedicated to deep subject sampling
     exp.session.deep.baseline_sessions  = 1:4;                              % Deep sessions dedicated to establish baseline, prior to introducing LTM/IMG
 
     % General
@@ -364,69 +364,69 @@ else
 
     
     % sessions for behavior 0                      fix cd scc  pc  wm ltm img what where  how  
-    exp.session.behavior.ses_blocks(:,:,1) =    [3	3	3	3	3	0	0	0	0	0; % Gabor
-                                                    3	3	3	3	6	0	0	0	0	0; % RDK
-                                                    2	2	2	2	2	0	0	0	0	0; % Dot
-                                                    2	2	2	2	2	0	0	2	0	2; % Obj
-                                                    2	4	0	4	8	0	0	4	4	4]; % NS
+    exp.session.behavior.ses_blocks(:,:,1) =    [3	3	3	3	3	0	0	0	0	0
+3	3	3	3	6	0	0	0	0	0;
+2	2	2	2	2	0	0	0	0	0;
+2	2	2	2	2	0	0	2	0	2;
+4	4	0	4	8	0	0	4	4	4]; % NS
 
     % sessions WIDE 1A                           fix cd scc  pc  wm ltm img what where  how  
     exp.session.wide.ses_blocks(:,:,1) =   [2	2	2	2	4	0	0	0	0	0;
-                                            2	2	2	2	4	0	0	0	0	0;
-                                            1	1	1	2	2	0	0	0	0	0;
-                                            1	1	2	2	2	0	0	2	0	2;
-                                            2	3	0	2	4	0	0	3	2	3]; % NS
+2	2	2	2	4	0	0	0	0	0;
+1	1	1	2	2	0	0	0	0	0;
+1	1	2	2	2	0	0	2	0	2;
+2	3	0	2	4	0	0	3	2	3]; % NS
 
     % sessions WIDE 1A                           fix cd scc  pc  wm ltm img what where  how  
     exp.session.wide.ses_blocks(:,:,2) =   [2	2	2	2	4	0	0	0	0	0;
-                                            2	2	2	2	4	0	0	0	0	0;
-                                            1	1	1	2	2	0	0	0	0	0;
-                                            1	1	2	2	2	0	0	2	0	2;
-                                            2	3	0	3	4	0	0	2	3	2];% NS
+2	2	2	2	4	0	0	0	0	0;
+1	1	1	2	2	0	0	0	0	0;
+1	1	2	2	2	0	0	2	0	2;
+3	2	0	3	4	0	0	2	3	2];% NS
 
     % Deep sessions 1-4 have no LTM/IMG   fix   cd   scc pc  wm  ltm img what where  how                 
-    exp.session.deep.ses_blocks(:,:,1) = [  1	2	2	3	4	0	0	0	0	0;
-                                            1	2	2	3	3	0	0	0	0	0;
-                                            1	1	1	2	2	0	0	0	0	0;
-                                            1	1	1	2	3	0	0	2	0	1;
-                                            2	3	0	3	4	0	0	3	3	3];% NS
+    exp.session.deep.ses_blocks(:,:,1) = [ 1	2	2	3	4	0	0	0	0	0;
+1	2	2	3	3	0	0	0	0	0;
+1	1	1	2	2	0	0	0	0	0;
+1	1	1	2	3	0	0	2	0	1;
+2	3	0	3	4	0	0	3	3	3];% NS
 
     %                                    fix   cd   scc pc  wm  ltm img what where  how                      
     exp.session.deep.ses_blocks(:,:,2) =   [1	2	2	2	4	0	0	0	0	0;
-                                            1	2	2	1	4	0	0	0	0	0;
-                                            1	1	1	1	4	0	0	0	0	0;
-                                            1	2	2	1	3	0	0	1	0	1;
-                                            3	2	0	2	5	0	0	3	2	2];% NS
+1	2	2	1	4	0	0	0	0	0;
+1	1	1	1	4	0	0	0	0	0;
+1	2	2	1	3	0	0	1	0	1;
+3	3	0	2	5	0	0	3	2	2];% NS
                                         
     %                                   fix   cd   scc pc  wm  ltm img what where  how          
-    exp.session.deep.ses_blocks(:,:,3) = [ 1	2	2	2	4	0	0	0	0	0;
-                                            1	2	2	2	4	0	0	0	0	0;
-                                            1	2	2	1	2	0	0	0	0	0;
-                                            1	2	2	1	3	0	0	1	0	1;
-                                            3	2	0	3	5	0	0	2	2	3];% NS
+    exp.session.deep.ses_blocks(:,:,3) = [1	2	2	2	4	0	0	0	0	0;
+1	2	2	2	4	0	0	0	0	0;
+1	2	2	1	2	0	0	0	0	0;
+1	2	2	1	3	0	0	1	0	1;
+3	2	0	3	5	0	0	2	2	3];% NS
 
     %                                   fix   cd   scc pc  wm  ltm img what where  how          
-    exp.session.deep.ses_blocks(:,:,4) = [  1	2	2	1	4	0	0	0	0	0
-                                            1	2	2	2	4	0	0	0	0	0
-                                            1	2	2	1	3	0	0	0	0	0
-                                            1	1	1	1	3	0	0	1	0	2
-                                            2	2	0	3	6	0	0	2	3	2];% NS
+    exp.session.deep.ses_blocks(:,:,4) =   [1	2	2	1	4	0	0	0	0	0;
+1	2	2	2	4	0	0	0	0	0;
+1	2	2	1	3	0	0	0	0	0;
+1	1	1	1	3	0	0	1	0	2;
+2	2	0	3	6	0	0	2	3	2];% NS
 
                                                              
     % Deep sessions 5- have all stim-task crossings
     %                                    fix   cd   scc pc  wm  ltm img what where  how          
-    exp.session.deep.ses_blocks(:,:,5) = [  1	1	1	1	2	2	3	0	0	0;
-                                            1	1	1	1	2	2	3	0	0	0;
-                                            1	1	0	0	1	2	2	0	0	0;
-                                            1	0	1	1	1	2	2	1	0	1;
-                                            1	1	0	1	3	4	4	1	1	1];% NS
+    exp.session.deep.ses_blocks(:,:,5) = [ 1	1	1	1	2	2	3	0	0	0;
+1	1	1	1	2	2	3	0	0	0;
+1	1	0	0	1	2	2	0	0	0;
+1	0	1	1	1	2	2	1	0	1;
+1	1	0	1	3	4	4	1	1	1];% NS
 
     %                                    fix   cd   scc pc  wm  ltm img what where  how           
-    exp.session.deep.ses_blocks(:,:,6) = [  1	1	1	1	2	3	2	0	0	0;
-                                            1	1	1	1	2	3	2	0	0	0;
-                                            1	1	1	0	1	2	2	0	0	0;
-                                            1	1	0	1	1	2	2	1	0	1;
-                                            1	1	0	1	3	4	4	1	0	1];% NS
+    exp.session.deep.ses_blocks(:,:,6) = [ 1	1	1	1	2	3	2	0	0	0;
+1	1	1	1	2	3	2	0	0	0;
+1	1	1	0	1	2	2	0	0	0;
+1	1	0	1	1	2	2	1	0	1;
+1	1	0	1	3	4	4	1	0	1];% NS
 
     %                                      fix   cd   scc pc  wm  ltm img what where  how          
     exp.session.deep.ses_blocks(:,:,7) = [  1	1	1	1	3	2	3	0	0	0;
