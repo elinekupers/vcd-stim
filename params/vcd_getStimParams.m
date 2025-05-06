@@ -541,7 +541,7 @@ else
                 p.basic_cat{1}       = {'facemale','facefemale','facefemale'};
                 p.basic_cat{2}       = {'small','small','large','large'};
                 p.basic_cat{3}       = {'tool','tool','vehicle','vehicle'};
-                p.basic_cat{4}       = {'food','food'};
+                p.basic_cat{4}       = {'man-made','produce'};
                 p.basic_cat{5}       = {'building','building','building'};
                 
                 p.sub_cat{1}         = {'damon','lisa','sophia'};
