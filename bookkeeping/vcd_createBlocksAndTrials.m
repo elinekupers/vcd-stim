@@ -124,7 +124,7 @@ else % Recreate conditions and blocks and trials
             
             fprintf('[%s]: Loading exp params .mat file: %s\n', mfilename, d(end).name);
             tmp = load(fullfile(d(end).folder,d(end).name));
-            p.exp = tmp.exp_session;
+            p.exp = tmp.exp;
         else
             error('[%s]: Can''t find exp params file!\n', mfilename)
         end
