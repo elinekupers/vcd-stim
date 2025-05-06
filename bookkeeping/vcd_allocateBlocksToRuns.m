@@ -151,6 +151,9 @@ for ses = 1:size(all_sessions,3)
                                 elseif condition_master.is_cued(sub_idx(tt))==2
                                     cue_label = {sprintf('%s 000 RCUED %s',stim_class_tmp_name,task_class_abbr{tc}), ...
                                         sprintf('%s 0000 LUNCUED %s',stim_class_tmp_name,task_class_abbr{tc})};
+                                elseif condition_master.is_cued(sub_idx(tt))==3
+                                    cue_label = {sprintf('%s 000 NCUED %s',stim_class_tmp_name,task_class_abbr{tc}), ...
+                                        sprintf('%s 0000 NCUED %s',stim_class_tmp_name,task_class_abbr{tc})};
                                 end
                             elseif condition_master.is_cued(sub_idx(tt))==1
                                 cue_label = {sprintf('%s %04d L CUED %s',stim_class_tmp_name,condition_master.stim_nr_left(sub_idx(tt)),task_class_abbr{tc}), ...
