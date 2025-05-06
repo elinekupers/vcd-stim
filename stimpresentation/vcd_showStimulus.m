@@ -116,12 +116,11 @@ for frame = 1:length(scan.frame_nr)
     % set up fixation dot textures
     lum_idx = find(scan.fix_abs_lum(frame)==params.stim.fix.dotlum);
     
-    if blockID == 0 && (scan.is_cued(frame)==0 || isnan(scan.is_cued(frame))) || isnan(blockID)
+    if blockID == 0 || isnan(scan.is_cued(frame)) || isnan(blockID)
         fix_tex{frame} = fix_texture_thin_full{lum_idx};
-        fix_rect{frame} = fix_rect_thin;
-        
+        fix_rect{frame} = fix_rect_thin;   
     else
-        if scan.event_id(frame,1)==95
+        if blockID==95
             if scan.is_cued(frame)==1
                 fix_tex{frame}  = fix_texture_thick_left{lum_idx};
                 fix_rect{frame} = fix_rect_thick;
@@ -132,16 +131,16 @@ for frame = 1:length(scan.frame_nr)
                 fix_tex{frame}  = fix_texture_thick_both{lum_idx};
                 fix_rect{frame} = fix_rect_thick;
             end
-        elseif any(intersect(scan.event_id(frame),[91,92,93,94,96,97]))
+        elseif ismember(blockID,[91,92,93,94,96,97])
             fix_tex{frame} = fix_texture_thick_full{lum_idx};
             fix_rect{frame} = fix_rect_thick;
-        elseif any(intersect(scan.event_id(frame),[98,99]))
+        elseif ismember(blockID,[98,99])
             fix_tex{frame} = fix_texture_thin_full{lum_idx};
             fix_rect{frame} = fix_rect_thin;
-        elseif scan.event_id(frame) < 90
+        elseif (blockID > 0) || (blockID < 90)
             fix_tex{frame} = fix_texture_thick_full{lum_idx};
             fix_rect{frame} = fix_rect_thick;
-        elseif scan.event_id(frame) > 990 % eyetracking target (TODO: implement actual targets)
+        elseif blockID > 990 % eyetracking target (TODO: implement actual targets)
             fix_tex{frame} = fix_texture_thin_full{lum_idx};
             fix_rect{frame} = fix_rect_thin;
         end
@@ -159,8 +158,8 @@ for frame = 1:length(scan.frame_nr)
 %     exp.block.ITI_ID                = 98; % Inter-trial interval
 %     exp.block.IBI_ID                = 99; % Inter-block interval
         
-        % Draw background + thin fix dot on top
-        case {0, 98, 99}
+        % Draw background + fix dot on top
+        case {0, 93, 94, 95, 96, 98, 99}
             
             % DrawTextures
             % * TexturePointers  need to be: n vector (where n is the number of textures)
@@ -199,7 +198,7 @@ end
 Screen('DrawTextures',win, im_tex{1},[], im_rect{1}',[], [0;0], [1;1], framecolor{1}');
     
 % Draw text
-% DrawFormattedText(win, instrtext, 'center', (prerun_text_rect(4)/2)-50, 0, 75,[],[],[],[],prerun_text_rect);
+DrawFormattedText(win, instrtext, 'center', (prerun_text_rect(4)/2)-50, 0, 75,[],[],[],[],prerun_text_rect);
 Screen('Flip',win);
 
 fprintf('Instructions are on screen, waiting for trgger...\n');
@@ -224,17 +223,13 @@ feval(tfunEYE) % Eyelink('Message','SYNCTIME'));
 timekeys = [timekeys; {GetSecs 'trigger'}];
 
 %% DRAW THE TEXTURES
-
-
-framecnt = 0;
 for frame = 1:size(frameorder,2)+1
     
-    framecnt = framecnt + 1;
-    frame0 = floor(framecnt);
-    whendesired = scan.frame_nr(framecnt);
+    frame0 = floor(frame);
     
     % we have to wait until the last frame of the run sequence is done.
     if frame0 == size(frameorder,2)+1
+        whendesired = scan.frame_nr(frame)+mfi;
         while 1
             if GetSecs >= whendesired
                 getoutearly = 1;
@@ -246,6 +241,8 @@ for frame = 1:size(frameorder,2)+1
                 break;
             end
         end
+    else
+        whendesired = scan.frame_nr(frame);
     end
     
     % get out early?
@@ -253,7 +250,7 @@ for frame = 1:size(frameorder,2)+1
         break;
     end
     
-    switch scan.event_id(framecnt)
+    switch scan.event_id(frame)
         
         % 0  : pre/post blank
         % 93 : exp_session.block.response_ID
@@ -266,20 +263,19 @@ for frame = 1:size(frameorder,2)+1
         
         % Draw background + thin fix dot on top
         case {0, 93, 94, 95, 96, 98, 99}
-            
             % draw background and dot textures
-            Screen('DrawTextures',win,im_tex{framecnt},[],im_rect{framecnt}',[0;0],[],[1;1],framecolor{framecnt}');
+            Screen('DrawTextures',win,im_tex{frame},[],im_rect{frame}',[0;0],[],[1;1],framecolor{frame}');
             
         case 97 % task_cue_ID
             
             % draw background and left/right cuing dot textures
-            Screen('DrawTextures',win, im_tex{framecnt},[],im_rect{framecnt}',[0;0],[],[1;1],framecolor{framecnt}');
+            Screen('DrawTextures',win, im_tex{frame},[],im_rect{frame}',[0;0],[],[1;1],framecolor{frame}');
             
             % draw text
             % inputs are winptr, tstring, sx, sy, color, wrapat, flipHorizontal, flipVertical, vSpacing, righttoleft, winRect)
-            DrawFormattedText(win, txt_tex{framecnt}, 'center', (txt_rect{framecnt}(4)/2)-50,0,75,[],[],[],[],txt_rect{framecnt});
+            DrawFormattedText(win, txt_tex{frame}, 'center', (txt_rect{frame}(4)/2)-25,0,75,[],[],[],[],txt_rect{frame});
             
-        case {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30}
+        case {91,92} % 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30
             % Draw stimulus textures
             % 1-30 = all 2 peripheral stimulus aperture stim-task crossings:
             %   01-xx = Gabors
@@ -289,25 +285,23 @@ for frame = 1:size(frameorder,2)+1
             %   100+ images are WM/LTM query images (lures or change
             %   blindness)
             Screen('DrawTexture',win, bckrgound_texture,[], bckground_rect, 0, [], 1, 255*ones(1,3));...
-            blockID = scan.block_ID(framecnt);
         
-            if ismember(blockID, [1:5,7:24]) % exclude ltm
                 % trig_seq_exp_im_w_cd is a cell with dims: frames x 1, where each cell has 1 or 2 sides (1:l, 2:r)
-                for side = 1:length(find(~cellfun(@isempty, scan.images(framecnt,:))))
+                for side = 1:length(find(~cellfun(@isempty, scan.images(frame,:))))
 
-                    txttemp = feval(flipfun, scan.images{framecnt,side});
-                    stim_rect = scan.rects{framecnt,side};
+                    txttemp = feval(flipfun, scan.images{frame,side});
+                    stim_rect = scan.rects{frame,side};
 
                     stim_texture = Screen('MakeTexture',win, txttemp);
                     Screen('DrawTexture',win,stim_texture,[], stim_rect, 0,[],1, 255*ones(1,3));
                 end
-
-            else % 31-39 = Natural Scene stim-task crossings ({25:32, and 6-ltm})
-                txttemp = feval(flipfun, scan.images{framecnt,1}); % there is only one image
-                stim_rect = scan.rects{framecnt,1};
-                stim_texture = Screen('MakeTexture',win, txttemp);
-                Screen('DrawTexture',win,stim_texture,[], stim_rect, 0,[],1, 255*ones(1,3));
-            end
+% 
+%             else % 31-39 = Natural Scene stim-task crossings ({25:32, and 6-ltm})
+%                 txttemp = feval(flipfun, scan.images{frame,1}); % there is only one image
+%                 stim_rect = scan.rects{frame,1};
+%                 stim_texture = Screen('MakeTexture',win, txttemp);
+%                 Screen('DrawTexture',win,stim_texture,[], stim_rect, 0,[],1, 255*ones(1,3));
+%             end
 
             % Draw fix dot on top
             Screen('DrawTexture',win,fix_tex{frame},[], fix_rect{frame}, 0,[],1, 255*ones(1,3));
@@ -328,10 +322,10 @@ for frame = 1:size(frameorder,2)+1
             
             % issue the flip command and record the empirical time
             [VBLTimestamp,~,~,~,~] = Screen('Flip',win,  0);
-            timeframes(framecnt) = VBLTimestamp;
+            timeframes(frame) = VBLTimestamp;
             
             % get matlab now for the very first stimulus frame
-            if framecnt==1
+            if frame==1
                 absnowtime = now;
             end
             
@@ -377,9 +371,9 @@ for frame = 1:size(frameorder,2)+1
         %     % write to file if desired
         %     if wantframefiles
         %         if isempty(framefiles{2}) %#ok<UNRCH>
-        %             imwrite(Screen('GetImage',win),sprintf(framefiles{1},framecnt));
+        %             imwrite(Screen('GetImage',win),sprintf(framefiles{1},frame));
         %         else
-        %             imwrite(uint8(placematrix(zeros([framefiles{2} 3]),Screen('GetImage',win))),sprintf(framefiles{1},framecnt));
+        %             imwrite(uint8(placematrix(zeros([framefiles{2} 3]),Screen('GetImage',win))),sprintf(framefiles{1},frame));
         %         end
         %     end
         
