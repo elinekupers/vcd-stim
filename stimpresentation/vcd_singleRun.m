@@ -52,6 +52,10 @@ if ~isfield(params, 'disp') || isempty(params.disp)
     params.disp = vcd_getDisplayParams(params.dispName); % BOLDSCREEN is default
 end
 
+if params.debugmode
+    params.disp.name = 'PPROOM_EIZOFLEXSCAN';
+end
+
 devices = PsychHID('Devices');
 for vv = 1:length(devices)
     if strcmp(devices(vv).usageName,'Keyboard') && ~isempty(regexp(devices(vv).product,'\w*Internal Keyboard\w*'))
@@ -303,7 +307,7 @@ end
 %% %%%%%%%%%%%%% FIX IM %%%%%%%%%%%%%
 %  FIX CIRCLE: 5D array: [x,y, 3, lum, type]
 
-if ~exist('bckground','var') || isempty(bckground)
+if ~exist('fix_im','var') || isempty(fix_im)
     d = dir(fullfile(params.stimfolder,params.disp.name, sprintf('fix_%s*.mat',params.disp.name)));
     a = load(fullfile(d(end).folder, d(end).name),'fix_im','mask');
     fix_im = a.fix_im;
