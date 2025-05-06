@@ -382,7 +382,13 @@ for cc = 1:length(params.stim.rdk.dots_coherence)
             if params.store_imgs
                 % save intermediate stage in case matlab crashes 
                 rdk_info = info(counter,:);
-                save(fullfile(tmpDir, sprintf('%04d_vcd_rdk_ori%02d_coh%02d_delta%02d.mat', info.unique_im(counter), bb,cc,dd)),'frames','rdk_info','mask','stored_coh_dot_pos','-v7.3');
+                rdk_rng_seed = clock_seed;
+                save(fullfile(tmpDir, sprintf('%04d_vcd_rdk_ori%02d_coh%02d_delta%02d.mat', info.unique_im(counter), bb,cc,dd)),'frames','rdk_info','mask','rdk_rng_seed','stored_coh_dot_pos','-v7.3');
+            
+                % Create RDK movie (mp4, with compression)
+                vcd_createStimVideo(rdks{bb,cc,dd+1}, 1/params.stim.presentationrate_hz, ...
+                    fullfile(vcd_rootPath,'figs',params.disp.name,'rdk'),sprintf('%04d_vcd_rdk_coh%02d_dir%02d_delta%02d',info.unique_im(counter),cc,bb,dd));
+            
             end
             
             clear frames
@@ -410,16 +416,16 @@ if params.store_imgs
     writetable(info, fullfile(sprintf('%s_%s.csv',params.stim.rdk.infofile,datestr(now,30))))
 end
 
-%% RDK
+%% Debug figures 
 
-if params.verbose
-    
-    if params.store_imgs
-        saveFigDir1 = fullfile(vcd_rootPath,'figs',params.disp.name,'rdk','visual_checks');
-%         saveFigDir2 = fullfile(vcd_rootPath,'figs',params.disp.name,'rdk','export');
-        if ~exist(saveFigDir1,'dir'); mkdir(saveFigDir1); end
-%         if ~exist(saveFigDir2,'dir'); mkdir(saveFigDir2); end
-    end
+% if params.verbose
+%     
+%     if params.store_imgs
+%         saveFigDir1 = fullfile(vcd_rootPath,'figs',params.disp.name,'rdk','visual_checks');
+% %         saveFigDir2 = fullfile(vcd_rootPath,'figs',params.disp.name,'rdk','export');
+%         if ~exist(saveFigDir1,'dir'); mkdir(saveFigDir1); end
+% %         if ~exist(saveFigDir2,'dir'); mkdir(saveFigDir2); end
+%     end
     
 %     fH1 = figure(1); 
 %     set(fH1, 'Position', [0 0 1024 1080], 'color','w')
@@ -435,25 +441,21 @@ if params.verbose
 %     
 %     cohlabels = cellfun(@num2str, (num2cell(params.stim.rdk.dots_coherence*100)),'UniformOutput', false);
 %     cohlabels = cellfun(@(x) strrep(x,'.','pt'), cohlabels,'UniformOutput',false);
-    
-    % Loop over deltas
-    for dd = 1:size(rdks,3)
-        
-        % Loop over coherence levels
-        for cc = 1:size(rdks,2)
-            
-            % Loop over motion directions
-            for bb = 1:size(rdks,1)
-                
-                im_idx = ismember(info.dot_motdir_deg_i, bb) & ...
-                         ismember(info.dot_coh,params.stim.rdk.dots_coherence(cc)) & ...
-                         ismember(info.rel_motdir_deg_i,rdk_motdir_ref(dd));
-                im_nr  = info.unique_im(im_idx); 
-                
-                % Create RDK movie (mp4, with compression)
-                vcd_createStimVideo(rdks{bb,cc,dd}, 1/params.stim.presentationrate_hz, ...
-                    fullfile(vcd_rootPath,'figs',params.disp.name,'rdk'),sprintf('%04d_vcd_rdk_coh%02d_dir%02d_delta%02d',im_nr,cc,bb,dd-1));
-
+%    
+%    % Loop over deltas
+%     for dd = 1:size(rdks,3)
+%         
+%         % Loop over coherence levels
+%         for cc = 1:size(rdks,2)
+%             
+%             % Loop over motion directions
+%             for bb = 1:size(rdks,1)
+%                 
+%                 im_idx = ismember(info.dot_motdir_deg_i, bb) & ...
+%                          ismember(info.dot_coh,params.stim.rdk.dots_coherence(cc)) & ...
+%                          ismember(info.rel_motdir_deg_i,rdk_motdir_ref(dd));
+%                 im_nr  = info.unique_im(im_idx); 
+%              
 %                 % Plot dot position & motion vector
 %                 dot_pos = dotlocs{bb, cc, dd};
 %                 dxdy    = dot_pos(:,:,2:end)-dot_pos(:,:,1:end-1);
@@ -481,10 +483,10 @@ if params.verbose
 % %                             sprintf('%03d_vcd_rdk_coh%02d_dir%02d_delta%02d.png',im_nr,cc,bb,dd-1)));
 %                     end
 %                 end
-                
-            end
-        end
-    end
-end
+%                
+%             end
+%         end
+%     end
+% end
 return
 
