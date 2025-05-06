@@ -492,8 +492,8 @@ for sj = 1;%:params.exp.total_subjects
                                 tmp2.event_end      = tmp2.event_start(1) + tmp2.event_dur(1) - 1;
                                 tmp2.event_id       = trial_IDs(id);
                                 tmp2.event_name     = {'stim2'};
-                                tmp2.stim_nr_left   = NaN;
-                                tmp2.stim_nr_right  = NaN;
+                                tmp2.stim_nr_left   = tmp1.stim_nr_left;
+                                tmp2.stim_nr_right  = tmp1.stim_nr_right;
                                 tmp2.subj_nr        = sj;
                                 tmp2.subj_block_nr  = curr_block;
                                 tmp2.block_nr       = curr_block;
@@ -637,6 +637,10 @@ for sj = 1;%:params.exp.total_subjects
                             itis = vcd_optimizeITIs(max_block_dur-params.exp.block.task_cue_dur, max_trial_dur, params.exp.trial.ITI, max_nr_trials);
                         end
 
+                        if isempty(itis)
+                            itis = vcd_optimizeITIs(max_block_dur-params.exp.block.task_cue_dur, max_trial_dur, params.exp.trial.ITI, max_nr_trials);
+                        end
+                        
                         % add ITI
                         ITI =  itis(1); % grab the first one from the shuffled list
                         itis(1) = []; % and remove it
