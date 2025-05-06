@@ -61,7 +61,8 @@ function [t,n_unique_cases] = vcd_defineUniqueImages(p, stimClass)
 %   x 1/2/3 basic categories: (Priority 2)
 %      human:  'facemale','facefemale'
 %      animal: 'small','big'
-%      object: 'tool','food','vehicle'
+%      object: 'tool','vehicle'
+%      food:   'man-made','produce'
 %      place:  'building'
 %   x 3/4 subordinate categories  (Priority 1)
 %      human > facemale: 'damon', 
@@ -69,8 +70,9 @@ function [t,n_unique_cases] = vcd_defineUniqueImages(p, stimClass)
 %      animal > small: 'parrot','cat'
 %      animal > big: 'bear','giraffe'
 %      object > tool: 'drill','brush'
-%      object > food: 'pizza','banana'
 %      object > vehicle: 'bus','suv'
+%      food > man-made: 'pizza'
+%      food > produce: 'banana'
 %      place > building: 'church','house','watertower'
 % where objects facing direction (10:10:170 degrees, excl 90 deg), 
 % where 90 deg is facing you and 0 and 180 deg are sideways) and 2 stimulus
@@ -270,13 +272,15 @@ switch stimClass
         super_cat_vec = []; sub_cat_vec = []; sub_cat_name = []; affordance_cat = []; affordance_name = [];
         for ii = 1:length(n_basic_cat)
             n_affordances(ii) = length(p.stim.obj.affordance{ii});
-            n_sub_cat(ii) = length(p.stim.obj.sub_cat{ii});
-            super_cat_vec = cat(2, super_cat_vec, repelem(ii,n_sub_cat(ii)));
-            sub_cat_vec = cat(2, sub_cat_vec, 1:n_sub_cat(ii));
-            sub_cat_name = cat(2, sub_cat_name, p.stim.obj.sub_cat{ii});
-            [~,af_idx] = ismember(p.stim.obj.affordance{ii},unique_affordances);
-            affordance_cat  = cat(2, affordance_cat, af_idx);
-            affordance_name = cat(2, affordance_name, p.stim.obj.affordance{ii});
+            n_sub_cat(ii)     = length(p.stim.obj.sub_cat{ii});
+            
+            super_cat_vec     = cat(2, super_cat_vec, repelem(ii,n_sub_cat(ii)));
+            sub_cat_vec       = cat(2, sub_cat_vec, 1:n_sub_cat(ii));
+            sub_cat_name      = cat(2, sub_cat_name, p.stim.obj.sub_cat{ii});
+            
+            [~,af_idx]        = ismember(p.stim.obj.affordance{ii},unique_affordances);
+            affordance_cat    = cat(2, affordance_cat, af_idx);
+            affordance_name   = cat(2, affordance_name, p.stim.obj.affordance{ii});
         end
         % 16 objects
         n_unique_cases = length(sub_cat_name);
