@@ -171,7 +171,7 @@ if ~exist('scan','var') || ~isfield(scan,'exp_im') || isempty(scan.exp_im)
     d = dir(fullfile(params.infofolder,sprintf('subj%03d',params.subjID),  ...
         sprintf('subj%03d_ses%02d_run%02d_frames_%s_*.mat', ...
         params.subjID, params.sesID, params.runnum, params.disp.name)));
-    a = load(fullfile(d.folder,d.name));
+    a = load(fullfile(d(end).folder,d(end).name));
     scan = a.subj_run_frames; clear a;
 end
 
@@ -202,17 +202,17 @@ if ~exist('scan','var') || ~isfield(scan, 'rects') || isempty(scan.rects)
         
         if strcmp(scan.event_name(nn),'stim1') || strcmp(scan.event_name(nn),'stim2')
             
-            numSides = find(cellfun(@isempty, scan.images(nn,:)));
+            numSides = find(~cellfun(@isempty, scan.images(nn,:)));
             
             for side = 1:numSides
                 
                 if strcmp(scan.stim_class_name{nn,side},'gabor')
-                    centers{nn,side}(1) = params.stim.gabor.x0_pix(side) + params.stim.xc; % x-coord (pixels)
-                    centers{nn,side}(2) = params.stim.gabor.y0_pix(side) + params.stim.yc; % y-coord (pixels)
+                    centers{nn,side} = [params.stim.gabor.x0_pix(side) + params.stim.xc, ... % x-coord (pixels)
+                                        params.stim.gabor.y0_pix(side) + params.stim.yc]; % y-coord (pixels)
                     
                 elseif strcmp(scan.stim_class_name{nn,side},'rdk')
-                    centers{nn,side}(1) = params.stim.rdk.x0_pix(side) + params.stim.xc;
-                    centers{nn,side}(2) = params.stim.rdk.y0_pix(side) + params.stim.yc;
+                    centers{nn,side} = [params.stim.rdk.x0_pix(side) + params.stim.xc, ...
+                                        params.stim.rdk.y0_pix(side) + params.stim.yc];
                     
                 elseif strcmp(scan.stim_class_name{nn,side},'dot')
                     
@@ -224,7 +224,7 @@ if ~exist('scan','var') || ~isfield(scan, 'rects') || isempty(scan.rects)
                         [~,test_im_idx] = ismember(scan.stim2_im_nr(nn,side),params.stim.dot.unique_im_nrs_wm_test);
                         test_im_sub = ind2sub(test_im_idx, size(tmp,1),size(tmp,2));
                         
-                        checkme = [params.stim.dot.x0_pix_delta(test_im_sub(2),delta_idx), params.stim.dot.y0_pix_delta(test_im_sub(2),delta_idx)]
+                        checkme = [params.stim.dot.x0_pix_delta(test_im_sub(2),delta_idx), params.stim.dot.y0_pix_delta(test_im_sub(2),delta_idx)];
                         dot_angle = scan.stim2_orient_dir(nn,side);
                         [dot_x,dot_y] = pol2cart(deg2rad(dot_angle),params.stim.dot.iso_eccen);
                         
@@ -235,20 +235,24 @@ if ~exist('scan','var') || ~isfield(scan, 'rects') || isempty(scan.rects)
                         dot_y = params.stim.dot.y0_pix(xy_idx);
                     end
                     
-                    centers{nn,side}(1) = dot_x + params.stim.xc;
-                    centers{nn,side}(2) = dot_y + params.stim.yc;
+                    centers{nn,side} = [dot_x + params.stim.xc, dot_y + params.stim.yc];
                     
                 elseif strcmp(scan.stim_class_name{nn,side},'obj')
-                    centers{nn,side}(1) = params.stim.obj.x0_pix(side) + params.stim.xc;
-                    centers{nn,side}(2) = params.stim.obj.y0_pix(side) + params.stim.yc;
+                    centers{nn,side} = [params.stim.obj.x0_pix(side) + params.stim.xc, ...
+                                            params.stim.obj.y0_pix(side) + params.stim.yc];
                     
                 elseif strcmp(scan.stim_class_name{nn,side},'ns')
-                    centers{nn,side}(1) = params.stim.ns.x0_pix(side) + params.stim.xc;
-                    centers{nn,side}(2) = params.stim.ns.y0_pix(side) + params.stim.yc;
+                    centers{nn,side} = [params.stim.ns.x0_pix + params.stim.xc, params.stim.ns.y0_pix + params.stim.yc];
+                elseif isnan(scan.stim_class_name{nn,side})
+                    centers{nn,side} = [NaN, NaN];
                 end
                 
-                apsize{nn,side}(1)  = size(scan.images{nn,side},2); % apsize 1: image width (pixels)
-                apsize{nn,side}(2)  = size(scan.images{nn,side},1); % apsize 2: image height (pixels)
+                if isnan(scan.stim_class_name{nn,side})
+                     apsize{nn,side}  = [NaN, NaN];
+                else
+                    % apsize 1: image width (pixels), apsize 2: image height (pixels)
+                    apsize{nn,side}  = [size(scan.images{nn,side},2), size(scan.images{nn,side},1)]; 
+                end
             end
         end
     end
@@ -266,12 +270,14 @@ centers_shortlist = scan.centers(nonemptycells,:);
 apsize_shortlist  = scan.apsize(nonemptycells,:);
 
 % insert NaNs for second column when using single square stimulus (nat scene)
-centers_shortlist(cellfun(@isempty,centers_shortlist(:,2)),2) = ...
+if size(centers_shortlist,2)==2
+    centers_shortlist(cellfun(@isempty,centers_shortlist(:,2)),2) = ...
     repmat({[NaN,NaN]},size(find(cellfun(@isempty,centers_shortlist(:,2))),1),1);
-
-apsize_shortlist(cellfun(@isempty,apsize_shortlist(:,2)),2) = ...
+end
+if size(apsize_shortlist,2)==2
+    apsize_shortlist(cellfun(@isempty,apsize_shortlist(:,2)),2) = ...
     repmat({[NaN,NaN]},size(find(cellfun(@isempty,apsize_shortlist(:,2))),1),1);
-
+end
 rects_shortlist = cell(size(apsize_shortlist));
 
 for side = [1,2]
