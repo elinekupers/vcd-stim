@@ -5,7 +5,7 @@ output_im = cell(size(input_im));
 if strcmp(stim_class,'ns')
     
     % only one image, in first column
-    assert(all(cellfun(@isempty, input_im(idx,2))));
+    assert(all(cellfun(@isempty, input_im(:,2))));
     
     % Get onset of contrast decrement within the
     % stimulus period
