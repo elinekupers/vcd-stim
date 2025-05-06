@@ -329,8 +329,9 @@ for cc = 1:length(params.stim.rdk.dots_coherence)
                 f = getframe(ax,offsetRect);
                 im = frame2im(f);
                 
-                fn = fullfile(saveStimDir,'export',sprintf('vcd_rdk_coh%02d_dir%02d_delta%02d_t%02d.png',cc,bb,dd,curr_frame));
-                imwrite(im,fn);%,'Location',[pbRect(1:2)],'ScreenSize',[pbRect(3:4)]);
+                % if you want to print individual frames as png
+%                 fn = fullfile(saveStimDir,'export',sprintf('%04d_vcd_rdk_coh%02d_dir%02d_delta%02d_t%02d.png', cc,bb,dd,curr_frame));
+%                 imwrite(im,fn);%,'Location',[pbRect(1:2)],'ScreenSize',[pbRect(3:4)]);
 
                 % store frame
                 frames = cat(4,frames,im);
@@ -381,8 +382,7 @@ for cc = 1:length(params.stim.rdk.dots_coherence)
             if params.store_imgs
                 % save intermediate stage in case matlab crashes 
                 rdk_info = info(counter,:);
-                im_name  = bb + ((cc-1)*length(params.stim.rdk.dots_direction));
-                save(fullfile(tmpDir, sprintf('%02d_rdk_ori%02d_coh%02d_delta%02d.mat', info.unique_im(counter), bb,cc,dd)),'frames','rdk_info','mask','stored_coh_dot_pos','-v7.3');
+                save(fullfile(tmpDir, sprintf('%04d_vcd_rdk_ori%02d_coh%02d_delta%02d.mat', info.unique_im(counter), bb,cc,dd)),'frames','rdk_info','mask','stored_coh_dot_pos','-v7.3');
             end
             
             clear frames
@@ -416,25 +416,25 @@ if params.verbose
     
     if params.store_imgs
         saveFigDir1 = fullfile(vcd_rootPath,'figs',params.disp.name,'rdk','visual_checks');
-        saveFigDir2 = fullfile(vcd_rootPath,'figs',params.disp.name,'rdk','export');
+%         saveFigDir2 = fullfile(vcd_rootPath,'figs',params.disp.name,'rdk','export');
         if ~exist(saveFigDir1,'dir'); mkdir(saveFigDir1); end
-        if ~exist(saveFigDir2,'dir'); mkdir(saveFigDir2); end
+%         if ~exist(saveFigDir2,'dir'); mkdir(saveFigDir2); end
     end
     
-    fH1 = figure(1); 
-    set(fH1, 'Position', [0 0 1024 1080], 'color','w')
-    deltalabels = cellfun(@num2str, (num2cell(params.stim.rdk.delta_from_ref)),'UniformOutput', false);
-    for ll = 1:length(deltalabels), 
-        if strfind(deltalabels{ll},'-')
-            deltalabels{ll} = strrep(deltalabels{ll},'-','min'); 
-        else
-            deltalabels{ll} = ['plus' deltalabels{ll}]; 
-        end
-    end
-    deltalabels = [{'00'}, deltalabels(:)'];
-    
-    cohlabels = cellfun(@num2str, (num2cell(params.stim.rdk.dots_coherence*100)),'UniformOutput', false);
-    cohlabels = cellfun(@(x) strrep(x,'.','pt'), cohlabels,'UniformOutput',false);
+%     fH1 = figure(1); 
+%     set(fH1, 'Position', [0 0 1024 1080], 'color','w')
+%     deltalabels = cellfun(@num2str, (num2cell(params.stim.rdk.delta_from_ref)),'UniformOutput', false);
+%     for ll = 1:length(deltalabels), 
+%         if strfind(deltalabels{ll},'-')
+%             deltalabels{ll} = strrep(deltalabels{ll},'-','min'); 
+%         else
+%             deltalabels{ll} = ['plus' deltalabels{ll}]; 
+%         end
+%     end
+%     deltalabels = [{'00'}, deltalabels(:)'];
+%     
+%     cohlabels = cellfun(@num2str, (num2cell(params.stim.rdk.dots_coherence*100)),'UniformOutput', false);
+%     cohlabels = cellfun(@(x) strrep(x,'.','pt'), cohlabels,'UniformOutput',false);
     
     % Loop over deltas
     for dd = 1:size(rdks,3)
@@ -452,7 +452,7 @@ if params.verbose
                 
                 % Create RDK movie (mp4, with compression)
                 vcd_createStimVideo(rdks{bb,cc,dd}, 1/params.stim.presentationrate_hz, ...
-                    fullfile(vcd_rootPath,'figs',params.disp.name,'rdk'),sprintf('%03d_vcd_rdk_coh%02d_dir%02d_delta%02d',im_nr,cc,bb,dd-1));
+                    fullfile(vcd_rootPath,'figs',params.disp.name,'rdk'),sprintf('%04d_vcd_rdk_coh%02d_dir%02d_delta%02d',im_nr,cc,bb,dd-1));
 
 %                 % Plot dot position & motion vector
 %                 dot_pos = dotlocs{bb, cc, dd};

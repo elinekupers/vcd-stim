@@ -347,38 +347,42 @@ if params.verbose
         axis image; box off
         set(gca,'CLim',[1 255]);
         if params.stim.store_imgs
-            saveFigDir1 = fullfile(vcd_rootPath,'figs',params.disp.name,'ns','visual_checks','resized_with_axes');
-            if ~exist(saveFigDir1,'dir'), mkdir(saveFigDir1); end
-            print(fullfile(saveFigDir1, sprintf('%03d_vcd_ns%02d', params.stim.ns.unique_im_nrs_core(ss), ss)),'-dpng','-r150');
+%             saveFigDir1 = fullfile(vcd_rootPath,'figs',params.disp.name,'ns','visual_checks','resized_with_axes');
+%             if ~exist(saveFigDir1,'dir'), mkdir(saveFigDir1); end
+%             print(fullfile(saveFigDir1, sprintf('%04d_vcd_ns%02d', params.stim.ns.unique_im_nrs_core(ss), ss)),'-dpng','-r150');
             
             saveFigDir2 = fullfile(vcd_rootPath,'figs',params.disp.name,'ns','visual_checks','resized');
             if ~exist(saveFigDir2,'dir'), mkdir(saveFigDir2); end
-            imwrite(scenes0(:,:,:,ss), fullfile(saveFigDir2, sprintf('%03d_vcd_ns%02d.png', params.stim.ns.unique_im_nrs_core(ss), ss)));
+            imwrite(scenes0(:,:,:,ss), fullfile(saveFigDir2, sprintf('%04d_vcd_ns%02d.png', params.stim.ns.unique_im_nrs_core(ss), ss)));
         end
         
         for ll = 1:size(ltmlures0,5)
             if ~isequal(ltmlures0(:,:,:,ss,ll),ones(size(ltmlures0,1),size(ltmlures0,2),size(ltmlures0,3)))
                 % Plot LTM lure image
                 clf; imagesc(ltmlures0(:,:,:,ss,ll));
-                title(sprintf('Im %02d, LTM lure im %02d resized ',ss,ll), 'FontSize',20);
+                title(sprintf('NS %02d, LTM lure im %02d resized ',ss,ll), 'FontSize',20);
                 axis image; box off
                 set(gca,'CLim',[1 255]);
                 
                 if params.stim.store_imgs
-                    print(fullfile(saveFigDir1, sprintf('%03d_vcd_ns%02d_ltm_lure%02d', params.stim.ns.unique_im_nrs_ltm_lures(ss), ss,ll)),'-dpng','-r150');
-                    imwrite(ltmlures0(:,:,:,ss,ll), fullfile(saveFigDir2, sprintf('%03d_vcd_ns%02d_ltm_lure%02d.png', params.stim.ns.unique_im_nrs_ltm_lures(ss), ss,ll)));
+%                     print(fullfile(saveFigDir1, sprintf('%04d_vcd_ns%02d_ltm_lure%02d', params.stim.ns.unique_im_nrs_ltm_lures(ss), ss,ll)),'-dpng','-r150');
+                    imwrite(ltmlures0(:,:,:,ss,ll), fullfile(saveFigDir2, sprintf('%04d_vcd_ns%02d_ltm_lure%02d.png', params.stim.ns.unique_im_nrs_ltm_lures(ss), ss,ll)));
                 end
             end
-            % Plot WM image
-            clf;
-            imagesc(wmtest0(:,:,:,ss,ll));
-            title(sprintf('Im %02d, WM test im %02d resized',ss,ll), 'FontSize',20);
-            axis image; box off
-            set(gca,'CLim',[1 255]);
             
-            if params.stim.store_imgs
-                print(fullfile(saveFigDir1, sprintf('%03d_vcd_ns%02d_wm_im%02d',params.stim.ns.unique_im_nrs_wm_test(ss), ss,ll)),'-dpng','-r150');
-                imwrite(wmtest0(:,:,:,ss,ll), fullfile(saveFigDir2, sprintf('%03d_vcd_ns%02d_wm_im%02d.png', params.stim.ns.unique_im_nrs_wm_test(ss), ss,ll)));
+            if ~isequal(wmtest0(:,:,:,ss,ll),ones(size(wmtest0,1),size(wmtest0,2),size(wmtest0,3)))
+                
+                % Plot WM image
+                clf;
+                imagesc(wmtest0(:,:,:,ss,ll));
+                title(sprintf('Im %02d, WM test im %02d resized',ss,ll), 'FontSize',20);
+                axis image; box off
+                set(gca,'CLim',[1 255]);
+                
+                if params.stim.store_imgs
+                    %                 print(fullfile(saveFigDir1, sprintf('%04d_vcd_ns%02d_wm_im%02d',params.stim.ns.unique_im_nrs_wm_test(ss), ss,ll)),'-dpng','-r150');
+                    imwrite(wmtest0(:,:,:,ss,ll), fullfile(saveFigDir2, sprintf('%04d_vcd_ns%02d_wm_im%02d.png', params.stim.ns.unique_im_nrs_wm_test(ss), ss,ll)));
+                end
             end
         end
     end
@@ -424,13 +428,13 @@ if any(strcmp(params.disp.name, {'7TAS_BOLDSCREEN32', 'PPROOM_EIZOFLEXSCAN'}))
             axis image; box off
             set(gca,'CLim',[1 255]);
             if params.stim.store_imgs
-                saveFigDir1 = fullfile(vcd_rootPath,'figs',params.disp.name,'ns','visual_checks','resized_and_squared_with_axes');
-                if ~exist(saveFigDir1,'dir'), mkdir(saveFigDir1); end
-                print(fullfile(saveFigDir1, sprintf('%03d_vcd_ns%02d', params.stim.ns.unique_im_nrs_core(ss), ss)),'-dpng','-r150');
-                
+%                 saveFigDir1 = fullfile(vcd_rootPath,'figs',params.disp.name,'ns','visual_checks','resized_and_squared_with_axes');
+%                 if ~exist(saveFigDir1,'dir'), mkdir(saveFigDir1); end
+%                 print(fullfile(saveFigDir1, sprintf('%04d_vcd_ns%02d', params.stim.ns.unique_im_nrs_core(ss), ss)),'-dpng','-r150');
+%                 
                 saveFigDir2 = fullfile(vcd_rootPath,'figs',params.disp.name,'ns','visual_checks','resized_and_squared');
                 if ~exist(saveFigDir2,'dir'), mkdir(saveFigDir2); end
-                imwrite(temp_sc(:,:,:,ss), fullfile(saveFigDir2, sprintf('%03d_vcd_ns%02d.png', params.stim.ns.unique_im_nrs_core(ss), ss)));
+                imwrite(temp_sc(:,:,:,ss), fullfile(saveFigDir2, sprintf('%04d_vcd_ns%02d.png', params.stim.ns.unique_im_nrs_core(ss), ss)));
             end
             
             for ll = 1:size(lures_sq,5)
@@ -441,19 +445,22 @@ if any(strcmp(params.disp.name, {'7TAS_BOLDSCREEN32', 'PPROOM_EIZOFLEXSCAN'}))
                     axis image; box off
                     set(gca,'CLim',[1 255]);
                     if params.stim.store_imgs
-                        print(fullfile(saveFigDir1, sprintf('%03d_vcd_ns%02d_ltm_lure%02d', params.stim.ns.unique_im_nrs_ltm_lures(ss),ss,ll)),'-dpng','-r150');
-                        imwrite(temp_ltm(:,:,:,ss,ll), fullfile(saveFigDir2, sprintf('%03d_vcd_ns%02d_ltm_lure%02d.png', params.stim.ns.unique_im_nrs_ltm_lures(ss), ss,ll)));
+%                         print(fullfile(saveFigDir1, sprintf('%04d_vcd_ns%02d_ltm_lure%02d', params.stim.ns.unique_im_nrs_ltm_lures(ss),ss,ll)),'-dpng','-r150');
+                        imwrite(temp_ltm(:,:,:,ss,ll), fullfile(saveFigDir2, sprintf('%04d_vcd_ns%02d_ltm_lure%02d.png', params.stim.ns.unique_im_nrs_ltm_lures(ss), ss,ll)));
                     end
                 end
-                clf;
-                imagesc(temp_wm(:,:,:,ss,ll));
-                title(sprintf('Im %02d, wm test im %02d resized & squared',ss,ll), 'FontSize',20);
-                axis image; box off
-                set(gca,'CLim',[1 255]);
                 
-                if params.stim.store_imgs
-                    print(fullfile(saveFigDir1, sprintf('%03d_vcd_ns%02d_wm_im%02d', params.stim.ns.unique_im_nrs_wm_test(ss),ss,ll)),'-dpng','-r150');
-                    imwrite(temp_wm(:,:,:,ss,ll), fullfile(saveFigDir2, sprintf('%03d_vcd_ns%02d_wm_im%02d.png', params.stim.ns.unique_im_nrs_wm_test(ss), ss,ll)));
+                if ~isequal(temp_wm(:,:,:,ss,ll),ones(size(temp_wm,1),size(temp_wm,2),size(temp_wm,3)))
+                    clf;
+                    imagesc(temp_wm(:,:,:,ss,ll));
+                    title(sprintf('Im %02d, wm test im %02d resized & squared',ss,ll), 'FontSize',20);
+                    axis image; box off
+                    set(gca,'CLim',[1 255]);
+                    
+                    if params.stim.store_imgs
+                        %                     print(fullfile(saveFigDir1, sprintf('%04d_vcd_ns%02d_wm_im%02d', params.stim.ns.unique_im_nrs_wm_test(ss),ss,ll)),'-dpng','-r150');
+                        imwrite(temp_wm(:,:,:,ss,ll), fullfile(saveFigDir2, sprintf('%04d_vcd_ns%02d_wm_im%02d.png', params.stim.ns.unique_im_nrs_wm_test(ss), ss,ll)));
+                    end
                 end
             end
         end

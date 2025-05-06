@@ -193,6 +193,15 @@ if params.stim.store_imgs
     save(fullfile(sprintf('%s_%s_%s_%s.mat',params.stim.bckground.stimfile,gaptype,borderwidth,datestr(now,30))),'bckgrnd_im','-v7.3');
     toc
     fprintf('\n')
+    
+    saveFigDir = fullfile(vcd_rootPath,'figs',params.disp.name,'background');
+    if ~exist(saveFigDir,'var') || isempty(saveFigDir)
+        mkdir(saveFigDir); end
+    
+    for jj = 1:size(bckgrnd_im,4)
+        filename = sprintf('%04d_vcd_background_%s%s.png',jj,gaptype, borderwidth);
+        imwrite(bckgrnd_im(:,:,:,jj), fullfile(saveFigDir,filename));
+    end
 end
 
 if params.verbose

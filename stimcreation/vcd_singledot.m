@@ -1,6 +1,6 @@
-function [single_dot, mask, info] = vcd_singledot(params)
+function [dot, mask, info] = vcd_singledot(params)
 % VCD function
-%  [single_dot, mask, info] = vcd_singledot(params)
+%  [dot, mask, info] = vcd_singledot(params)
 % 
 % Purpose:
 %   Create a simple dot image for experimental display.
@@ -50,11 +50,11 @@ function [single_dot, mask, info] = vcd_singledot(params)
 %    stim.dot.iso_eccen     : (double): iso-eccentricy of the ring (deg)
 %
 % OUTPUTS:
-%   simple_dot     : (uint8) dot image used for VCD experiment
-%                      height (pixels) by width (pixels) x 3 (rgb)
-%   masks          : (uint8) alpha masks  used for VCD experiment, to crop out image edges:
-%                      height (pixels) by width (pixels))
-%   info           : (table) info about sinlge dot images
+%   dot                     : (uint8) dot image used for VCD experiment
+%                               height (pixels) by width (pixels) x 3 (rgb)
+%   masks                   : (uint8) alpha masks  used for VCD experiment, to crop out image edges:
+%                               height (pixels) by width (pixels))
+%   info                    : (table) info about sinlge dot images
 %      unique_im     : (double) unique image nr for each dot location: 
 %                     range 49-64 for core images, 303-366 for WM test
 %                     images.
@@ -126,10 +126,10 @@ idx = smooth_dot2 > 230;
 smooth_dot2(idx) = params.stim.dot.color(1); % grayval is double
 
 % add RGB copy in third dim
-single_dot = repmat(smooth_dot2, [1 1 3]);
+dot = repmat(smooth_dot2, [1 1 3]);
 
 % Create alpha mask (same for all dots)
-mask  = uint8(zeros(size(single_dot,1),size(single_dot,2)));
+mask  = uint8(zeros(size(dot,1),size(dot,2)));
 mask0 = (Y - centerY).^2 + (X - centerX).^2 <= (params.stim.dot.alpha_mask_diam_pix).^2;
 mask(mask0) = 255;
 mask        = uint8(mask);
@@ -213,16 +213,16 @@ if params.verbose
     end
     %% Make PNG image of dot alone:
     if params.store_imgs
-        imwrite(single_dot, fullfile(vcd_rootPath,'figs',params.disp.name,'dot',sprintf('singledot.png')));
+        imwrite(dot, fullfile(vcd_rootPath,'figs',params.disp.name,'dot',sprintf('%04d_singledot.png', params.stim.dot.unique_im_nrs_core(1))));
     end
     
     %% Visualize effect of alpha transparency mask
     figure(99); clf;
-    subplot(131); imagesc(single_dot); colormap gray; axis image; set(gca, 'CLim', [1 255]);
+    subplot(131); imagesc(dot); colormap gray; axis image; set(gca, 'CLim', [1 255]);
     title('single dot'); xlabel('pixels'); ylabel('pixels')
     subplot(132); imagesc(mask); colormap gray; axis image;  set(gca, 'CLim', [1 255]);
     title('alpha mask'); xlabel('pixels'); ylabel('pixels')
-    subplot(133); imagesc(single_dot, 'AlphaData',mask); colormap gray; axis image;  set(gca, 'CLim', [1 255]);
+    subplot(133); imagesc(dot, 'AlphaData',mask); colormap gray; axis image;  set(gca, 'CLim', [1 255]);
     title('dot+alpha mask'); xlabel('pixels'); ylabel('pixels')
 
     if params.store_imgs 
@@ -246,7 +246,7 @@ if params.verbose
         pax.FontSize = 20;
         if params.store_imgs
             title(sprintf('Single dot location %d + ref: [%d,%d,0,%d,%d]',ii, params.stim.dot.delta_from_ref));
-            print(fullfile(saveFigDir,sprintf('%02d_singledot', ii)),'-dpng','-r150');
+            print(fullfile(saveFigDir,sprintf('%04d_singledot', ii)),'-dpng','-r150');
         end
     end
     
@@ -262,11 +262,11 @@ if params.verbose
     
         ys = params.disp.yc + round(y_shift*params.disp.ppd);
         xs = params.disp.xc + round(x_shift*params.disp.ppd);
-        dot_halfsz = (size(single_dot,1)/2);
+        dot_halfsz = (size(dot,1)/2);
         dot_coords_x = (xs - dot_halfsz) : (xs + dot_halfsz -1);
         dot_coords_y = (ys - dot_halfsz) : (ys + dot_halfsz -1);
     
-        im1(dot_coords_y, dot_coords_x,:) = single_dot;
+        im1(dot_coords_y, dot_coords_x,:) = dot;
     end
     
     figure;
@@ -283,7 +283,7 @@ if params.verbose
     
     %% Visualize individual dot locations
     im1 =double(ones(params.disp.h_pix,params.disp.w_pix))*0.5; % gray background
-    dot_halfsz = (size(single_dot,1)/2)-0.5;
+    dot_halfsz = (size(dot,1)/2)-0.5;
     dot_ref_locs = [0, params.stim.dot.delta_from_ref];
     for aa = 1:length(info.dot_xpos_pix)
         
@@ -305,7 +305,7 @@ if params.verbose
         axis image tight;
         set(gcf, 'InvertHardCopy', 'off');
         if params.stim.store_imgs
-            print(fullfile(saveFigDir,sprintf('%02d_singledot_delta%02d', im_nr,dlta-1)),'-dpng','-r150');
+            print(fullfile(saveFigDir,sprintf('%04d_singledot_delta%02d', im_nr,dlta-1)),'-dpng','-r150');
         end
     end
     

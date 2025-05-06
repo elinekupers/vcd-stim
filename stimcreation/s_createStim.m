@@ -47,7 +47,7 @@ if ~exist(saveFigsFolder,'dir'); mkdir(saveFigsFolder); end
 % "stim_<dispname>_*.mat" in fullfile(vcd_rootPath,'workspaces','info').
 % When storing generated parameters, we save the parameters as a .mat file
 % in "stim_<dispname>_YYYYMMDDTHHMMSS.mat" in fullfile(vcd_rootPath,'workspaces','info').
-params.load_params  = true;  % if true, we load from file. if false, define params.
+params.load_params  = false;  % if true, we load from file. if false, define params.
 params.store_params = true;  % if false, we don't store params. if true, we store mat file in fullfile(vcd_rootPath,'workspaces','info')
                                        
 % Reset random number generator with arbitrary number (based on system

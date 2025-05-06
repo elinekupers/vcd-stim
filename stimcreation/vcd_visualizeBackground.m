@@ -22,7 +22,6 @@ for jj = 1:size(bckgrnd_im,4)
     drawnow;
     if params.store_imgs
         filename = sprintf('%03d_vcd_background_%s%s.png',jj,gaptype, borderwidth);
-        imwrite(bckgrnd_im(:,:,:,jj), fullfile(vcd_rootPath,'figs',params.disp.name,'background',filename));
         print(fH,'-dpng','-r300',fullfile(save_dir,filename));
     end
 end
