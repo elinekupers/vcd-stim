@@ -1,6 +1,6 @@
-function [data,getoutearly] = vcd_showStimulus(win, rect, params, ...
+function [data,getoutearly] = vcd_showStimulus(...
+    win, rect, params, ...
     scan, ...
-    timing, ...
     bckground, ...
     fix_im, ...
     fix_mask, ...
@@ -51,8 +51,8 @@ end
 
 %% ptb stuff
 
-scan.ifi       = Screen('GetFlipInterval',win);
-mfi            = scan.ifi;
+ifi            = Screen('GetFlipInterval',win);
+mfi            = ifi;
 frameduration  = round(mfi)/params.stim.framedur_s; % 30 Hz presentation, 2 frames for office/psph monitors (60 Hz), 4 frames for BOLDscreen (120 Hz);
 
 Screen('BlendFunction', win, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -89,12 +89,12 @@ fix_texture_thick_right = {};
 fix_texture_thick_both  = {};
 fix_rect_thin = CenterRect([0 0 round(size(fix_im,1)) round(size(fix_im,2))],rect);
 fix_rect_thick = CenterRect([0 0 round(size(fix_im,1)) round(size(fix_im,2))],rect);
-for ll = 1:size(scan.fix_im,4) % loop over luminance values
-    fix_texture_thin_full{ll} = Screen('MakeTexture',win,feval(flipfun,  cat(3, fix_im(:,:,:,ll,1), fix_mask.*params.stim.fix.dotopacity)));
-    fix_texture_thick_full{ll} = Screen('MakeTexture',win,feval(flipfun,  cat(3, fix_im(:,:,:,ll,2), fix_mask.*params.stim.fix.dotopacity)));
-    fix_texture_thick_left{ll} = Screen('MakeTexture',win,feval(flipfun,  cat(3, fix_im(:,:,:,ll,3), fix_mask.*params.stim.fix.dotopacity)));
-    fix_texture_thick_right{ll} = Screen('MakeTexture',win,feval(flipfun,  cat(3, fix_im(:,:,:,ll,4), fix_mask.*params.stim.fix.dotopacity)));
-    fix_texture_thick_both{ll} = Screen('MakeTexture',win,feval(flipfun,  cat(3, fix_im(:,:,:,ll,5), fix_mask.*params.stim.fix.dotopacity)));
+for ll = 1:size(fix_im,4) % loop over luminance values
+    fix_texture_thin_full{ll} = Screen('MakeTexture',win,feval(flipfun,  cat(3, fix_im(:,:,:,ll,1), fix_mask(:,:,1).*params.stim.fix.dotopacity)));
+    fix_texture_thick_full{ll} = Screen('MakeTexture',win,feval(flipfun,  cat(3, fix_im(:,:,:,ll,2), fix_mask(:,:,2).*params.stim.fix.dotopacity)));
+    fix_texture_thick_left{ll} = Screen('MakeTexture',win,feval(flipfun,  cat(3, fix_im(:,:,:,ll,3), fix_mask(:,:,3).*params.stim.fix.dotopacity)));
+    fix_texture_thick_right{ll} = Screen('MakeTexture',win,feval(flipfun,  cat(3, fix_im(:,:,:,ll,4), fix_mask(:,:,4).*params.stim.fix.dotopacity)));
+    fix_texture_thick_both{ll} = Screen('MakeTexture',win,feval(flipfun,  cat(3, fix_im(:,:,:,ll,5), fix_mask(:,:,5).*params.stim.fix.dotopacity)));
 end
 
 %% Prepare background and fixation texture vector outside the flip loop
@@ -109,12 +109,14 @@ txt_rect   = fix_tex;
 
 for frame = 1:length(scan.frame_nr)
     
-    blockID = scan.event_ID(frame);
-    
+    blockID = scan.event_id(frame);
+    if isnan(blockID)
+        blockID = 0;
+    end
     % set up fixation dot textures
     lum_idx = find(scan.fix_abs_lum(frame)==params.stim.fix.dotlum);
     
-    if blockID == 0 && (scan.is_cued(frame)==0 || isnan(scan.is_cued(frame)))
+    if blockID == 0 && (scan.is_cued(frame)==0 || isnan(scan.is_cued(frame))) || isnan(blockID)
         fix_tex{frame} = fix_texture_thin_full{lum_idx};
         fix_rect{frame} = fix_rect_thin;
         
@@ -130,7 +132,7 @@ for frame = 1:length(scan.frame_nr)
                 fix_tex{frame}  = fix_texture_thick_both{lum_idx};
                 fix_rect{frame} = fix_rect_thick;
             end
-        elseif any(intersect(scan.event_id(frame),[93,94,96,97]))
+        elseif any(intersect(scan.event_id(frame),[91,92,93,94,96,97]))
             fix_tex{frame} = fix_texture_thick_full{lum_idx};
             fix_rect{frame} = fix_rect_thick;
         elseif any(intersect(scan.event_id(frame),[98,99]))
@@ -139,22 +141,26 @@ for frame = 1:length(scan.frame_nr)
         elseif scan.event_id(frame) < 90
             fix_tex{frame} = fix_texture_thick_full{lum_idx};
             fix_rect{frame} = fix_rect_thick;
+        elseif scan.event_id(frame) > 990 % eyetracking target (TODO: implement actual targets)
+            fix_tex{frame} = fix_texture_thin_full{lum_idx};
+            fix_rect{frame} = fix_rect_thin;
         end
     end
     
-    switch timing.trig_stim(frame,1)
+    switch blockID
         
-        % 0  : pre/post blank
-        % 93 : exp_session.block.response_ID
-        % 94 : exp_session.block.trial_start_ID
-        % 95 : exp_session.block.spatial_cue_ID
-        % 96 : exp_session.block.delay_ID
-        % 97 : exp_session.block.task_cue_ID
-        % 98 : exp_session.block.ITI_ID
-        % 99 : exp_session.block.IBI_ID
+%     exp.block.stim_epoch1_ID        = 91; % generic stim ID
+%     exp.block.stim_epoch2_ID        = 92; % generic stim ID
+%     exp.block.response_ID           = 93; % Time for subject to respond
+%     exp.block.trial_start_ID        = 94; % Fixation dot thickening
+%     exp.block.spatial_cue_ID        = 95; % Fixation dot turning black on L/R/both sides
+%     exp.block.delay_ID              = 96; % Delay period between two stimulus epochs
+%     exp.block.task_cue_ID           = 97; % Text on display to instruct subject
+%     exp.block.ITI_ID                = 98; % Inter-trial interval
+%     exp.block.IBI_ID                = 99; % Inter-block interval
         
         % Draw background + thin fix dot on top
-        case {0, 93, 94, 95, 96, 98, 99}
+        case {0, 98, 99}
             
             % DrawTextures
             % * TexturePointers  need to be: n vector (where n is the number of textures)
@@ -165,7 +171,7 @@ for frame = 1:length(scan.frame_nr)
             
         case 97 % task_cue_ID
             
-            script = taskscript{~cellfun(@isempty, regexp(taskscript,sprintf('%02d',blockID),'match'))};
+            script = taskscript{~cellfun(@isempty, regexp(taskscript,sprintf('%02d',scan.block_ID(frame)),'match'))};
             [task_instr, task_rect] = vcd_getInstructionText(params, script, rect);
             
             im_tex{frame} = cat(1, bckrgound_texture, fix_tex{frame});
@@ -175,7 +181,12 @@ for frame = 1:length(scan.frame_nr)
             txt_rect{frame} = task_rect;
             
             framecolor{frame} = 255*ones(2,3); % <framecolor> can also be size(<frameorder>,2) x 1 with values in [0,1] indicating an alpha change.
-            
+        
+        % Draw background with eyetracking target
+        case {990, 991, 992, 993, 994, 995, 996}
+            im_tex{frame} = cat(1, bckrgound_texture, fix_tex{frame});
+            im_rect{frame} = cat(1, bckground_rect, fix_rect{frame});
+            framecolor{frame} = 255*ones(2,3);
     end
 end
 
@@ -188,7 +199,7 @@ end
 Screen('DrawTextures',win, im_tex{1},[], im_rect{1}',[], [0;0], [1;1], framecolor{1}');
     
 % Draw text
-DrawFormattedText(win, instrtext, 'center', (prerun_text_rect(4)/2)-50,0,75,[],[],[],[],prerun_text_rect);
+% DrawFormattedText(win, instrtext, 'center', (prerun_text_rect(4)/2)-50, 0, 75,[],[],[],[],prerun_text_rect);
 Screen('Flip',win);
 
 fprintf('Instructions are on screen, waiting for trgger...\n');
@@ -242,7 +253,7 @@ for frame = 1:size(frameorder,2)+1
         break;
     end
     
-    switch timing.trig_stim(framecnt)
+    switch scan.event_id(framecnt)
         
         % 0  : pre/post blank
         % 93 : exp_session.block.response_ID
@@ -278,21 +289,21 @@ for frame = 1:size(frameorder,2)+1
             %   100+ images are WM/LTM query images (lures or change
             %   blindness)
             Screen('DrawTexture',win, bckrgound_texture,[], bckground_rect, 0, [], 1, 255*ones(1,3));...
-            blockID = timing.trig_block(framecnt);
+            blockID = scan.block_ID(framecnt);
         
-            if blockID <= 30
+            if ismember(blockID, [1:5,7:24]) % exclude ltm
                 % trig_seq_exp_im_w_cd is a cell with dims: frames x 1, where each cell has 1 or 2 sides (1:l, 2:r)
-                for side = 1:length(find(~cellfun(@isempty, timing.trig_seq_exp_im_w_cd{framecnt})))
+                for side = 1:length(find(~cellfun(@isempty, scan.images(framecnt,:))))
 
-                    txttemp = feval(flipfun, timing.trig_seq_exp_im_w_cd{framecnt}{side});
+                    txttemp = feval(flipfun, scan.images{framecnt,side});
                     stim_rect = scan.rects{framecnt,side};
 
                     stim_texture = Screen('MakeTexture',win, txttemp);
                     Screen('DrawTexture',win,stim_texture,[], stim_rect, 0,[],1, 255*ones(1,3));
                 end
 
-            else % 31-39 = Natural Scene stim-task crossings ({31,32,33,34,35,36,37,38,39})
-                txttemp = feval(flipfun,timing.trig_seq_exp_im_w_cd{framecnt}{1}); % there is only one image
+            else % 31-39 = Natural Scene stim-task crossings ({25:32, and 6-ltm})
+                txttemp = feval(flipfun, scan.images{framecnt,1}); % there is only one image
                 stim_rect = scan.rects{framecnt,1};
                 stim_texture = Screen('MakeTexture',win, txttemp);
                 Screen('DrawTexture',win,stim_texture,[], stim_rect, 0,[],1, 255*ones(1,3));

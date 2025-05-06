@@ -59,41 +59,41 @@ end
 devices = PsychHID('Devices');
 for vv = 1:length(devices)
     if strcmp(devices(vv).usageName,'Keyboard') && ~isempty(regexp(devices(vv).product,'\w*Internal Keyboard\w*'))
-        deviceNr.internal = vv;
+        deviceNr_tmp.internal = vv;
     elseif strcmp(devices(vv).usageName,'Keyboard') && ~isempty(regexp(devices(vv).product,'\w*USB\w*'))
-        deviceNr.external = vv;
+        deviceNr_tmp.external = vv;
     end
 end
 
 if params.debugmode % skip synctest
     skipsync = 1;
-    if isempty(params.deviceNr)
-        params.deviceNr = -3; % listen to all
+    if isempty(params.deviceNr) || isempty(params.deviceNr_tmp)
+        deviceNr = -3; % listen to all
         warning('[%s]: No specified device nrs, will listen to all devices!\n',mfilename)
-    elseif ~isfield(deviceNr,'internal') && ~isfield(deviceNr,'external')
-        params.deviceNr = -3; % listen to all
+    elseif ~isfield(deviceNr_tmp,'internal') && ~isfield(deviceNr_tmp,'external')
+        deviceNr = -3; % listen to all
         warning('[%s]: No internal or external device nrs found, will listen to all devices!\n',mfilename)
     else
-        if isfield(deviceNr,'external') && ~isempty(deviceNr.external) && ...
-                (~isfield(deviceNr,'internal') || isempty(deviceNr.internal))
-            params.deviceNr = deviceNr.external;
-            fprintf('[%s]: Using external device number(s): %d, %s %s\n',mfilename,params.deviceNr,devices(params.deviceNr).product, devices(params.deviceNr).manufacturer)
-        elseif isfield(deviceNr,'internal') && ~isempty(deviceNr.internal) && ...
-                (~isfield(deviceNr,'external') || isempty(deviceNr.external))
-            params.deviceNr = deviceNr.internal;
-            fprintf('[%s]: Using internal device number(s): %d %s %s\n',mfilename,params.deviceNr,devices(params.deviceNr).product, devices(params.deviceNr).manufacturer)
-        elseif isfield(deviceNr,'external') && isfield(deviceNr,'internal') && ...
-                ~isempty(deviceNr.external) && ~isempty(deviceNr.internal)
-            params.deviceNr = [deviceNr.internal, deviceNr.external];
-            fprintf('[%s]: Using external and internal device number(s): %d, %s %s\n',mfilename,params.deviceNr,devices(params.deviceNr).product, devices(params.deviceNr).manufacturer)
+        if isfield(deviceNr_tmp,'external') && ~isempty(deviceNr_tmp.external) && ...
+                (~isfield(deviceNr_tmp,'internal') || isempty(deviceNr_tmp.internal))
+            deviceNr = deviceNr_tmp.external;
+            fprintf('[%s]: Using external device number(s): %d, %s %s\n',mfilename,deviceNr,devices(deviceNr).product, devices(deviceNr).manufacturer)
+        elseif isfield(deviceNr_tmp,'internal') && ~isempty(deviceNr_tmp.internal) && ...
+                (~isfield(deviceNr_tmp,'external') || isempty(deviceNr_tmp.external))
+            deviceNr = deviceNr_tmp.internal;
+            fprintf('[%s]: Using internal device number(s): %d %s %s\n',mfilename,deviceNr,devices(deviceNr).product, devices(deviceNr).manufacturer)
+        elseif isfield(deviceNr_tmp,'external') && isfield(deviceNr_tmp,'internal') && ...
+                ~isempty(deviceNr_tmp.external) && ~isempty(deviceNr_tmp.internal)
+            deviceNr = [deviceNr_tmp.internal, deviceNr_tmp.external];
+            fprintf('[%s]: Using external and internal device number(s): %d, %s %s\n',mfilename,deviceNr,devices(deviceNr).product, devices(deviceNr).manufacturer)
         end
     end
 else
     skipsync = 0;
-    if isempty(params.deviceNr) && ~isempty(deviceNr.external)
-        params.deviceNr = deviceNr.external;
-        fprintf('[%s]: Using external device number: %d, %s %s\n',mfilename,params.deviceNr,devices(params.deviceNr).product, devices(params.deviceNr).manufacturer)
-    elseif  isempty(params.deviceNr) && isempty(deviceNr.external)
+    if isempty(params.deviceNr) && ~isempty(deviceNr_tmp)
+        deviceNr = deviceNr_tmp.external;
+        fprintf('[%s]: Using external device number: %d, %s %s\n',mfilename,deviceNr,devices(deviceNr).product, devices(deviceNr).manufacturer)
+    elseif  isempty(params.deviceNr) && isempty(deviceNr_tmp.external)
         error('[%s]: Cannot find external device number!',mfilename)
     end
 end
@@ -492,18 +492,17 @@ end
 timeofshowstimcall = datestr(now,30);
 
 % GO!
-[data,getoutearly] = vcd_showStimulus(win, rect,...
-    params, ...
+[data,getoutearly] = vcd_showStimulus(win, rect, params, ...
     scan, ...
     bckground, ...
     fix_im, ...
     fix_mask, ...
-    timing, ...
     introscript, ...
     taskscript, ...
     tfunEYE, ...
-    params.deviceNr, ...
-    oldclut,  oldPriority);
+    deviceNr, ...
+    oldclut,...
+    oldPriority);
 
 
 %% CLEAN UP AND SAVE
