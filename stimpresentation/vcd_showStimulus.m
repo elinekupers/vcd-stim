@@ -1,6 +1,9 @@
 function [data,getoutearly] = vcd_showStimulus(win, rect, params, ...
     scan, ...
     timing, ...
+    bckground, ...
+    fix_im, ...
+    fix_mask, ...
     introscript, ...
     taskscript, ...
     tfunEYE, ...
@@ -34,7 +37,7 @@ else
 end
 
 allowforceglitch     = 0; % 0 means do nothing special. [1 D] means allow keyboard input 'p' to force a glitch of duration D secs.
-frameorder           = 1:size(timing.trig_stim,1);
+frameorder           = 1:size(scan.frame_nr,1);
 
 % init variables, routines, constants
 timeframes = NaN(1, floor(size(frameorder,2)-1)+1);
@@ -76,7 +79,7 @@ fprintf('');
 %% Create background and fixation textures prior to exp onset (as we need them throughout the experiment)
 % bckground_rect = CenterRect([0 0 round(size(scan.bckground,1)) round(size(scan.bckground,2))],rect);
 bckground_rect    = rect;
-bckrgound_texture = Screen('MakeTexture', win, feval(flipfun,scan.bckground));
+bckrgound_texture = Screen('MakeTexture', win, feval(flipfun,bckground));
 
 % make fixation dot texture
 fix_texture_thin_full   = {};
@@ -84,19 +87,19 @@ fix_texture_thick_full  = {};
 fix_texture_thick_left  = {};
 fix_texture_thick_right = {};
 fix_texture_thick_both  = {};
-fix_rect_thin = CenterRect([0 0 round(size(scan.fix_im,1)) round(size(scan.fix_im,2))],rect);
-fix_rect_thick = CenterRect([0 0 round(size(scan.fix_im,1)) round(size(scan.fix_im,2))],rect);
+fix_rect_thin = CenterRect([0 0 round(size(fix_im,1)) round(size(fix_im,2))],rect);
+fix_rect_thick = CenterRect([0 0 round(size(fix_im,1)) round(size(fix_im,2))],rect);
 for ll = 1:size(scan.fix_im,4) % loop over luminance values
-    fix_texture_thin_full{ll} = Screen('MakeTexture',win,feval(flipfun,  cat(3, scan.fix_im(:,:,:,ll,1), scan.fix_alpha_mask.*params.stim.fix.dotopacity)));
-    fix_texture_thick_full{ll} = Screen('MakeTexture',win,feval(flipfun,  cat(3, scan.fix_im(:,:,:,ll,2), scan.fix_alpha_mask.*params.stim.fix.dotopacity)));
-    fix_texture_thick_left{ll} = Screen('MakeTexture',win,feval(flipfun,  cat(3, scan.fix_im(:,:,:,ll,3), scan.fix_alpha_mask.*params.stim.fix.dotopacity)));
-    fix_texture_thick_right{ll} = Screen('MakeTexture',win,feval(flipfun,  cat(3, scan.fix_im(:,:,:,ll,4), scan.fix_alpha_mask.*params.stim.fix.dotopacity)));
-    fix_texture_thick_both{ll} = Screen('MakeTexture',win,feval(flipfun,  cat(3, scan.fix_im(:,:,:,ll,5), scan.fix_alpha_mask.*params.stim.fix.dotopacity)));
+    fix_texture_thin_full{ll} = Screen('MakeTexture',win,feval(flipfun,  cat(3, fix_im(:,:,:,ll,1), fix_mask.*params.stim.fix.dotopacity)));
+    fix_texture_thick_full{ll} = Screen('MakeTexture',win,feval(flipfun,  cat(3, fix_im(:,:,:,ll,2), fix_mask.*params.stim.fix.dotopacity)));
+    fix_texture_thick_left{ll} = Screen('MakeTexture',win,feval(flipfun,  cat(3, fix_im(:,:,:,ll,3), fix_mask.*params.stim.fix.dotopacity)));
+    fix_texture_thick_right{ll} = Screen('MakeTexture',win,feval(flipfun,  cat(3, fix_im(:,:,:,ll,4), fix_mask.*params.stim.fix.dotopacity)));
+    fix_texture_thick_both{ll} = Screen('MakeTexture',win,feval(flipfun,  cat(3, fix_im(:,:,:,ll,5), fix_mask.*params.stim.fix.dotopacity)));
 end
 
 %% Prepare background and fixation texture vector outside the flip loop
 
-fix_tex    = cell(length(timing.trig_stim),1);
+fix_tex    = cell(length(scan.frame_nr),1);
 fix_rect   = fix_tex;
 im_tex     = fix_tex;
 im_rect    = fix_tex;
@@ -104,36 +107,36 @@ framecolor = fix_tex;
 txt_tex    = fix_tex;
 txt_rect   = fix_tex;
 
-for frame = 1:length(timing.trig_stim)
+for frame = 1:length(scan.frame_nr)
     
-    blockID = timing.trig_block(frame);
+    blockID = scan.event_ID(frame);
     
     % set up fixation dot textures
-    lum_idx = timing.trig_fix(frame);
+    lum_idx = find(scan.fix_abs_lum(frame)==params.stim.fix.dotlum);
     
-    if blockID == 0 && (timing.trig_spatial_cue(frame)==0 || isnan(timing.trig_spatial_cue(frame)))
+    if blockID == 0 && (scan.is_cued(frame)==0 || isnan(scan.is_cued(frame)))
         fix_tex{frame} = fix_texture_thin_full{lum_idx};
         fix_rect{frame} = fix_rect_thin;
         
     else
-        if timing.trig_stim(frame,1)==95
-            if timing.trig_spatial_cue(frame)==1
-                fix_tex{frame} = fix_texture_thick_left{lum_idx};
+        if scan.event_id(frame,1)==95
+            if scan.is_cued(frame)==1
+                fix_tex{frame}  = fix_texture_thick_left{lum_idx};
                 fix_rect{frame} = fix_rect_thick;
-            elseif timing.trig_spatial_cue(frame)==2
-                fix_tex{frame} = fix_texture_thick_right{lum_idx};
+            elseif scan.is_cued(frame)==2
+                fix_tex{frame}  = fix_texture_thick_right{lum_idx};
                 fix_rect{frame} = fix_rect_thick;
-            elseif timing.trig_spatial_cue(frame)==3
-                fix_tex{frame} = fix_texture_thick_both{lum_idx};
+            elseif scan.is_cued(frame)==3
+                fix_tex{frame}  = fix_texture_thick_both{lum_idx};
                 fix_rect{frame} = fix_rect_thick;
             end
-        elseif any(intersect(timing.trig_stim(frame,1),[93,94,96,97]))
+        elseif any(intersect(scan.event_id(frame),[93,94,96,97]))
             fix_tex{frame} = fix_texture_thick_full{lum_idx};
             fix_rect{frame} = fix_rect_thick;
-        elseif any(intersect(timing.trig_stim(frame,1),[98,99]))
+        elseif any(intersect(scan.event_id(frame),[98,99]))
             fix_tex{frame} = fix_texture_thin_full{lum_idx};
             fix_rect{frame} = fix_rect_thin;
-        elseif timing.trig_stim(frame,1) < 90
+        elseif scan.event_id(frame) < 90
             fix_tex{frame} = fix_texture_thick_full{lum_idx};
             fix_rect{frame} = fix_rect_thick;
         end
@@ -142,13 +145,13 @@ for frame = 1:length(timing.trig_stim)
     switch timing.trig_stim(frame,1)
         
         % 0  : pre/post blank
-        % 93 : exp_session.miniblock.response_ID
-        % 94 : exp_session.miniblock.trial_start_ID
-        % 95 : exp_session.miniblock.spatial_cue_ID
-        % 96 : exp_session.miniblock.delay_ID
-        % 97 : exp_session.miniblock.task_cue_ID
-        % 98 : exp_session.miniblock.ITI_ID
-        % 99 : exp_session.miniblock.IBI_ID
+        % 93 : exp_session.block.response_ID
+        % 94 : exp_session.block.trial_start_ID
+        % 95 : exp_session.block.spatial_cue_ID
+        % 96 : exp_session.block.delay_ID
+        % 97 : exp_session.block.task_cue_ID
+        % 98 : exp_session.block.ITI_ID
+        % 99 : exp_session.block.IBI_ID
         
         % Draw background + thin fix dot on top
         case {0, 93, 94, 95, 96, 98, 99}
@@ -211,12 +214,13 @@ timekeys = [timekeys; {GetSecs 'trigger'}];
 
 %% DRAW THE TEXTURES
 
+
 framecnt = 0;
 for frame = 1:size(frameorder,2)+1
     
     framecnt = framecnt + 1;
     frame0 = floor(framecnt);
-    whendesired = timing.trig_timing(framecnt);
+    whendesired = scan.frame_nr(framecnt);
     
     % we have to wait until the last frame of the run sequence is done.
     if frame0 == size(frameorder,2)+1
@@ -241,13 +245,13 @@ for frame = 1:size(frameorder,2)+1
     switch timing.trig_stim(framecnt)
         
         % 0  : pre/post blank
-        % 93 : exp_session.miniblock.response_ID
-        % 94 : exp_session.miniblock.trial_start_ID
-        % 95 : exp_session.miniblock.spatial_cue_ID
-        % 96 : exp_session.miniblock.delay_ID
-        % 97 : exp_session.miniblock.task_cue_ID
-        % 98 : exp_session.miniblock.ITI_ID
-        % 99 : exp_session.miniblock.IBI_ID
+        % 93 : exp_session.block.response_ID
+        % 94 : exp_session.block.trial_start_ID
+        % 95 : exp_session.block.spatial_cue_ID
+        % 96 : exp_session.block.delay_ID
+        % 97 : exp_session.block.task_cue_ID
+        % 98 : exp_session.block.ITI_ID
+        % 99 : exp_session.block.IBI_ID
         
         % Draw background + thin fix dot on top
         case {0, 93, 94, 95, 96, 98, 99}
