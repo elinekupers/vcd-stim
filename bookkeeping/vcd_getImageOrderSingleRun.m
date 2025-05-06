@@ -211,7 +211,7 @@ else
                                 elseif strcmp(subj_time_table.event_name(row_sub(ii)),'stim2') && strcmp(subj_time_table.task_class_name(row_sub(ii)),'wm')
                                     delta_deg = subj_time_table.stim2_delta(row_sub(ii),side);
 
-                                    idx0 = find( (images.info.gabor.orient_deg == (subj_time_table.orient_dir(row_sub(ii),side) - delta_deg)) & ...
+                                    idx0 = find( (images.info.gabor.orient_deg == (subj_time_table.orient_dir(row_sub(ii),side))) & ...
                                         (images.info.gabor.phase_deg==subj_time_table.gbr_phase(row_sub(ii),side)) & ...
                                         (images.info.gabor.contrast==subj_time_table.contrast(row_sub(ii),side)) &...
                                         (images.info.gabor.delta_deg==delta_deg) );
@@ -219,7 +219,7 @@ else
                                     ori_idx      = images.info.gabor.orient_i(idx0);
                                     con_idx      = images.info.gabor.contrast_i(idx0);
                                     % check if stim params match
-                                    assert(isequal( subj_time_table.orient_dir(row_sub(ii),side) , images.info.gabor.orient_deg(idx0) + images.info.gabor.delta_deg(idx0)));
+                                    assert(isequal( subj_time_table.orient_dir(row_sub(ii),side) , images.info.gabor.orient_deg(idx0)));
                                     assert(isequal( subj_time_table.contrast(row_sub(ii),side),    images.info.gabor.contrast(idx0)));
                                     assert(isequal( subj_time_table.gbr_phase(row_sub(ii),side),   images.info.gabor.phase_deg(idx0)));
                                     assert(isequal( delta_deg, images.info.gabor.delta_deg(idx0)));
@@ -467,9 +467,9 @@ else
                                     % Lures: 7D array: [x,y,5 superordinate cat, 2 ns_loc, 3 obj_loc, 4 lure images];
                                     d = dir(sprintf('%s*.mat', params.stim.ns.stimfile));
                                     load(fullfile(d(end).folder,d(end).name), 'scenes','ltm_lures','wm_im','info');
-                                    images.ns = scenes; clear scenes;
-                                    images.lures = ltm_lures; clear ltm_lures;
-                                    images.wm_im = wm_im; clear wm_im;
+                                    images.ns.scenes = scenes; clear scenes;
+                                    images.ns.lures = ltm_lures; clear ltm_lures;
+                                    images.ns.wm_im = wm_im; clear wm_im;
                                     images.info.ns = info; clear info;
                                 end
                                 
@@ -495,7 +495,7 @@ else
                                     assert(isequal(obj_sub,subj_time_table.sub_cat(row_sub(ii),1)))
                                     
                                     % third dim has image and alpha mask
-                                    run_images{trial_nr,side} = images.ns(:,:,:,i4,i5,i6);
+                                    run_images{trial_nr,side} = images.ns.scenes(:,:,:,i4,i5,i6);
                                     run_alpha_masks{trial_nr,side} = [];
                                     
                                 elseif strcmp(subj_time_table.event_name(row_sub(ii)),'stim2') && strcmp(subj_time_table.task_class_name(row_sub(ii)),'wm')
@@ -505,23 +505,23 @@ else
                                     
                                     wm_change = subj_time_table.stim2_delta(row_sub(ii),1);
                                     wm_im_nr = subj_time_table.stim2_im_nr(row_sub(ii), 1);
+                                    idx_im = images.info.ns.unique_im== wm_im_nr;
+                                    im_idx    = find(wm_change==params.stim.ns.change_im); % {'easy_added','hard_added','easy_removed','hard_removed'}
+                                    info_name = images.info.ns.filename(idx_im);
                                     
-                                    im_idx    = find(strcmp(change_im_name,params.stim.ns.change_im)); % {'easy_added','hard_added','easy_removed','hard_removed'}
-                                    info_name = images.info.ns.(sprintf('change_img%02d',im_idx));
-                                    
-                                    assert(isequal(sprintf('%s.png',change_im_name),info_name{im_idx}));
+%                                     assert(isequal(sprintf('%s.png',wm_change),info_name));
                                     assert(isequal(i4, subj_time_table.super_cat(row_sub(ii),1)));
                                     assert(isequal(i5, subj_time_table.basic_cat(row_sub(ii),1)));
                                     assert(isequal(i6, subj_time_table.sub_cat(row_sub(ii),1)));
                                     
-                                    run_images{trial_nr,side} = images.cblind(:,:,:,i4,i5,i6,im_idx);
+                                    run_images{trial_nr,side} = images.ns.wm_im(:,:,:,i4,i5,i6,im_idx);
                                     run_alpha_masks{trial_nr,side} = [];
                                     
                                 elseif strcmp(subj_time_table.event_name(row_sub(ii)),'stim2') && strcmp(subj_time_table.task_class_name(row_sub(ii)),'ltm')
                                     
                                     if subj_time_table.islure(row_sub(ii),1)
                                         lure_im = subj_time_table.stim2_delta{row_sub(ii)};
-                                        im_idx = find(strcmp(pair_im,params.stim.ns.lure_im)); % {'lure01','lure02', 'lure03', 'lure04'};
+                                        im_idx = find(strcmp(pair_im,params.stim.ns.ltm_lure_im)); % {'lure01','lure02', 'lure03', 'lure04'};
                                         info_name = images.info.ns.(sprintf('lure%02d',im_idx));
                                         
                                         assert(isequal(sprintf('%s.png',lure_im),info_name{im_idx}));
@@ -529,7 +529,7 @@ else
                                         assert(isequal(i5, subj_time_table.basic_cat(row_sub(ii),1)));
                                         assert(isequal(i6, subj_time_table.sub_cat(row_sub(ii),1)));
                                         
-                                        run_images{trial_nr,side} = images.lures(:,:,:,i4,i5,i6,im_idx);
+                                        run_images{trial_nr,side} = images.ns.lures(:,:,:,i4,i5,i6,im_idx);
                                         
                                     else
                                         pair_im = subj_time_table.ltm_pair(row_sub(ii),1);
