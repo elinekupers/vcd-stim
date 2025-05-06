@@ -150,9 +150,7 @@ else
                 % copy condition order table headers and scrub content
                 sz = [run_dur size(subj_run(1,:),2)];
                 subj_run_frames = vcd_preallocateNaNTable(sz(1), sz(2), subj_run(1,:), []);
-                
-                max_merge_cols = find(strcmp(subj_run.Properties.VariableNames,'islure'));
-                
+                                
                 % expand table with info about frame timing
                 subj_run_frames.frame_nr   = [0:(run_dur-1)]';
                 subj_run_frames.images     = cell(size(subj_run_frames,1),2);
@@ -201,8 +199,12 @@ else
                 %% Expand subject run time table
                 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                 
+                % available run images should match the stimulus events
+                assert(sum(subj_run.event_id == 91 | subj_run.event_id == 92), size(run_images,1))
+                
                 im_nr = 1;
                 frame_counter = 2;
+                
                 
                 for ii = 1:length(subj_run.event_id)
                     
@@ -231,7 +233,6 @@ else
                         % repeat row in table and add to framelocked table
                         subj_run_frames(curr_frames,1:size(subj_run,2)) = repmat(subj_run(ii,:), nframes,1);
                         
-
                         % insert pixel image (uint8)
                         if any(strcmp(subj_run.stim_class_name(ii,:),{'rdk'})) && ((ndims(run_images{im_nr,1}) == 4) || (ndims(run_images{im_nr,2}) == 4)) % we are dealing with rdk, which has time dim
                             
@@ -269,11 +270,6 @@ else
                             f_masks  = repmat(run_alpha_masks(im_nr,:), nframes, 1);
                         end
                         
-                        im_nr = im_nr+1;
-                        
-                        % add images to subject frame table
-                        subj_run_frames.images(curr_frames,:) = f_im;
-                        subj_run_frames.masks(curr_frames,:)  = f_masks;
                         
                         % APPLY CONTRAST DECREMENT
                         if strcmp(subj_run.task_class_name(ii),'cd')
@@ -295,10 +291,26 @@ else
                                 % Add button response to start of decrement onset
                                 subj_run_frames.button_response(curr_frames(c_onset)) = 1; % yes there was a change
                                 
-                                
+                                subj_run_frames.masks(curr_frames,:)  = f_masks;  
+                            else % no contrast decrement
+                                % add images to subject frame table
+                                subj_run_frames.images(curr_frames,:) = f_im;
+                                subj_run_frames.masks(curr_frames,:)  = f_masks;
                             end
+                        
+                            
+                        else % all other blocks blocks
+                            
+                            % add images to subject frame table
+                            subj_run_frames.images(curr_frames,:) = f_im;
+                            subj_run_frames.masks(curr_frames,:)  = f_masks;
+                            
                         end % if cd
                         
+                        % count one image nr 
+                        im_nr = im_nr+1;
+                        
+
                         
                     else % NON-STIM EVENTS
                         
