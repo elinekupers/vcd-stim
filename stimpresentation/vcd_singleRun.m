@@ -6,6 +6,7 @@ p = inputParser;
 p.addRequired('subjID'          , @isnumeric); % subject number
 p.addRequired('sesID'           , @isnumeric); % session number
 p.addRequired('runnum'          , @isnumeric); % nun number
+p.addRequired('session_type'    , @char); % 'MRI' or behavioral session?
 p.addParameter('scan'           , struct()  , @isstruct);                    % struct with optimized images for ptb
 p.addParameter('timing'         , struct()  , @isstruct);                    % struct with frame timing for ptb
 p.addParameter('images'         , struct()  , @isstruct);                    % struct with images (we preload before calling vcd_singleRun to avoid delays).
@@ -122,13 +123,18 @@ if ~isfield(params, 'stim') || isempty(params.stim)
         d = dir(fullfile(params.infofolder,sprintf('stim_%s*.mat',params.disp.name)));
         if  isempty(d)
             warning('[%s]: Can''t find stim params for %s, will reload params without overwriting params',mfilename,params.disp.name);
-            params.stim   = vcd_getStimParams('all',params.disp,false,params.storeparams,false);
+            params.stim   = vcd_getStimParams('disp_name', params.disp.name, ...
+                            'load_params',false, ...
+                            'store_params', params.storeparams); 
+            
         else
             load(fullfile(d(end).folder,d(end).name),'stim');
             params.stim = stim; clear stim;
         end
     else
-        params.stim   = vcd_getStimParams('all',params.disp.name,params.loadparams,params.storeparams,params.overwrite_randomized_params);
+        params.stim   = vcd_getStimParams('disp_name', params.disp.name, ...
+            'load_params',params.loadparams, ....
+            'store_params', params.storeparams);
     end
 end
 
@@ -141,22 +147,22 @@ end
 % to fully sample, otherwise it is difficult to compare conditions (e.g.,
 % we want to sample all contrast levels within the run).
 
-if ~isfield(params, 'trials') || isempty(params.trials)
-    if params.loadparams
-        d = dir(fullfile(params.infofolder,'trials*.mat'));
-        load(fullfile(d(end).folder,d(end).name),'all_trials');
-        params.trials = all_trials; clear all_trials;
-    else
-        params.trials = vcd_makeTrials(params,params.loadparams,params.storeparams);
-    end
-end
+% if ~isfield(params, 'trials') || isempty(params.trials)
+%     if params.loadparams
+%         d = dir(fullfile(params.infofolder,sprintf('trials*%s*.mat',session_type)));
+%         load(fullfile(d(end).folder,d(end).name),'condition_master');
+%         params.trials = all_trials; clear all_trials;
+%     else
+%         params.trials = vcd_makeTrials(params,params.loadparams,params.storeparams);
+%     end
+% end
 
 % Session params
 if ~isfield(params, 'exp') ||  isempty(params.exp)
     if params.loadparams
-        d = dir(fullfile(params.infofolder,'exp_session*.mat'));
-        load(fullfile(d(end).folder,d(end).name),'exp_session');
-        params.exp = exp_session; clear exp_session;
+        d = dir(fullfile(params.infofolder,'exp*.mat'));
+        load(fullfile(d(end).folder,d(end).name),'exp');
+        params.exp = exp; clear exp;
     else
         params.exp = vcd_getSessionParams(params,params.loadparams,params.storeparams);
     end
@@ -166,122 +172,60 @@ end
 % We have master trial sequence, and a sequence where blocks are shuffled
 % given the subject.
 
-if params.loadparams
-    d = dir(fullfile(params.infofolder,'subject_sessions_*.mat'));
-    load(fullfile(params.infofolder,d(end).name),'subject_sessions'); % pick the last one we saved
-    % subject_sessions is a struct
-    subj_run = subject_sessions(params.sesID,params.subjID).run(params.runnum);
-else
-    subject_sessions = vcd_getSessionParams(params,params.loadparams,params.storeparams);
-    subj_run = subject_sessions(params.sesID,params.subjID).run(params.runnum);
-end
+% if ~exist('time_table_master','var')
+%     d = dir(fullfile(params.infofolder,sprintf('time_table_master_%s_%s*.mat',params.disp.name, session_type)));
+%     load(fullfile(params.infofolder,d(end).name),'time_table_master'); % pick the last one we saved
+% end
+% 
+% subj_idx = (time_table_master.subj_nr==params.subjID & ...
+%     time_table_master.session_nr==params.sesID & ...
+%     time_table_master.run_nr==params.runnum);
+% subj_run = time_table_master(subj_idx,:);
 
-for jj = 1:length(params.exp.stimClassLabels)
-    d = dir(sprintf('%s*.csv',params.stim.(params.exp.stimClassLabels{jj}).infofile));
-    image_info.(params.exp.stimClassLabels{jj}) = readtable(fullfile(d(end).folder,d(end).name));
-end
+% for jj = 1:length(params.exp.stimClassLabels)
+%     d = dir(sprintf('%s*.csv',params.stim.(params.exp.stimClassLabels{jj}).infofile));
+%     image_info.(params.exp.stimClassLabels{jj}) = readtable(fullfile(d(end).folder,d(end).name));
+% end
 
 
 
 %% %%%%%%%%% INDEX IMAGES THAT NEED TO BE LOADED
-[run_image_order,im_seq_order] = vcd_getImageOrder(subj_run.block, image_info, params);
 
 if ~exist('scan','var') || ~isfield(scan,'exp_im') || isempty(scan.exp_im)
-    % LOAD AND RESIZE IMAGES etc
-    
-    % exp_im is a cell with dims:
-    % blocks x trials x locations (1:l, 2:r) x stim epoch (first or second)
-    [exp_im, alpha_masks, images] = vcd_loadRunImages(run_image_order, subj_run.block, params);
-    
-    scan.exp_im = exp_im; clear exp_im
-    scan.exp_im_masks = alpha_masks; clear alpha masks;
+    % LOAD IMAGES: in the format of:
+    % subj001_ses01_run01_images_PPROOM_EIZOFLEXSCAN_20250505T184109.mat
+    d = dir(fullfile(params.infofolder,sprintf('subj%03d',params.subjID),  ...
+        sprintf('subj%03d_ses%02d_run%02d_images_%s_*.mat', ...
+                       params.subjID, params.sesID, params.runnum, params.disp.name)));
+    load(fullfile(d.folder,d.name), 'subj_run_frames');
+    scan = subj_run_frames{1}; clear subj_run_frames;
 end
 
 %% %%%%%%%%%%%%% FIXATION IM/PARAMS %%%%%%%%%%%%%
 
-if ~exist('scan','var') || ~isfield(scan,'fix_im') || isempty(scan.fix_im)
-    
-    % Load stored fixation dot images
-    if isempty(images.fix)
-        fprintf('[%s]: Loading fixation dot images..\n',mfilename);
-        % FIX: 5D array: [x,y, 3, 5 lum, 2 widths]
-        d = dir(sprintf('%s*.mat', params.stim.fix.stimfile));
-        load(fullfile(d(end).folder,d(end).name), 'fix_im','mask','info');
-        images.fix = fix_im; clear fix_im;
-        images.info.fix = info; clear info;
-        images.alpha.fix = mask; clear mask;
-    end
-    
-    % rescale fix dot if needed:
-    if ~isempty(params.stim.fix.dres) && ...
-            length(params.stim.fix.dres)==2 && ...
-            sum(params.stim.fix.dres)~=0
-        
-        fprintf('[%s]: Resampling fixation dot images..\n',mfilename);
-        old_fix_sz = size(images.fix);
-        p.stim.(stimClass).iscolor
-        tmp_im = reshape(images.fix, ...
-            old_fix_sz(1),... x
-            old_fix_sz(2),... y
-            3, ... % rgb
-            []); % 5 luminance and 2 rim widths
-        
-        numIn = size(tmp_im,4);
-        tmp_im = double(tmp_im);
-        for kk = 1:numIn
-            tmp0 = imresize(tmp_im(:,:,:,kk),p.stim.fix.dres); %% DEFAULT IS BICUBIC
-            
-            % square for CLUT
-            tmp0 = double(tmp0);
-            pix_range = [min(tmp0),max(tmp0)];
-            
-            % if pix lum range is 0-1
-            if pix_range(2)<=1
-                img  = floor((tmp0*255)+params.stim.bckgrnd_grayval);
-                img = img.^2;
-                
-                % if pix lum range is 1-255
-            elseif pix_range(2)<=255
-                tmp0 = tmp0.^2;
-            end
-            im_rz(:,:,:,kk) = uint8(tmp0);
-        end
-        
-        images.fix = reshape(im_rz,old_fix_sz(1),old_fix_sz(2),old_fix_sz(3),old_fix_sz(4),old_fix_sz(5));
-        
-        tmp_alpha = double(images.alpha.fix);
-        tmp_alpha = imresize(tmp_alpha,p.stim.fix.dres); %% DEFAULT IS BICUBIC
-        images.alpha.fix = uint8(tmp_alpha);
-    end
-    
-    if ~isfield(scan,'fix_im') || ~isempty(scan.fix_im)
-        scan.fix_im = images.fix;
-        scan.fix_alpha_mask = images.alpha.fix;
-    end
-    
-end
-
 %% %%%%%%%%% TIMING
 
-if ~exist('timing','var') || ~isfield(timing,'seq_stim') || isempty(timing.seq_stim)
-    timing = vcd_getImageTiming_framelocked30Hz(params, subj_run, im_seq_order, scan.exp_im, scan.fix_im, scan.exp_im_masks);
-    
-    cellblock = struct2cell(subj_run.block);
-    cellblock = squeeze(cellblock);
-    
-    celltiming = (timing.seq_stim);
-    
-    st_ID = cell2mat(cellblock(2,:));
-    st_start = []; st_end = [];
-    for ii = 1:length(st_ID)
-        st_start = cat(1,st_start, cellblock{6,ii}.onset_time(1));
-        st_end = cat(1,st_end, cellblock{6,ii}.run_time(end));
-    end
-    
-    timing.block = [st_ID', st_start,st_end];
-    
-end
+% if ~exist('timing','var') || ~isfield(timing,'seq_stim') || isempty(timing.seq_stim)
+%     timing = vcd_getImageTiming_framelocked30Hz(params, subj_run, im_seq_order, scan.exp_im, scan.fix_im, scan.exp_im_masks);
+%     
+%     cellblock = struct2cell(subj_run.block);
+%     cellblock = squeeze(cellblock);
+%     
+%     celltiming = (timing.seq_stim);
+%     
+%     st_ID = cell2mat(cellblock(2,:));
+%     st_start = []; st_end = [];
+%     for ii = 1:length(st_ID)
+%         st_start = cat(1,st_start, cellblock{6,ii}.onset_time(1));
+%         st_end = cat(1,st_end, cellblock{6,ii}.run_time(end));
+%     end
+%     
+%     timing.block = [st_ID', st_start,st_end];
+%     
+% end
 
+timing.seq_stim = scan.event_id;
+timing.block    = scan.block_nr;
 
 %% %%%%%%%%% IMAGE XY CENTER OFFSET
 
@@ -303,107 +247,115 @@ if ~exist('scan','var') || ~isfield(scan, 'rects') || isempty(scan.rects)
     
     % 1-30 = all non-NS stim-task crossings
     % 31-39 = NS stim-task crossings
-    gb_IDs   = find(~cellfun(@isempty, (regexp(params.exp.stimTaskLabels,'-gabor','ONCE'))))';
-    rdk_IDs  = find(~cellfun(@isempty, (regexp(params.exp.stimTaskLabels,'-rdk','ONCE'))))';
-    dot_IDs  = find(~cellfun(@isempty, (regexp(params.exp.stimTaskLabels,'-dot','ONCE'))))';
-    cobj_IDs = find(~cellfun(@isempty, (regexp(params.exp.stimTaskLabels,'-cobj','ONCE'))))';
-    ns_IDs   = find(~cellfun(@isempty, (regexp(params.exp.stimTaskLabels,'-ns','ONCE'))))';
+    gb_IDs   = find(~cellfun(@isempty, (regexp(params.exp.crossingnames,'-gabor','ONCE'))))';
+    rdk_IDs  = find(~cellfun(@isempty, (regexp(params.exp.crossingnames,'-rdk','ONCE'))))';
+    dot_IDs  = find(~cellfun(@isempty, (regexp(params.exp.crossingnames,'-dot','ONCE'))))';
+    cobj_IDs = find(~cellfun(@isempty, (regexp(params.exp.crossingnames,'-obj','ONCE'))))';
+    ns_IDs   = find(~cellfun(@isempty, (regexp(params.exp.crossingnames,'-ns','ONCE'))))';
     
     % Get [x,y]-center in pixels of peripheral stimuli given display size, and
     % offset. Get stimulus aperture size..
-    centers = cell(size(timing.seq_stim));
-    apsize  = cell(size(timing.seq_stim));
+    centers = cell(size(scan.frame_nr)); %cell(size(timing.seq_stim));
+    apsize  = cell(size(scan.frame_nr)); %cell(size(timing.seq_stim));
     
-    unique_blocks =  [unique(timing.trig_block,'stable')];
+    unique_blocks =  [unique(scan.block_nr,'stable')];
     
-    wm_blocks = find(~cellfun(@isempty, regexp(params.exp.stimTaskLabels,'wm')));
-    ltm_blocks = find(~cellfun(@isempty, regexp(params.exp.stimTaskLabels,'ltm')));
-    img_blocks = find(~cellfun(@isempty, regexp(params.exp.stimTaskLabels,'img')));
+    wm_blocks = find(~cellfun(@isempty, regexp(params.exp.crossingnames,'wm')));
+    ltm_blocks = find(~cellfun(@isempty, regexp(params.exp.crossingnames,'ltm')));
+    img_blocks = find(~cellfun(@isempty, regexp(params.exp.crossingnames,'img')));
     
     trial_counter = 1;
     block_counter = 1;
     
-    for nn = 1:length(timing.trig_block)
-        block_nr = timing.trig_block(nn);
+    for nn = 1:length(scan.frame_nr)
+        block_nr = scan.block_nr(nn);
+        %
+        %         if (block_nr > 0) && (block_nr < 90)
+        %             prev_block_counter = block_counter;
+        %             block_counter = find(unique_blocks==block_nr);
+        %
+        %             if prev_block_counter ~= block_counter % new block!
+        %                 trial_counter = 0;
+        %             end
+        %
+        %             if  (timing.trig_stim(nn,1)<90)
+        %                 if timing.trig_stim(nn,1) ~= timing.trig_stim(nn-1,1)
+        %                     trial_counter = trial_counter + 1;
+        %                     if timing.trig_stim(nn-1,1)==96
+        %                         delay_period = 1;
+        %                     else
+        %                         delay_period = 0;
+        %                     end
+        %                 end
+        %
+        %
+        numSides = find(cellfun(@isempty, scan.images(nn,:)));
         
-        if (block_nr > 0) && (block_nr < 90)
-            prev_block_counter = block_counter;
-            block_counter = find(unique_blocks==block_nr);
+        for side = 1:numSides
             
-            if prev_block_counter ~= block_counter % new block!
-                trial_counter = 0;
-            end
-            
-            if  (timing.trig_stim(nn,1)<90)
-                if timing.trig_stim(nn,1) ~= timing.trig_stim(nn-1,1)
-                    trial_counter = trial_counter + 1;
-                    if timing.trig_stim(nn-1,1)==96
-                        delay_period = 1;
-                    else
-                        delay_period = 0;
-                    end
+            if ~isempty(intersect(block_nr,gb_IDs))
+                centers{nn,side}(1) = params.stim.gabor.x0_pix(side) + params.stim.xc; % x-coord (pixels)
+                centers{nn,side}(2) = params.stim.gabor.y0_pix(side) + params.stim.yc; % y-coord (pixels)
+                
+            elseif ~isempty(intersect(block_nr,rdk_IDs))
+                centers{nn,side}(1) = params.stim.rdk.x0_pix(side) + params.stim.xc;
+                centers{nn,side}(2) = params.stim.rdk.y0_pix(side) + params.stim.yc;
+                
+            elseif ~isempty(intersect(block_nr,dot_IDs))
+                
+                if ~isempty(intersect(block_nr,[wm_blocks,ltm_blocks,img_blocks]))
+                    trial_counter0 = round(trial_counter./2);
                 end
                 
-                
-                numSides = length(unique(timing.trig_stim(nn,:)));
-                
-                for side = 1:numSides
-                    
-                    if ~isempty(intersect(block_nr,gb_IDs))
-                        centers{nn,side}(1) = params.stim.gabor.x0_pix(side) + params.stim.xc; % x-coord (pixels)
-                        centers{nn,side}(2) = params.stim.gabor.y0_pix(side) + params.stim.yc; % y-coord (pixels)
+                % deal with dot pol2cart
+                if side == 2
+                    if strcmp(scan.event_name(nn),'stim2')
+                        tmp = reshape(params.stim.dot.unique_im_nrs_wm_test,4,[]);
+                        [~,test_im_idx] = ismember(scan.stim2_im_nr(nn,side),params.stim.dot.unique_im_nrs_wm_test);
                         
-                    elseif ~isempty(intersect(block_nr,rdk_IDs))
-                        centers{nn,side}(1) = params.stim.rdk.x0_pix(side) + params.stim.xc;
-                        centers{nn,side}(2) = params.stim.rdk.y0_pix(side) + params.stim.yc;
+                        params.stim.dot.unique_im_nrs_wm_test 
                         
-                    elseif ~isempty(intersect(block_nr,dot_IDs))
+                        params.stim.dot.x0_pix_delta, params.stim.dot.y0_pix_delta
+                        dot_angle = scan.stim2_orient_dir(nn,side);
+                        [dot_x,dot_y] = pol2cart(deg2rad(dot_angle),params.stim.dot.iso_eccen);
                         
-                        if ~isempty(intersect(block_nr,[wm_blocks,ltm_blocks,img_blocks]))
-                            trial_counter0 = round(trial_counter./2);
-                        end
-                        
-                        % deal with dot pol2cart
-                        if side == 2
-                            if delay_period && ~isnan(cellblock{4,block_counter}(trial_counter0,side).ref_delta)
-                                dot_angle = cellblock{4,block_counter}(trial_counter0,side).ref_delta + 180;
-                                [dot_x,dot_y] = pol2cart(deg2rad(dot_angle),params.stim.dot.iso_eccen);
-                                
-                            elseif isfield(cellblock{4,block_counter}(trial_counter,side),'loc_deg')
-                                dot_angle = cellblock{4,block_counter}(trial_counter,side).loc_deg + 180;
-                                [dot_x,dot_y] = pol2cart(deg2rad(dot_angle),params.stim.dot.iso_eccen);
-                            end
-                            
-                        elseif side == 1
-                            
-                            if delay_period && ~isnan(cellblock{4,block_counter}(trial_counter0,side).ref_delta)
-                                dot_angle = cellblock{4,block_counter}(trial_counter0,side).ref_delta;
-                                [dot_x,dot_y] = pol2cart(deg2rad(dot_angle),params.stim.dot.iso_eccen);
-                                
-                            elseif isfield(cellblock{4,block_counter}(trial_counter,side),'loc_deg')
-                                dot_angle = cellblock{4,block_counter}(trial_counter,side).loc_deg;
-                                xy_idx = find(dot_angle == params.stim.dot.loc_deg);
-                                dot_x = params.stim.dot.x0_pix(xy_idx);
-                                dot_y = params.stim.dot.y0_pix(xy_idx);
-                            end
-                        end
-                        centers{nn,side}(1) = dot_x + params.stim.xc;
-                        centers{nn,side}(2) = dot_y + params.stim.yc;
-                        
-                    elseif ~isempty(intersect(block_nr,cobj_IDs))
-                        centers{nn,side}(1) = params.stim.cobj.x0_pix(side) + params.stim.xc;
-                        centers{nn,side}(2) = params.stim.cobj.y0_pix(side) + params.stim.yc;
-                        
-                    elseif ~isempty(intersect(block_nr,ns_IDs))
-                        centers{nn,side}(1) = params.stim.ns.x0_pix(side) + params.stim.xc;
-                        centers{nn,side}(2) = params.stim.ns.y0_pix(side) + params.stim.yc;
+                    elseif isfield(cellblock{4,block_counter}(trial_counter,side),'loc_deg')
+                        dot_angle = cellblock{4,block_counter}(trial_counter,side).loc_deg;
+                        xy_idx = find(dot_angle == params.stim.dot.loc_deg_R);
+                        dot_x = params.stim.dot.x0_pix_R(xy_idx);
+                        dot_y = params.stim.dot.y0_pix_R(xy_idx);
                     end
                     
-                    apsize{nn,side}(1)  = size(timing.trig_seq_exp_im_w_cd{nn}{1},2); % apsize 1: image width (pixels)
-                    apsize{nn,side}(2)  = size(timing.trig_seq_exp_im_w_cd{nn}{1},1); % apsize 2: height (pixels)
+                elseif side == 1
+                    
+                    if delay_period && ~isnan(cellblock{4,block_counter}(trial_counter0,side).ref_delta)
+                        dot_angle = cellblock{4,block_counter}(trial_counter0,side).ref_delta;
+                        [dot_x,dot_y] = pol2cart(deg2rad(dot_angle),params.stim.dot.iso_eccen);
+                        
+                    elseif isfield(cellblock{4,block_counter}(trial_counter,side),'loc_deg')
+                        dot_angle = cellblock{4,block_counter}(trial_counter,side).loc_deg;
+                        xy_idx = find(dot_angle == params.stim.dot.loc_deg);
+                        dot_x = params.stim.dot.x0_pix_L(xy_idx);
+                        dot_y = params.stim.dot.y0_pix_L(xy_idx);
+                    end
                 end
+                centers{nn,side}(1) = dot_x + params.stim.xc;
+                centers{nn,side}(2) = dot_y + params.stim.yc;
+                
+            elseif ~isempty(intersect(block_nr,cobj_IDs))
+                centers{nn,side}(1) = params.stim.obj.x0_pix(side) + params.stim.xc;
+                centers{nn,side}(2) = params.stim.obj.y0_pix(side) + params.stim.yc;
+                
+            elseif ~isempty(intersect(block_nr,ns_IDs))
+                centers{nn,side}(1) = params.stim.ns.x0_pix(side) + params.stim.xc;
+                centers{nn,side}(2) = params.stim.ns.y0_pix(side) + params.stim.yc;
             end
+            
+            apsize{nn,side}(1)  = size(timing.trig_seq_exp_im_w_cd{nn}{1},2); % apsize 1: image width (pixels)
+            apsize{nn,side}(2)  = size(timing.trig_seq_exp_im_w_cd{nn}{1},1); % apsize 2: height (pixels)
         end
+        %             end
+        %         end
     end
 end
 
@@ -599,7 +551,8 @@ if params.wanteyetracking && ~isempty(params.eyelinkfile)
     Eyelink('command','sample_rate = %d', 1000); % hz
     Eyelink('driftcorrect_cr_disable','YES'); % yes to disable drift correction -- we don't want that!
     %  EyelinkDoDriftCorrection(el); % No drift correction.
-    
+    % other ways of drawing things in EL:     Eyelink('Command','draw_box %d %d %d %d %d',xPos-boundary,yPos-boundary,xPos+boundary,yPos+boundary,colorFrm);
+
     % what events (columns) are recorded in EDF:
     Eyelink('command','file_event_filter = LEFT,RIGHT,FIXATION,SACCADE,BLINK,MESSAGE,BUTTON');
     % what samples (columns) are recorded in EDF:
