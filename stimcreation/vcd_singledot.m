@@ -194,7 +194,7 @@ if params.stim.store_imgs
     fprintf('\nStoring images..')
     saveDir = fileparts(fullfile(params.stim.dot.stimfile));
     if ~exist(saveDir,'dir'), mkdir(saveDir); end
-    save(fullfile(sprintf('%s_%s.mat',params.stim.dot.stimfile,datestr(now,30))),'single_dot','mask','info','-v7.3');
+    save(fullfile(sprintf('%s_%s.mat',params.stim.dot.stimfile,datestr(now,30))),'dot','mask','info','-v7.3');
     
     saveDir = fileparts(fullfile(params.stim.dot.infofile));
     if ~exist(saveDir,'dir'), mkdir(saveDir); end
@@ -208,12 +208,12 @@ end
 if params.verbose
     makeprettyfigures;
     if params.stim.store_imgs
-        saveFigDir = fullfile(vcd_rootPath,'figs',params.disp.name,'single_dot','visual_checks');
+        saveFigDir = fullfile(vcd_rootPath,'figs',params.disp.name,'dot','visual_checks');
         if ~exist(saveFigDir,'dir'), mkdir(saveFigDir); end
     end
     %% Make PNG image of dot alone:
     if params.store_imgs
-        imwrite(single_dot, fullfile(vcd_rootPath,'figs',params.disp.name,'single_dot',sprintf('singledot.png')));
+        imwrite(single_dot, fullfile(vcd_rootPath,'figs',params.disp.name,'dot',sprintf('singledot.png')));
     end
     
     %% Visualize effect of alpha transparency mask
