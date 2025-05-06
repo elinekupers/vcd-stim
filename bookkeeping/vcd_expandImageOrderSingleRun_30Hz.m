@@ -236,7 +236,7 @@ else
                         if any(strcmp(subj_run.stim_class_name(ii,:),{'rdk'})) && ((ndims(run_images{im_nr,1}) == 4) || (ndims(run_images{im_nr,2}) == 4)) % we are dealing with rdk, which has time dim
                             
                             nsides = find(strcmp(subj_run.stim_class_name(ii,:),{'rdk'})==true);
-                            
+                            clear rdk_images
                             for side = 1:length(nsides)
                             
                                 rdk_images(:,side) = squeeze(mat2cell(run_images{im_nr,side}, size(run_images{im_nr,side},1), ...
@@ -254,7 +254,7 @@ else
                                 end
                             elseif nsides == 2
                                 for oob = 1:size(rdk_images,1)
-                                    rdk_images2(oob,:) = [run_images(im_nr,1),rdk_images(oob,2)];
+                                    rdk_images2(oob,:) = [run_images(im_nr,1),rdk_images(oob,1)];
                                 end
                             end
                             
