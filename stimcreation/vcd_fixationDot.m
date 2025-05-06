@@ -112,8 +112,8 @@ alpha_mask0_thick   = alpha_mask0(:);
 
 % create a circle mask (divide by 4 because makecircleimage expects radius,
 % number is used to pad on both left and right side)
-alpha_idx_thick     = find(makecircleimage(support_x, params.stim.fix.dotthickborderdiam_pix/4)); 
-alpha_idx_thin      = find(makecircleimage(support_x, params.stim.fix.dotthinborderdiam_pix/4)); 
+alpha_idx_thick     = find(makecircleimage(support_x, (params.stim.fix.dotthickborderdiam_pix/2)));  % add 2 pixels on either size to avoid the rim being cut
+alpha_idx_thin      = find(makecircleimage(support_x, (params.stim.fix.dotthinborderdiam_pix/2))); % add 2 pixels on either size to avoid the rim being cut
 
 % everything inside the alpha mask is 50% opacity, outside mask is invisible
 alpha_mask0_thin(alpha_idx_thin)   = ones(length(alpha_idx_thin),1)*255*params.stim.fix.dotopacity;
@@ -167,12 +167,12 @@ if params.verbose
             title(sprintf('%01d, %01d',ii, jj))
             counter = counter+1;
             if params.store_imgs
-                imwrite(fix_im(:,:,:,ii,jj), fullfile(vcd_rootPath,'figs',params.disp.name,'fix',sprintf('vcd_fixdots_w_alphamask_%01d_%01d.png', ii, jj)));
+                imwrite(fix_im(:,:,:,ii,jj), fullfile(vcd_rootPath,'figs',params.disp.name,'fix',sprintf('vcd_fixcircle_w_alphamask_%01d_%01d.png', ii, jj)), 'Alpha' , double(mask(:,:,jj))/255);
             end
         end
     end
     if params.store_imgs
-        filename = sprintf('vcd_fixdots_w_alphamask.png');
+        filename = sprintf('vcd_fixcircle_all_w_alphamask.png');
         print(fH,'-dpng','-r300',fullfile(saveFigDir,filename));
     end
     
@@ -189,12 +189,12 @@ if params.verbose
             title(sprintf('%01d, %01d',ii, jj))
             counter = counter+1;
             if params.store_imgs
-                imwrite(fix_im(:,:,:,ii,jj), fullfile(vcd_rootPath,'figs',params.disp.name,'fix',sprintf('vcd_fixdots_%01d_%01d.png', ii, jj)));
+                imwrite(fix_im(:,:,:,ii,jj), fullfile(vcd_rootPath,'figs',params.disp.name,'fix',sprintf('vcd_fixcircle_%01d_%01d.png', ii, jj)));
             end
         end
     end
     if params.store_imgs
-        filename = sprintf('vcd_fixdots.png');
+        filename = sprintf('vcd_fixcircle_all.png');
         print(fH,'-dpng','-r300',fullfile(saveFigDir,filename));
     end
 end
