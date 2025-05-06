@@ -11,6 +11,7 @@ p0 = inputParser;
 p0.addRequired('params'             , @isstruct);
 p0.addParameter('load_params'  , true, @islogical);
 p0.addParameter('store_params' , true, @islogical);
+p0.addParameter('session_type' , 'MRI', @(x) any(strcmp(x,{'BEHAVIOR','MRI'})));
 
 % Parse inputs
 p0.parse(params,varargin{:});
@@ -39,7 +40,7 @@ if load_params
         end
     end
     
-    d = dir(fullfile(vcd_rootPath,'workspaces','info',sprintf('time_table_master*.mat')));
+    d = dir(fullfile(vcd_rootPath,'workspaces','info',sprintf('time_table_master*%s*.mat',params.disp.name)));
     if isempty(d)
         error('[%s]: Can''t find time table file with subject session!\n', mfilename)
     elseif ~isempty(d(end).name)
@@ -57,7 +58,7 @@ else
     if ~isfield(params,'trials') || isempty(params.trials)
         
         % load trial info
-        d = dir(fullfile(vcd_rootPath,'workspaces','info','trials*.mat'));
+        d = dir(fullfile(vcd_rootPath,'workspaces','info',['trials*' session_type '*.mat']));
         
         if ~isempty(d(end).name)
             if length(d) > 1
@@ -95,12 +96,12 @@ else
     % Across a single session, each subject will experience the same
     % blocks and unique images
     
-    % WIDE SESSIONS
-    params.trials = vcd_allocateBlocksToRuns(params);
+
+    params.trials = vcd_allocateBlocksToRuns(params,session_type);
 
     %% We expand the condition master table and add all trial events (in units of presentationrate_hz frames), 
     % We also shuffle blocks within a run for each subject session
-    time_table_master = vcd_createRunTimeTables(params);
+    time_table_master = vcd_createRunTimeTables(params,session_type);
     
     params.time_table = time_table_master;
     

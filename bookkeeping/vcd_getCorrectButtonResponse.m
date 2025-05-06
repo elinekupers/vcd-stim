@@ -28,7 +28,7 @@ switch block_name
         % 4-PINKY  = OBJECT
         button_response = find(strcmp(table_row.stim_class_name(table_row.is_cued),{'gabor','dot','rdk','obj'}));
         if isempty(button_response) || button_response==0 || length(button_response) > 1
-            error('[%s]: Ill-defined response options for SCC-ALL!',mfilename)
+            error('[%s]: Ill-defined response options for %s!',mfilename,block_name)
         end
         
     case {'pc-gabor' }
@@ -41,7 +41,7 @@ switch block_name
         closer_to_vert = (params.stim.gabor.ori_deg < 45) | (params.stim.gabor.ori_deg > 135);
         assert(~isequal(closer_to_horz,closer_to_vert))
         if sum(cat(2,closer_to_horz,closer_to_vert))==0
-            error('[%s]: No response options for PC-GBR!',mfilename)
+            error('[%s]: No response options for %s!',mfilename,block_name)
         end
         answer_options = NaN(1,length(params.stim.gabor.ori_deg));
         answer_options(closer_to_horz) = 1; % closer to horizontal
@@ -60,7 +60,7 @@ switch block_name
         elseif table_row.stim2_delta(table_row.is_cued) > 0
             button_response = 2; % CW
         else
-            error('[%s]: Ill-defined button response for WM-GBR!',mfilename)
+            error('[%s]: Ill-defined button response for %s!',mfilename,block_name)
         end
         
     case {'ltm-all','ltm-gabor','ltm-rdk', 'ltm-dot','ltm-obj','ltm-ns'}
@@ -70,21 +70,33 @@ switch block_name
         % 
         % 1-INDEX  = YES
         % 2-MIDDLE = NO
-        if table_row.is_cued <= 2
-            idx = table_row.is_cued;
-        else
-            idx = 1; % center scene stimulus
-        end
+        button_response = 0;
         
-        if table_row.is_lure
-            button_response = 2; % NO
-        elseif table_row.stim2(idx) ~= table_row.ltm_stim_pair
-            button_response = 2; % NO
-        elseif table_row.stim2(idx) == table_row.ltm_stim_pair
-            button_response = 1; % YES
-        else
-            error('[%s]: Ill-defined button response for LTM-ALL!',mfilename)
-        end
+%         if table_row.is_cued <= 2
+%             idx = table_row.is_cued;
+%         else
+%             idx = 1; % center scene stimulus
+%         end
+%         
+%         if idx == 1
+%             [~,idx2] = ismember(table_row.stim_nr_left, params.stim.(table_row.stim_class_name{table_row.is_cued}).unique_im_nrs_specialcore);
+%         elseif idx == 2
+%             [~,idx2] = ismember(table_row.stim_nr_right,  params.stim.(table_row.stim_class_name{table_row.is_cued}).unique_im_nrs_specialcore);
+%         end
+%         
+%         ltm_pair = params.stim.(table_row.stim_class_name{table_row.is_cued}).ltm_pairs(idx2);
+%         
+%         if table_row.is_lure(idx)
+%             button_response = 2; % NO
+%         elseif isnan(table_row.stim2_im_nr(idx))
+%             button_response = 0; % NO
+%         elseif table_row.stim2_im_nr(idx) ~= ltm_pair
+%             button_response = 2; % NO
+%         elseif table_row.stim2_im_nr(idx) == ltm_pair
+%             button_response = 1; % YES
+%         else
+%             error('[%s]: Ill-defined button response for %s!',mfilename,block_name)
+%         end
 
     case {'img_all','img-gabor','img-rdk', 'img-dot','img-obj','img-ns'}
         % Imagery task - Gabors
@@ -99,9 +111,9 @@ switch block_name
             idx = 1; % center scene stimulus
         end
         answer_options  = unique(params.stim.(table_row.stim_class_name{idx}).imagery_quiz_images);
-        button_response = find(table_row.stim2(idx) == answer_options);
+        button_response = find(table_row.stim2_delta(idx) == answer_options);
         if isempty(button_response) || button_response==0
-            error('[%s]: No response options for IMG-ALL!',mfilename)
+            error('[%s]: No response options for %s!',mfilename,block_name)
         end
         
     case {'pc-rdk'   }
@@ -117,7 +129,7 @@ switch block_name
                           (params.stim.rdk.dots_direction > 315));
         assert(~isequal(closer_to_horz,closer_to_vert))
         if sum(cat(2,closer_to_horz,closer_to_vert))==0
-            error('[%s]: No response options for PC-RDK!',mfilename)
+            error('[%s]: No response options for %s!',mfilename,block_name)
         end
         
         answer_options = NaN(1,length(params.stim.rdk.dots_direction));
@@ -137,7 +149,7 @@ switch block_name
         elseif table_row.stim2_delta(table_row.is_cued) > 0
             button_response = 2; % CW
         else
-            error('[%s]: Ill-defined button response for WM-RDK!',mfilename)
+            error('[%s]: Ill-defined button response for %s!',mfilename,block_name)
         end
 
     case {'pc-dot'   }
@@ -154,7 +166,7 @@ switch block_name
             (params.stim.dot.ang_deg > 315));
         assert(~isequal(closer_to_horz,closer_to_vert))
         if sum(cat(2,closer_to_horz,closer_to_vert))==0
-            error('[%s]: No response options for PC-DOT!',mfilename)
+            error('[%s]: No response options for %s!',mfilename,block_name)
         end
         
         answer_options = NaN(1,length(params.stim.dot.ang_deg));
@@ -174,7 +186,7 @@ switch block_name
         elseif table_row.stim2_delta(table_row.is_cued) > 0
             button_response = 2; % CW
         else
-            error('[%s]: Ill-defined button response for WM-DOT!',mfilename)
+            error('[%s]: Ill-defined button response for %s!',mfilename,block_name)
         end
 
     case {'pc-obj'   }
@@ -188,7 +200,7 @@ switch block_name
         sideways = (params.stim.obj.facing_dir_deg < 45 | params.stim.obj.facing_dir_deg > 135);
         assert(~isequal(forward,sideways));
         if sum(cat(2,forward,sideways))==0
-            error('[%s]: No response options for PC-OBJ!',mfilename)
+            error('[%s]: No response options for %s!',mfilename,block_name)
         end
         answer_options = NaN(1,length(params.stim.obj.facing_dir_deg));
         answer_options(forward) = 1; % closer to FORWARD
@@ -219,7 +231,7 @@ switch block_name
         elseif (abs_rot-90) > 0 && rel_rot > 0 
             button_response = 1; %  {'leftward'};
         else
-            error('[%s]: Ill-defined response option for WM-OBJ!',mfilename)
+            error('[%s]: Ill-defined response option for %s!',mfilename,block_name)
         end
 
         
@@ -227,22 +239,22 @@ switch block_name
         % "What?" task - Objects
         % What is the object?
         % 
-        % 1-INDEX  = HUMAN/ANIMAL
-        % 2-MIDDLE = OBJECT
-        % 3-RING   = FOOD
+        % 1-INDEX  = HUMAN
+        % 2-MIDDLE = ANIMAL
+        % 3-RING   = OBJECT/FOOD
         % 4-PINKY  = PLACE/BUILDING
-        if ismember(table_row.super_cat_name(table_row.is_cued),params.stim.obj.super_cat(1:2))
-            button_response = 1; %  HUMAN/ANIMAL
+        if strcmp(table_row.super_cat_name(table_row.is_cued),params.stim.obj.super_cat(1))
+            button_response = 1; %  HUMAN
+        elseif strcmp(table_row.super_cat_name(table_row.is_cued),params.stim.obj.super_cat(2))
+            button_response = 2; %  ANIMAL
         elseif strcmp(table_row.super_cat_name(table_row.is_cued),params.stim.obj.super_cat(3))
-            if strcmp(table_row.basic_cat_name(table_row.is_cued),'food')
-                button_response = 3; %  FOOD
-            else
-                button_response = 2; %  OBJECT
-            end
+            button_response = 3; %  OBJECT
         elseif strcmp(table_row.super_cat_name(table_row.is_cued),params.stim.obj.super_cat(4))
+            button_response = 3; % FOOD
+        elseif ismember(table_row.super_cat_name(table_row.is_cued),params.stim.obj.super_cat(5))
             button_response = 4; % PLACE/BUILDING
         else
-            error('[%s]: Ill-defined button response for WHAT-OBJ!',mfilename)
+            error('[%s]: Ill-defined button response for %s!',mfilename,block_name)
         end
 
     case {'how-obj'  }
@@ -262,7 +274,7 @@ switch block_name
         elseif strcmp(table_row.affordance_name(table_row.is_cued),'observe')
             button_response = 4;
         else
-            error('[%s]: Ill-defined button response for HOW-OBJ!',mfilename)
+            error('[%s]: Ill-defined button response for %s!',mfilename,block_name)
         end
 
     case {'pc-ns'    }
@@ -276,7 +288,7 @@ switch block_name
         elseif strcmp(table_row.basic_cat_name{1},'outdoor')
             button_response = 2;
         else
-            error('[%s]: Ill-defined button response for PC-NS!',mfilename)
+            error('[%s]: Ill-defined button response %s!',mfilename,block_name)
         end
         
     case {'wm-ns'    }
@@ -295,7 +307,7 @@ switch block_name
         elseif table_row.stim2_delta(1) == 4 % 'hard_remove'
             button_response = 2;
         else
-            error('[%s]: Ill-defined button response for WM-NS!',mfilename)
+            error('[%s]: Ill-defined button response for %s!',mfilename,block_name)
         end
 
         
@@ -303,21 +315,21 @@ switch block_name
         % "What?" task - Scenes 
         % What is the dominant object?
         % 
-        % 1-INDEX  = HUMAN/ANIMAL
-        % 2-MIDDLE = OBJECT
-        % 3-RING   = FOOD
+        % 1-INDEX  = HUMAN
+        % 2-MIDDLE = ANIMAL
+        % 3-RING   = OBJECT/FOOD
         % 4-PINKY  = PLACE/BUILDING
-        if (strcmp(table_row.super_cat_name{1},params.stim.ns.super_cat{1}) || ...
-                strcmp(table_row.super_cat_name{1},params.stim.ns.super_cat{2}))
-            button_response = 1; %  HUMAN/ANIMAL
-        elseif strcmp(table_row.super_cat_name{1},params.stim.ns.super_cat{3})
-            button_response = 3; %  FOOD
-        elseif strcmp(table_row.super_cat_name{1},params.stim.ns.super_cat{4})
-            button_response = 2; %  OBJECT
+        if strcmp(table_row.super_cat_name{1},params.stim.ns.super_cat{1})
+            button_response = 1; %  HUMAN
+        elseif strcmp(table_row.super_cat_name{1},params.stim.ns.super_cat{2})
+            button_response = 2; %  ANIMAL
+        elseif strcmp(table_row.super_cat_name{1},params.stim.ns.super_cat{3}) || ...
+               strcmp(table_row.super_cat_name{1},params.stim.ns.super_cat{4})
+            button_response = 3; %  OBJECT/FOOD
         elseif strcmp(table_row.super_cat_name{1},params.stim.ns.super_cat{5})
             button_response = 4; % PLACE/BUILDING
         else
-            error('[%s]: Ill-defined button response for WHAT-NS!',mfilename)
+            error('[%s]: Ill-defined button response for %s!',mfilename,block_name)
         end
         
     case {'where-ns' }
@@ -335,7 +347,7 @@ switch block_name
         elseif ~cellfun(@isempty, regexp(table_row.sub_cat_name(1),'right'))
             button_response = 3;
         else
-            error('[%s]: Ill-defined button response for WHERE-NS!',mfilename)
+            error('[%s]: Ill-defined button response for %s!',mfilename,block_name)
         end
         
     case {'how-ns'   }
@@ -355,6 +367,6 @@ switch block_name
         elseif strcmp(table_row.affordance_name(1),'observe')
             button_response = 4;
         else
-            error('[%s]: Ill-defined button response for HOW-NS!',mfilename)
+            error('[%s]: Ill-defined button response for %s!',mfilename,block_name)
         end
 end

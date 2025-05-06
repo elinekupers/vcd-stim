@@ -26,6 +26,8 @@ function [p, condition_master, all_unique_im, all_cond] = vcd_createBlocksAndTri
 %  [store_params] : (optional) Store generated parameters or not.
 %                     Will store params in fullfile(vcd_rootPath,'workspaces','info');
 %                     Default: true
+%  [session_type] : (optional) Are we dealing with MRI or BEHAVIOR sessions
+%                     Default: 'MRI'
 %
 % OUTPUT:
 %  condition_master : N rows x M table that lists every unique image presented
@@ -83,6 +85,7 @@ p0 = inputParser;
 p0.addRequired('p'             , @isstruct);
 p0.addParameter('load_params'  , true, @islogical);
 p0.addParameter('store_params' , true, @islogical);
+p0.addParameter('session_type' , 'MRI', @(x) any(strcmp(x,{'BEHAVIOR','MRI'})));
 
 % Parse inputs
 p0.parse(p,varargin{:});
@@ -96,7 +99,7 @@ clear rename_me ff p0
 
 %% Load params if requested and we can find the file
 if load_params
-    d = dir(fullfile(vcd_rootPath,'workspaces','info',sprintf('trials_%s*.mat',p.disp.name)));
+    d = dir(fullfile(vcd_rootPath,'workspaces','info',sprintf('trials_%s_%s*.mat',p.disp.name,session_type)));
     fprintf('\n[%s]: Found %d trial .mat file(s)\n',mfilename,length(d));
     if ~isempty(d)
         if length(d) > 1
@@ -129,7 +132,7 @@ else % Recreate conditions and blocks and trials
     
     
     % Bookkeeping structs
-    all_unique_im     = struct();
+    all_unique_im   = struct();
     all_cond          = struct();
     condition_master  = table();
     
@@ -144,11 +147,16 @@ else % Recreate conditions and blocks and trials
         
         % Get corresponding task crossings
         bsc_idx = cell2mat(cellfun(@(x) strcmp(p.exp.stimclassnames,x), {stimClass_name}, 'UniformOutput', false));
-        task_crossings = find(p.exp.crossings(bsc_idx,:));
         
+        if strcmp(session_type,'MRI')
+            task_crossings = find( p.exp.crossings(bsc_idx,:));
+        elseif strcmp(session_type,'BEHAVIOR')
+            task_crossings = find(p.exp.n_unique_trial_repeats_behavior(bsc_idx,:)>0);
+        end
+                
         % Loop over each task crossing for this stim class
         for curr_task = 1:length(task_crossings)
-        
+
             % Define the unique images for Gabors
             [t_cond, n_unique_cases] = vcd_defineUniqueImages(p, stimClass_name);
             
@@ -157,7 +165,7 @@ else % Recreate conditions and blocks and trials
             % Add stimclass name and idx to temporary table
             t_cond.stim_class_name = repmat({stimClass_name}, size(t_cond,1),1);
             t_cond.stim_class      = repmat(stimClass_idx,    size(t_cond,1),1);
-        
+            
             % Add task name to temp table
             taskClass_name         = p.exp.taskclassnames{task_crossings(curr_task)};
             t_cond.task_class_name = repmat({taskClass_name},size(t_cond,1),1);
@@ -181,9 +189,9 @@ else % Recreate conditions and blocks and trials
             % stimulus feature of interest that receive priority. For
             % example, we want to make sure we present all 3 gabor
             % contrasts within a block at least once.
-            tbl = vcd_createConditionMaster(p, t_cond, n_trials_per_block);
+            tbl = vcd_createConditionMaster(p, t_cond, n_trials_per_block,session_type);
             
-            % --- Allocate trials to blocks ---            
+            % --- Allocate trials to blocks ---
             tbl.stim_class_unique_block_nr = NaN(size(tbl,1),1);
             tbl.block_local_trial_nr = NaN(size(tbl,1),1);
             
@@ -198,11 +206,11 @@ else % Recreate conditions and blocks and trials
                 tbl.stim_class_unique_block_nr(selected_trials) = block_nr;
                 tbl.block_local_trial_nr(selected_trials) = 1:length(selected_trials);
             end
-
+            
             % Concatete single stim-task crossing table to master table
             stim_table = cat(1,stim_table,tbl);
             
-        end % class idx
+        end % task class idx
         
         % Accumulate condition master and info
         all_cond.(stimClass_name) = stim_table;
@@ -212,8 +220,10 @@ else % Recreate conditions and blocks and trials
     
     
     % ---- IMPORTANT FUNCTION: Shuffle stimuli for SCC and LTM task ----
-    condition_master = vcd_shuffleStimForTaskClass(p,  'scc', condition_master, p.exp.block.n_trials_single_epoch);
-    condition_master = vcd_shuffleStimForTaskClass(p,  'ltm', condition_master, p.exp.block.n_trials_double_epoch);
+    condition_master = vcd_shuffleStimForTaskClass(p,  'scc', condition_master, p.exp.block.n_trials_single_epoch,session_type);
+    if strcmp(session_type,'MRI')
+        condition_master = vcd_shuffleStimForTaskClass(p,  'ltm', condition_master, p.exp.block.n_trials_double_epoch,session_type);
+    end
     
     % ---- IMPORTANT FUNCTION: Add correct button press ----
     button_response = NaN(size(condition_master,1),1);
@@ -232,7 +242,7 @@ else % Recreate conditions and blocks and trials
         fprintf('[%s]:Storing trial data..\n',mfilename)
         saveDir = fullfile(vcd_rootPath,'workspaces','info');
         if ~exist(saveDir,'dir'), mkdir(saveDir); end
-        save(fullfile(saveDir,sprintf('trials_%s_%s.mat',p.disp.name,datestr(now,30))),'condition_master','all_unique_im','all_cond')
+        save(fullfile(saveDir,sprintf('trials_%s_%s_%s.mat',p.disp.name,session_type,datestr(now,30))),'condition_master','all_unique_im','all_cond')
     end
     
     
@@ -241,7 +251,11 @@ else % Recreate conditions and blocks and trials
     % Stim class nr should match with params
     assert(isequal(unique(condition_master.stim_class)',[1:length(p.exp.stimclassnames),99]))
     % Task class nr should match with params
-    assert(isequal(unique(condition_master.task_class)',1:length(p.exp.taskclassnames)))
+    if strcmp(session_type,'MRI')
+        assert(isequal(unique(condition_master.task_class)',1:length(p.exp.taskclassnames)));
+    elseif strcmp(session_type,'BEHAVIOR')
+        assert(isequal(unique(condition_master.task_class)', find(any(p.exp.n_unique_trial_repeats_behavior,1))))
+    end
     % Cued vs uncued stimuli should be matched
     assert(isequal(sum(condition_master.is_cued==1),sum(condition_master.is_cued==2)))
     
@@ -262,12 +276,18 @@ else % Recreate conditions and blocks and trials
 
             unique_im_from_table(ii) = length(unique(tmp.stim_nr_left));
             
-            % lower IMG/LTM block contribution (we have less unique images)
-            adjusted_crossings(ii,6) = length(p.stim.(p.exp.stimclassnames{ii}).imagery_im_nr)/length(p.stim.(p.exp.stimclassnames{ii}).unique_im_nrs_core);
-            adjusted_crossings(ii,7) = length(p.stim.(p.exp.stimclassnames{ii}).imagery_im_nr)/length(p.stim.(p.exp.stimclassnames{ii}).unique_im_nrs_core);
-            
+            if strcmp(session_type,'MRI')
+                % lower IMG/LTM block contribution (we have less unique images)
+                adjusted_crossings(ii,6) = 0.5;
+                adjusted_crossings(ii,7) = 0.5;
+                nique_trial_repeats = p.exp.n_unique_trial_repeats_mri;
+            elseif strcmp(session_type,'BEHAVIOR') % NO LTM/IMG
+                adjusted_crossings(ii,6) = 0;
+                adjusted_crossings(ii,7) = 0;
+                unique_trial_repeats = p.exp.n_unique_trial_repeats_behavior;
+            end
             assert(isequal(size(tmp,1),...
-                sum(adjusted_crossings(ii,:).* unique_im_from_table(ii)) * p.exp.n_unique_trial_repeats(ii,:)))
+                sum(adjusted_crossings(ii,:).* unique_im_from_table(ii) .* unique_trial_repeats(ii,:))))
             
         else
             tmp = condition_master(any(~condition_master.is_catch & strcmp(condition_master.stim_class_name, unique_stim_class_names_in_table{ii}),2),:);
@@ -281,10 +301,18 @@ else % Recreate conditions and blocks and trials
                      tmp.stim_nr_right(strcmp(tmp.stim_class_name(:,2), unique_stim_class_names_in_table{ii}))];
                                             
             unique_im_from_table(ii) = length(unique(colsLR(:)));
+
             adjusted_crossings(ii,1) = 0.5;
-            adjusted_crossings(ii,6) = 2*length(p.stim.(p.exp.stimclassnames{ii}).unique_im_nrs_specialcore)/length(p.stim.(p.exp.stimclassnames{ii}).unique_im_nrs_core);
-            adjusted_crossings(ii,7) = 2*length(p.stim.(p.exp.stimclassnames{ii}).unique_im_nrs_specialcore)/length(p.stim.(p.exp.stimclassnames{ii}).unique_im_nrs_core);
-            assert(isequal(size(colsLR,1), sum(unique_im_from_table(ii).* adjusted_crossings(ii,:)) * p.exp.n_unique_trial_repeats(ii,:)));
+            if strcmp(session_type,'MRI')
+                adjusted_crossings(ii,6) = 2*length(p.stim.(p.exp.stimclassnames{ii}).unique_im_nrs_specialcore)/length(p.stim.(p.exp.stimclassnames{ii}).unique_im_nrs_core);
+                adjusted_crossings(ii,7) = 2*length(p.stim.(p.exp.stimclassnames{ii}).unique_im_nrs_specialcore)/length(p.stim.(p.exp.stimclassnames{ii}).unique_im_nrs_core);
+                unique_trial_repeats = p.exp.n_unique_trial_repeats_mri;
+            elseif strcmp(session_type,'BEHAVIOR') % NO LTM/IMG
+                adjusted_crossings(ii,6) = 0;
+                adjusted_crossings(ii,7) = 0;
+                unique_trial_repeats = p.exp.n_unique_trial_repeats_behavior;
+            end
+            assert(isequal(size(colsLR,1), sum(unique_im_from_table(ii).* adjusted_crossings(ii,:) .* unique_trial_repeats(ii,:))));
         end
     end
     
@@ -305,7 +333,7 @@ else % Recreate conditions and blocks and trials
     if p.verbose
         
         %%
-        vcd_visualizeMasterTable(condition_master, p.store_imgs);
+        vcd_visualizeMasterTable(condition_master, p.store_imgs,session_type);
         
         
         figure; set(gcf,'Position',[1,1,1200,300]);
@@ -315,7 +343,7 @@ else % Recreate conditions and blocks and trials
 %          set(gca,'XTick',[1:30]);
         box off;
         if p.store_imgs
-            saveFigsFolder = fullfile(vcd_rootPath,'figs','condition_master0');
+            saveFigsFolder = fullfile(vcd_rootPath,'figs',sprintf('condition_master0_%s',session_type));
             if ~exist(saveFigsFolder,'dir'); mkdir(saveFigsFolder); end
             filename = sprintf('vcd_totaluniqueim.png');
             print(gcf,'-dpng','-r300',fullfile(saveFigsFolder,filename));
@@ -329,7 +357,7 @@ else % Recreate conditions and blocks and trials
         set(gca,'YTick',[1:5],'YTickLabel', p.exp.stimclassnames);  set(gca,'XTick',[1:30]); title('Sum of unique im per stimulus class')
         box off;
         if p.store_imgs
-            saveFigsFolder = fullfile(vcd_rootPath,'figs');
+            saveFigsFolder = fullfile(vcd_rootPath,'figs',sprintf('condition_master0_%s',session_type));
             filename = sprintf('vcd_uniqueim_per_stimclass.png');
             print(gcf,'-dpng','-r300',fullfile(saveFigsFolder,filename));
         end
@@ -344,7 +372,7 @@ else % Recreate conditions and blocks and trials
         set(gca,'XTick',[0:25:110]); title('Sum of unique im per task class')
         box off;
         if p.store_imgs
-            saveFigsFolder = fullfile(vcd_rootPath,'figs');
+            saveFigsFolder = fullfile(vcd_rootPath,'figs',sprintf('condition_master0_%s',session_type));
             filename = sprintf('vcd_uniqueim_per_taskclass.png');
             print(gcf,'-dpng','-r300',fullfile(saveFigsFolder,filename));
         end
@@ -361,28 +389,29 @@ else % Recreate conditions and blocks and trials
         set(gca,'YTick',[1:p.exp.block.n_trials_single_epoch]); title('SCC stimulus class distribution')
         box off;
         if p.store_imgs
-            saveFigsFolder = fullfile(vcd_rootPath,'figs');
+            saveFigsFolder = fullfile(vcd_rootPath,'figs',sprintf('condition_master0_%s',session_type));
             filename = sprintf('vcd_scc_stimulusclass_trialdistr.png');
             print(gcf,'-dpng','-r300',fullfile(saveFigsFolder,filename));
         end
         
-        % Stim class distribution in LTM blocks
-        foo = [condition_master.stim_nr_left((condition_master.task_class==6),:), ...
-            condition_master.stim_nr_right((condition_master.task_class==6),:)]';
-        figure; set(gcf,'Position',[1,1,1200,300])
-        imagesc(foo)
-        xlabel('Trial nr'); ylabel('left vs right stim');
-        C = parula(max(foo(:))); colormap(C); set(gca,'CLim',[min(foo(:)),max(foo(:))])
-        cb = colorbar; cb.Label.String = 'unique im nr';
-        cb.Ticks = [min(foo(:)):10:max(foo(:))];
-        set(gca,'YTick',[1:p.exp.block.n_trials_single_epoch]); title('LTM stimulus class distribution')
-        box off;
-        if p.store_imgs
-            saveFigsFolder = fullfile(vcd_rootPath,'figs');
-            filename = sprintf('vcd_ltm_stimulusclass_trialdistr.png');
-            print(gcf,'-dpng','-r300',fullfile(saveFigsFolder,filename));
+        if strcmp(session_type,'MRI')
+            % Stim class distribution in LTM blocks
+            foo = [condition_master.stim_nr_left((condition_master.task_class==6),:), ...
+                condition_master.stim_nr_right((condition_master.task_class==6),:)]';
+            figure; set(gcf,'Position',[1,1,1200,300])
+            imagesc(foo)
+            xlabel('Trial nr'); ylabel('left vs right stim');
+            C = parula(max(foo(:))); colormap(C); set(gca,'CLim',[min(foo(:)),max(foo(:))])
+            cb = colorbar; cb.Label.String = 'unique im nr';
+            cb.Ticks = [min(foo(:)):10:max(foo(:))];
+            set(gca,'YTick',[1:p.exp.block.n_trials_single_epoch]); title('LTM stimulus class distribution')
+            box off;
+            if p.store_imgs
+                saveFigsFolder = fullfile(vcd_rootPath,'figs',sprintf('condition_master0_%s',session_type));
+                filename = sprintf('vcd_ltm_stimulusclass_trialdistr.png');
+                print(gcf,'-dpng','-r300',fullfile(saveFigsFolder,filename));
+            end
         end
-        
     end
 end % load params
 

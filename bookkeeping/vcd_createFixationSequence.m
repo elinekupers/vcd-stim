@@ -10,8 +10,13 @@ end
 % trim in case we accidentally went overtime
 f_fix = f_fix(f_fix<run_dur);
 
-% Update luminance of fixation dot randomly (WITH Oreplacement)
-lum_shuffled_idx = datasample(double(params.stim.fix.dotlum),length(f_fix)+1,'Replace',false);
+% Update luminance of fixation dot randomly (WITHOUT replacement)
+lum_shuffled_idx = [];
+for kk = 1:(1+ceil(length(f_fix)/length(params.stim.fix.dotlum)))
+    lum_shuffled_idx = cat(2,lum_shuffled_idx, datasample(double(params.stim.fix.dotlum),length(params.stim.fix.dotlum),'Replace',false));
+end
+
+lum_shuffled_idx = lum_shuffled_idx(1:(length(f_fix)+1));
 
 % figure out when dot is brighter, dimmer or the same
 % relative to previous time point
@@ -25,7 +30,7 @@ response_fix_vex = response_fix_vex(r_ai);
 response_fix_vex(1) = 0; % set first lum to no response;
 
 % Add pre and post fixation sequence duration
-dur_fix_frames = [f_fix(1), diff(f_fix), (run_dur-f_fix(end)+1)];
+dur_fix_frames = [f_fix(1), diff(f_fix), (run_dur-f_fix(end))];
 fix_timing = []; fix_abs_lum = []; fix_rel_lum = [];
 for ff = 1:length(dur_fix_frames)
     fix_timing = cat(1, fix_timing, Expand(ff, 1, dur_fix_frames(ff)));

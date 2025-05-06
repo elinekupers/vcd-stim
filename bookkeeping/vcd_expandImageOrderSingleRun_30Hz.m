@@ -25,6 +25,7 @@ p0.addParameter('fixsoafun'            , []  , @(x) isa(x,'function_handle'));
 p0.addParameter('cdsoafun'             , []  , @(x) isa(x,'function_handle'));
 p0.addParameter('load_params'          , true, @islogical);
 p0.addParameter('store_params'         , true, @islogical);
+p0.addParameter('session_type', 'MRI', @(x) ismember(x,{'MRI','BEHAVIOR'}));
 
 % Parse inputs
 p0.parse(params, time_table_master, subject_nrs, session_nrs, run_nrs, varargin{:});
@@ -49,20 +50,20 @@ end
 
 %% Check subject, session and run nrs to process
 
-% Check if subject nr is member of total subjects
-subj_ok = find(ismember([1:params.exp.total_subjects],subject_nrs));
-if isempty(subj_ok)
-    error('[%s]: Subject number is outside the range!\n',mfilename);
+% Check if ses nr is member of all sessions
+if strcmp(session_type, 'MRI')
+    ses_ok = ismember([1:params.exp.session.n_total_sessions],session_nrs);
+    run_ok = ismember([1:params.exp.session.deep.n_runs_per_session],run_nrs);
+    
+elseif strcmp(session_type, 'BEHAVIOR')
+    ses_ok = ismember([1:params.exp.session.n_behavioral_sessions],session_nrs);
 end
 
-% Check if ses nr is member of all sessions
-ses_ok = find(ismember([1:params.exp.n_sessions],session_nrs));
 if isempty(ses_ok)
     error('[%s]: Session number is outside the range!\n',mfilename);
 end
 
 % If left undefined, we will load images for first session
-run_ok = find(ismember([1:params.exp.n_runs_per_session],run_nrs));
 if isempty(run_ok)
     error('[%s]: Run number is outside the range!\n',mfilename);
 end
@@ -142,33 +143,18 @@ else
                 assert(strcmp(subj_run.event_name(end),'post-blank'))
                 
                 % get run duration (in frames)
-                run_dur = subj_run.event_end(end);
+                run_dur = subj_run.event_end(end)+2;
                 
                 assert((run_dur*params.stim.presentationrate_hz)/3600 < 600) % ensure a run is of reasonable length, and is not longer than 10 min
                 
                 % copy condition order table headers and scrub content
-                sz = [run_dur+1 size(subj_run(1,:),2)];
+                sz = [run_dur size(subj_run(1,:),2)];
+                subj_run_frames = vcd_preallocateNaNTable(sz(1), sz(2), subj_run(1,:), []);
+                
                 max_merge_cols = find(strcmp(subj_run.Properties.VariableNames,'islure'));
-                varTypes = varfun(@class,subj_run(1,:),'OutputFormat','cell');
-                subj_run_frames = table('Size',sz,'VariableTypes',varTypes, 'VariableNames',subj_run.Properties.VariableNames);
-                for vt = 1:length(varTypes)
-                    if vt <= max_merge_cols
-                        if strcmp(varTypes(vt),'double')
-                            subj_run_frames.(subj_run.Properties.VariableNames{vt}) = NaN(sz(1),2);
-                        elseif strcmp(varTypes(vt),'cell')
-                            subj_run_frames.(subj_run.Properties.VariableNames{vt}) = cell(sz(1),2);
-                        end 
-                    else
-                        if strcmp(varTypes(vt),'double')
-                            subj_run_frames.(subj_run.Properties.VariableNames{vt}) = NaN(sz(1),1);
-                        elseif strcmp(varTypes(vt),'cell')
-                            subj_run_frames.(subj_run.Properties.VariableNames{vt}) = cell(sz(1),1);
-                        end
-                    end
-                end
-
+                
                 % expand table with info about frame timing
-                subj_run_frames.frame_nr   = [0:run_dur]';
+                subj_run_frames.frame_nr   = [0:(run_dur-1)]';
                 subj_run_frames.images     = cell(size(subj_run_frames,1),2);
                 subj_run_frames.masks      = cell(size(subj_run_frames,1),2);
                 subj_run_frames.fix_abs_lum = NaN(size(subj_run_frames,1),1);
@@ -218,112 +204,101 @@ else
                 im_nr = 1;
                 frame_counter = 2;
                 
-                
                 for ii = 1:length(subj_run.event_id)
                     
+                    % EYETRACKING TARGETS: 990 = center circle, 991:995 = saccade targets, 996 = pupil
+                    if ismember(subj_run.event_id(ii),[990:996])
+                        
+                        % get frame nrs
+                        nframes = round(subj_run.event_dur(ii));
+                        curr_frames = frame_counter:(frame_counter+nframes-1);
+                        
+                        % repeat row in table and add to framelocked table
+                        subj_run_frames(curr_frames,1:size(subj_run,2)) = repmat(subj_run(ii,:), nframes,1);
+                        
+                        %% TODO 
+                        %ADD EYETRACKING IMAGES
+                        subj_run_frames.images(curr_frames,:) = repmat({NaN}, length(curr_frames),2);
+                        subj_run_frames.masks(curr_frames,:)  = repmat({NaN}, length(curr_frames),2);
+                        
                     % STIMULI:  91 = Stim interval 1, 92 = Stim interval 2,
-                    if (subj_run.event_id(ii) == 91 || subj_run.event_id(ii) == 92) 
+                    elseif (subj_run.event_id(ii) == 91 || subj_run.event_id(ii) == 92)
                         
+                        % get frame nrs
+                        nframes = round(subj_run.event_dur(ii));
+                        curr_frames = frame_counter:(frame_counter+nframes-1);
                         
-                        % grab pair of stim in case of left/right stimuli
-                        if subj_run.stimloc(ii)==1 % 1-left & 2-right stim
-                            % and merge left/right stimuli into one row
-                            t_tmp = table();
-                            colNames = subj_run.Properties.VariableNames;
-                            for cn = 1:size(subj_run,2)
-                                if cn <= max_merge_cols
-                                    if iscell(subj_run(ii,cn))
-                                        t_tmp.(colNames{cn}) = {table2array(subj_run{ii,cn}),table2array(subj_run{ii+1,cn})};
-                                    else
-                                        t_tmp.(colNames{cn}) = [table2array(subj_run(ii,cn)),table2array(subj_run(ii+1,cn))];
-                                    end
-                                else
-                                    t_tmp.(colNames{cn}) = table2array(subj_run(ii,cn));
-                                end
-                            end
-                            
-                        elseif subj_run.stimloc(ii)==3
+                        % repeat row in table and add to framelocked table
+                        subj_run_frames(curr_frames,1:size(subj_run,2)) = repmat(subj_run(ii,:), nframes,1);
+                        
 
-                            % repeat row in table and add to framelocked table
-                            t_tmp = table();
-                            colNames = subj_run.Properties.VariableNames;
-                            for cn = 1:size(subj_run,2) % up to stim2 col
-                                if cn <= max_merge_cols
-                                    if iscell(subj_run(ii,cn))
-                                        if isempty(subj_run(ii,cn))
-                                            t_tmp.(colNames{cn}) = {repmat(table2array(subj_run{ii,cn}),1,2)};
-                                        else
-                                            t_tmp.(colNames{cn}) = {table2array(subj_run{ii,cn}),NaN};
-                                        end
-                                    else
-                                        if isempty(subj_run(ii,cn))
-                                            t_tmp.(colNames{cn}) = repmat(table2array(subj_run(ii,cn)),1,2);
-                                        else
-                                            t_tmp.(colNames{cn}) = [table2array(subj_run(ii,cn)),NaN];
-                                        end
-                                    end
-                                else
-                                    t_tmp.(colNames{cn}) = table2array(subj_run(ii,cn));
+                        % insert pixel image (uint8)
+                        if any(strcmp(subj_run.stim_class_name(ii,:),{'rdk'})) && ((ndims(run_images{im_nr,1}) == 4) || (ndims(run_images{im_nr,2}) == 4)) % we are dealing with rdk, which has time dim
+                            
+                            nsides = find(strcmp(subj_run.stim_class_name(ii,:),{'rdk'})==true);
+                            
+                            for side = 1:length(nsides)
+                            
+                                rdk_images(:,side) = squeeze(mat2cell(run_images{im_nr,side}, size(run_images{im_nr,side},1), ...
+                                                          size(run_images{im_nr,side},2), size(run_images{im_nr,side},3), ones(1,size(run_images{im_nr,side},4))));
+                            end
+                            
+                            rdk_images2 = cell(nframes,2);
+                            if nsides == [1,2]
+                                for oob = 1:size(rdk_images,1)
+                                    rdk_images2(oob,:) = [rdk_images(oob,1),rdk_images(oob,2)];
+                                end
+                            elseif nsides == 1
+                                for oob = 1:size(rdk_images,1)
+                                    rdk_images2(oob,:) = [rdk_images(oob,1),run_images(im_nr,2)];
+                                end
+                            elseif nsides == 2
+                                for oob = 1:size(rdk_images,1)
+                                    rdk_images2(oob,:) = [run_images(im_nr,1),rdk_images(oob,2)];
                                 end
                             end
-                        end
                             
-                    % get frame nrs
-                    nframes = round(subj_run.event_dur(ii));
-                    curr_frames = frame_counter:(frame_counter+nframes-1);
-                    
-                    % repeat row in table and add to framelocked table
-                    subj_run_frames(curr_frames,1:size(subj_run,2)) = repmat(t_tmp, nframes,1);
-                    
-                    % insert pixel image (uint8)
-                    if strcmp(subj_run.stim_class_name(ii),{'rdk'}) && ndims(run_images{im_nr,1}) == 4 % we are dealing with rdk, which has time dim
-                        
-                        rdk_images = [squeeze(mat2cell(run_images{im_nr,1}, size(run_images{im_nr,1},1),size(run_images{im_nr,1},2),size(run_images{im_nr,1},3),ones(1,size(run_images{im_nr,1},4)))), ...
-                            squeeze(mat2cell(run_images{im_nr,2}, size(run_images{im_nr,2},1),size(run_images{im_nr,2},2),size(run_images{im_nr,2},3), ones(1,size(run_images{im_nr,2},4))))];
-                        for oob = 1:size(rdk_images,1)
-                            rdk_images2{oob} = [rdk_images(oob,1),rdk_images(oob,2)];
+                            if size(rdk_images2,1) < size(rdk_images2,2)
+                                rdk_images2 = rdk_images2';
+                            end
+                            f_im    = rdk_images2;
+                            f_masks = repmat(run_alpha_masks(im_nr,:), nframes, 1);
+                            
+                        else
+                            f_im     = repmat(run_images(im_nr,:),nframes, 1);
+                            f_masks  = repmat(run_alpha_masks(im_nr,:), nframes, 1);
                         end
                         
-                        if size(rdk_images2,1) < size(rdk_images2,2)
-                            rdk_images2 = rdk_images2';
-                        end
-                        f_im    = rdk_images2;
-                        f_masks = repmat(run_alpha_masks(im_nr,:), nframes, 1);
-                    else
-                        f_im    = repmat(run_images(im_nr,:),nframes, 1);
-                        f_masks  = repmat(run_alpha_masks(im_nr,:), nframes, 1);
-                    end
-                    
-                    im_nr = im_nr+1;
-                            
-                    % add images to subject frame table
-                    subj_run_frames.images(curr_frames,:) = f_im;
-                    subj_run_frames.masks(curr_frames,:)  = f_masks;
-                    
-                    % APPLY CONTRAST DECREMENT
-                    if strcmp(subj_run.task_class_name(ii),'cd')
-                        % 50% change we will actually apply the contrast
-                        % decrement change to stimulus
-                        cd_change = false;
+                        im_nr = im_nr+1;
                         
-                        if rand(1)>params.stim.cd.prob
-                            cd_change = true;
+                        % add images to subject frame table
+                        subj_run_frames.images(curr_frames,:) = f_im;
+                        subj_run_frames.masks(curr_frames,:)  = f_masks;
+                        
+                        % APPLY CONTRAST DECREMENT
+                        if strcmp(subj_run.task_class_name(ii),'cd')
+                            % 50% change we will actually apply the contrast
+                            % decrement change to stimulus
+                            cd_change = false;
                             
-                            [f_im_cd, c_onset] = vcd_applyContrastDecrement(params, cdsoafun, subj_run.stim_class{ii}, f_im);
-                            subj_run_frames.images(curr_frames,:) = f_im_cd;
-                            
-                            f_cd = c_onset:(c_onset+length(params.stim.cd.t_gauss)-1);
-                            
-                            % log decrement in contrast column
-                            subj_run_frames.contrast(curr_frames(f_cd)) = params.stim.cd.t_gauss;
-                            
-                            % Add button response to start of decrement onset
-                            subj_run_frames.button_response(curr_frames(c_onset)) = 1; % yes there was a change
-                            
-                            
-                        end
-                    end % if cd
-                    
+                            if rand(1)>params.stim.cd.prob
+                                cd_change = true;
+                                
+                                [f_im_cd, c_onset] = vcd_applyContrastDecrement(params, cdsoafun, subj_run.stim_class_name{ii,1}, f_im);
+                                subj_run_frames.images(curr_frames,:) = f_im_cd;
+                                
+                                f_cd = c_onset:(c_onset+length(params.stim.cd.t_gauss)-1);
+                                
+                                % log decrement in contrast column
+                                subj_run_frames.contrast(curr_frames(f_cd)) = params.stim.cd.t_gauss;
+                                
+                                % Add button response to start of decrement onset
+                                subj_run_frames.button_response(curr_frames(c_onset)) = 1; % yes there was a change
+                                
+                                
+                            end
+                        end % if cd
+                        
                         
                     else % NON-STIM EVENTS
                         
@@ -332,29 +307,7 @@ else
                         curr_frames = frame_counter:(frame_counter+nframes-1);
                         
                         % repeat row in table and add to framelocked table
-                        t_tmp = table(); 
-                        colNames = subj_run.Properties.VariableNames;
-                        for cn = 1:size(subj_run,2) % up to stim2 col
-                            if cn <= max_merge_cols 
-                                if iscell(subj_run(ii,cn))
-                                    if isempty(subj_run(ii,cn))
-                                        t_tmp.(colNames{cn}) = {repmat(table2array(subj_run{ii,cn}),1,2)};
-                                    else
-                                        t_tmp.(colNames{cn}) = {table2array(subj_run{ii,cn}),NaN};
-                                    end
-                                else
-                                    if isempty(subj_run(ii,cn))
-                                        t_tmp.(colNames{cn}) = repmat(table2array(subj_run(ii,cn)),1,2);
-                                    else
-                                        t_tmp.(colNames{cn}) = [table2array(subj_run(ii,cn)),NaN];
-                                    end
-                                end
-                            else
-                                t_tmp.(colNames{cn}) = table2array(subj_run(ii,cn));
-                            end
-                        end
-                            
-                        subj_run_frames(curr_frames,1:size(subj_run,2)) = repmat(t_tmp, nframes,1);
+                        subj_run_frames(curr_frames,1:size(subj_run,2)) = repmat(subj_run(ii,:), nframes,1);
                         
                         % update timing
                         subj_run_frames.event_dur(curr_frames) = 1;
@@ -373,12 +326,14 @@ else
                         
                         
                         if subj_run_frames.event_id(curr_frames(1)) == params.exp.block.response_ID % response window
-                            if strcmp(subj_run_frames.task_class_name(curr_frames(1)-1),'cd') && ~cd_change
-                                % Add button response to start of decrement onset
-                                subj_run_frames.button_response(curr_frames) = 2; % button 2: no there was a change
-                            else
-                                button_response =  vcd_image2buttonresponse(params, subj_run_frames(curr_frames(1)-1,:));
-                                subj_run_frames.button_response(curr_frames) = button_response;
+                            if strcmp(subj_run_frames.task_class_name(curr_frames(1)-1),'cd')
+                                if ~cd_change
+                                    % Add button response: no
+                                    subj_run_frames.button_response(curr_frames) = 2; % button 2: no there was a change
+                                elseif cd_change
+                                    % Add button response: yes
+                                    subj_run_frames.button_response(curr_frames) = 1; % button 1: yes there was a change
+                                end
                             end
                         end
                         
@@ -389,10 +344,10 @@ else
                 
                 fix_block = find(strcmp(subj_run_frames.stim_class_name,'fix'));
                 if  ~isempty(fix_block)
-                    fix_block_nrs = unique(subj_run_frames.subj_within_run_block_nr(fix_block,:));
+                    fix_block_nrs = unique(subj_run_frames.block_nr(fix_block,:));
                     
                     for ff = 1:length(fix_block_nrs)
-                        fix_block_frames = subj_run_frames.subj_within_run_block_nr==fix_block_nrs(ff);
+                        fix_block_frames = subj_run_frames.block_nr==fix_block_nrs(ff);
                         subj_run_frames.button_response(fix_block_frames) = subj_run_frames.fix_button_response(fix_block_frames);
                     end
                 end
@@ -406,7 +361,7 @@ else
                     save(fullfile(saveDir, ...
                         sprintf('subj%03d_ses%02d_run%02d_frames_%s_%s.mat', ...
                         subject_nrs(sj), session_nrs(ses), run_nrs(rr), params.disp.name, datestr(now,30))), ...
-                        'subj_run_frames')
+                        'subj_run_frames','-v7.3')
                 end
                 
                 

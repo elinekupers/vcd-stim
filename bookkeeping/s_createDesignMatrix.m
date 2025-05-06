@@ -49,11 +49,20 @@ params.store_imgs     = true; % store visualization figures
 params.saveFigsFolder = fullfile(vcd_rootPath,'figs'); % where to store visualization figures
 
 % Get display params
-dispname = '7TAS_BOLDSCREEN32'; % Choose from: '7TAS_BOLDSCREEN32' or 'KKOFFICE_AOCQ3277' or 'EKHOME_ASUSVE247' or 'PPROOM_EIZOFLEXSCAN'
-params.disp   = vcd_getDisplayParams(dispname);
+dispname    = 'PPROOM_EIZOFLEXSCAN'; % Choose from: '7TAS_BOLDSCREEN32' or 'KKOFFICE_AOCQ3277' or 'EKHOME_ASUSVE247' or 'PPROOM_EIZOFLEXSCAN'
+params.disp = vcd_getDisplayParams(dispname);
+
+% Infer session type
+if strcmp(dispname,'7TAS_BOLDSCREEN32')
+    session_type = 'MRI';
+elseif strcmp(dispname,'PPROOM_EIZOFLEXSCAN')
+    session_type = 'BEHAVIOR';
+else
+    session_type = 'MRI';
+end
 
 % Get stimulus parameters
-params.load_params                 = false; % load stored params
+params.load_params                 = true; % load stored params
 params.store_params                = true;
 
 % SETUP RNG
@@ -85,9 +94,11 @@ params.exp    = vcd_getSessionParams('disp_name', params.disp.name, ...
 % * vcd_defineUniqueImages
 % * vcd_createConditionMaster
 % * vcd_shuffleStimForTaskClass
+params.verbose = false;
 [params, condition_master, all_unique_im, all_cond] = ...
             vcd_createBlocksAndTrials(params,'load_params', params.load_params, ...
-                                          'store_params', params.store_params);
+                                          'store_params', params.store_params, ...
+                                          'session_type', session_type);
 params.trials =  condition_master;
 
 %% Create/Load miniblocks into runs and sessions, shuffle blocks within a run for each subject's run
@@ -98,8 +109,9 @@ params.trials =  condition_master;
 % This function contains the following important steps/functions:
 % * vcd_allocateBlocksToRuns
 % * vcd_createRunTimeTables
-[params,time_table_master] = vcd_createSessions(params,'load_params', false, ...params.load_params, ...
-                                          'store_params', params.store_params);
+[params,time_table_master] = vcd_createSessions(params,'load_params',params.load_params, ...
+                                                       'store_params', params.store_params, ...
+                                                       'session_type', session_type);
                                       
                                       
 %% Select unique image for a given subject run
@@ -122,7 +134,7 @@ run_nrs     = 1;%:params.exp.n_runs_per_session;
 
 %% Define onset functions for fixation change and contrast decrement
 % Fixation order and fixation
-fixsoafun = @() round(params.stim.fix.dotmeanchange + (params.stim.fix.dotchangeplusminus*(2*(rand-.5))));
+fixsoafun = @() round(params.stim.fix.dotmeanchange);
 
 % Contrast decrement gaussian time window onset
 cdsoafun = @() round(params.stim.cd.meanchange + params.stim.cd.changeplusminus*(2*(rand-.5)));

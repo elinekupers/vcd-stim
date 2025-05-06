@@ -1,4 +1,4 @@
-function fH = vcd_visualizeMasterTable(master_table,store_imgs)
+function fH = vcd_visualizeMasterTable(master_table,store_imgs, session_type)
 
 % set up figure basics
 makeprettyfigures;
@@ -126,7 +126,7 @@ for jj = 1:length(unique(master_table.stim_class))
                 end
             end
             if store_imgs
-                saveFigsFolder = fullfile(vcd_rootPath,'figs','condition_master0');
+                saveFigsFolder = fullfile(vcd_rootPath,'figs',sprintf('condition_master0_%s',session_type));
                 if ~exist(saveFigsFolder,'dir'); mkdir(saveFigsFolder); end
                 filename = sprintf('vcd_stimclass%02d_%s.png', jj, colName);
                 print(fH,'-dpng','-r300',fullfile(saveFigsFolder,filename));

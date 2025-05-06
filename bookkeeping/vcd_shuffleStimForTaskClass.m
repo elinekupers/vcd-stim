@@ -1,4 +1,4 @@
-function master_table_out = vcd_shuffleStimForTaskClass(params, task_class_name_to_shuffle, master_table, nr_of_trials_per_block)
+function master_table_out = vcd_shuffleStimForTaskClass(params, task_class_name_to_shuffle, master_table, nr_of_trials_per_block, session_type)
 %% VCD function to combine and shuffle stimulus classes for SCC/LTM trials
 %   master_table_out = vcd_shuffleStimForTaskClass(params, task_class_name_to_shuffle, master_table, nr_of_trials_per_block)
 %
@@ -25,6 +25,9 @@ function master_table_out = vcd_shuffleStimForTaskClass(params, task_class_name_
 % * master_table                : (table) giant table with stimulus and trial definitions
 % * nr_of_trials_per_block      : (int) nr of trials for each scc or ltm block.
 %                                   Expecting either 8 or 4 trials/block.
+% * session_type                : (str) is this a behavioral or mri
+%                                   session? choose from 'MRI' or
+%                                   'BEHAVIOR'
 %
 % OUTPUTS:
 % * master_table_out            : (table) giant table, where scc blocks 
@@ -60,8 +63,8 @@ for kk = 1:length(cued_stim_loc) % left, right, neutral
         % columns contain different stimulus classes
         n_leftovers = mod(size(m0_center_img_nr,1),nr_of_trials_per_block);
         if n_leftovers > 0
-            leftovers_img_nr = m0_center_img_nr(end-(n_leftovers-1));
-            leftovers_sub    = m0_sub(end-(n_leftovers-1));
+            leftovers_img_nr = m0_center_img_nr((end-(n_leftovers-1)):end);
+            leftovers_sub    = m0_sub((end-(n_leftovers-1)):end);
             tmp_img_nr_center_rz  = reshape(m0_center_img_nr(1:(size(m0_center_img_nr,1)-n_leftovers)),[],nr_of_trials_per_block);
             tmp_sub_rz            = reshape(m0_sub(1:(size(m0_sub,1)-n_leftovers)),[],nr_of_trials_per_block);
         else
@@ -196,6 +199,24 @@ combined_trial_shuffleAB1 = permute(combined_trial_shuffleAB0,[3,1,2]);  % 320 t
 % a right cued trial in the second row.
 combined_trial_shuffleAB2 = reshape(combined_trial_shuffleAB1, [], size(combined_trial_shuffleAB1,3)); % 2 cuedir x 320 trials x 2 loc (l/r) --> 640 trials x 2 loc (l/r)
 
+% for LTM: check that column lengths is the same as sum of repeats * special core
+% stimuli
+if strcmp(session_type, 'MRI')
+    unique_trial_repeats = params.exp.n_unique_trial_repeats_mri;
+else
+    unique_trial_repeats = params.exp.n_unique_trial_repeats_behavior;
+end
+    
+if strcmp(task_class_name_to_shuffle,{'ltm'})
+    assert(isequal(size(combined_trial_shuffleAB2,1), ...
+    unique(unique_trial_repeats(1:4,strcmp(task_class_name_to_shuffle,params.exp.taskclassnames)))  * ... 23 repeats
+    (2*(length(params.stim.all_specialcore_im_nrs)-length(params.stim.ns.unique_im_nrs_specialcore))))); % 8*4 (=32) * 2 (double nr of repeats)
+else
+    assert(isequal(size(combined_trial_shuffleAB2,1), ...
+    sum(unique_trial_repeats(1:4,strcmp(task_class_name_to_shuffle,params.exp.taskclassnames))'  .* ... nr of repeats
+    [length(params.stim.gabor.unique_im_nrs_core),length(params.stim.rdk.unique_im_nrs_core),... nr of unique core images
+    length(params.stim.dot.unique_im_nrs_core),length(params.stim.obj.unique_im_nrs_core) ]))); % 
+end
 % shuffle order of uncued/cued
 shuffle_vec = shuffle_concat(1:nr_of_trials_per_block,size(combined_trial_shuffleAB2,1)/nr_of_trials_per_block); % 640 trials (1-8 indices)
 shuffle_vec = reshape(shuffle_vec, nr_of_trials_per_block,[]); % 8 trials x 80 blocks
@@ -204,13 +225,7 @@ shuffle_vec = shuffle_vec(:);
 combined_trial_shuffleAB3 = combined_trial_shuffleAB2(shuffle_vec,:);
 
 if exist('sub_shuffle_center','var')
-%     % shuffle trial order of neutral cued within a block
-%     shuffle_vec = shuffle_concat(1:nr_of_trials_per_block,size(sub_shuffle_center,1)/nr_of_trials_per_block); % 640 trials (1-8 indices)
-%     shuffle_vec = reshape(shuffle_vec, nr_of_trials_per_block,[]); % 8 trials x 80 blocks
-%     shuffle_vec = shuffle_vec + [[0:(size(shuffle_vec,2)-1)].*nr_of_trials_per_block]; % 8 trials x 80 blocks (continuous counting)
-%     shuffle_vec = shuffle_vec(:);
-%     sub_shuffle_center2 = sub_shuffle_center(shuffle_vec);
-    
+    assert(isequal(size(sub_shuffle_center,1), (length(params.stim.ns.unique_im_nrs_specialcore)*unique_trial_repeats(5,strcmp(task_class_name_to_shuffle,params.exp.taskclassnames)))))
     % add column of nans to match two column structure for left/right
     % matrix
     sub_shuffle_center2 = cat(2,sub_shuffle_center,NaN(size(sub_shuffle_center)));
@@ -226,8 +241,7 @@ if exist('sub_shuffle_center','var')
 else
     combined_trial_shuffleABC = combined_trial_shuffleAB3;
 end
-   
-
+  
 
 % APPLY THE SHUFFLE!
 shuffled_master_table = table();

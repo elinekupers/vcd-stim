@@ -18,8 +18,6 @@ if strcmp(stim_class,'ns')
         sz0 = size(tmp_im);
         
         if ndims(tmp_im)==3 && size(tmp_im,3)==4
-            has_mask = true;
-            tmp_im_mask = tmp_im(:,:,4);
             tmp_im = tmp_im(:,:,1:3);
         end
         
@@ -31,11 +29,6 @@ if strcmp(stim_class,'ns')
         % subtract the mean luminance of this scene
         tmp_im_c = ((tmp_im_norm-mn_g).*params.stim.cd.t_gauss(tt)) + mn_g;
         tmp_im_c = uint8(255.*sqrt(tmp_im_c)); % bring back to 0-255
-        
-        if has_mask
-            tmp_im_c = cat(3,tmp_im_c,tmp_im_mask);
-            has_mask = false;
-        end
         
         output_im{tt,1} = tmp_im_c;
     end
@@ -53,11 +46,9 @@ else % Gabors, RDKs, Single dot, Objects
         
             % Check if there is an alpha mask in fourth dim
             if ndims(tmp_im)==3 && size(tmp_im,3)==4
-                has_mask = true;
-                tmp_im_mask = tmp_im(:,:,4);
                 tmp_im = tmp_im(:,:,1:3);
             end
-        
+            
             % Get onset of contrast decrement within the
             % stimulus period
             c_onset = feval(cdsoafun);
@@ -70,10 +61,6 @@ else % Gabors, RDKs, Single dot, Objects
                 tmp_im_c = tmp_im_c.*params.stim.cd.t_gauss(tt); % scale
                 tmp_im_c = uint8(254.*sqrt(tmp_im_c))+1; % bring back to 1-255
                 
-                if has_mask
-                    tmp_im_c = cat(3,tmp_im_c,tmp_im_mask);
-                    has_mask = false;
-                end
                 tmp_im_c_rz = reshape(tmp_im_c,sz0);
                 
             else % Gabors, RDKs, Dots
@@ -81,13 +68,10 @@ else % Gabors, RDKs, Single dot, Objects
                 tmp_im_c = tmp_im_c.*params.stim.cd.t_gauss(tt); % scale
                 tmp_im_c = uint8( bsxfun(@plus, (255.*tmp_im_c), double(params.stim.bckgrnd_grayval))); % bring back to 1-255
                 
-                if has_mask
-                    tmp_im_c = cat(3,tmp_im_c,tmp_im_mask);
-                    has_mask = false;
-                end
+                tmp_im_c_rz = reshape(tmp_im_c,sz0);
             end
-            tmp_im_c_rz = reshape(tmp_im_c,sz0);
-            subj_run_frames.images(curr_frames(f_cd(tt)),side)= tmp_im_c_rz;
+            
+            output_im{tt,side} = tmp_im_c_rz;
         end
     end % sides
 end  % if ns
