@@ -341,7 +341,8 @@ for sj = 1;%:params.exp.total_subjects
                 curr_trial_type               = t_trial.trial_type(1);
                 curr_block_name               = t_trial.block_name(1);
                 curr_block_local_trial_nr     = t_trial.block_local_trial_nr(1);
-                
+                curr_spatial_cue              = t_trial.is_cued(1);
+
                 
                 
                 % first trial of the block has a task cue
@@ -429,6 +430,7 @@ for sj = 1;%:params.exp.total_subjects
                             time_table.stim_class_unique_block_nr(table_idx) = curr_stim_class_unique_block_nr;
                             time_table.trial_type(table_idx)      = curr_trial_type;
                             time_table.block_name(table_idx)      = curr_block_name;
+                            time_table.is_cued(table_idx)          = curr_spatial_cue;
                             
                             total_run_frames = time_table.event_end(table_idx) + 1;
                             table_idx   = table_idx+1; 
@@ -451,7 +453,7 @@ for sj = 1;%:params.exp.total_subjects
                             time_table.stim_class_unique_block_nr(table_idx) = curr_stim_class_unique_block_nr;
                             time_table.trial_type(table_idx)      = curr_trial_type;
                             time_table.block_name(table_idx)      = curr_block_name;
-                            
+                            time_table.is_cued(table_idx)          = curr_spatial_cue;
                             total_run_frames = time_table.event_end(table_idx) + 1;
                             table_idx   = table_idx+1;
                             
@@ -468,6 +470,7 @@ for sj = 1;%:params.exp.total_subjects
                             tmp1.session_name   = session_names(ses);
                             tmp1.session_nr     = ses;
                             tmp1.run_nr         = rr;
+                            tmp1.is_cued         = curr_spatial_cue;
                             tmp1.global_block_nr = curr_global_session_block_nr;
 
                             time_table(table_idx,:) = tmp1;
@@ -498,7 +501,7 @@ for sj = 1;%:params.exp.total_subjects
                                 tmp2.session_nr     = ses;
                                 tmp2.run_nr         = rr;
                                 tmp2.global_block_nr = curr_global_session_block_nr;
-                                                    
+                                tmp2.is_cued         = curr_spatial_cue;                    
                                 time_table(table_idx,:) = tmp2;
                                 
                                 total_run_frames = time_table.event_end(table_idx) + 1;
@@ -526,6 +529,7 @@ for sj = 1;%:params.exp.total_subjects
                             time_table.stim_class_unique_block_nr(table_idx) = curr_stim_class_unique_block_nr;
                             time_table.trial_type(table_idx)      = curr_trial_type;
                             time_table.block_name(table_idx)      = curr_block_name;
+                            time_table.is_cued(table_idx)          = curr_spatial_cue;
                             
                             total_run_frames = time_table.event_end(table_idx) + 1;
                             
@@ -549,6 +553,7 @@ for sj = 1;%:params.exp.total_subjects
                             time_table.stim_class_unique_block_nr(table_idx) = curr_stim_class_unique_block_nr;
                             time_table.trial_type(table_idx)      = curr_trial_type;
                             time_table.block_name(table_idx)      = curr_block_name;
+                            time_table.is_cued(table_idx)          = curr_spatial_cue;
                             
                             total_run_frames = time_table.event_end(table_idx) + 1;
                             
@@ -604,6 +609,8 @@ for sj = 1;%:params.exp.total_subjects
                         time_table.block_ID(table_idx)        = 0;
                         time_table.stim_class(table_idx)      = 0;
                         time_table.task_class(table_idx)      = 0;
+                        time_table.is_cued(table_idx)          = 0;
+
                         total_run_frames = time_table.event_end(table_idx) + 1;
                         
                         ibis(1) = [];
@@ -648,6 +655,8 @@ for sj = 1;%:params.exp.total_subjects
                         time_table.block_ID(table_idx)        = 0;
                         time_table.stim_class(table_idx)      = 0;
                         time_table.task_class(table_idx)      = 0;
+                        time_table.is_cued(table_idx)          = 0;
+                        
                         total_run_frames = time_table.event_end(table_idx) + 1;
                         
                         table_idx = table_idx+1;
@@ -695,6 +704,7 @@ for sj = 1;%:params.exp.total_subjects
                 time_table.block_ID(table_idx)        = 0;
                 time_table.stim_class(table_idx)      = 0;
                 time_table.task_class(table_idx)      = 0;
+                time_table.is_cued(table_idx)          = 0;
                 total_run_frames = time_table.event_end(table_idx);
 
 %                 if strcmp(session_type,'MRI')
