@@ -142,7 +142,7 @@ else
     stim.bckground.mode             = 0;                                    % mode of pinknoise function, 0 means fixed amplitude spectrum + random phase
     stim.bckground.std_clip_range   = 3.5;                                  % when converting pixel values to 1-255 range, how many std's of image values do we allow before clipping the range
     
-    if verbose,
+    if verbose
         fprintf('*** %s SCREEN SIZE (height x width): FoV: [%2.2f,%2.2f] degrees visual angle. Resolution = [%02d,%02d] pixels.***\n', disp_params.name, disp_params.h_deg,disp_params.w_deg ,disp_params.h_pix,disp_params.w_pix);
     end
     %% FIXATION CIRCLE
@@ -173,8 +173,11 @@ else
     stim.fix.dotthickborderdiam_pix = round(stim.fix.dotthickborderdiam_deg * disp_params.ppd); % total fixation circle diameter with thick border in pixels (during trial)
     
     % FIX CIRCLE LUMINANCE & COLOR
-    stim.fix.lumminmaxstep          = [41,213,5];                          % min, max, and nr of dot luminance values [1-255],
-    stim.fix.dotlum                 = linspace(stim.fix.lumminmaxstep(1),stim.fix.lumminmaxstep(2),stim.fix.lumminmaxstep(3)); % dot gray luminance levels (1-255): 41 84 127 170 213
+    lumminmaxstep_norm              = [0.15,0.85,5];                        % min, max, and nr of dot luminance values normalized to range between [0-1],
+    dotlum_lin                      = linspace(lumminmaxstep_norm(1),lumminmaxstep_norm(2),lumminmaxstep_norm(3)); % normalized dot gray luminance levels (0-1):
+    dotlum_sq                       = round(255*(dotlum_lin.^2));           % dot luminance values adjusted for monitor with linearized gamma, ranging between [1-255],
+    stim.fix.dotlum                 = dotlum_sq;
+    
     stim.fix.dotopacity             = 0.5;                                 % dot and border have 50% opacity
     stim.fix.color                  = [255, 255, 255; 255 0 0];            % white and red (for spatial cue)
    
@@ -277,7 +280,7 @@ else
                 p.ph_deg          = [0:(180/2):359];                            % 4 quadrature Gabor phases (deg) (0,90,180,270)
                 
                 % SPATIAL -- Manipulated params
-                p.contrast        = [0.05, 0.10, 1];                            % Michelson contrasts [0-1] (fraction)
+                p.contrast        = [0.10, 0.50, 1];                            % Michelson contrasts [0-1] (fraction)
                 p.num_ori         = 8;                                          % gabor orientations (deg), 0 = 12 o'clock
                 p.ori_deg         = [0:(180/p.num_ori):179]+(0.5*(180/p.num_ori)); % rotate half shift away from vertical, to avoid ill-defined response options                                                                 
                                                                                 % will return [11.25 33.75 56.25 78.75 101.25 123.75 146.25 168.75]
@@ -318,50 +321,50 @@ else
                 p.infofile = fullfile(vcd_rootPath,'workspaces','info',sprintf('rdk_info_%s',disp_params.name)); % csv file
                 
                 % GENERAL
-                p.unique_im_nrs_core    = [25:48];                                  % Unique image nrs associated with the CORE 24 RDK stimuli
-                p.iscolor          = false;                                    % Use color or not? 
+                p.unique_im_nrs_core = [25:48];                                  % Unique image nrs associated with the CORE 24 RDK stimuli
+                p.iscolor            = false;                                    % Use color or not? 
                 if p.iscolor
-                    p.square_pix_val = true;                                   % [IF YES: MAKE SURE TO SQUARE IMAGE VALS FOR CLUT]
+                    p.square_pix_val = true;                                     % [IF YES: MAKE SURE TO SQUARE IMAGE VALS FOR CLUT]
                 else
                     p.square_pix_val = false;
                 end
                 
-                % TEMPORAL -- fixed
+                % TEMPORAL -- fixed params
                 % RDK specific
-                p.dots_size       = 3;                                         % single dot radius in pixels??
-                p.dots_color      = [255 255 255; 1 1 1]./255;                 % 50:50 white:black, color in RGB and converted to [0-1] as expected by stimulus creation function
-                p.max_dots_per_frame = 200;                                    % how many dots within a square support from (number is similar to Kiani lab, rokers lab aims for 150) and roughly matches to nr of pixels in aperture
-                p.dots_contrast   = 1;                                         % Michelson [0-1] (fraction)
-                p.duration        = stimdur_frames;                            % frames (nr of monitor refreshes)
-                p.dots_speed      = (5*disp_params.ppd)/stim.presentationrate_hz; % pixels/frames (or 5 deg/s). For reference: Kiani lab uses usually 5 to 10 deg/s. Rokers lab uses 5 deg/s.
-                p.dots_interval   = 1;                                         % update dots every frame   (for references: Kiani's 75 hz refresh rate / 3 interval = 25 frames/sec)
-                p.dots_lifetime   = 0.1 * stim.presentationrate_hz;            % 3 frames / 0.1 seconds   
+                p.dots_size       = 3;                                            % single dot radius in pixels
+                p.dots_color      = [255 255 255; 1 1 1]./255;                    % 50:50 white:black, color in RGB and converted to [0-1] as expected by stimulus creation function
+                p.max_dots_per_frame = 150;                                       % how many dots within a square support from (number is similar to Kiani lab, rokers lab aims for 150) and roughly matches to nr of pixels in aperture
+                p.dots_contrast   = 1;                                            % Michelson [0-1] (fraction)
+                p.duration        = stimdur_frames;                               % frames (nr of monitor refreshes)
+                p.dots_speed      = (3*disp_params.ppd)/stim.presentationrate_hz; % pixels/frames (or 3 deg/s). For reference: Kiani lab uses usually 5 to 10 deg/s. Rokers lab uses 5 deg/s.
+                p.dots_interval   = 1;                                            % update dots every frame   (For reference: Kiani's 75 hz refresh rate + interval = 3 -->  25 frames/sec)
+                p.dots_lifetime   = 0.1 * stim.presentationrate_hz;               % 3 frames / 0.1 seconds   
                 
-                % TEMPORAL -- manipulated
-                p.dots_coherence  = [0.064, 0.128, 0.512];                     % fraction of coherent moving dots. Kiani lab uses usually one of these [0 0.032 0.064 0.128 0.256 0.512]
+                % TEMPORAL -- manipulated params
+                p.dots_coherence  = [0.128, 0.256, 0.512];                        % fraction of coherent moving dots. Kiani lab uses usually one of these [0 0.032 0.064 0.128 0.256 0.512]
                 
-                % SPATIAL -- fixed
-                p.img_sz_deg      = parafov_circle_diam_deg;                   % stimulus aperture diameter (deg)
-                p.img_sz_pix      = parafov_circle_diam_pix;                   % stimulus aperture diameter (pix)
-                p.og_res_stim     = p.img_sz_pix;                              % resolution of stored dot stimuli (in pixels)
+                % SPATIAL -- fixed params
+                p.img_sz_deg      = parafov_circle_diam_deg;                      % stimulus aperture diameter (deg)
+                p.img_sz_pix      = parafov_circle_diam_pix;                      % stimulus aperture diameter (pix)
+                p.og_res_stim     = p.img_sz_pix;                                 % resolution of stored dot stimuli (in pixels)
                 p.dres            = (( (p.img_sz_pix/disp_params.ppd) /disp_params.h_deg * disp_params.h_pix) / p.og_res_stim);  % scale factor to apply
-                p.x0_deg          = x0_deg;                                    % Desired x-center loc of stimulus in deg (translation from 0,0)
-                p.y0_deg          = x0_deg;                                    % Desired y-center loc of stimulus in deg (translation from 0,0)
-                p.x0_pix          = x0_pix;                                    % x-center loc in pix (translation from 0,0)
-                p.y0_pix          = y0_pix;                                    % y-center loc in pix (translation from 0,0)
+                p.x0_deg          = x0_deg;                                       % Desired x-center loc of stimulus in deg (translation from 0,0)
+                p.y0_deg          = x0_deg;                                       % Desired y-center loc of stimulus in deg (translation from 0,0)
+                p.x0_pix          = x0_pix;                                       % x-center loc in pix (translation from 0,0)
+                p.y0_pix          = y0_pix;                                       % y-center loc in pix (translation from 0,0)
                 
-                % SPATIAL -- manipulated
-                p.num_mot_dir      = 8;                                        % number of sampled motion directions
+                % SPATIAL -- manipulated params
+                p.num_mot_dir      = 8;                                           % number of sampled motion directions
                 p.dots_direction   = [0:(360/p.num_mot_dir):359]+(0.5*(360/p.num_mot_dir)); % sample direction of coherent motion from [0-359] in deg (0 deg is aligned with 12 o'clock)
-                                                                               % turns out to be: [22.5,67.5,112.5,157.5,202.5,247.5,292.5,337.5]
+                                                                                  % turns out to be: [22.5,67.5,112.5,157.5,202.5,247.5,292.5,337.5]
                 % ensure equal distance from cardinal meridians
                 assert(isequal(abs(0-p.dots_direction(1:(p.num_mot_dir/2))), abs(180-p.dots_direction(((p.num_mot_dir/2)+1):p.num_mot_dir))));
                 assert(isequal(abs(90-p.dots_direction(1:(p.num_mot_dir/2))), abs(270-p.dots_direction(((p.num_mot_dir/2)+1):p.num_mot_dir))));
 
                 
                 % WORKING MEMORY: motion direction deltas for test images
-                p.delta_from_ref   = [-15, -5, 5, 15];                          % how much should stim iso-eccen loc deviate from reference (WM: double epochs)
-                p.unique_im_nrs_wm_test = [207:302];                                 % Unique image nrs associated with the 96 WM RDK test stimuli
+                p.delta_from_ref   = [-15, -5, 5, 15];                            % how much should stim iso-eccen loc deviate from reference (WM: double epochs)
+                p.unique_im_nrs_wm_test = [207:302];                              % Unique image nrs associated with the 96 WM RDK test stimuli
  
                 % check if all test images for WM have unique orientations
                 tmp          = p.dots_direction+[0, p.delta_from_ref]';
