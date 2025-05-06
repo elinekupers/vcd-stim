@@ -60,19 +60,21 @@ function [objects, masks, info] = vcd_objects(params)
 %      stim_pos         : (cell) stimulus position, same as stim_loc_i but
 %                           human readable ({'left'} or {'right'})
 %      superordinate    : (cell) superordinate semantic category label:
-%                           {'human','animal','object','place'}
+%                           {'human','animal','object','food','place'}
 %      superordinate_i  : (double) same as superordinate, but indexed by nr
-%                           1:'human' through 4: 'place'    
+%                           1:'human' through 5: 'place'    
 %      basic            : (cell) basic semantic category label for each
 %                          superordinate semantic categorycategory:
 %                           {'facefemale','facefemale', ...
 %                           'small','large',...
-%                           'tool',food','vehicle',...
+%                           'tool','vehicle',...
+%                           'man-made','produce',...
 %                           'building'};
 %      basic_i          : (double) same as basic, but indexed by nr
 %                           1: facefemale, 2: facefemale
 %                           1: small, 2: large
-%                           1: tool, 2: food, 3: vehicle
+%                           1: tool, 2: vehicle
+%                           1: man-made, 2: produce
 %                           1: building.
 %      subordinate      : (cell) subordinate semantic category label, name 
 %                           for each individual core object: 
@@ -80,7 +82,12 @@ function [objects, masks, info] = vcd_objects(params)
 %                            'giraffe','drill','brush','pizza','banana',...
 %                            'bus','suv''church','house','watertower'};
 %      subordinate_i    : (double) same as subordinate, but indexed by nr
-%                           1:damon through 16: watertower. 
+%                           1:damon, 1:lisa, 2:sophia, 
+%                           1:parrot, 2:cat, 1:bear, 2: giraffe,
+%                           1:drill, 2: brush,
+%                           1:bus, 2: suv,
+%                           1:pizza, 1: banana,
+%                           1:church, 2: house, 3: watertower
 %      rot_abs          : (double) absolute rotation (deg) of object.
 %                          ranges from 10-170, in evenly steps of 10 deg
 %                          (excluding 90 degrees). 
@@ -266,45 +273,63 @@ if params.stim.store_imgs
 end
 
 %% Visualize stimuli if requested
-if params.verbose
-   
-    counter = 1;
-    if params.stim.store_imgs
-        saveFigDir = fullfile(vcd_rootPath,'figs',params.disp.name, 'obj','visual_checks');
-        if ~exist(saveFigDir,'dir'); mkdir(saveFigDir); end
-    end
+
+if params.stim.store_imgs
+    saveFigDir = fullfile(vcd_rootPath,'figs',params.disp.name, 'obj');
+    if ~exist(saveFigDir,'dir'); mkdir(saveFigDir); end
     
-    figure(99); set(gcf, 'Position', [300   584   868   753]);
+    % Export PNG -- APPLY WEIGHTED ALPHA MASK BEFORE STORING.
+    % WE DO NOT STORE ALPHA MASK SEPARATELY IN PNG
     for objectNr = 1:size(objects,4)
         for rot = 1:size(objects,5)
             
             if rot == 1
                 im_nr = info.unique_im(objectNr);
-            else 
+            else
                 im_nr = info.unique_im(size(objects,4) + ((objectNr-1)*4) + rot-1);
             end
-            cla;
-            I = imshow(objects(:,:,:,objectNr,rot),[1 255]);
-            I.AlphaData = masks(:,:,objectNr,rot);
-            axis image
-            
-            title(sprintf('Object:%02d Rot:%02d Delta:%02d',objectNr,im_order.abs_rot(counter),im_order.rel_rot(counter)), 'FontSize',20);
-            
-            if rot == 1, dd = 0;
-            else, dd = rot; end
-            
-            if params.stim.store_imgs
-                % Print figure with axes
-                print(fullfile(saveFigDir,sprintf('%02d_object%02d_delta%02d', im_nr,objectNr, dd)),'-dpng','-r150');
-                % Export PNG
-                imwrite(objects(:,:,:,objectNr,rot), fullfile(vcd_rootPath,'figs',params.disp.name,...
-                    'obj',sprintf('%02d_object%02d_delta%02d.png',im_nr, objectNr, dd)),'Alpha',masks(:,:,objectNr,rot));
-            end
-            
-            % update counter
-            counter = counter+1;
+    
+            im_w_alpha = uint8( (double(objects(:,:,:,objectNr,rot)) .* double(masks(:,:,objectNr,rot))/255)  +  (128 .* (1 - double(masks(:,:,objectNr,rot))/255)) );
+            imwrite(im_w_alpha, fullfile(vcd_rootPath,'figs',params.disp.name,...
+                'obj',sprintf('%04d_object%02d_delta%02d.png',im_nr, objectNr, rot-1)));
         end
     end
+end
+
+if params.verbose
+    
+    % debug figure
+%     counter = 1;
+%     figure(99); set(gcf, 'Position', [300   584   868   753]);
+%     for objectNr = 1:size(objects,4)
+%         for rot = 1:size(objects,5)
+%             
+%             if rot == 1
+%                 im_nr = info.unique_im(objectNr);
+%             else 
+%                 im_nr = info.unique_im(size(objects,4) + ((objectNr-1)*4) + rot-1);
+%             end
+%             cla;
+%             I = imshow(objects(:,:,:,objectNr,rot),[1 255]);
+%             I.AlphaData = masks(:,:,objectNr,rot);
+%             axis image
+%             
+%             title(sprintf('Object:%04d Rot:%02d Delta:%02d',objectNr,im_order.abs_rot(counter),im_order.rel_rot(counter)), 'FontSize',20);
+%             
+%             if rot == 1, dd = 0;
+%             else, dd = rot; end
+%             
+%             if params.stim.store_imgs
+%               saveFigDir = fullfile(vcd_rootPath,'figs',params.disp.name, 'obj','visual_checks');
+%               if ~exist(saveFigDir,'dir'); mkdir(saveFigDir); end
+%                 % Print figure with axes
+%                 print(fullfile(saveFigDir,sprintf('%02d_object%02d_delta%02d', im_nr,objectNr, dd)),'-dpng','-r150');
+%             end
+%             
+            % update counter
+%             counter = counter+1;
+%         end
+%     end
 end
 
 return
