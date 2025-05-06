@@ -382,7 +382,7 @@ for cc = 1:length(params.stim.rdk.dots_coherence)
                 % save intermediate stage in case matlab crashes 
                 rdk_info = info(counter,:);
                 im_name  = bb + ((cc-1)*length(params.stim.rdk.dots_direction));
-                save(fullfile(tmpDir, sprintf('%d_rdk_ori%d_coh%d_delta%d.mat', im_name, bb,cc,dd)),'frames','rdk_info','mask','stored_coh_dot_pos','-v7.3');
+                save(fullfile(tmpDir, sprintf('%02d_rdk_ori%02d_coh%02d_delta%02d.mat', info.unique_im(counter), bb,cc,dd)),'frames','rdk_info','mask','stored_coh_dot_pos','-v7.3');
             end
             
             clear frames
