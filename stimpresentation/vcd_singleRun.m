@@ -52,44 +52,48 @@ if ~isfield(params, 'disp') || isempty(params.disp)
     params.disp = vcd_getDisplayParams(params.dispName); % BOLDSCREEN is default
 end
 
+if params.debugmode
+    params.disp.name = 'PPROOM_EIZOFLEXSCAN';
+end
+
 devices = PsychHID('Devices');
 for vv = 1:length(devices)
     if strcmp(devices(vv).usageName,'Keyboard') && ~isempty(regexp(devices(vv).product,'\w*Internal Keyboard\w*'))
-        deviceNr.internal = vv;
+        deviceNr_tmp.internal = vv;
     elseif strcmp(devices(vv).usageName,'Keyboard') && ~isempty(regexp(devices(vv).product,'\w*USB\w*'))
-        deviceNr.external = vv;
+        deviceNr_tmp.external = vv;
     end
 end
 
 if params.debugmode % skip synctest
     skipsync = 1;
-    if isempty(params.deviceNr)
-        params.deviceNr = -3; % listen to all
+    if isempty(params.deviceNr) || isempty(params.deviceNr_tmp)
+        deviceNr = -3; % listen to all
         warning('[%s]: No specified device nrs, will listen to all devices!\n',mfilename)
-    elseif ~isfield(deviceNr,'internal') && ~isfield(deviceNr,'external')
-        params.deviceNr = -3; % listen to all
+    elseif ~isfield(deviceNr_tmp,'internal') && ~isfield(deviceNr_tmp,'external')
+        deviceNr = -3; % listen to all
         warning('[%s]: No internal or external device nrs found, will listen to all devices!\n',mfilename)
     else
-        if isfield(deviceNr,'external') && ~isempty(deviceNr.external) && ...
-                (~isfield(deviceNr,'internal') || isempty(deviceNr.internal))
-            params.deviceNr = deviceNr.external;
-            fprintf('[%s]: Using external device number(s): %d, %s %s\n',mfilename,params.deviceNr,devices(params.deviceNr).product, devices(params.deviceNr).manufacturer)
-        elseif isfield(deviceNr,'internal') && ~isempty(deviceNr.internal) && ...
-                (~isfield(deviceNr,'external') || isempty(deviceNr.external))
-            params.deviceNr = deviceNr.internal;
-            fprintf('[%s]: Using internal device number(s): %d %s %s\n',mfilename,params.deviceNr,devices(params.deviceNr).product, devices(params.deviceNr).manufacturer)
-        elseif isfield(deviceNr,'external') && isfield(deviceNr,'internal') && ...
-                ~isempty(deviceNr.external) && ~isempty(deviceNr.internal)
-            params.deviceNr = [deviceNr.internal, deviceNr.external];
-            fprintf('[%s]: Using external and internal device number(s): %d, %s %s\n',mfilename,params.deviceNr,devices(params.deviceNr).product, devices(params.deviceNr).manufacturer)
+        if isfield(deviceNr_tmp,'external') && ~isempty(deviceNr_tmp.external) && ...
+                (~isfield(deviceNr_tmp,'internal') || isempty(deviceNr_tmp.internal))
+            deviceNr = deviceNr_tmp.external;
+            fprintf('[%s]: Using external device number(s): %d, %s %s\n',mfilename,deviceNr,devices(deviceNr).product, devices(deviceNr).manufacturer)
+        elseif isfield(deviceNr_tmp,'internal') && ~isempty(deviceNr_tmp.internal) && ...
+                (~isfield(deviceNr_tmp,'external') || isempty(deviceNr_tmp.external))
+            deviceNr = deviceNr_tmp.internal;
+            fprintf('[%s]: Using internal device number(s): %d %s %s\n',mfilename,deviceNr,devices(deviceNr).product, devices(deviceNr).manufacturer)
+        elseif isfield(deviceNr_tmp,'external') && isfield(deviceNr_tmp,'internal') && ...
+                ~isempty(deviceNr_tmp.external) && ~isempty(deviceNr_tmp.internal)
+            deviceNr = [deviceNr_tmp.internal, deviceNr_tmp.external];
+            fprintf('[%s]: Using external and internal device number(s): %d, %s %s\n',mfilename,deviceNr,devices(deviceNr).product, devices(deviceNr).manufacturer)
         end
     end
 else
     skipsync = 0;
-    if isempty(params.deviceNr) && ~isempty(deviceNr.external)
-        params.deviceNr = deviceNr.external;
-        fprintf('[%s]: Using external device number: %d, %s %s\n',mfilename,params.deviceNr,devices(params.deviceNr).product, devices(params.deviceNr).manufacturer)
-    elseif  isempty(params.deviceNr) && isempty(deviceNr.external)
+    if isempty(params.deviceNr) && ~isempty(deviceNr_tmp)
+        deviceNr = deviceNr_tmp.external;
+        fprintf('[%s]: Using external device number: %d, %s %s\n',mfilename,deviceNr,devices(deviceNr).product, devices(deviceNr).manufacturer)
+    elseif  isempty(params.deviceNr) && isempty(deviceNr_tmp.external)
         error('[%s]: Cannot find external device number!',mfilename)
     end
 end
@@ -167,7 +171,7 @@ if ~exist('scan','var') || ~isfield(scan,'exp_im') || isempty(scan.exp_im)
     d = dir(fullfile(params.infofolder,sprintf('subj%03d',params.subjID),  ...
         sprintf('subj%03d_ses%02d_run%02d_frames_%s_*.mat', ...
         params.subjID, params.sesID, params.runnum, params.disp.name)));
-    a = load(fullfile(d.folder,d.name));
+    a = load(fullfile(d(end).folder,d(end).name));
     scan = a.subj_run_frames; clear a;
 end
 
@@ -198,17 +202,17 @@ if ~exist('scan','var') || ~isfield(scan, 'rects') || isempty(scan.rects)
         
         if strcmp(scan.event_name(nn),'stim1') || strcmp(scan.event_name(nn),'stim2')
             
-            numSides = find(cellfun(@isempty, scan.images(nn,:)));
+            numSides = find(~cellfun(@isempty, scan.images(nn,:)));
             
             for side = 1:numSides
                 
                 if strcmp(scan.stim_class_name{nn,side},'gabor')
-                    centers{nn,side}(1) = params.stim.gabor.x0_pix(side) + params.stim.xc; % x-coord (pixels)
-                    centers{nn,side}(2) = params.stim.gabor.y0_pix(side) + params.stim.yc; % y-coord (pixels)
+                    centers{nn,side} = [params.stim.gabor.x0_pix(side) + params.stim.xc, ... % x-coord (pixels)
+                                        params.stim.gabor.y0_pix(side) + params.stim.yc]; % y-coord (pixels)
                     
                 elseif strcmp(scan.stim_class_name{nn,side},'rdk')
-                    centers{nn,side}(1) = params.stim.rdk.x0_pix(side) + params.stim.xc;
-                    centers{nn,side}(2) = params.stim.rdk.y0_pix(side) + params.stim.yc;
+                    centers{nn,side} = [params.stim.rdk.x0_pix(side) + params.stim.xc, ...
+                                        params.stim.rdk.y0_pix(side) + params.stim.yc];
                     
                 elseif strcmp(scan.stim_class_name{nn,side},'dot')
                     
@@ -220,7 +224,7 @@ if ~exist('scan','var') || ~isfield(scan, 'rects') || isempty(scan.rects)
                         [~,test_im_idx] = ismember(scan.stim2_im_nr(nn,side),params.stim.dot.unique_im_nrs_wm_test);
                         test_im_sub = ind2sub(test_im_idx, size(tmp,1),size(tmp,2));
                         
-                        checkme = [params.stim.dot.x0_pix_delta(test_im_sub(2),delta_idx), params.stim.dot.y0_pix_delta(test_im_sub(2),delta_idx)]
+                        checkme = [params.stim.dot.x0_pix_delta(test_im_sub(2),delta_idx), params.stim.dot.y0_pix_delta(test_im_sub(2),delta_idx)];
                         dot_angle = scan.stim2_orient_dir(nn,side);
                         [dot_x,dot_y] = pol2cart(deg2rad(dot_angle),params.stim.dot.iso_eccen);
                         
@@ -231,20 +235,24 @@ if ~exist('scan','var') || ~isfield(scan, 'rects') || isempty(scan.rects)
                         dot_y = params.stim.dot.y0_pix(xy_idx);
                     end
                     
-                    centers{nn,side}(1) = dot_x + params.stim.xc;
-                    centers{nn,side}(2) = dot_y + params.stim.yc;
+                    centers{nn,side} = [dot_x + params.stim.xc, dot_y + params.stim.yc];
                     
                 elseif strcmp(scan.stim_class_name{nn,side},'obj')
-                    centers{nn,side}(1) = params.stim.obj.x0_pix(side) + params.stim.xc;
-                    centers{nn,side}(2) = params.stim.obj.y0_pix(side) + params.stim.yc;
+                    centers{nn,side} = [params.stim.obj.x0_pix(side) + params.stim.xc, ...
+                                            params.stim.obj.y0_pix(side) + params.stim.yc];
                     
                 elseif strcmp(scan.stim_class_name{nn,side},'ns')
-                    centers{nn,side}(1) = params.stim.ns.x0_pix(side) + params.stim.xc;
-                    centers{nn,side}(2) = params.stim.ns.y0_pix(side) + params.stim.yc;
+                    centers{nn,side} = [params.stim.ns.x0_pix + params.stim.xc, params.stim.ns.y0_pix + params.stim.yc];
+                elseif isnan(scan.stim_class_name{nn,side})
+                    centers{nn,side} = [NaN, NaN];
                 end
                 
-                apsize{nn,side}(1)  = size(scan.images{nn,side},2); % apsize 1: image width (pixels)
-                apsize{nn,side}(2)  = size(scan.images{nn,side},1); % apsize 2: image height (pixels)
+                if isnan(scan.stim_class_name{nn,side})
+                     apsize{nn,side}  = [NaN, NaN];
+                else
+                    % apsize 1: image width (pixels), apsize 2: image height (pixels)
+                    apsize{nn,side}  = [size(scan.images{nn,side},2), size(scan.images{nn,side},1)]; 
+                end
             end
         end
     end
@@ -262,12 +270,14 @@ centers_shortlist = scan.centers(nonemptycells,:);
 apsize_shortlist  = scan.apsize(nonemptycells,:);
 
 % insert NaNs for second column when using single square stimulus (nat scene)
-centers_shortlist(cellfun(@isempty,centers_shortlist(:,2)),2) = ...
+if size(centers_shortlist,2)==2
+    centers_shortlist(cellfun(@isempty,centers_shortlist(:,2)),2) = ...
     repmat({[NaN,NaN]},size(find(cellfun(@isempty,centers_shortlist(:,2))),1),1);
-
-apsize_shortlist(cellfun(@isempty,apsize_shortlist(:,2)),2) = ...
+end
+if size(apsize_shortlist,2)==2
+    apsize_shortlist(cellfun(@isempty,apsize_shortlist(:,2)),2) = ...
     repmat({[NaN,NaN]},size(find(cellfun(@isempty,apsize_shortlist(:,2))),1),1);
-
+end
 rects_shortlist = cell(size(apsize_shortlist));
 
 for side = [1,2]
@@ -303,7 +313,7 @@ end
 %% %%%%%%%%%%%%% FIX IM %%%%%%%%%%%%%
 %  FIX CIRCLE: 5D array: [x,y, 3, lum, type]
 
-if ~exist('bckground','var') || isempty(bckground)
+if ~exist('fix_im','var') || isempty(fix_im)
     d = dir(fullfile(params.stimfolder,params.disp.name, sprintf('fix_%s*.mat',params.disp.name)));
     a = load(fullfile(d(end).folder, d(end).name),'fix_im','mask');
     fix_im = a.fix_im;
@@ -488,18 +498,17 @@ end
 timeofshowstimcall = datestr(now,30);
 
 % GO!
-[data,getoutearly] = vcd_showStimulus(win, rect,...
-    params, ...
+[data,getoutearly] = vcd_showStimulus(win, rect, params, ...
     scan, ...
     bckground, ...
     fix_im, ...
     fix_mask, ...
-    timing, ...
     introscript, ...
     taskscript, ...
     tfunEYE, ...
-    params.deviceNr, ...
-    oldclut,  oldPriority);
+    deviceNr, ...
+    oldclut,...
+    oldPriority);
 
 
 %% CLEAN UP AND SAVE
