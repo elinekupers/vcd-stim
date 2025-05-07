@@ -36,7 +36,7 @@ if strcmp(stim_class,'ns')
 else % Gabors, RDKs, Single dot, Objects
     
     % check right/left stimulus locations
-    nsides = ~isempty(input_im(1,:));
+    nsides = find(~isempty(input_im(1,:)));
     for side = 1:nsides
         
         for tt = 1:length(params.stim.cd.t_gauss)
