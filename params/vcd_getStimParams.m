@@ -271,8 +271,8 @@ else
                 % * EIZOFLEXSCAN: 32 pixels (0.4971 deg)
                 p.gauss_std_deg   = 0.5;                                        % desired standard deviation of gaussian window in degrees
                 p.gauss_std_pix   = round((p.gauss_std_deg * disp_params.ppd)/2)*2; % standard deviation of gaussian window in pixels.
-                p.sf_cpd          = 4;                                          % spatial frequency (cycles/deg)
-                p.cycles_per_pix  = (p.sf_cpd/p.img_sz_deg)/disp_params.ppd;    % nr of cycles per image (pix)
+                p.sf_cpd          = 1;                                          % spatial frequency (cycles/deg)
+                p.cycles_per_pix  = 1/disp_params.ppd;                          % nr of cycles per pixel (1 cpd = 0.0113 cyc/pix for BOLD screen)
                 p.x0_deg          = x0_deg;                                     % x-center loc in deg (translation from 0,0)
                 p.y0_deg          = y0_deg;                                     % y-center loc in deg (translation from 0,0)
                 p.x0_pix          = x0_pix;                                     % x-center loc in pix (translation from 0,0)
@@ -341,7 +341,7 @@ else
                 p.dots_lifetime   = 0.1 * stim.presentationrate_hz;               % 3 frames / 0.1 seconds   
                 
                 % TEMPORAL -- manipulated params
-                p.dots_coherence  = [0.128, 0.256, 0.512];                        % fraction of coherent moving dots. Kiani lab uses usually one of these [0 0.032 0.064 0.128 0.256 0.512]
+                p.dots_coherence  = [0.25, 0.50, 1.0];                            % fraction of coherent moving dots. Kiani lab uses usually one of these [0 0.032 0.064 0.128 0.256 0.512]
                 
                 % SPATIAL -- fixed params
                 p.img_sz_deg      = parafov_circle_diam_deg;                      % stimulus aperture diameter (deg)
