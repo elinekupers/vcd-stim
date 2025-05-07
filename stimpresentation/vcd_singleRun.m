@@ -46,6 +46,18 @@ clear rename_me ff p
 scan = params.scan; rmfield(params,'scan');
 timing = params.timing; rmfield(params,'timing');
 
+% deal with movieflip
+if params.movieflip(1) && params.movieflip(2)
+    flipfun = @(x) flipdim(flipdim(x,1),2); %#ok<*DFLIPDIM>
+elseif params.movieflip(1)
+    flipfun = @(x) flipdim(x,1);
+elseif params.movieflip(2)
+    flipfun = @(x) flipdim(x,2);
+else
+    flipfun = @(x) x;
+end
+
+
 %% %%%%%%%%%%%%% PERIPHERALS %%%%%%%%%%%%%
 
 if ~isfield(params, 'disp') || isempty(params.disp)
@@ -191,28 +203,31 @@ if ~exist('scan','var') || ~isfield(scan, 'rects') || isempty(scan.rects)
     else
         params.stim.xc = (ptonparams{1}(1)/2);
         params.stim.yc = (ptonparams{1}(2)/2);
-    end   
+    end
     
     % Get [x,y]-center in pixels of peripheral stimuli given display size, and
     % offset. Get stimulus aperture size..
     centers = cell(size(scan.frame_nr)); %cell(size(timing.seq_stim));
     apsize  = cell(size(scan.frame_nr)); %cell(size(timing.seq_stim));
-
+    
+    im_w_mask = uint8.empty(length(scan.frame_nr),0);
+    im_w_mask = repmat(mat2cell(im_w_mask,ones(10298,1)),1,2);
+    
     for nn = 1:length(scan.frame_nr)
         
         if strcmp(scan.event_name(nn),'stim1') || strcmp(scan.event_name(nn),'stim2')
             
             numSides = find(~cellfun(@isempty, scan.images(nn,:)));
             
-            for side = 1:numSides
+            for side = numSides
                 
                 if strcmp(scan.stim_class_name{nn,side},'gabor')
                     centers{nn,side} = [params.stim.gabor.x0_pix(side) + params.stim.xc, ... % x-coord (pixels)
-                                        params.stim.gabor.y0_pix(side) + params.stim.yc]; % y-coord (pixels)
+                        params.stim.gabor.y0_pix(side) + params.stim.yc]; % y-coord (pixels)
                     
                 elseif strcmp(scan.stim_class_name{nn,side},'rdk')
                     centers{nn,side} = [params.stim.rdk.x0_pix(side) + params.stim.xc, ...
-                                        params.stim.rdk.y0_pix(side) + params.stim.yc];
+                        params.stim.rdk.y0_pix(side) + params.stim.yc];
                     
                 elseif strcmp(scan.stim_class_name{nn,side},'dot')
                     
@@ -239,7 +254,7 @@ if ~exist('scan','var') || ~isfield(scan, 'rects') || isempty(scan.rects)
                     
                 elseif strcmp(scan.stim_class_name{nn,side},'obj')
                     centers{nn,side} = [params.stim.obj.x0_pix(side) + params.stim.xc, ...
-                                            params.stim.obj.y0_pix(side) + params.stim.yc];
+                        params.stim.obj.y0_pix(side) + params.stim.yc];
                     
                 elseif strcmp(scan.stim_class_name{nn,side},'ns')
                     centers{nn,side} = [params.stim.ns.x0_pix + params.stim.xc, params.stim.ns.y0_pix + params.stim.yc];
@@ -248,11 +263,20 @@ if ~exist('scan','var') || ~isfield(scan, 'rects') || isempty(scan.rects)
                 end
                 
                 if isnan(scan.stim_class_name{nn,side})
-                     apsize{nn,side}  = [NaN, NaN];
+                    apsize{nn,side}  = [NaN, NaN];
                 else
                     % apsize 1: image width (pixels), apsize 2: image height (pixels)
-                    apsize{nn,side}  = [size(scan.images{nn,side},2), size(scan.images{nn,side},1)]; 
+                    apsize{nn,side}  = [size(scan.images{nn,side},2), size(scan.images{nn,side},1)];
                 end
+                
+                % COMBINE IMAGE AND MASKS, FLIP IM IF REQUESTED
+                if isempty(scan.masks{nn,side})
+                    scan.images{nn,side} = feval(flipfun, scan.images{nn,side});
+                else
+                    scan.images{nn,side} = feval(flipfun, cat(3, scan.images{nn,side}, scan.masks{nn,side}));
+                    scan.masks{nn,side} = [];
+                end
+                
             end
         end
     end
@@ -272,16 +296,17 @@ apsize_shortlist  = scan.apsize(nonemptycells,:);
 % insert NaNs for second column when using single square stimulus (nat scene)
 if size(centers_shortlist,2)==2
     centers_shortlist(cellfun(@isempty,centers_shortlist(:,2)),2) = ...
-    repmat({[NaN,NaN]},size(find(cellfun(@isempty,centers_shortlist(:,2))),1),1);
+        repmat({[NaN,NaN]},size(find(cellfun(@isempty,centers_shortlist(:,2))),1),1);
 end
 if size(apsize_shortlist,2)==2
     apsize_shortlist(cellfun(@isempty,apsize_shortlist(:,2)),2) = ...
-    repmat({[NaN,NaN]},size(find(cellfun(@isempty,apsize_shortlist(:,2))),1),1);
+        repmat({[NaN,NaN]},size(find(cellfun(@isempty,apsize_shortlist(:,2))),1),1);
 end
 rects_shortlist = cell(size(apsize_shortlist));
 
 for side = [1,2]
-    rects_shortlist(:,side) = cellfun(@(stimsize,stimcenter) CenterRectOnPoint([0 0 stimsize(1) stimsize(2)], stimcenter(1), stimcenter(2)), ...
+    rects_shortlist(:,side) = ...
+        cellfun(@(stimsize,stimcenter) CenterRectOnPoint([0 0 stimsize(1) stimsize(2)], stimcenter(1), stimcenter(2)), ...
         apsize_shortlist(:,side),centers_shortlist(:,side), 'UniformOutput', false);
 end
 
@@ -306,9 +331,13 @@ if ~exist('bckground','var') || isempty(bckground)
     d = dir(fullfile(params.stimfolder,params.disp.name, sprintf('bckgrnd_%s*.mat',params.disp.name)));
     a = load(fullfile(d(end).folder, d(end).name),'bckgrnd_im');
     bckground = a.bckgrnd_im(:,:,:,params.runnum);
-else
+end
+
+if any(params.offsetpix~=[0,0])
     bckground = vcd_pinknoisebackground(params, 'comb', 'fat', 1, params.offsetpix);
 end
+
+bckground = feval(flipfun,bckground);
 
 %% %%%%%%%%%%%%% FIX IM %%%%%%%%%%%%%
 %  FIX CIRCLE: 5D array: [x,y, 3, lum, type]
@@ -319,6 +348,38 @@ if ~exist('fix_im','var') || isempty(fix_im)
     fix_im = a.fix_im;
     fix_mask = a.mask;
 end
+
+
+% make fixation dot texture
+fix_thin_full   = cell(1,size(fix_im,4));
+fix_thick_full  = cell(1,size(fix_im,4));
+fix_thick_left  = cell(1,size(fix_im,4));
+fix_thick_right = cell(1,size(fix_im,4));
+fix_thick_both  = cell(1,size(fix_im,4));
+fix_thin_rect   = CenterRect([0 0 round(size(fix_im,1)) round(size(fix_im,2))], [0 0 params.disp.w_pix params.disp.h_pix]);
+fix_thick_rect  = CenterRect([0 0 round(size(fix_im,1)) round(size(fix_im,2))], [0 0 params.disp.w_pix params.disp.h_pix]);
+fix_thin_rect   = fix_thin_rect + repmat(params.offsetpix,1,2);
+fix_thick_rect  = fix_thick_rect + repmat(params.offsetpix,1,2);
+
+for ll = 1:size(fix_im,4) % loop over luminance values
+    fix_thin_full{ll}   = feval(flipfun,  cat(3, fix_im(:,:,:,ll,1), fix_mask(:,:,1)));
+    fix_thick_full{ll}  = feval(flipfun,  cat(3, fix_im(:,:,:,ll,2), fix_mask(:,:,2)));
+    fix_thick_left{ll}  = feval(flipfun,  cat(3, fix_im(:,:,:,ll,3), fix_mask(:,:,3)));
+    fix_thick_right{ll} = feval(flipfun,  cat(3, fix_im(:,:,:,ll,4), fix_mask(:,:,4)));
+    fix_thick_both{ll}  = feval(flipfun,  cat(3, fix_im(:,:,:,ll,5), fix_mask(:,:,5)));
+end
+
+clear fix_im;
+fix_im = struct('fix_thin_full',[], 'fix_thick_full', [], ...
+    'fix_thick_left', [], 'fix_thick_right', [], ...
+    'fix_thick_both', [], 'fix_thin_rect', [], 'fix_thick_rect', []);
+fix_im.fix_thin_full   = fix_thin_full;
+fix_im.fix_thick_full  = fix_thick_full;
+fix_im.fix_thick_left  = fix_thick_left;
+fix_im.fix_thick_right = fix_thick_right;
+fix_im.fix_thick_both  = fix_thick_both;
+fix_im.fix_thin_rect   = fix_thin_rect;
+fix_im.fix_thick_rect  = fix_thick_rect;
 
 %% Save images and/or timing just in case we run into an error?
 if params.savestimtiming
@@ -363,7 +424,7 @@ end
 
 %% %%%%%%%%%%%%% INIT SCREEN %%%%%%%%%%%%%
 Screen('Preference', 'SyncTestSettings', .0004);
-oldclut = pton(ptonparams{:});
+oldCLUT = pton(ptonparams{:});
 
 win  = firstel(Screen('Windows'));
 oldPriority = Priority(MaxPriority(win));
@@ -371,6 +432,10 @@ oldPriority = Priority(MaxPriority(win));
 rect = Screen('Rect',win); % what is the total rect
 % rect = CenterRect(round([0 0 rect(3)*winsize rect(4)*winsize]),rect);
 [win, rect] = Screen('OpenWindow',max(Screen('Screens')),params.stim.bckgrnd_grayval,rect);
+
+
+
+
 
 %% %%%%%%%%%%%%% Eyelink stuff %%%%%%%%%%%%%
 % ANON EYE FUN for SYNC TIME
@@ -498,18 +563,17 @@ end
 timeofshowstimcall = datestr(now,30);
 
 % GO!
-[data,getoutearly] = vcd_showStimulus(win, rect, params, ...
+[data,getoutearly] = vcd_showStimulus(...
+    win, rect, params, ...
     scan, ...
     bckground, ...
     fix_im, ...
-    fix_mask, ...
     introscript, ...
     taskscript, ...
     tfunEYE, ...
     deviceNr, ...
-    oldclut,...
+    oldCLUT,...
     oldPriority);
-
 
 %% CLEAN UP AND SAVE
 
@@ -569,7 +633,7 @@ save(fullfile(params.savedatadir,params.behaviorfile),vars{:});
 % Clean up
 ShowCursor;
 Screen('CloseAll');
-ptoff(oldclut);
+ptoff(oldCLUT);
 
 % check the timing
 if getoutearly == 0 %if we completed the experiment
