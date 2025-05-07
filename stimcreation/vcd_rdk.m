@@ -103,7 +103,17 @@ ap_radius = [params.stim.rdk.img_sz_pix./2 params.stim.rdk.img_sz_pix./2]-(param
 % BOLDscreen; This is ~1.5 times bigger than the 4 deg RDK aperture we specified. 
 % We adjust for this by increasing the size of the gray RDK box such that 
 % the inner dot aperture will have the 4 deg size we want.
-rect_box = params.stim.rdk.img_sz_pix * (577./params.stim.rdk.img_sz_pix);
+if strcmp(params.disp.name, '7TAS_BOLDSCREEN32')
+    scf = 1.548022598870056; % scf = 548/354; convert background square image from [93.04,78.880, 548.7,577.02] into [0 0 548 548]; 
+    rect_box_sz = 577;
+elseif strcmp(params.disp.name, 'PPROOM_EIZOFLEXSCAN')
+    scf = 1.548022598870056; % scf = 400/258; convert background square image from [68.08, 57.76, 399.9, 420.54] into [0 0 400 400]; 
+    rect_box_sz = 400;
+else
+    scf = 1.548022598870056;
+    rect_box_sz = params.disp.ppd/88.3702666667; % infer the rectangular support of the background by comparing the pixels per degree to the ppd of the BOLD screen.
+end
+
 
 % Define number of frames within a single RDK video
 num_frames = params.stim.rdk.duration/params.stim.rdk.dots_interval;
@@ -304,8 +314,8 @@ for cc = 1:length(params.stim.rdk.dots_coherence)
                 clf; hold all;
                 ax = gca;
                 ax.Units = 'pixels';
-                r=rectangle(ax,'Position', [(ap_center -(rect_box/2)), ...
-                    rect_box, rect_box], ...
+                r=rectangle(ax,'Position', [(ap_center -(rect_box_sz/2)), ...
+                    rect_box_sz, rect_box_sz], ...
                     'FaceColor', [0.5 0.5 0.5], 'EdgeColor', 'none'); %
                 colormap gray; axis off square tight; 
                 set(gca, 'CLim',[0 1]);
@@ -319,9 +329,8 @@ for cc = 1:length(params.stim.rdk.dots_coherence)
                 stored_coh_dot_pos(:,:,curr_frame) = dots;
                 
                 % Check size of background image
-                offsetRect = ax.Children(end).Parent.Position;
-                scf = floor(offsetRect(3))/offsetRect(3);
-                offsetRect = [0,0,scf*offsetRect(3),scf*offsetRect(3)];
+%                 ax_size = ax.Children(end).Parent.Position;
+                offsetRect = [0,0,scf*params.stim.rdk.img_sz_pix,scf*params.stim.rdk.img_sz_pix];
                 
                 % ensure even nr of pixels
                 offsetRect(3:4) = 2*ceil(offsetRect(3:4)./2);
@@ -331,7 +340,7 @@ for cc = 1:length(params.stim.rdk.dots_coherence)
                 
                 % if you want to print individual frames as png
 %                 fn = fullfile(saveStimDir,'export',sprintf('%04d_vcd_rdk_coh%02d_dir%02d_delta%02d_t%02d.png', cc,bb,dd,curr_frame));
-%                 imwrite(im,fn);%,'Location',[pbRect(1:2)],'ScreenSize',[pbRect(3:4)]);
+%                 imwrite(im,fn);
 
                 % store frame
                 frames = cat(4,frames,im);
