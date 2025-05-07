@@ -37,17 +37,17 @@ ph_rad  = ph_deg * (pi/180);
 G = exp( - ((X.^2)/(2*gauss_std_pix^2) + (Y.^2)/(2*gauss_std_pix^2))); % Gaussian window
 G = G ./ max(G(:)); % normalize height
 
-% Create circular alpha mask for PTB at 7 std of the gabor gaussian window
-G_mask        = exp( - ((X.^2)/(7*gauss_std_pix^2) + (Y.^2)/(7*gauss_std_pix^2)));
-G_center      = floor(size(G_mask,1)/2)+1;
-thresh        = G_mask(G_center - ceil((7*gauss_std_pix)/2), G_center);
-outsideWindow = G_mask < thresh;
-mask          = double(~outsideWindow);
-mask(mask==0) = 0; 
-mask          = mask.*255;
- 
-% clean up
-clear G_mask insideWindow
+% If you want to create circular mask to crop the support of the gabor gaussian window
+% G_mask        = exp( - ((X.^2)/(crop_sd_pix^2) + (Y.^2)/(crop_sd_pix^2)));
+% G_center      = floor(size(G_mask,1)/2)+1;
+% thresh        = G_mask(G_center - ceil((crop_sd_pix)/2), G_center);
+% outsideWindow = G_mask < thresh;
+% mask          = double(~outsideWindow);
+% mask(mask==0) = 0; 
+% mask          = mask.*255;
+% 
+% % clean up
+% clear G_mask insideWindow
 
 % Create harmonic
 H = cos(2 * pi * sf * ...
@@ -65,9 +65,4 @@ img2 = contrast * img1;
 % Convert to image range [1 255]
 img = (img2*127)+double(grayval);
 
-% % alternative normalization
-% maxval_c = abs(max(max(img_c)));
-% minval_c = abs(min(min(img_c)));
-% k        = double(grayval)/max(maxval_c,minval_c); 
-% img_c    = floor(img0*k+127);
 end
