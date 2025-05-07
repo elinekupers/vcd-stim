@@ -200,7 +200,7 @@ else
                 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                 
                 % available run images should match the stimulus events
-                assert(sum(subj_run.event_id == 91 | subj_run.event_id == 92), size(run_images,1))
+                assert(isequal(sum(ismember(subj_run.event_id(~subj_run.is_catch), [91, 92])), size(run_images,1)))
                 
                 im_nr = 1;
                 frame_counter = 2;
@@ -233,82 +233,92 @@ else
                         % repeat row in table and add to framelocked table
                         subj_run_frames(curr_frames,1:size(subj_run,2)) = repmat(subj_run(ii,:), nframes,1);
                         
-                        % insert pixel image (uint8)
-                        if any(strcmp(subj_run.stim_class_name(ii,:),{'rdk'})) && ((ndims(run_images{im_nr,1}) == 4) || (ndims(run_images{im_nr,2}) == 4)) % we are dealing with rdk, which has time dim
-                            
-                            nsides = find(strcmp(subj_run.stim_class_name(ii,:),{'rdk'})==true);
-                            clear rdk_images
-                            for side = 1:length(nsides)
-                            
-                                rdk_images(:,side) = squeeze(mat2cell(run_images{im_nr,side}, size(run_images{im_nr,side},1), ...
-                                                          size(run_images{im_nr,side},2), size(run_images{im_nr,side},3), ones(1,size(run_images{im_nr,side},4))));
-                            end
-                            
-                            rdk_images2 = cell(nframes,2);
-                            if nsides == [1,2]
-                                for oob = 1:size(rdk_images,1)
-                                    rdk_images2(oob,:) = [rdk_images(oob,1),rdk_images(oob,2)];
-                                end
-                            elseif nsides == 1
-                                for oob = 1:size(rdk_images,1)
-                                    rdk_images2(oob,:) = [rdk_images(oob,1),run_images(im_nr,2)];
-                                end
-                            elseif nsides == 2
-                                for oob = 1:size(rdk_images,1)
-                                    rdk_images2(oob,:) = [run_images(im_nr,1),rdk_images(oob,1)];
-                                end
-                            end
-                            
-                            if size(rdk_images2,1) < size(rdk_images2,2)
-                                rdk_images2 = rdk_images2';
-                            end
-                            f_im    = rdk_images2;
-                            f_masks = repmat(run_alpha_masks(im_nr,:), nframes, 1);
-                            
-                        else
-                            f_im     = repmat(run_images(im_nr,:),nframes, 1);
-                            f_masks  = repmat(run_alpha_masks(im_nr,:), nframes, 1);
-                        end
                         
+                        if ~subj_run.is_catch(ii)
                         
-                        % APPLY CONTRAST DECREMENT
-                        if strcmp(subj_run.task_class_name(ii),'cd')
-                            % 50% change we will actually apply the contrast
-                            % decrement change to stimulus
-                            cd_change = false;
-                            
-                            if rand(1)>params.stim.cd.prob
-                                cd_change = true;
-                                
-                                [f_im_cd, c_onset] = vcd_applyContrastDecrement(params, cdsoafun, subj_run.stim_class_name{ii,1}, f_im);
-                                subj_run_frames.images(curr_frames,:) = f_im_cd;
-                                
-                                f_cd = c_onset:(c_onset+length(params.stim.cd.t_gauss)-1);
-                                
-                                % log decrement in contrast column
-                                subj_run_frames.contrast(curr_frames(f_cd)) = params.stim.cd.t_gauss;
-                                
-                                % Add button response to start of decrement onset
-                                subj_run_frames.button_response(curr_frames(c_onset)) = 1; % yes there was a change
-                                
-                                subj_run_frames.masks(curr_frames,:)  = f_masks;  
-                            else % no contrast decrement
+                            % insert pixel image (uint8)
+                            if any(strcmp(subj_run.stim_class_name(ii,:),{'rdk'})) && ((ndims(run_images{im_nr,1}) == 4) || (ndims(run_images{im_nr,2}) == 4)) % we are dealing with rdk, which has time dim
+
+                                nsides = find(strcmp(subj_run.stim_class_name(ii,:),{'rdk'})==true);
+                                clear rdk_images
+                                for side = nsides
+
+                                    rdk_images(:,side) = squeeze(mat2cell(run_images{im_nr,side}, size(run_images{im_nr,side},1), ...
+                                                              size(run_images{im_nr,side},2), size(run_images{im_nr,side},3), ones(1,size(run_images{im_nr,side},4))));
+                                end
+
+                                rdk_images2 = cell(nframes,2);
+                                if nsides == [1,2]
+                                    for oob = 1:size(rdk_images,1)
+                                        rdk_images2(oob,:) = [rdk_images(oob,1),rdk_images(oob,2)];
+                                    end
+                                elseif nsides == 1
+                                    for oob = 1:size(rdk_images,1)
+                                        rdk_images2(oob,:) = [rdk_images(oob,1),run_images(im_nr,2)];
+                                    end
+                                elseif nsides == 2
+                                    for oob = 1:size(rdk_images,1)
+                                        rdk_images2(oob,:) = [run_images(im_nr,1),rdk_images(oob,2)];
+                                    end
+                                end
+
+                                if size(rdk_images2,1) < size(rdk_images2,2)
+                                    rdk_images2 = rdk_images2';
+                                end
+
+                                f_im    = rdk_images2;
+                                f_masks = repmat(run_alpha_masks(im_nr,:), nframes, 1);
+
+                            else
+                                f_im     = repmat(run_images(im_nr,:),nframes, 1);
+                                f_masks  = repmat(run_alpha_masks(im_nr,:), nframes, 1);
+                            end
+
+
+                            % APPLY CONTRAST DECREMENT
+                            if strcmp(subj_run.task_class_name(ii),'cd')
+                                % 50% change we will actually apply the contrast
+                                % decrement change to stimulus
+                                cd_change = false;
+
+                                if rand(1)>params.stim.cd.prob
+                                    cd_change = true;
+
+                                    [f_im_cd, c_onset] = vcd_applyContrastDecrement(params, cdsoafun, subj_run.stim_class_name{ii,1}, f_im);
+                                    subj_run_frames.images(curr_frames,:) = f_im_cd;
+
+                                    f_cd = c_onset:(c_onset+length(params.stim.cd.t_gauss)-1);
+
+                                    % log decrement in contrast column
+                                    subj_run_frames.contrast(curr_frames(f_cd)) = params.stim.cd.t_gauss;
+
+                                    % Add button response to start of decrement onset
+                                    subj_run_frames.button_response(curr_frames(c_onset)) = 1; % yes there was a change
+
+                                    subj_run_frames.masks(curr_frames,:)  = f_masks;  
+                                    
+                                else % no contrast decrement
+                                    % add images to subject frame table
+                                    subj_run_frames.images(curr_frames,:) = f_im;
+                                    subj_run_frames.masks(curr_frames,:)  = f_masks;
+                                end
+
+
+                            else % all other blocks blocks
+
                                 % add images to subject frame table
                                 subj_run_frames.images(curr_frames,:) = f_im;
                                 subj_run_frames.masks(curr_frames,:)  = f_masks;
-                            end
-                        
+
+                            end % if cd
+
+                            % count one image nr 
+                            im_nr = im_nr+1;
                             
-                        else % all other blocks blocks
-                            
-                            % add images to subject frame table
-                            subj_run_frames.images(curr_frames,:) = f_im;
-                            subj_run_frames.masks(curr_frames,:)  = f_masks;
-                            
-                        end % if cd
-                        
-                        % count one image nr 
-                        im_nr = im_nr+1;
+                        else
+                            subj_run_frames.images(curr_frames,:) = repmat({NaN}, length(curr_frames),2);
+                            subj_run_frames.masks(curr_frames,:)  = repmat({NaN}, length(curr_frames),2);
+                        end
                         
 
                         
