@@ -7,8 +7,6 @@ p.addRequired('subjID'          , @isnumeric); % subject number
 p.addRequired('sesID'           , @isnumeric); % session number
 p.addRequired('runnum'          , @isnumeric); % nun number
 p.addParameter('scan'           , struct()  , @isstruct);                    % struct with optimized images for ptb
-p.addParameter('timing'         , struct()  , @isstruct);                    % struct with frame timing for ptb
-p.addParameter('images'         , struct()  , @isstruct);                    % struct with images (we preload before calling vcd_singleRun to avoid delays).
 p.addParameter('savedatadir'    , []        , @ischar);                      % place to store data with today's date
 p.addParameter('behaviorfile'   , []        , @ischar);                      % filename to store behavioral data with today's date
 p.addParameter('eyelinkfile'    , []        , @ischar);                      % where the eyelink edf file can be obtained
@@ -44,7 +42,6 @@ clear rename_me ff p
 
 % release scan and timing var
 scan = params.scan; rmfield(params,'scan');
-timing = params.timing; rmfield(params,'timing');
 
 % deal with movieflip
 if params.movieflip(1) && params.movieflip(2)
@@ -162,7 +159,9 @@ if ~exist('scan','var') || ~isfield(scan,'exp_im') || isempty(scan.exp_im)
         sprintf('subj%03d_ses%02d_run%02d_frames_%s_*.mat', ...
         params.subjID, params.sesID, params.runnum, params.disp.name)));
     a = load(fullfile(d(end).folder,d(end).name));
-    scan = a.subj_run_frames; clear a;
+    scan.run = a.run; 
+    scan.time_table = a.subj_run; 
+    clear a d;
 end
 
 %% %%%%%%%%% IMAGE XY CENTER OFFSET
@@ -185,44 +184,42 @@ if ~exist('scan','var') || ~isfield(scan, 'rects') || isempty(scan.rects)
     
     % Get [x,y]-center in pixels of peripheral stimuli given display size, and
     % offset. Get stimulus aperture size..
-    centers = cell(size(scan.frame_nr)); %cell(size(timing.seq_stim));
-    apsize  = cell(size(scan.frame_nr)); %cell(size(timing.seq_stim));
+    centers = cell(size(scan.time_table,1),2); 
+    apsize  = cell(size(scan.time_table,1),2); 
     
-%     im_w_mask = uint8.empty(length(scan.frame_nr),0);
-%     im_w_mask = repmat(mat2cell(im_w_mask,ones(10298,1)),1,2);
-%     
-    for nn = 1:length(scan.frame_nr)
+
+    for nn = 1:size(scan.time_table,1)
         
-        if strcmp(scan.event_name(nn),'stim1') || strcmp(scan.event_name(nn),'stim2')
+        if strcmp(scan.time_table.event_name(nn),'stim1') || strcmp(scan.time_table.event_name(nn),'stim2')
             
-            numSides = find(~cellfun(@isempty, scan.images(nn,:)));
+            numSides = find(~cellfun(@isempty, scan.run.images(nn,:)));
             
             for side = numSides
                 
-                if strcmp(scan.stim_class_name{nn,side},'gabor')
+                if strcmp(scan.time_table.stim_class_name{nn,side},'gabor')
                     centers{nn,side} = [params.stim.gabor.x0_pix(side) + params.stim.xc, ... % x-coord (pixels)
                         params.stim.gabor.y0_pix(side) + params.stim.yc]; % y-coord (pixels)
                     
-                elseif strcmp(scan.stim_class_name{nn,side},'rdk')
+                elseif strcmp(scan.time_table.stim_class_name{nn,side},'rdk')
                     centers{nn,side} = [params.stim.rdk.x0_pix(side) + params.stim.xc, ...
                         params.stim.rdk.y0_pix(side) + params.stim.yc];
                     
-                elseif strcmp(scan.stim_class_name{nn,side},'dot')
+                elseif strcmp(scan.time_table.stim_class_name{nn,side},'dot')
                     
                     % deal with dot pol2cart
-                    if strcmp(scan.event_name(nn),'stim2')
-                        delta_idx = find(scan.stim2_delta(nn,side)==params.stim.dot.delta_from_ref);
+                    if strcmp(scan.time_table.event_name(nn),'stim2')
+                        delta_idx = find(scan.time_table.stim2_delta(nn,side)==params.stim.dot.delta_from_ref);
                         
                         tmp             = reshape(params.stim.dot.unique_im_nrs_wm_test,4,[]);
-                        [~,test_im_idx] = ismember(scan.stim2_im_nr(nn,side),params.stim.dot.unique_im_nrs_wm_test);
+                        [~,test_im_idx] = ismember(scan.time_table.stim2_im_nr(nn,side),params.stim.dot.unique_im_nrs_wm_test);
                         test_im_sub = ind2sub(test_im_idx, size(tmp,1),size(tmp,2));
                         
                         checkme = [params.stim.dot.x0_pix_delta(test_im_sub(2),delta_idx), params.stim.dot.y0_pix_delta(test_im_sub(2),delta_idx)];
-                        dot_angle = scan.stim2_orient_dir(nn,side);
+                        dot_angle = scan.time_table.stim2_orient_dir(nn,side);
                         [dot_x,dot_y] = pol2cart(deg2rad(dot_angle),params.stim.dot.iso_eccen);
                         
-                    elseif strcmp(scan.event_name(nn),'stim1')
-                        dot_angle = scan.orient_dir(nn,side);
+                    elseif strcmp(scan.time_table.event_name(nn),'stim1')
+                        dot_angle = scan.time_table.orient_dir(nn,side);
                         xy_idx = find(dot_angle == params.stim.dot.ang_deg);
                         dot_x = params.stim.dot.x0_pix(xy_idx);
                         dot_y = params.stim.dot.y0_pix(xy_idx);
@@ -230,29 +227,29 @@ if ~exist('scan','var') || ~isfield(scan, 'rects') || isempty(scan.rects)
                     
                     centers{nn,side} = [dot_x + params.stim.xc, dot_y + params.stim.yc];
                     
-                elseif strcmp(scan.stim_class_name{nn,side},'obj')
+                elseif strcmp(scan.time_table.stim_class_name{nn,side},'obj')
                     centers{nn,side} = [params.stim.obj.x0_pix(side) + params.stim.xc, ...
                         params.stim.obj.y0_pix(side) + params.stim.yc];
                     
-                elseif strcmp(scan.stim_class_name{nn,side},'ns')
+                elseif strcmp(scan.time_table.stim_class_name{nn,side},'ns')
                     centers{nn,side} = [params.stim.ns.x0_pix + params.stim.xc, params.stim.ns.y0_pix + params.stim.yc];
-                elseif isnan(scan.stim_class_name{nn,side})
+                elseif isnan(scan.time_table.stim_class_name{nn,side})
                     centers{nn,side} = [NaN, NaN];
                 end
                 
-                if isnan(scan.stim_class_name{nn,side})
+                if isnan(scan.time_table.stim_class_name{nn,side})
                     apsize{nn,side}  = [NaN, NaN];
                 else
                     % apsize 1: image width (pixels), apsize 2: image height (pixels)
-                    apsize{nn,side}  = [size(scan.images{nn,side},2), size(scan.images{nn,side},1)];
+                    apsize{nn,side}  = [size(scan.run.images{nn,side},2), size(scan.run.images{nn,side},1)];
                 end
                 
                 % COMBINE IMAGE AND MASKS, FLIP IM IF REQUESTED
                 if isempty(scan.masks{nn,side})
-                    scan.images{nn,side} = feval(flipfun, scan.images{nn,side});
+                    scan.run.images{nn,side} = feval(flipfun, scan.run.images{nn,side});
                 else
-                    scan.images{nn,side} = feval(flipfun, cat(3, scan.images{nn,side}, scan.masks{nn,side}));
-                    scan.masks{nn,side} = [];
+                    scan.run.images{nn,side} = feval(flipfun, cat(3, scan.run.images{nn,side}, scan.run.masks{nn,side}));
+                    scan.run.masks{nn,side} = [];
                 end
                 
             end
@@ -261,12 +258,12 @@ if ~exist('scan','var') || ~isfield(scan, 'rects') || isempty(scan.rects)
 end
 
 
-scan.centers = centers; clear centers;
-scan.apsize  = apsize; clear apsize;
+scan.run.centers = centers; clear centers;
+scan.run.apsize  = apsize; clear apsize;
 
 %%%%%%% CENTER RECT
-nonemptycells = ~cellfun(@isempty, scan.centers(:,1));
-emptycells2 = ~cellfun(@isempty, scan.apsize(:,1));
+nonemptycells = ~cellfun(@isempty, scan.run.centers(:,1));
+emptycells2 = ~cellfun(@isempty, scan.run.apsize(:,1));
 assert(isequal(nonemptycells,emptycells2)); clear emptycells2
 centers_shortlist = scan.centers(nonemptycells,:);
 apsize_shortlist  = scan.apsize(nonemptycells,:);
@@ -288,8 +285,8 @@ for side = [1,2]
         apsize_shortlist(:,side),centers_shortlist(:,side), 'UniformOutput', false);
 end
 
-scan.rects = cell(size(scan.centers));
-scan.rects(nonemptycells,:) = rects_shortlist;
+scan.run.rects = cell(size(scan.centers));
+scan.run.rects(nonemptycells,:) = rects_shortlist;
 
 
 
