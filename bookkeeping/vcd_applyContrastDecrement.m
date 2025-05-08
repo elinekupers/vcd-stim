@@ -1,6 +1,13 @@
 function [output_im, c_onset] = vcd_applyContrastDecrement(params, cdsoafun, stim_class,  input_im)
 
-output_im = cell(size(input_im));
+
+if size(input_im,1) == 1
+    input_im0 = repmat(input_im, params.stim.(stim_class).duration, 1);
+    input_im = input_im0; clear input_im0;
+end
+
+output_im = input_im;
+
 
 if strcmp(stim_class,'ns')
     
@@ -10,11 +17,11 @@ if strcmp(stim_class,'ns')
     % Get onset of contrast decrement within the
     % stimulus period
     c_onset = feval(cdsoafun);
-
+    
     for tt = 1:length(params.stim.cd.t_gauss)
         
         % get image
-        tmp_im = input_im{(c_onset-1)+tt,1};
+        tmp_im = output_im{(c_onset-1)+tt,1};
         sz0 = size(tmp_im);
         
         if ndims(tmp_im)==3 && size(tmp_im,3)==4
@@ -30,28 +37,30 @@ if strcmp(stim_class,'ns')
         tmp_im_c = ((tmp_im_norm-mn_g).*params.stim.cd.t_gauss(tt)) + mn_g;
         tmp_im_c = uint8(255.*sqrt(tmp_im_c)); % bring back to 0-255
         
-        output_im{tt,1} = tmp_im_c;
+        output_im{(c_onset-1)+tt,1} = tmp_im_c;
     end
     
 else % Gabors, RDKs, Single dot, Objects
     
     % check right/left stimulus locations
-    nsides = find(~isempty(input_im(1,:)));
-    for side = 1:nsides
+    nsides = find(~cellfun(@isempty, input_im(1,:)));
+    
+    for side = nsides
         
+        % Get onset of contrast decrement within the
+        % stimulus period
+        c_onset(side) = feval(cdsoafun);
+        
+
         for tt = 1:length(params.stim.cd.t_gauss)
             
-            tmp_im = double(input_im{tt,side});
+            tmp_im = double(output_im{c_onset(side)+tt-1,side});
             sz0 = size(tmp_im);
-        
+            
             % Check if there is an alpha mask in fourth dim
             if ndims(tmp_im)==3 && size(tmp_im,3)==4
                 tmp_im = tmp_im(:,:,1:3);
             end
-            
-            % Get onset of contrast decrement within the
-            % stimulus period
-            c_onset = feval(cdsoafun);
             
             % Objects
             if strcmp(stim_class,'obj')
@@ -71,7 +80,8 @@ else % Gabors, RDKs, Single dot, Objects
                 tmp_im_c_rz = reshape(tmp_im_c,sz0);
             end
             
-            output_im{tt,side} = tmp_im_c_rz;
+            output_im{c_onset(side)+tt-1,side} = tmp_im_c_rz;
         end
+        
     end % sides
 end  % if ns

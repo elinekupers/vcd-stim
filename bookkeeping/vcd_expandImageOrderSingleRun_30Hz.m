@@ -76,7 +76,7 @@ if load_params
     if length(subject_nrs)>1 || length(session_nrs)>1 || length(run_nrs)>1
         all_subj_run_frames      = cell(length(subject_nrs),length(session_nrs),length(run_nrs));
     end
-    
+
     for sj = 1:length(subject_nrs)
         subjDir = fullfile(vcd_rootPath,'workspaces','info',sprintf('subj%03d', subject_nrs(sj)));
         
@@ -107,6 +107,8 @@ else
     % Preallocate space for generated subject run frames
     all_subj_run_frames = cell(length(subject_nrs),length(session_nrs),length(run_nrs));
     
+    time_table_master2 = [];
+        
     for sj = 1:length(subject_nrs)
         for ses = 1:length(session_nrs)
             for rr = 1:length(run_nrs)
@@ -201,13 +203,22 @@ else
                 run.masks          = cell(total_nr_frames,2);
                 run.frame_event_nr = zeros(total_nr_frames,2);
                 run.frame_im_nr    = zeros(total_nr_frames,2);
-                
+                run.contrast       = ones(total_nr_frames,2);
+                run.button_response_cd = zeros(total_nr_frames,2);
                 
                 jj = 1;
                 frame_counter = 2;
                 
                 stim_events = subj_run.event_id(ismember(subj_run.event_id, [91, 92,990:996]));
                 stim_row = find(ismember(subj_run.event_id, [91, 92,990:996]));
+                subj_run.fix_lum   = cell(size(subj_run,1),1);
+                subj_run.fix_start = cell(size(subj_run,1),1);
+                
+                % convert button response to cell vector so we can add
+                % multiple responses per row.
+                tmp_br = subj_run.correct_response;
+                subj_run.correct_response = cell(size(subj_run,1),1);
+                subj_run.correct_response = mat2cell(tmp_br, ones(size(tmp_br)));
                 
                 for ii = 1:length(stim_events)
                     
@@ -280,19 +291,27 @@ else
                                     [f_im_cd, c_onset] = vcd_applyContrastDecrement(params, cdsoafun, subj_run.stim_class_name{stim_row(ii),1}, f_im);
                                     run.images(curr_frames,:) = f_im_cd;
                                     
-                                    f_cd = c_onset:(c_onset+length(params.stim.cd.t_gauss)-1);
-                                    
                                     % log decrement in contrast column
-                                    subj_run.contrast(curr_frames(f_cd)) = params.stim.cd.t_gauss;
+                                    subj_run.cd_start(stim_row(ii),:) = c_onset;
+                                    
+                                    for cc = 1:length(c_onset)
+                                       f_cd = c_onset(cc):(c_onset(cc)+length(params.stim.cd.t_gauss)-1);
+                                       run.contrast(curr_frames(f_cd),cc) = params.stim.cd.t_gauss; 
+                                    end
                                     
                                     % Add button response to start of decrement onset
-                                    subj_run.button_response(curr_frames(c_onset-1)) = 2; % button 2: no there was a change (yet)
-                                    subj_run.button_response(curr_frames(c_onset):curr_frames(end)) = 1; % button 1: yes there was a change
-                                    subj_run.cd_start(curr_frames(c_onset)) = c_onset; % log precise onset
+                                    cued_cd_onset = c_onset(subj_run.is_cued(stim_row(ii)));
+                                    
+                                    cued_resp = cat(1,2*ones(length(curr_frames(1:cued_cd_onset-1)),1),ones(length(curr_frames(cued_cd_onset:end)),1));
+                                    
+                                    run.button_response_cd(curr_frames) = cued_resp;
+                                    
+                                    subj_run.correct_response{stim_row(ii)} = 1; % button 1: yes there was a change 
                                     
                                 else
                                     % Add button response: no
-                                    subj_run.button_response(curr_frames) = 2; % button 2: no there was a change (apply to all time points in the block)
+                                    run.button_response_cd(curr_frames)    = 2;
+                                    subj_run.correct_response{stim_row(ii)} = 2; % button 2: no there was a change (apply to all time points in the block)
                                 end
                                 
                                 
@@ -308,9 +327,6 @@ else
                                     run.masks(curr_frames(1),:)  = f_masks;
                                     run.frame_im_nr(curr_frames,:) = repmat(run_ims(jj,:), length(curr_frames),1);
                                 end
-                                
-                                subj_run.button_response = 
-                                
                             end
                             
                         else % catch blocks
@@ -322,8 +338,11 @@ else
                         % count one image nr
                         jj = jj+1;
 
-                    else % non stim-events
-                        % do nothing
+                        % if response is next, inherent response from stim.
+                        if subj_run.event_id(stim_row(ii)+1) == params.exp.block.response_ID  && isnan(subj_run.correct_response{stim_row(ii)})
+                            subj_run.correct_response{stim_row(ii)+1} = subj_run.correct_response{stim_row(ii)};
+                            run.button_response_cd((curr_frames(end)+1):(curr_frames(end)+params.exp.trial.response_win_dur)) = run.button_response_cd(curr_frames(end));
+                        end
                     end
                     
                     % update frame counte
@@ -342,7 +361,7 @@ else
                     % sampling process of 5 lum values.
                     assert(isequal(unique(diff(find(diff(run.button_response_fix)>0)))', [params.stim.fix.dotmeanchange, 2*params.stim.fix.dotmeanchange]));
                     
-                    fix_block_nrs = unique(subj_run.block_nr(fix_events,:)); % should be 1 or 2 or 3 blocks per rum
+                    fix_block_nrs = unique(subj_run.block_nr(fix_events,:))'; % should be 1 or 2 or 3 blocks per rum
                     fix_update_idx = (run.button_response_fix>0); % 1 x 10298 --> 238 fixation changes per run
                     [~,fix_block_frames] = ismember(subj_run.block_nr,fix_block_nrs); % 40 trial events
                     fix_block_change_direction = run.button_response_fix(fix_update_idx); % 1=brighter, 2=dimmer
@@ -350,28 +369,41 @@ else
                     
                     % nr of block frames should be exactly 1 or more single-stim presentation
                     % block duration
-                    assert(isequal(mod((max(subj_run.event_end(fix_block_frames>0))-min(subj_run.event_start(fix_block_frames>0)))+1,params.exp.block.total_single_epoch_dur),0))
+%                     assert(isequal(mod((max(subj_run.event_end(fix_block_frames>0))-min(subj_run.event_start(fix_block_frames>0)))+1,params.exp.block.total_single_epoch_dur),0))
                     % get all the frames for the entire run
                     all_frames = 0:total_nr_frames;
                     % find those frames where the fixation circle updated
                     time_frames_fix_updated = all_frames(fix_update_idx);
-                    % get start and end time frames for fixation block from time table master
-                    fix_block_start_end = [min(subj_run.event_start(fix_events)),  max(subj_run.event_end(fix_events))];
-                    % see what fix block frames overlap with frames where the fixation circle changed
-                    fix_block_changes_idx = ((time_frames_fix_updated >= fix_block_start_end(1)) & (time_frames_fix_updated <= fix_block_start_end(2)));
-                    fix_block_changes_times = time_frames_fix_updated(fix_block_changes_idx);
-                    fix_block_abs_lum = fix_block_abs_lum(fix_block_changes_idx);
-                    fix_block_changes_correct_response = fix_block_change_direction(fix_block_changes_idx);
-                    
-                    for ff = 1:length(fix_block_changes_correct_response)
-                        t_fix = fix_block_changes_times(ff);
-                        t_response = fix_block_changes_correct_response(ff);
-                        
+                    fix_update_sub = find(fix_update_idx);
+                    for ff = 1:length(fix_update_sub)
+                        t_fix = time_frames_fix_updated(ff);
                         t_tbl = find((subj_run.event_start <= t_fix) & (subj_run.event_end >= t_fix));
-                        if ~isempty(t_tbl)
-                            subj_run.button_response(t_tbl) = t_response;
-                            subj_run.fix_lum(t_tbl) = fix_block_abs_lum(ff);
-                            subj_run.fix_start(t_tbl) = fix_block_changes_times(ff);
+                        
+                        subj_run.fix_lum{t_tbl}   = cat(2, subj_run.fix_lum{t_tbl}, fix_block_abs_lum(ff));
+                        subj_run.fix_start{t_tbl} = cat(2, subj_run.fix_start{t_tbl}, t_fix);
+                    end
+                    
+                    for ff_block = 1:length(fix_block_nrs)
+                        fix_events2 = (fix_block_frames==ff_block);
+                        % get start and end time frames for fixation block from time table master
+                        fix_block_start_end = [min(subj_run.event_start(fix_events2)),  max(subj_run.event_end(fix_events2))];
+                        % see what fix block frames overlap with frames where the fixation circle changed
+                        fix_block_changes_idx = ((time_frames_fix_updated >= fix_block_start_end(1)) & (time_frames_fix_updated <= fix_block_start_end(2)));
+                        fix_block_changes_times = time_frames_fix_updated(fix_block_changes_idx);
+                        fix_block_changes_correct_response = fix_block_change_direction(fix_block_changes_idx);
+
+                        for ff = 1:length(fix_block_changes_correct_response)
+                            t_fix = fix_block_changes_times(ff);
+                            t_response = fix_block_changes_correct_response(ff);
+
+                            t_tbl = find((subj_run.event_start <= t_fix) & (subj_run.event_end >= t_fix));
+                            if ~isempty(t_tbl)
+                                if cellfun(@isnan, subj_run.correct_response(t_tbl))
+                                    subj_run.correct_response{t_tbl} = t_response;
+                                else
+                                    subj_run.correct_response{t_tbl} = cat(2, subj_run.correct_response(t_tbl), t_response);
+                                end
+                            end
                         end
                     end
                 end
@@ -394,13 +426,25 @@ else
                 % Add run_images and alpha_masks to larger cell array
                 all_subj_run_frames{subject_nrs(sj),session_nrs(ses),run_nrs(rr)} = run;
                 
-
-                time_table_master.button ((time_table_master.subj_nr==subject_nrs(sj) & ...
-                    time_table_master.session_nr==session_nrs(ses) & ...
-                    time_table_master.run_nr==run_nrs(rr)),:) = subj_run;
+                time_table_master2 = cat(1,time_table_master2,subj_run);
                 
             end % runs
         end % sessions
     end % subjects
+    
+    time_table_master = time_table_master2;
+    
+    % Store structs locally, if requested
+    if params.store_params
+        fprintf('[%s]: Storing expanded time table for all subjects..\n',mfilename)
+        saveDir = fullfile(vcd_rootPath,'workspaces','info');
+        if ~exist(saveDir,'dir'), mkdir(saveDir); end
+        save(fullfile(saveDir, ...
+            sprintf('time_table_master2_%s_%s.mat', ...
+             params.disp.name, datestr(now,30))), ...
+            'time_table_master','all_subj_run_frames','-v7.3')
+    end
+    
+    
 end % load params or not
 

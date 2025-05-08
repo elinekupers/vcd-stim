@@ -116,6 +116,7 @@ elseif strcmp(session_type,'MRI')
     session_postblankdur = params.exp.run.post_blank_dur_MRI;
     session_totalrundur  = params.exp.run.total_run_dur_MRI;
     IBI_to_use = params.exp.block.IBI_MRI;
+
 elseif strcmp(session_type,'BEHAVIOR')
     session_names = {'BEHAVIOR01'};
     all_sessions = params.exp.session.behavior.ses_blocks;
@@ -142,6 +143,7 @@ for sj = 1;%:params.exp.total_subjects
     
     % preallocate session time table
     session_time_table = [];
+    global_block_nr = 0;
     
     % Loop over sessions
     for ses = 1:size(all_sessions,3)
@@ -149,6 +151,8 @@ for sj = 1;%:params.exp.total_subjects
         
         % preallocate subject time table
         subj_time_table = [];
+        subj_run_nrs = unique(params.trials.run_nr(~isnan(params.trials.run_nr)));
+        assert(isequal(runs_per_session(ses),length(subj_run_nrs)))
         
         % Loop over runs
         for rr = 1:runs_per_session(ses)
@@ -172,6 +176,7 @@ for sj = 1;%:params.exp.total_subjects
             % will be inserted into a bigger time table that includes other
             % event types, like iti, cues, etc.
             idx0      = (params.trials.session_nr==ses & params.trials.run_nr==rr);
+            assert(sum(idx0)>0)
             t_trial   = params.trials(idx0,:);
             block_nrs = t_trial.subj_block_nr(:,sj);
             
@@ -189,9 +194,17 @@ for sj = 1;%:params.exp.total_subjects
 
             if ~isempty(block_nrs)
                 
+                total_ses_dur = session_totalrundur-params.exp.block.total_eyetracking_block_dur;
+                
+                % sneak in extra block for one behavioral run
+                if strcmp(session_type,'BEHAVIOR') && ...
+                       (total_ses_dur - sum([session_postblankdur,session_preblankdur]) - sum(block_dur)) < 0
+                    total_ses_dur = total_ses_dur + params.exp.block.total_double_epoch_dur;
+                end
+                
                 % predefine IBIs
                 [ibis, postblank_to_add] = ...
-                    vcd_optimizeIBIs(session_totalrundur-params.exp.block.total_eyetracking_block_dur, ...
+                    vcd_optimizeIBIs(total_ses_dur, ...
                     block_dur, IBI_to_use, length(block_dur), sum([session_postblankdur,session_preblankdur]));
             end
             
@@ -200,22 +213,40 @@ for sj = 1;%:params.exp.total_subjects
                 
                 table_idx = 1;
                 % Add prefixation period (1s)
+                time_table.session_nr(table_idx)     = ses;
+                time_table.session_name(table_idx)   = session_names(ses);
+                time_table.run_nr(table_idx)         = rr;
+                time_table.block_nr(table_idx)       = 999;
+                time_table.subj_block_nr(table_idx)  = 999;
+                time_table.block_ID(table_idx)       = 999;
+                time_table.stim_class(table_idx)      = NaN;
+                time_table.task_class(table_idx)      = NaN;
+                time_table.repeat_nr(table_idx)      = t_trial.repeat_nr(1);
+                time_table.block_local_trial_nr(table_idx) = 1;
+                time_table.global_block_nr(table_idx)  = NaN;
+                time_table.correct_response(table_idx) = NaN;
                 time_table.event_start(table_idx)    = total_run_frames;
                 time_table.event_dur(table_idx)      = params.exp.block.eye_gaze_fix0;
                 time_table.event_end(table_idx)      = time_table.event_start(table_idx) + time_table.event_dur(table_idx)-1;
                 time_table.event_id(table_idx)       = params.exp.block.eye_gaze_fix_ID;
                 time_table.event_name(table_idx)     = {'et_fix'};
-                time_table.run_nr(table_idx)         = rr;
-                time_table.session_nr(table_idx)     = ses;
-                time_table.session_name(table_idx)   = session_names(ses);
-                time_table.block_nr(table_idx)       = 999;
-                time_table.subj_block_nr(table_idx)  = 999;
-                time_table.block_ID(table_idx)       = 999;
-                time_table.block_local_trial_nr(table_idx) = 0;
-                time_table.block_ID(table_idx)        = 0;
-                time_table.stim_class(table_idx)      = NaN;
-                time_table.task_class(table_idx)      = NaN;
-                time_table.global_block_nr(table_idx) = ses;
+                
+                % OTHER COLUMNS
+                % time_table.unique_trial_nr
+                % time_table.cond_name
+                % time_table.stim_nr_left
+                % time_table.stim_nr_right
+                % time_table.is_cued
+                % time_table.is_catch
+                % time_table.stim_class_name
+                % time_table.task_class_name
+                %   orient_dir/contrast/gbr_phase/rdk_coherence/super_cat/
+                %   basic_cat/sub_cat/affordance_cat/super_cat_name/
+                %   basic_cat_name/sub_cat_name/affordance_name/is_in_img_ltm
+                %   stim2_delta/stim2_im_nr/stim2_orient_dir/is_lure/repeat_nr
+                %   stim_class_unique_block_nr/block_local_trial_nr/correct_response
+                %   block_name/trial_type
+                
                 total_run_frames = time_table.event_end(table_idx) + 1;
                 
                 % update time table idx
@@ -228,22 +259,23 @@ for sj = 1;%:params.exp.total_subjects
                 sac_IDs(isnan(sac_IDs)) = shuffle_concat(params.exp.block.eye_gaze_sac_target_ID(2:end),1);
                 
                 for sac = 1:params.exp.block.nr_of_saccades
-                    time_table.event_start(table_idx)    = total_run_frames;
-                    time_table.event_dur(table_idx)      = params.exp.block.eye_gaze_sac_target;
-                    time_table.event_end(table_idx)      = time_table.event_start(table_idx) + time_table.event_dur(table_idx)-1;
-                    time_table.event_id(table_idx)       = sac_IDs(sac);
-                    time_table.event_name(table_idx)     = {'et_sac'};
-                    time_table.run_nr(table_idx)         = rr;
-                    time_table.session_nr(table_idx)     = ses;
-                    time_table.session_name(table_idx)   = session_names(ses);
-                    time_table.block_nr(table_idx)       = 999;
-                    time_table.subj_block_nr(table_idx)  = 999;
-                    time_table.block_ID(table_idx)       = 999;
-                    time_table.block_local_trial_nr(table_idx) = 0;
-                    time_table.global_block_nr(table_idx) = ses;
-                    time_table.block_ID(table_idx)        = 0;
+
+                    
+                    time_table.session_nr(table_idx)      = ses;
+                    time_table.session_name(table_idx)    = session_names(ses);
+                    time_table.run_nr(table_idx)          = rr;
+                    time_table.block_nr(table_idx)        = 999;
+                    time_table.subj_block_nr(table_idx)   = 999;
+                    time_table.block_ID(table_idx)        = 999;
+                    time_table.block_local_trial_nr(table_idx) = 1+sac;
+                    time_table.global_block_nr(table_idx) = NaN;
                     time_table.stim_class(table_idx)      = NaN;
                     time_table.task_class(table_idx)      = NaN;
+                    time_table.event_start(table_idx)     = total_run_frames;
+                    time_table.event_dur(table_idx)       = params.exp.block.eye_gaze_sac_target;
+                    time_table.event_end(table_idx)       = time_table.event_start(table_idx) + time_table.event_dur(table_idx)-1;
+                    time_table.event_id(table_idx)        = sac_IDs(sac);
+                    time_table.event_name(table_idx)      = {'et_sac'};
                     total_run_frames = time_table.event_end(table_idx) + 1;
                     
                     % update time table idx
@@ -251,22 +283,22 @@ for sj = 1;%:params.exp.total_subjects
                 end
                 
                 % Add post saccade fixation period (1s)
-                time_table.event_start(table_idx)    = total_run_frames;
-                time_table.event_dur(table_idx)      = params.exp.block.eye_gaze_fix1;
-                time_table.event_end(table_idx)      = time_table.event_start(table_idx) + time_table.event_dur(table_idx)-1;
-                time_table.event_id(table_idx)       = params.exp.block.eye_gaze_fix_ID;
-                time_table.event_name(table_idx)     = {'et_fix'};
                 time_table.run_nr(table_idx)         = rr;
                 time_table.session_nr(table_idx)     = ses;
                 time_table.session_name(table_idx)   = session_names(ses);
                 time_table.block_ID(table_idx)       = 999;
                 time_table.subj_block_nr(table_idx)  = 999;
                 time_table.block_nr(table_idx)       = 999;
-                time_table.block_local_trial_nr(table_idx) = 0;
-                time_table.block_ID(table_idx)        = 0;
+                time_table.block_local_trial_nr(table_idx) = params.exp.block.nr_of_saccades+2;
                 time_table.stim_class(table_idx)      = NaN;
                 time_table.task_class(table_idx)      = NaN;
-                time_table.global_block_nr(table_idx) = ses;
+                time_table.global_block_nr(table_idx) = NaN;
+                time_table.event_start(table_idx)    = total_run_frames;
+                time_table.event_dur(table_idx)      = params.exp.block.eye_gaze_fix1;
+                time_table.event_end(table_idx)      = time_table.event_start(table_idx) + time_table.event_dur(table_idx)-1;
+                time_table.event_id(table_idx)       = params.exp.block.eye_gaze_fix_ID;
+                time_table.event_name(table_idx)     = {'et_fix'};
+                
                 total_run_frames = time_table.event_end(table_idx) + 1;
                 
                 % update time table idx
@@ -274,22 +306,23 @@ for sj = 1;%:params.exp.total_subjects
 
                 % Add pupil trial (3s black, 1s white)
                 for ppl = 1:length(params.exp.block.eye_gaze_pupil)
-                    time_table.event_start(table_idx)    = total_run_frames;
-                    time_table.event_dur(table_idx)      = params.exp.block.eye_gaze_pupil(ppl);
-                    time_table.event_end(table_idx)      = time_table.event_start(table_idx) + time_table.event_dur(table_idx)-1;
-                    time_table.event_id(table_idx)       = params.exp.block.eye_gaze_pupil_ID;
-                    time_table.event_name(table_idx)     = {['et_pupil' num2str(ppl)]};
+
                     time_table.run_nr(table_idx)         = rr;
                     time_table.session_nr(table_idx)     = ses;
                     time_table.session_name(table_idx)   = session_names(ses);
                     time_table.block_ID(table_idx)       = 999;
                     time_table.subj_block_nr(table_idx)  = 999;
                     time_table.block_nr(table_idx)       = 999;
-                    time_table.block_local_trial_nr(table_idx) = 0;
-                    time_table.global_block_nr(table_idx) = ses;
-                    time_table.block_ID(table_idx)        = 0;
+                    time_table.block_local_trial_nr(table_idx) = params.exp.block.nr_of_saccades+2+ppl;
+                    time_table.global_block_nr(table_idx) = NaN;
                     time_table.stim_class(table_idx)      = NaN;
                     time_table.task_class(table_idx)      = NaN;
+                    time_table.event_start(table_idx)    = total_run_frames;
+                    time_table.event_dur(table_idx)      = params.exp.block.eye_gaze_pupil(ppl);
+                    time_table.event_end(table_idx)      = time_table.event_start(table_idx) + time_table.event_dur(table_idx)-1;
+                    time_table.event_id(table_idx)       = params.exp.block.eye_gaze_pupil_ID;
+                    time_table.event_name(table_idx)     = {['et_pupil' num2str(ppl)]};
+                    
                     total_run_frames = time_table.event_end(table_idx) + 1;
                      
                     % update time table idx
@@ -334,9 +367,12 @@ for sj = 1;%:params.exp.total_subjects
                 
                 curr_trial = t_trial.block_local_trial_nr(1);
                 
+                % update global block nr
+                global_block_nr = global_block_nr+1;
+
                 % get current block nr
                 curr_block = block_nrs(block_vec_idx);
-                curr_global_session_block_nr  = t_trial.global_block_nr(1);
+                curr_global_session_block_nr  = global_block_nr; %t_trial.global_block_nr(1);
                 curr_subj_within_run_block_nr = t_trial.subj_block_nr(1,sj);
                 curr_block_ID                 = t_trial.block_ID(1);
                 curr_trial_nr                 = t_trial.unique_trial_nr(1);
@@ -350,7 +386,7 @@ for sj = 1;%:params.exp.total_subjects
                 curr_block_name               = t_trial.block_name(1);
                 curr_block_local_trial_nr     = t_trial.block_local_trial_nr(1);
                 curr_spatial_cue              = t_trial.is_cued(1);
-
+                curr_correct_response         = t_trial.correct_response(1);
                 
                 
                 % first trial of the block has a task cue
@@ -381,6 +417,7 @@ for sj = 1;%:params.exp.total_subjects
                     time_table.stim_class_unique_block_nr(table_idx) = curr_stim_class_unique_block_nr;
                     time_table.trial_type(table_idx)      = curr_trial_type;
                     time_table.block_name(table_idx)      = curr_block_name;
+                    time_table.correct_response(table_idx) = NaN;
                     
                     total_run_frames = time_table.event_end(table_idx) + 1;
                     
@@ -394,7 +431,9 @@ for sj = 1;%:params.exp.total_subjects
                     trial_IDs = trial_ID_double_epoch;
                 end
                 
-                % Loop over events within trial
+                
+                
+                % Loop over trial events within a block
                 for id = 1:length(trial_IDs)
                     
                     % event start is the same for all IDs
@@ -418,7 +457,8 @@ for sj = 1;%:params.exp.total_subjects
                     time_table.stim_class_unique_block_nr(table_idx) = curr_stim_class_unique_block_nr;
                     time_table.trial_type(table_idx)      = curr_trial_type;
                     time_table.block_name(table_idx)      = curr_block_name;
-                    
+                    time_table.correct_response(table_idx) = NaN;
+
                     % Add individual trial events
                     switch trial_IDs(id)
                         
@@ -439,7 +479,8 @@ for sj = 1;%:params.exp.total_subjects
                             time_table.trial_type(table_idx)      = curr_trial_type;
                             time_table.block_name(table_idx)      = curr_block_name;
                             time_table.is_cued(table_idx)          = curr_spatial_cue;
-                            
+                            time_table.correct_response(table_idx) = NaN;
+
                             total_run_frames = time_table.event_end(table_idx) + 1;
                             table_idx   = table_idx+1; 
                             
@@ -480,6 +521,7 @@ for sj = 1;%:params.exp.total_subjects
                             tmp1.run_nr         = rr;
                             tmp1.is_cued         = curr_spatial_cue;
                             tmp1.global_block_nr = curr_global_session_block_nr;
+                            tmp1.correct_response = curr_correct_response;
 
                             time_table(table_idx,:) = tmp1;
                             total_run_frames = time_table.event_end(table_idx) + 1;
@@ -509,7 +551,9 @@ for sj = 1;%:params.exp.total_subjects
                                 tmp2.session_nr     = ses;
                                 tmp2.run_nr         = rr;
                                 tmp2.global_block_nr = curr_global_session_block_nr;
-                                tmp2.is_cued         = curr_spatial_cue;                    
+                                tmp2.is_cued         = curr_spatial_cue; 
+                                tmp2.correct_response = curr_correct_response;
+                                
                                 time_table(table_idx,:) = tmp2;
                                 
                                 total_run_frames = time_table.event_end(table_idx) + 1;
@@ -538,7 +582,8 @@ for sj = 1;%:params.exp.total_subjects
                             time_table.trial_type(table_idx)      = curr_trial_type;
                             time_table.block_name(table_idx)      = curr_block_name;
                             time_table.is_cued(table_idx)          = curr_spatial_cue;
-                            
+                            time_table.correct_response(table_idx) = curr_correct_response;
+
                             total_run_frames = time_table.event_end(table_idx) + 1;
                             
                             table_idx = table_idx+1;
@@ -562,13 +607,15 @@ for sj = 1;%:params.exp.total_subjects
                             time_table.trial_type(table_idx)      = curr_trial_type;
                             time_table.block_name(table_idx)      = curr_block_name;
                             time_table.is_cued(table_idx)          = curr_spatial_cue;
-                            
+                            time_table.correct_response(table_idx) = NaN;
+
                             total_run_frames = time_table.event_end(table_idx) + 1;
                             
                             table_idx = table_idx+1;
                     end
                     
                 end % trial IDs
+                
                 
                 %% ADD inter-trial, inter-block interval
                 if block_vec_idx == length(block_nrs) %  last trial of the last block 
@@ -577,7 +624,7 @@ for sj = 1;%:params.exp.total_subjects
                     break;
 
                 elseif block_vec_idx < length(block_nrs) % more trials to go
-                    
+
                     next_block_id = block_nrs(block_vec_idx+1);
                     
                     if curr_block ~= next_block_id  
@@ -606,6 +653,7 @@ for sj = 1;%:params.exp.total_subjects
                         time_table.stim_class(table_idx)      = 0;
                         time_table.task_class(table_idx)      = 0;
                         time_table.is_cued(table_idx)          = 0;
+                        time_table.correct_response(table_idx) = NaN;
 
                         total_run_frames = time_table.event_end(table_idx) + 1;
                         
@@ -656,6 +704,7 @@ for sj = 1;%:params.exp.total_subjects
                         time_table.stim_class(table_idx)      = 0;
                         time_table.task_class(table_idx)      = 0;
                         time_table.is_cued(table_idx)          = 0;
+                        time_table.correct_response(table_idx) = NaN;
                         
                         total_run_frames = time_table.event_end(table_idx) + 1;
                         
@@ -705,14 +754,17 @@ for sj = 1;%:params.exp.total_subjects
                 time_table.stim_class(table_idx)      = 0;
                 time_table.task_class(table_idx)      = 0;
                 time_table.is_cued(table_idx)          = 0;
+                
                 total_run_frames = time_table.event_end(table_idx);
-
-%                 if strcmp(session_type,'MRI')
-%                     assert(nearZero(mod(total_run_frames,params.exp.TR)));
-%                     assert(nearZero(mod(total_run_frames,session_totalrundur)))
-%                 elseif strcmp(session_type,'BEHAVIOR')
-%                     assert(total_run_frames <= session_totalrundur)
-%                 end
+                
+                if strcmp(session_type,'MRI')
+                    assert(isequal(session_totalrundur, total_run_frames));
+                    assert(nearZero(mod(total_run_frames,params.exp.TR)));
+                    assert(nearZero(mod(total_run_frames,session_totalrundur)))
+                elseif strcmp(session_type,'BEHAVIOR')
+                    assert(isequal(session_totalrundur, total_run_frames));
+                    assert(total_run_frames <= session_totalrundur)
+                end
                 
                 run_finished = 0; % reset flag
 
@@ -726,6 +778,7 @@ for sj = 1;%:params.exp.total_subjects
                 time_table2.unique_trial_nr = [];
                 time_table2.stim_class_unique_block_nr = []; 
                 time_table2.block_name = [];
+                time_table2.subj_block_nr = [];
                 
                 % reorganize column order
                 col_order = {'subj_nr','session_nr','session_name','run_nr','block_nr','block_local_trial_nr',...
@@ -733,13 +786,15 @@ for sj = 1;%:params.exp.total_subjects
                     'stim_nr_left','stim_nr_right','is_cued',...
                     'is_catch','trial_type',...
                     'block_ID','event_start','event_dur','event_end',...
-                    'event_id','event_name', ...
+                    'event_id','event_name', 'correct_response',...
                     'stim_class_name','task_class_name',...
                     'orient_dir','contrast','gbr_phase','rdk_coherence',...
                     'super_cat','basic_cat','sub_cat','affordance_cat','super_cat_name',...
-                    'basic_cat_name','sub_cat_name','affordance_name','is_in_img_ltm','stim2_im_nr','stim2_delta','stim2_orient_dir',...
+                    'basic_cat_name','sub_cat_name','affordance_name',...
+                    'is_in_img_ltm','stim2_im_nr','stim2_delta','stim2_orient_dir',...
                     'is_lure','repeat_nr','global_block_nr'};
-                assert(all(ismember(col_order,time_table2.Properties.VariableNames)));
+                
+                assert(all(ismember(time_table2.Properties.VariableNames,col_order)));
                 for col = 1:length(col_order)
                     new_col_order(col) = find(strcmp(time_table2.Properties.VariableNames,col_order(col)));
                 end
@@ -750,6 +805,8 @@ for sj = 1;%:params.exp.total_subjects
                 time_table2.is_catch(isnan(time_table2.is_catch))=0;
                 time_table2.is_in_img_ltm(isnan(time_table2.is_in_img_ltm(:,1)),1)=0;
                 time_table2.is_in_img_ltm(isnan(time_table2.is_in_img_ltm(:,2)),2)=0;
+                
+                
                 % add run to master
                 subj_time_table = cat(1, subj_time_table, time_table2);
                

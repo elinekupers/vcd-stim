@@ -146,7 +146,7 @@ else
     
     % BEHAVIORAL
     exp.session.behavior.session_nrs        = 1;                            % Sessions dedicated to behavior
-    exp.session.behavior.n_runs_per_session = 15;                           % there are 15x ~5 min runs per session
+    exp.session.behavior.n_runs_per_session = 14;                           % there are 14x ~5 min runs per session
 
     % WIDE
     exp.session.wide.session_nrs            = 1:2;                          % Sessions dedicated to wide subject sampling (WIDE 1A and WIDE 1B)
@@ -325,7 +325,7 @@ else
     % 1 behavioral session with 1 run only (all subjects do the same)
     exp.session.behavior.nr_of_type1_runs(1)  = 9; % 7 single-stim blocks / 0 double-stim blocks 
     exp.session.behavior.nr_of_type2_runs(1)  = 0; % 4 single-stim blocks / 2 double-stim blocks
-    exp.session.behavior.nr_of_type3_runs(1)  = 6; % 1 single-stim blocks / 4 double-stim blocks
+    exp.session.behavior.nr_of_type3_runs(1)  = 5; % 1 single-stim blocks / 4 double-stim blocks
     exp.session.behavior.nr_of_type4_runs(1)  = 0; % 0 single-stim blocks / 5 double-stim blocks
     
     % 1 wide session with 2 run options (50% of subjects will see A or 50% of subjects will see B)

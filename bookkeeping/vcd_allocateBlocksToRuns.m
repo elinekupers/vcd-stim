@@ -282,10 +282,11 @@ for ses = 1:size(all_sessions,3)
         assert(isequal(length(unique_blocks), sum(nr_blocks_per_run_type)))
         assert(isequal(n_trialtype1 , nr_blocks_per_run_type(1)))
    	    assert(isequal(n_trialtype2 , nr_blocks_per_run_type(2)))
-    elseif strcmp(session_type,'BEHAVIOR') % we don't fill all runs in behavioral session, so as long as there are less blocks allocated than possible across runs we are good
-        assert(length(unique_blocks) < sum(nr_blocks_per_run_type))
-        assert(n_trialtype1 < nr_blocks_per_run_type(1))
-   	    assert(n_trialtype2 < nr_blocks_per_run_type(2))
+    elseif strcmp(session_type,'BEHAVIOR') 
+        % we have one block too many for the allocated runs, so we shove if that block into a run of runtype3  
+        assert(length(unique_blocks) == sum(nr_blocks_per_run_type)+1)
+        assert(n_trialtype1 == nr_blocks_per_run_type(1))
+   	    assert(n_trialtype2 == nr_blocks_per_run_type(2)+1)
     end
     
     
@@ -296,8 +297,9 @@ for ses = 1:size(all_sessions,3)
     % separate single and double stim blocks:
     s_blocks = unique_blocks(find(unique_trialtypes==1));
     d_blocks = unique_blocks(find(unique_trialtypes==2));
+   
     
-    assert(isequal(length(s_blocks)+length(d_blocks),length(unique_blocks)))
+     assert(isequal(length(s_blocks)+length(d_blocks),length(unique_blocks)))
     
     % Shuffle block order within a session
     s_blocks_shuffled = s_blocks(randperm(length(s_blocks),length(s_blocks)));
@@ -333,24 +335,15 @@ for ses = 1:size(all_sessions,3)
 
             end
             
-        % if we ran out of double stim presentation blocks, but not single 
-        elseif all(s_block_idx <= length(s_blocks_shuffled)) && ~all(d_block_idx <= length(d_blocks_shuffled))
-            if ~isempty(s_block_idx)
-                tmp = cat(1,s_blocks_shuffled(s_block_idx), d_blocks_shuffled(d_block_idx))';
-                curr_runs(rr,1:length(tmp)) = shuffle_concat(tmp,1);
-            end
-            if ~isempty(d_block_idx)
-                d_block_idx = d_block_idx(d_block_idx <= length(d_blocks_shuffled));
-                tmp = cat(1,d_blocks_shuffled(d_block_idx))';
-                curr_runs(rr,1:length(tmp)) = shuffle_concat(tmp,1);
-            end
              
-        % if we ran out of single stim presentation blocks, but not double
-        elseif ~all(s_block_idx <= length(s_blocks_shuffled)) && all(d_block_idx <= length(d_blocks_shuffled))
+        % if are at the end of available stim presentation blocks
+        elseif any(s_block_idx <= length(s_blocks_shuffled)) || any(d_block_idx <= length(d_blocks_shuffled))
+             d_block_idx = d_block_idx(d_block_idx<= length(d_blocks_shuffled));
              if ~isempty(d_block_idx)
                 tmp = cat(1,d_blocks_shuffled(d_block_idx))';
                 curr_runs(rr,1:length(tmp)) = shuffle_concat(tmp,1);
              end
+             s_block_idx = s_block_idx(s_block_idx<= length(s_blocks_shuffled));
              if ~isempty(s_block_idx)
                 s_block_idx = s_block_idx(s_block_idx <= length(s_blocks_shuffled));
                 tmp = cat(1,s_blocks_shuffled(s_block_idx), s_blocks_shuffled(s_block_idx))';
@@ -367,22 +360,28 @@ for ses = 1:size(all_sessions,3)
         end
     end
     
-    %% Shuffle run order
-    curr_runs_shuffled = curr_runs(randperm(size(curr_runs,1),size(curr_runs,1)),:);
+    if strcmp(session_type,'BEHAVIOR')
+        empty_slot = find(curr_runs(end,:)==0);
+        curr_runs(end-2, empty_slot(1)) = d_blocks_shuffled(end);
+    end
     
+    %% Shuffle run order (runs x blocks)
+    for xx = 1:size(curr_runs,1)
+        tmp_run_blocks =  curr_runs(xx,curr_runs(xx,:)>0);
+        curr_runs_shuffled(xx,1:length(tmp_run_blocks)) = tmp_run_blocks(randperm(size(tmp_run_blocks,1),size(tmp_run_blocks,1)),:);
+    end
+    %% BLOCK NR ALLOCATION PER SUBJECTS
+    % Once blocks are allocated to each run, we want to
+    % shuffle the order of blocks within a run for each subject
     
-    for run_idx = 1:size(curr_runs_shuffled,1)
-        
-        %% BLOCK NR ALLOCATION PER SUBJECTS
-        % Once blocks are allocated to each run, we want to
-        % shuffle the order of blocks within a run for each subject
-        
-        for sj = 1:params.exp.total_subjects
+    for sj = 1:params.exp.total_subjects
+
+        for run_idx = 1:size(curr_runs_shuffled,1)
+
+            block_in_this_run = curr_runs_shuffled(run_idx,:);
+            block_in_this_run = block_in_this_run(block_in_this_run>0);
             
-            this_run = curr_runs_shuffled(run_idx,:);
-            this_run = this_run(this_run>0);
-            
-            subj_ses_block_shuffle = this_run(randperm(length(this_run),length(this_run)));
+            subj_ses_block_shuffle = block_in_this_run(randperm(length(block_in_this_run),length(block_in_this_run)));
             
             fprintf('\n[%s]: Run %02d, block order for subject %03d:',mfilename, run_idx,sj)
             disp(subj_ses_block_shuffle)
