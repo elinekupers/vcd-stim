@@ -38,9 +38,8 @@ end
 
 %% ptb stuff
 
-ifi            = Screen('GetFlipInterval',win);
-mfi            = ifi;
-frameduration  = round(params.stim.framedur_s/mfi); % 30 Hz presentation, 2 frames for office/psph monitors (60 Hz), 4 frames for BOLDscreen (120 Hz);
+mfi            = Screen('GetFlipInterval',win);
+frameduration  = 1;%round(params.stim.framedur_s/mfi); % 30 Hz presentation, 2 frames for office/psph monitors (60 Hz), 4 frames for BOLDscreen (120 Hz);
 
 Screen('BlendFunction', win, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 Screen('Preference','TextRenderer',1);
@@ -191,12 +190,12 @@ Screen('DrawTextures',win, im_tex{1},[], im_rect{1}',[], [0;0], [1;1], framecolo
 DrawFormattedText(win, instrtext, 'center', (prerun_text_rect(4)/2)-50, 0, 75,[],[],[],[],prerun_text_rect);
 Screen('Flip',win);
 
-fprintf('Instructions are on screen, waiting for trgger...\n');
+fprintf('Instructions are on screen, waiting for trigger...\n');
 
 
 %% CORE EXP CODE!
 
-fprintf('press trigger key to begin the movie. (consider turning off network, energy saver, software updates.)\n');
+fprintf('Press trigger key to begin the movie. (consider turning off network, energy saver, software updates.)\n');
 % safemode = 0;
 while 1
     [~,keyCode,~] = KbWait(deviceNr,2); % previously deviceNr = -3; outputs: secs,keyCode,deltaSecs
@@ -214,7 +213,7 @@ timekeys = [timekeys; {GetSecs 'trigger'}];
 
 %% DRAW THE TEXTURES
 framecnt = 0;
-for frame = 1:size(frameorder,2)+1 % we add 1 to log end
+for frame = 1:6420 %size(frameorder,2)+1 % we add 1 to log end
     
     framecnt = framecnt +1;
     frame0 = floor(framecnt);
@@ -276,7 +275,7 @@ for frame = 1:size(frameorder,2)+1 % we add 1 to log end
 
             % Draw fix dot on top
             Screen('DrawTexture',win,fix_tex{framecnt},[], fix_rect{framecnt}, 0,[],1, 255*ones(1,3));
-
+            Screen('Close',stim_texture);
     end
 
     % give hint to PT that we're done drawing
@@ -336,43 +335,46 @@ for frame = 1:size(frameorder,2)+1 % we add 1 to log end
                 end
             end
         end
+     end   
         
-        
-        
-        %     % write to file if desired
-        %     if wantframefiles
-        %         if isempty(framefiles{2}) %#ok<UNRCH>
-        %             imwrite(Screen('GetImage',win),sprintf(framefiles{1},frame));
-        %         else
-        %             imwrite(uint8(placematrix(zeros([framefiles{2} 3]),Screen('GetImage',win))),sprintf(framefiles{1},frame));
-        %         end
-        %     end
-        
-        % update when
-        if didglitch
-            % if there were glitches, proceed from our earlier when time.
-            % set the when time to 9/10 a frame before the desired frame.
-            % notice that the accuracy of the mfi is strongly assumed here.
-            whendesired = whendesired + mfi * frameduration;
-            when = whendesired - mfi * (9/10); %#ok<*NASGU>
-        else
-            % if there were no glitches, just proceed from the last recorded time
-            % and set the when time to 9/10 a frame before the desired time.
-            % notice that the accuracy of the mfi is only weakly assumed here,
-            % since we keep resetting to the empirical VBLTimestamp.
-            whendesired = VBLTimestamp + mfi * frameduration;
-            when = whendesired - mfi * (9/10);  % should we be less aggressive??
-        end
-    end
+     
+     % write to file if desired
+     if wantframefiles
+         if isempty(framefiles{2}) %#ok<UNRCH>
+             imwrite(Screen('GetImage',win),sprintf(framefiles{1},frame));
+         else
+             imwrite(uint8(placematrix(zeros([framefiles{2} 3]),Screen('GetImage',win))),sprintf(framefiles{1},frame));
+         end
+     end
+     
+     % update when
+     if didglitch
+         % if there were glitches, proceed from our earlier when time.
+         % set the when time to 9/10 a frame before the desired frame.
+         % notice that the accuracy of the mfi is strongly assumed here.
+         whendesired = whendesired + mfi * frameduration;
+         when = whendesired - mfi * (9/10); %#ok<*NASGU>    % RZ code: when = (when + mfi / 2) + mfi * frameduration - mfi / 2;
+     else
+         % if there were no glitches, just proceed from the last recorded time
+         % and set the when time to 9/10 a frame before the desired time.
+         % notice that the accuracy of the mfi is only weakly assumed here,
+         % since we keep resetting to the empirical VBLTimestamp.
+         whendesired = VBLTimestamp + mfi * frameduration;
+         when = whendesired - mfi * (9/10);  % should we be less aggressive??    % RZ code: %     when = VBLTimestamp + mfi * frameduration - mfi / 2;  % should we be less aggressive??
+         
+     end
+     
 end
+
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% PT CLEANUP STUFF
-Screen('Close','all');
-ptoff(oldCLUT);
+Screen('Close',win);
+ptoff();
 
 % restore priority and cursor
 Priority(oldPriority);
@@ -399,10 +401,9 @@ digitrecord = {digitrecord digitframe digitpolarity};
 
 data = struct();
 data.mfi                    = mfi;
-data.ifi                    = ifi;
 data.wantframefiles         = wantframefiles;
 data.detectinput            = detectinput;
-data.forceglitch            = forceglitch;
+% data.forceglitch            = forceglitch;
 data.timeKeys               = timekeys;
 data.timing.glitchcnt       = glitchcnt;
 data.timing.timeframes      = timeframes;

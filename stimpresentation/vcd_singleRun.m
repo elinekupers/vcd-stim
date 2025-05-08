@@ -21,6 +21,7 @@ p.addParameter('instrtextdir'   , fullfile(vcd_rootPath,'workspaces','instructio
 p.addParameter('laptopkey'      , -3        , @isnumeric);                   % listen to all keyboards/boxes (is this similar to k=-3;?)
 p.addParameter('wanteyetracking', false     , @islogical);                   % whether to try to hook up to the eyetracker
 p.addParameter('deviceNr'       , []        , @isnumeric);                   % kbWait/Check input device number
+p.addParameter('device_check'   , 'both'    , @char);                        % what type of devices do we want to check for button presses: 'external','internal', or 'both'
 p.addParameter('triggerkey'     , {'5%','t'}, @(x) iscell(x) || isstring(x)) % key that starts the experiment
 p.addParameter('triggerkeyname' , '''5'' or ''t''', @isstring)               % for display only
 p.addParameter('offsetpix'      , [0 0]     , @isnumeric);                   % offset of screen in pixels [10 20] means move 10-px right, 20-px down
@@ -64,51 +65,20 @@ if ~isfield(params, 'disp') || isempty(params.disp)
     params.disp = vcd_getDisplayParams(params.dispName); % BOLDSCREEN is default
 end
 
-if params.debugmode
-    params.disp.name = 'PPROOM_EIZOFLEXSCAN';
-end
+% if params.debugmode
+%     params.disp.name = 'PPROOM_EIZOFLEXSCAN';
+% end
 
-devices = PsychHID('Devices');
-for vv = 1:length(devices)
-    if strcmp(devices(vv).usageName,'Keyboard') && ~isempty(regexp(devices(vv).product,'\w*Internal Keyboard\w*'))
-        deviceNr_tmp.internal = vv;
-    elseif strcmp(devices(vv).usageName,'Keyboard') && ~isempty(regexp(devices(vv).product,'\w*USB\w*'))
-        deviceNr_tmp.external = vv;
-    end
-end
 
 if params.debugmode % skip synctest
     skipsync = 1;
-    if isempty(params.deviceNr) || isempty(params.deviceNr_tmp)
-        deviceNr = -3; % listen to all
-        warning('[%s]: No specified device nrs, will listen to all devices!\n',mfilename)
-    elseif ~isfield(deviceNr_tmp,'internal') && ~isfield(deviceNr_tmp,'external')
-        deviceNr = -3; % listen to all
-        warning('[%s]: No internal or external device nrs found, will listen to all devices!\n',mfilename)
-    else
-        if isfield(deviceNr_tmp,'external') && ~isempty(deviceNr_tmp.external) && ...
-                (~isfield(deviceNr_tmp,'internal') || isempty(deviceNr_tmp.internal))
-            deviceNr = deviceNr_tmp.external;
-            fprintf('[%s]: Using external device number(s): %d, %s %s\n',mfilename,deviceNr,devices(deviceNr).product, devices(deviceNr).manufacturer)
-        elseif isfield(deviceNr_tmp,'internal') && ~isempty(deviceNr_tmp.internal) && ...
-                (~isfield(deviceNr_tmp,'external') || isempty(deviceNr_tmp.external))
-            deviceNr = deviceNr_tmp.internal;
-            fprintf('[%s]: Using internal device number(s): %d %s %s\n',mfilename,deviceNr,devices(deviceNr).product, devices(deviceNr).manufacturer)
-        elseif isfield(deviceNr_tmp,'external') && isfield(deviceNr_tmp,'internal') && ...
-                ~isempty(deviceNr_tmp.external) && ~isempty(deviceNr_tmp.internal)
-            deviceNr = [deviceNr_tmp.internal, deviceNr_tmp.external];
-            fprintf('[%s]: Using external and internal device number(s): %d, %s %s\n',mfilename,deviceNr,devices(deviceNr).product, devices(deviceNr).manufacturer)
-        end
-    end
 else
     skipsync = 0;
-    if isempty(params.deviceNr) && ~isempty(deviceNr_tmp)
-        deviceNr = deviceNr_tmp.external;
-        fprintf('[%s]: Using external device number: %d, %s %s\n',mfilename,deviceNr,devices(deviceNr).product, devices(deviceNr).manufacturer)
-    elseif  isempty(params.deviceNr) && isempty(deviceNr_tmp.external)
-        error('[%s]: Cannot find external device number!',mfilename)
-    end
 end
+    
+% Get device nr for KbCheck
+deviceNr = vcd_checkDevices(params.deviceNr, params.device_check);
+
 
 % Nova1x32 coil with BOLDscreen and big eye mirrors
 % expected to be {[1920 1080 120 24],[], 0, 0}
@@ -117,7 +87,12 @@ end
 % 3: clutfile -- 0 for linear CLUT (-2 for squaring CLUT for BOLDSCREEN to simulate normal monitors --> NB: we do this manually!)
 % 4: skipsync (bool: 0 is false, 1 is true)
 % 5: wantstereo (bool: default is false)
-ptonparams = {[params.disp.w_pix params.disp.h_pix params.disp.refresh_hz 24],[],params.disp.clut, skipsync};
+if strcmp(params.disp.name, 'PPROOM_EIZOFLEXSCAN')
+    % apparently PP room monitor native refresh rate show up as 0 (but is 60 Hz)
+    ptonparams = {[params.disp.w_pix params.disp.h_pix 0 24],[],params.disp.clut, skipsync};
+else
+    ptonparams = {[params.disp.w_pix params.disp.h_pix params.disp.refresh_hz 24],[],params.disp.clut, skipsync};
+end
 
 % Buttonbox / keyboard
 params.ignorekeys = KbName({params.triggerkey});  % dont record TR triggers as subject responses
@@ -125,10 +100,10 @@ params.ignorekeys = KbName({params.triggerkey});  % dont record TR triggers as s
 
 %% %%%%%%%%% SETUP RNG %%%%%%%%%
 
-rand('seed', sum(100*clock));
-randn('seed', sum(100*clock));
-params.rng.rand = rand;
-params.rng.randn = randn;
+% rand('seed', sum(100*clock));
+% randn('seed', sum(100*clock));
+% params.rng.rand = rand;
+% params.rng.randn = randn;
 
 %% %%%%%%%%%%%%% STIM PARAMS %%%%%%%%%%%%%
 
@@ -168,10 +143,14 @@ end
 if ~isfield(params, 'exp') ||  isempty(params.exp)
     if params.loadparams
         d = dir(fullfile(params.infofolder,'exp*.mat'));
-        load(fullfile(d(end).folder,d(end).name),'exp');
-        params.exp = exp; clear exp;
+        if ~isempty(d)
+            load(fullfile(d(end).folder,d(end).name),'exp');
+            params.exp = exp; clear exp;
+        else
+            params.exp = vcd_getSessionParams('disp_name', params.disp.name,'load_params',false, 'store_params', params.storeparams);
+        end
     else
-        params.exp = vcd_getSessionParams(params,params.loadparams,params.storeparams);
+        params.exp = vcd_getSessionParams('disp_name', params.disp.name,'load_params',false, 'store_params', params.storeparams);
     end
 end
 
@@ -210,9 +189,9 @@ if ~exist('scan','var') || ~isfield(scan, 'rects') || isempty(scan.rects)
     centers = cell(size(scan.frame_nr)); %cell(size(timing.seq_stim));
     apsize  = cell(size(scan.frame_nr)); %cell(size(timing.seq_stim));
     
-    im_w_mask = uint8.empty(length(scan.frame_nr),0);
-    im_w_mask = repmat(mat2cell(im_w_mask,ones(10298,1)),1,2);
-    
+%     im_w_mask = uint8.empty(length(scan.frame_nr),0);
+%     im_w_mask = repmat(mat2cell(im_w_mask,ones(10298,1)),1,2);
+%     
     for nn = 1:length(scan.frame_nr)
         
         if strcmp(scan.event_name(nn),'stim1') || strcmp(scan.event_name(nn),'stim2')
@@ -423,7 +402,7 @@ end
 
 
 %% %%%%%%%%%%%%% INIT SCREEN %%%%%%%%%%%%%
-Screen('Preference', 'SyncTestSettings', .0004);
+Screen('Preference', 'SyncTestSettings', 0.0004); %.0004
 oldCLUT = pton(ptonparams{:});
 
 win  = firstel(Screen('Windows'));
@@ -431,9 +410,6 @@ oldPriority = Priority(MaxPriority(win));
 
 rect = Screen('Rect',win); % what is the total rect
 % rect = CenterRect(round([0 0 rect(3)*winsize rect(4)*winsize]),rect);
-[win, rect] = Screen('OpenWindow',max(Screen('Screens')),params.stim.bckgrnd_grayval,rect);
-
-
 
 
 
@@ -478,10 +454,10 @@ if params.wanteyetracking && ~isempty(params.eyelinkfile)
     wwidth = rect(3); wheight = rect(4);  % returns in pixels
     
     % Ensure window size is what we think it is
-    assert(isequal(wwidth,disp.w_pix))
-    assert(isequal(wheight,disp.h_pix))
-    assert(isequal(round(wwidth/2),disp.xc))
-    assert(isequal(round(wheight/2),disp.yc))
+    assert(isequal(wwidth,params.disp.w_pix))
+    assert(isequal(wheight,params.disp.h_pix))
+    assert(isequal(round(wwidth/2),params.disp.xc))
+    assert(isequal(round(wheight/2),params.disp.yc))
     
     % Tell the experimentor
     fprintf('Pixel size of window is width: %d, height: %d.\n',wwidth,wheight);
@@ -489,7 +465,7 @@ if params.wanteyetracking && ~isempty(params.eyelinkfile)
     
     % recenter EL coordinates if needed (
     % EK: should we just use updated params.stim.xc/yc??
-    if ~iszero(params.offsetpix) || isempty(params.offsetpix)
+    if any(params.offsetpix~=[0,0]) || isempty(params.offsetpix)
         xc_off = round(wwidth/2) + params.offsetpix(1);
         yc_off = round(wheight/2) + params.offsetpix(2);
     else
@@ -500,7 +476,7 @@ if params.wanteyetracking && ~isempty(params.eyelinkfile)
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % Customize calibration points (include pixel shift, change size and
     % color)
-    Eyelink('command','generate_default_targets = NO');
+    Eyelink('command','generate_default_targets = YES');
     Eyelink('command','calibration_samples  = 5');
     Eyelink('command','calibration_sequence = 0,1,2,3,4');
     Eyelink('command','calibration_targets  = %d,%d %d,%d %d,%d %d,%d %d,%d',...
@@ -582,11 +558,11 @@ if params.wanteyetracking
     if ~isempty(eyetempfile)
         
         % before we close out the eyelink, we send one more syntime message
-        Eyelink('Message',eval(tfunEND));
+        Eyelink('Message',eval(tfunEYE));
         
         % Close eyelink and record end
         Eyelink('StopRecording');
-        Eyelink('message', sprintf('END %d',tGetSecs));
+        Eyelink('message', sprintf('END %d',GetSecs));
         Eyelink('CloseFile');
         status = Eyelink('ReceiveFile',eyetempfile, params.savedatadir, 1);
         fprintf('ReceiveFile status %d\n', status);
