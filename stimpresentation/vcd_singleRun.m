@@ -14,7 +14,6 @@ p.addParameter('behaviorfile'   , []        , @ischar);                      % f
 p.addParameter('eyelinkfile'    , []        , @ischar);                      % where the eyelink edf file can be obtained
 p.addParameter('loadparams'     , true      , @islogical)                    % whether load stim/condition params or regenerate
 p.addParameter('storeparams'    , true      , @islogical)                    % whether to store stimulus params
-p.addParameter('overwrite_randomized_params',false, @islogical);             % whether to overwrite randomization of certain stimulus parameters
 p.addParameter('infofolder'     , fullfile(vcd_rootPath,'workspaces','info'), @ischar);     % where the *_info.csv file is
 p.addParameter('stimfolder'     , fullfile(vcd_rootPath,'workspaces','stimuli'), @ischar);  % where the images can be obtained
 p.addParameter('instrtextdir'   , fullfile(vcd_rootPath,'workspaces','instructions'), @ischar); % where the task instructions can be obtained
@@ -446,7 +445,7 @@ if params.wanteyetracking && ~isempty(params.eyelinkfile)
         PsychEyelinkDispatchCallback(el);
     end
     
-    % Update default param struct with VCD needs
+    % Update default EYELINK params with VCD needs
     el = vcd_setEyelinkParams(el);
     EyelinkUpdateDefaults(el);
     
@@ -473,10 +472,12 @@ if params.wanteyetracking && ~isempty(params.eyelinkfile)
         yc_off = round(wheight/2);
     end
     
+
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % Customize calibration points (include pixel shift, change size and
     % color)
-    Eyelink('command','generate_default_targets = YES');
+    Eyelink('command','calibration_type = HV5'); % horizontal-vertical 5-points.
+    Eyelink('command','generate_default_targets = NO');
     Eyelink('command','calibration_samples  = 5');
     Eyelink('command','calibration_sequence = 0,1,2,3,4');
     Eyelink('command','calibration_targets  = %d,%d %d,%d %d,%d %d,%d %d,%d',...
@@ -497,7 +498,6 @@ if params.wanteyetracking && ~isempty(params.eyelinkfile)
     Eyelink('command','screen_pixel_coords = %ld %ld %ld %ld',0,0,wwidth-1,wheight-1); % X,Y coordinates left/top/right/bottom of display area
     Eyelink('message','DISPLAY_COORDS %ld %ld %ld %ld',0,0,wwidth-1,wheight-1);
     % IF WE DON"T WANT CUSTOM DOT POSITIONS: Set number of calibration/validation dots and spread: horizontal-only(H) or horizontal-vertical(HV) as H3, HV3, HV5, HV9 or HV13
-    %     Eyelink('command','calibration_type = HV5'); % horizontal-vertical 5-points.
     Eyelink('command','active_eye = LEFT');
     Eyelink('command','binocular_enabled','NO')
     Eyelink('command','enable_automatic_calibration','NO'); % force manual calibration sequencing, if yes, provide Eyelink('command','automatic_calibration_pacing=1500');
@@ -521,12 +521,17 @@ if params.wanteyetracking && ~isempty(params.eyelinkfile)
     fprintf('Saving eyetracking data to %s.\n',eyetempfile);
     Eyelink('Openfile',eyetempfile);  % NOTE THIS TEMPORARY FILENAME. REMEMBER THAT EYELINK REQUIRES SHORT FILENAME!
     
+    preamble = sprintf('add_file_preamble_text ''VCD experiment @ CMRR %s, subject %03d, session %03d, run: %02d.''', ...
+        params.disp.name, params.subjID, params.sesID, params.runnum);
+    Eyelink('command', preamble);
+    
     % Do calibration & validation!
     checkcalib = input('Do you want to do a calibration (0=no, 1=yes)? ','s');
     if isequal(checkcalib,'1')
         fprintf('Please perform calibration. When done, press the output/record button.\n');
         EyelinkDoTrackerSetup(el);
     end
+    
     
     % Start recording
     Eyelink('StartRecording');
