@@ -123,7 +123,7 @@ elseif strcmp(session_type,'BEHAVIOR')
     session_preblankdur = params.exp.run.pre_blank_dur_BEHAVIOR;
     session_postblankdur = params.exp.run.post_blank_dur_BEHAVIOR;
     session_totalrundur  = params.exp.run.total_run_dur_BEHAVIOR;
-    IBI_to_use = repmat(params.exp.block.IBI_BEHAVIOR,1,5);
+    IBI_to_use = params.exp.block.IBI_BEHAVIOR;
 end
 
 % Define event ID within trial for single and double epoch trial types
@@ -179,13 +179,21 @@ for sj = 1;%:params.exp.total_subjects
             [block_nrs,block_nrs_idx] = sort(block_nrs,'ascend');
             t_trial = t_trial(block_nrs_idx,:);
             
-            [~,tmp] = unique(block_nrs,'stable');
+            [~,nr_unique_blocks] = unique(block_nrs,'stable');
             tmp_durs = [params.exp.block.total_single_epoch_dur, params.exp.block.total_double_epoch_dur];
-            block_dur = tmp_durs(t_trial.trial_type(tmp));
+            block_dur = tmp_durs(t_trial.trial_type(nr_unique_blocks));
             
             % reset counter
             total_run_frames = 0;
             run_finished     = 0;
+
+            if ~isempty(block_nrs)
+                
+                % predefine IBIs
+                [ibis, postblank_to_add] = ...
+                    vcd_optimizeIBIs(session_totalrundur-params.exp.block.total_eyetracking_block_dur, ...
+                    block_dur, IBI_to_use, length(block_dur), sum([session_postblankdur,session_preblankdur]));
+            end
             
             % Add eyetracking block and pre-blank period 
             if total_run_frames == 0
@@ -577,18 +585,6 @@ for sj = 1;%:params.exp.total_subjects
                         % updated), so this is the last trial of the
                         % current block
 
-                        if ~exist('ibis','var') || isempty(ibis)
-                            if ~exist('postblank_to_add','var')
-                                [ibis, postblank_to_add] = ...
-                                    vcd_optimizeIBIs(session_totalrundur-params.exp.block.total_eyetracking_block_dur, ...
-                                    block_dur, IBI_to_use, length(block_dur), sum([session_postblankdur,session_preblankdur]));
-                            else
-                                ibis = ...
-                                    vcd_optimizeIBIs(session_totalrundur-params.exp.block.total_eyetracking_block_dur, ...
-                                    block_dur, IBI_to_use, length(block_dur), sum([session_postblankdur,session_preblankdur]));
-                            end
-                        end
-                        
                         % add IBI
                         time_table.event_start(table_idx)  = total_run_frames;
                         IBI = ibis(1);
@@ -613,7 +609,7 @@ for sj = 1;%:params.exp.total_subjects
 
                         total_run_frames = time_table.event_end(table_idx) + 1;
                         
-                        ibis(1) = [];
+                        ibis(1) = []; clear IBI;
                         table_idx = table_idx+1;
                         
                     elseif curr_block == next_block_id  

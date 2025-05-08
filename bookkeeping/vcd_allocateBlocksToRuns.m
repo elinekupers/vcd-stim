@@ -146,14 +146,14 @@ for ses = 1:size(all_sessions,3)
                         for tt = 1:length(sub_idx)
                             if condition_master.is_catch(sub_idx(tt))==1
                                 if condition_master.is_cued(sub_idx(tt))==1
-                                    cue_label = {sprintf('%s 0000 LCUED %s',stim_class_tmp_name,task_class_abbr{tc}), ...
-                                        sprintf('%s 0000 RUNCUED %s',stim_class_tmp_name,task_class_abbr{tc})};
+                                    cue_label = {sprintf('%s 0000 X LCUED %s',stim_class_tmp_name,task_class_abbr{tc}), ...
+                                        sprintf('%s 0000 X LCUED %s',stim_class_tmp_name,task_class_abbr{tc})};
                                 elseif condition_master.is_cued(sub_idx(tt))==2
-                                    cue_label = {sprintf('%s 000 RCUED %s',stim_class_tmp_name,task_class_abbr{tc}), ...
-                                        sprintf('%s 0000 LUNCUED %s',stim_class_tmp_name,task_class_abbr{tc})};
+                                    cue_label = {sprintf('%s 000 X RCUED %s',stim_class_tmp_name,task_class_abbr{tc}), ...
+                                        sprintf('%s 0000 X RCUED %s',stim_class_tmp_name,task_class_abbr{tc})};
                                 elseif condition_master.is_cued(sub_idx(tt))==3
-                                    cue_label = {sprintf('%s 000 NCUED %s',stim_class_tmp_name,task_class_abbr{tc}), ...
-                                        sprintf('%s 0000 NCUED %s',stim_class_tmp_name,task_class_abbr{tc})};
+                                    cue_label = {sprintf('%s 000 X NCUED %s',stim_class_tmp_name,task_class_abbr{tc}), ...
+                                        sprintf('%s 0000 X NCUED %s',stim_class_tmp_name,task_class_abbr{tc})};
                                 end
                             elseif condition_master.is_cued(sub_idx(tt))==1
                                 cue_label = {sprintf('%s %04d L CUED %s',stim_class_tmp_name,condition_master.stim_nr_left(sub_idx(tt)),task_class_abbr{tc}), ...
@@ -162,11 +162,17 @@ for ses = 1:size(all_sessions,3)
                                 cue_label = {sprintf('%s %04d L UNCUED %s',stim_class_tmp_name,condition_master.stim_nr_left(sub_idx(tt)),task_class_abbr{tc}),...
                                     sprintf('%s %04d R CUED %s',stim_class_tmp_name,condition_master.stim_nr_right(sub_idx(tt)),task_class_abbr{tc})};
                             elseif condition_master.is_cued(sub_idx(tt))==3
+                                
+                                % NS trial - left stim / right is nan
                                 if any(ismember(condition_master.stim_nr_left(sub_idx(tt)),params.stim.ns.unique_im_nrs_core)) && isnan(condition_master.stim_nr_right(sub_idx(tt)))
                                     cue_label = {sprintf('%s %04d C NCUED %s',stim_class_tmp_name,condition_master.stim_nr_left(sub_idx(tt)),task_class_abbr{tc}), ''};
+                                
+                                % NS catch trial
                                 elseif condition_master.stim_nr_left(sub_idx(tt))==0 && strcmp(stim_class_tmp_name,'NS')
-                                    cue_label = {sprintf('%s %04d L NCUED %s',stim_class_tmp_name,condition_master.stim_nr_left(sub_idx(tt)),task_class_abbr{tc}), ''};
+                                    cue_label = {sprintf('%s %04 C NCUED %s',stim_class_tmp_name,condition_master.stim_nr_left(sub_idx(tt)),task_class_abbr{tc}), ''};
+                                
                                 else
+                                    % fix trial clssic left/right stim
                                     cue_label = {sprintf('%s %04d L NCUED %s',stim_class_tmp_name,condition_master.stim_nr_left(sub_idx(tt)),task_class_abbr{tc}), ...
                                         sprintf('%s %04d R NCUED %s',stim_class_tmp_name,condition_master.stim_nr_right(sub_idx(tt)),task_class_abbr{tc})};
                                 end
