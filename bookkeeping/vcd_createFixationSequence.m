@@ -1,4 +1,17 @@
-function [fix_timing,fix_abs_lum,fix_rel_lum,button_response_fix] = vcd_createFixationSequence(params,fixsoafun,run_dur)
+function fix_matrix = vcd_createFixationSequence(params,fixsoafun,run_dur)
+% VCD function to create a continuous sequence of fixation circle luminance
+% changes for a given run duration, given a particular
+% stimulus-onset-asynchrony (SOA).
+%
+% INPUTS:
+%
+% OUTPUTS:
+%  * fix_matrix     : (double) Nx4 matrix where N is the number of time
+%                       points. Column 1: time points (in frames), column
+%                       2: absolute luminance values, 3: relative change in
+%                       luminance values compared to the previous time
+%                       point, 4: correct button press associated with the
+%                       relative luminance change (1=brighter, 2=dimmer).
 
 % %%%% Get fixation timing
 fix_seq = []; f_fix = 0;
@@ -42,6 +55,6 @@ button_response_fix = fix_rel_lum;
 button_response_fix(button_response_fix==1)  = 1; % brighter
 button_response_fix(button_response_fix==-1) = 2; % dimmer
 
-
+fix_matrix = [fix_timing,fix_abs_lum,fix_rel_lum,button_response_fix];
 
 end
