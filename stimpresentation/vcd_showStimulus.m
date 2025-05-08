@@ -39,7 +39,7 @@ end
 %% ptb stuff
 
 mfi            = Screen('GetFlipInterval',win);
-frameduration  = 1;%round(params.stim.framedur_s/mfi); % 30 Hz presentation, 2 frames for office/psph monitors (60 Hz), 4 frames for BOLDscreen (120 Hz);
+frameduration  = round(params.stim.framedur_s/mfi); % 30 Hz presentation, 2 frames for office/psph monitors (60 Hz), 4 frames for BOLDscreen (120 Hz);
 
 Screen('BlendFunction', win, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 Screen('Preference','TextRenderer',1);
