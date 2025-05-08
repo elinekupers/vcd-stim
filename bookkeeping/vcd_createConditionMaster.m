@@ -109,13 +109,15 @@ cond_master = [];
 
 if strcmp(session_type,'MRI')
     nr_reps = p.exp.n_unique_trial_repeats_mri(strcmp(stimClass,p.exp.stimclassnames),strcmp(taskClass,p.exp.taskclassnames));
+    catch_trial_flag = true;
 elseif strcmp(session_type,'BEHAVIOR')
     nr_reps = p.exp.n_unique_trial_repeats_behavior(strcmp(stimClass,p.exp.stimclassnames),strcmp(taskClass,p.exp.taskclassnames));
+    catch_trial_flag = false;
 else 
     error('[%s]: Session type doesn''t exist! Choose between MRI and BEHAVIOR.',mfilename)
 end
 % only insert one catch trial every other block, given that special core is 50% or less stimuli per class
-if strcmp(taskClass{:},'ltm') || strcmp(taskClass{:},'img')
+if catch_trial_flag && (strcmp(taskClass{:},'ltm') || strcmp(taskClass{:},'img'))
     catch_trial_occurance = shuffle_concat([0,1],ceil(nr_reps/2));
 end
 
@@ -219,12 +221,16 @@ if nr_reps > 0
                     end
 
                     % Check if we want to skip a catch trial
-                    if ismember(taskClass{:}, {'ltm','img'})
-                        n_catch_trials = catch_trial_occurance(rep); 
+                    if catch_trial_flag
+                        if ismember(taskClass{:}, {'ltm','img'})
+                            n_catch_trials = catch_trial_occurance(rep); 
+                        else
+                            n_catch_trials = 1;
+                        end
                     else
-                        n_catch_trials = 1;
+                        n_catch_trials = 0;
                     end
-
+                    
                     if n_catch_trials > 0 
                         conds_shuffle1 = vcd_addCatchTrials(conds_shuffle0, n_catch_trials, cue_dir_for_catch_trial);
                         prior_cue_dir_for_catch_trial = cue_dir_for_catch_trial;
@@ -427,13 +433,17 @@ if nr_reps > 0
                         end
                     end
 
-                    % Check if we want to skip a catch trial
-                    if ismember(taskClass{:}, {'ltm','img'})
-                        n_catch_trials = catch_trial_occurance(rep);
+                    if catch_trial_flag
+                        % Check if we want to skip a catch trial
+                        if ismember(taskClass{:}, {'ltm','img'})
+                            n_catch_trials = catch_trial_occurance(rep);
+                        else
+                            n_catch_trials = 1;
+                        end
                     else
-                        n_catch_trials = 1;
+                        n_catch_trials = 0;
                     end
-
+                    
                     if  n_catch_trials > 0 
                         % Create catch trial
                         conds_shuffle1 = vcd_addCatchTrials(conds_shuffle0, n_catch_trials, cue_dir_for_catch_trial);
@@ -619,13 +629,17 @@ if nr_reps > 0
                         end
                     end
 
-                    % Check if we want to skip a catch trial
-                    if ismember(taskClass{:}, {'ltm','img'})
-                        n_catch_trials = catch_trial_occurance(rep);
+                    if catch_trial_flag
+                        % Check if we want to skip a catch trial
+                        if ismember(taskClass{:}, {'ltm','img'})
+                            n_catch_trials = catch_trial_occurance(rep);
+                        else
+                            n_catch_trials = 1;
+                        end
                     else
-                        n_catch_trials = 1;
+                        n_catch_trials = 0;
                     end
-
+                    
                     if  n_catch_trials > 0
                         % create catch trial
                         conds_shuffle1 = vcd_addCatchTrials(conds_shuffle0, n_catch_trials, cue_dir_for_catch_trial);
@@ -876,13 +890,17 @@ if nr_reps > 0
                         end
                     end
 
-                    % Check if we want to skip a catch trial
-                    if ismember(taskClass{:}, {'ltm','img'})
-                        n_catch_trials = catch_trial_occurance(rep);
+                    if catch_trial_flag
+                        % Check if we want to skip a catch trial
+                        if ismember(taskClass{:}, {'ltm','img'})
+                            n_catch_trials = catch_trial_occurance(rep);
+                        else
+                            n_catch_trials = 1;
+                        end
                     else
-                        n_catch_trials = 1;
+                        n_catch_trials = 0;
                     end
-
+                    
                     if  n_catch_trials > 0
                         % create catch trial
                         conds_shuffle2 = vcd_addCatchTrials(conds_shuffle1, n_catch_trials, cue_dir_for_catch_trial);
@@ -1111,13 +1129,17 @@ if nr_reps > 0
                 % Add catch trial vector
                 conds_master_single_rep.is_catch = false(size(conds_master_single_rep,1),1);
 
-                % Check if we want to skip a catch trial
-                if ismember(taskClass{:}, {'ltm','img'})
-                    n_catch_trials = catch_trial_occurance(rep);
+                if catch_trial_flag
+                    % Check if we want to skip a catch trial
+                    if ismember(taskClass{:}, {'ltm','img'})
+                        n_catch_trials = catch_trial_occurance(rep);
+                    else
+                        n_catch_trials = 1;
+                    end
                 else
-                    n_catch_trials = 1;
+                    n_catch_trials = 0;
                 end
-
+                
                 if  n_catch_trials > 0
                     % Add catch trials
                     conds_master_single_rep2 = vcd_addCatchTrials(conds_master_single_rep, n_catch_trials, []);
