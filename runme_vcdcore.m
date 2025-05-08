@@ -230,7 +230,6 @@ if loadstimtiming
     end
 else
     scan = struct();
-    timing = struct();
 end
 
 %% run experiment
@@ -247,7 +246,6 @@ vcd_singleRun(subjID, sesID, runnum, ... % mandatory inputs
     'movieflip', movieflip, ...
     'instrtextdir',instructionsDir, ...
     'scan', scan, ...
-    'timing',timing, ...
     'savestimtiming', savestimtiming); 
 
 % analyze dat
