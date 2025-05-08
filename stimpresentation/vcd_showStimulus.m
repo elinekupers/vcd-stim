@@ -13,6 +13,7 @@ function [data,getoutearly,scan] = vcd_showStimulus(...
 getoutearly    = 0;
 glitchcnt      = 0;
 when           = 0;
+forceglitch    = false;
 wantframefiles = false;
 detectinput    = true;
 
@@ -208,7 +209,7 @@ end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%% log the start!
 
-feval(tfunEYE) % Eyelink('Message','SYNCTIME'));
+feval(tfunEYE) % SEND Eyelink('Message','SYNCTIME'));
 timekeys = [timekeys; {GetSecs 'trigger'}];
 
 %% DRAW THE TEXTURES
@@ -369,7 +370,17 @@ end
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
+if  getoutearly
+    
+    % Save a quick version of the data in case something fails...
+    tmp_scan = scan;
+    tmp_scan.images = [];
+    vars = whos;
+    vars = {vars.name};
+    vars = vars(cellfun(@(x) ~isequal(x,'scan'),vars));
+    save(fullfile(vcd_rootPath,sprintf('tmp_data_%s.mat',datestr(30)),vars{:}));
+    
+end
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% PT CLEANUP STUFF
@@ -400,10 +411,10 @@ fprintf('frames per second: %.10f\n',length(timeframes)/dur);
 digitrecord = {digitrecord digitframe digitpolarity};
 
 data = struct();
-data.mfi                    = mfi;
+data.timing.mfi             = mfi;
 data.wantframefiles         = wantframefiles;
 data.detectinput            = detectinput;
-% data.forceglitch            = forceglitch;
+data.forceglitch            = forceglitch;
 data.timeKeys               = timekeys;
 data.timing.glitchcnt       = glitchcnt;
 data.timing.timeframes      = timeframes;
@@ -411,6 +422,7 @@ data.timing.starttime       = starttime;
 data.timing.endtime         = timeframes(end);
 data.timing.empiricalrundur = dur;
 data.timing.empiricalfps    = length(timeframes)/dur;
+data.timing.frameduration   = frameduration;
 data.digitrecord            = digitrecord;
 
 

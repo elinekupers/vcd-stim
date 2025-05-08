@@ -309,6 +309,7 @@ if ~exist('bckground','var') || isempty(bckground)
     d = dir(fullfile(params.stimfolder,params.disp.name, sprintf('bckgrnd_%s*.mat',params.disp.name)));
     a = load(fullfile(d(end).folder, d(end).name),'bckgrnd_im');
     bckground = a.bckgrnd_im(:,:,:,params.runnum);
+    clear a d
 end
 
 if any(params.offsetpix~=[0,0])
@@ -325,6 +326,7 @@ if ~exist('fix_im','var') || isempty(fix_im)
     a = load(fullfile(d(end).folder, d(end).name),'fix_im','mask');
     fix_im = a.fix_im;
     fix_mask = a.mask;
+    clear a d
 end
 
 
@@ -372,14 +374,6 @@ if params.savestimtiming
     fprintf('done!\n'); toc
 end
 
-% if params.savestim
-%     fprintf('[%s]: Saving stimuli and timing.. may take a minute!',mfilename)
-%     tic
-%     timing_data = struct('scan',scan, 'params',params,'timing',timing);
-%     save(fullfile(params.savedatadir,sprintf('tmp_expim_%s.mat',datestr(now,30))),'timing_data','-v7.3');
-%     clear tmp_data
-%     fprintf('done!\n'); toc
-% end
 
 %% %%%%%%%%%%%%% TASK INSTRUCTIONS %%%%%%%%%%%%%
 
@@ -476,6 +470,9 @@ if params.wanteyetracking && ~isempty(params.eyelinkfile)
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % Customize calibration points (include pixel shift, change size and
     % color)
+    Eyelink('command','screen_pixel_coords = %ld %ld %ld %ld',0,0,wwidth-1,wheight-1); % X,Y coordinates left/top/right/bottom of display area
+    Eyelink('message','DISPLAY_COORDS %ld %ld %ld %ld',0,0,wwidth-1,wheight-1);
+    % IF WE DON"T WANT CUSTOM DOT POSITIONS: Set number of calibration/validation dots and spread: horizontal-only(H) or horizontal-vertical(HV) as H3, HV3, HV5, HV9 or HV13
     Eyelink('command','calibration_type = HV5'); % horizontal-vertical 5-points.
     Eyelink('command','generate_default_targets = NO');
     Eyelink('command','calibration_samples  = 5');
@@ -495,9 +492,6 @@ if params.wanteyetracking && ~isempty(params.eyelinkfile)
         xc_off, yc_off + params.stim.el.point2point_distance_pix, ... vert shift down
         xc_off, yc_off - params.stim.el.point2point_distance_pix); %  vert shift up
     
-    Eyelink('command','screen_pixel_coords = %ld %ld %ld %ld',0,0,wwidth-1,wheight-1); % X,Y coordinates left/top/right/bottom of display area
-    Eyelink('message','DISPLAY_COORDS %ld %ld %ld %ld',0,0,wwidth-1,wheight-1);
-    % IF WE DON"T WANT CUSTOM DOT POSITIONS: Set number of calibration/validation dots and spread: horizontal-only(H) or horizontal-vertical(HV) as H3, HV3, HV5, HV9 or HV13
     Eyelink('command','active_eye = LEFT');
     Eyelink('command','binocular_enabled','NO')
     Eyelink('command','enable_automatic_calibration','NO'); % force manual calibration sequencing, if yes, provide Eyelink('command','automatic_calibration_pacing=1500');
@@ -521,6 +515,7 @@ if params.wanteyetracking && ~isempty(params.eyelinkfile)
     fprintf('Saving eyetracking data to %s.\n',eyetempfile);
     Eyelink('Openfile',eyetempfile);  % NOTE THIS TEMPORARY FILENAME. REMEMBER THAT EYELINK REQUIRES SHORT FILENAME!
     
+    % Send preamble to EDF header
     preamble = sprintf('add_file_preamble_text ''VCD experiment @ CMRR %s, subject %03d, session %03d, run: %02d.''', ...
         params.disp.name, params.subjID, params.sesID, params.runnum);
     Eyelink('command', preamble);
@@ -537,6 +532,7 @@ if params.wanteyetracking && ~isempty(params.eyelinkfile)
     Eyelink('StartRecording');
     
 end
+
 
 %% START EXPERIMENT
 
@@ -563,18 +559,18 @@ if params.wanteyetracking
     if ~isempty(eyetempfile)
         
         % before we close out the eyelink, we send one more syntime message
-        Eyelink('Message',eval(tfunEYE));
+        feval(tfunEYE);
         
         % Close eyelink and record end
         Eyelink('StopRecording');
-        Eyelink('message', sprintf('END %d',GetSecs));
+        Eyelink('message', sprintf('EXP END %d',GetSecs));
         Eyelink('CloseFile');
         status = Eyelink('ReceiveFile',eyetempfile, params.savedatadir, 1);
         fprintf('ReceiveFile status %d\n', status);
         fprintf('RUN ENDED: %4.4f.\n',GetSecs);
         
         % RENAME DOWNLOADED FILE TO THE FINAL FILENAME
-        mycmd=['mv ' params.savedatadir '/' eyetempfile ' ' params.savedatadir '/' params.eyelinkfile];
+        mycmd=['mv ' params.savedatadir '/' eyetempfile ' ' params.eyelinkfile];
         system(mycmd);
         if status <= 0, fprintf('\n\nProblem receiving edf file\n\n');
         else
@@ -582,8 +578,6 @@ if params.wanteyetracking
         end
         Eyelink('ShutDown'); % Do we need to shut down???
         
-        data.totalTime = ts-startTime;
-        data.timeKeys = [data.timeKeys; {ts 'end'}];
     end
 else
     fprintf('RUN ENDED: %4.4f.\n',GetSecs);
@@ -591,16 +585,12 @@ end
 
 % Create folder where data will be stored
 if isempty(params.savedatadir)
-    params.savedatadir = fullefile(vcd_rootPath,'data', ...
+    params.savedatadir = fullfile(vcd_rootPath,'data', ...
         sprintf('%s_vcd_subj%d_ses%02d',...
         timeofshowstimcall,params.subjID, params.sesID));
 end
-if ~exist('params.savedatadir','dir'), mkdir(params.savedatadir); end
 
-% figure out names of all variables except 'images'
-vars = whos;
-vars = {vars.name};
-vars = vars(cellfun(@(x) ~isequal(x,'images'),vars));
+if ~exist('params.savedatadir','dir'), mkdir(params.savedatadir); end
 
 % Create filename where behavioral and timing data will be stored
 if ~isfield(params,'behaviorfile') || isempty(params.behaviorfile)
@@ -608,23 +598,41 @@ if ~isfield(params,'behaviorfile') || isempty(params.behaviorfile)
         timeofshowstimcall,params.subjID,params.sesID,params.runnum);
 end
 
-% Save data (button presses, params, etc)
-save(fullfile(params.savedatadir,params.behaviorfile),vars{:});
+% figure out names of all variables except 'scan.images', 'fix_im', and
+% 'bckground'
+scan.images = [];
+vars = whos;
+vars = {vars.name};
+vars = vars(cellfun(@(x) ~isequal(x,'fix_im'),vars));
+vars = vars(cellfun(@(x) ~isequal(x,'bckground'),vars));
 
-% Clean up
-ShowCursor;
-Screen('CloseAll');
-ptoff(oldCLUT);
+
+% Save data (button presses, params, etc)
+save(fullfile(params.savedatadir,params.behaviorfile),vars{:}, '-v7.3');
 
 % check the timing
 if getoutearly == 0 %if we completed the experiment
     fprintf('Experiment duration was %4.3f.\n',data.timing.endtime);
-    slack = [-5 5].*params.stim.framedur_s;
-    expectedduration = (timing.trig_timing(end)+params.stim.framedur_s) + slack;
+    slack = [-5 5].*frameduration;
+    expectedduration = (data.timing.empiricalrundur+data.timing.frameduration) + slack;
     
     if data.timing.endtime > expectedduration(1) && data.timing.endtime < expectedduration(2)
         fprintf('Timing was ok and within [%d - %d] sec slack\n',slack(1),slack(2));
     else
-        fprintf('ERROR !!! Timing was OFF!!! Difference between expected and recorded is %3.2f s\n', expectedduration-data.timing.endtime);
+        fprintf('ERROR !!! Timing was OFF!!! Difference between expected and recorded is %3.2f seconds\n', expectedduration-data.timing.endtime);
     end
+    
+    if exist(fullfile(params.savedatadir,params.behaviorfile),'file')
+        d = dir(fullfile(vcd_rootPath,'tmp_data*.mat'));
+        if ~isempty(d)
+            delete(fullfile(d(end).folder,d(end).name))
+            fprintf('Deleted tmp file because behavioral file was stored.');
+        end
+    end
+    
 end
+
+
+
+
+

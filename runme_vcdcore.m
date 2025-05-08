@@ -251,4 +251,4 @@ vcd_singleRun(subjID, sesID, runnum, ... % mandatory inputs
     'savestimtiming', savestimtiming); 
 
 % analyze dat
-runvcdbehavioralanalysis(filename,3000,[299.8 300.2],[stimulusdir filesep 'vcd_expdesign.mat']);
+% runvcdbehavioralanalysis(behaviorfile,3000,[299.8 300.2],[stimulusdir filesep 'vcd_expdesign.mat']);
