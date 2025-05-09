@@ -11,7 +11,7 @@ function exp = vcd_getSessionParams(varargin)
 %                           Default: '7TAS_BOLDSCREEN32'
 %  [presentationrate_hz] : (optional) Nr of stimulus frames presented per
 %                           second,as we use a frame-locked stimulus presentation protocol, 
-%                           Default: 30 frames per second
+%                           Default: 60 frames per second
 %  [load_params]         : (optional) Load prior stored parameters or not. 
 %                           Default: true
 %  [store_params]        : (optional) Store generated parameters or not.
@@ -30,7 +30,7 @@ function exp = vcd_getSessionParams(varargin)
 %% %%%%%%%%%%%%% PARSE INPUTS %%%%%%%%%%%%%
 p0 = inputParser;
 p0.addParameter('disp_name'             , '7TAS_BOLDSCREEN32', @(x) any(strcmp(x,{'7TAS_BOLDSCREEN32', 'KKOFFICE_AOCQ3277', 'PPROOM_EIZOFLEXSCAN', 'EKHOME_ASUSVE247'})));                   
-p0.addParameter('presentationrate_hz'   , 30     , @isnumeric);
+p0.addParameter('presentationrate_hz'   , 60     , @isnumeric);
 p0.addParameter('load_params'           , true   , @islogical);                    
 p0.addParameter('store_params'          , true   , @islogical);
 p0.addParameter('verbose'               , true   , @islogical); 
@@ -275,14 +275,14 @@ else
     exp.trial.stim_LR_loc_cue    = logical([1 1 1 1 0]);
     
     % timing
-    exp.trial.start_cue_dur       = presentationrate_hz * 0.4; % 12 x 33 ms frames = 0.4 seconds (thickening of dot rim)
-    exp.trial.spatial_cue_dur     = presentationrate_hz * 0.8; % 24 x 33 ms frames = 0.8 seconds
-    exp.trial.stim_array_dur      = presentationrate_hz * 2.0; % 60 x 33 ms frames = 2.0 seconds
-    exp.trial.response_win_dur    = presentationrate_hz * 1.0; % 30 x 33 ms frames = 1.0 seconds
+    exp.trial.start_cue_dur       = presentationrate_hz * 0.4; % 16.67 ms x 0.4 seconds = 24 frames (thickening of dot rim) 
+    exp.trial.spatial_cue_dur     = presentationrate_hz * 0.8; % 16.67 ms x 0.8 seconds = 48 frames
+    exp.trial.stim_array_dur      = presentationrate_hz * 2.0; % 16.67 ms x 2.0 seconds = 120 frames
+    exp.trial.response_win_dur    = presentationrate_hz * 1.0; % 16.67 ms x 1.0 second  = 60 frames
    
     exp.trial.totalITI            = presentationrate_hz .* [6.4, 3.2];
     exp.trial.ITI                 = presentationrate_hz .* [0.2:0.1:1.6]; % [6:2:48] frames corresponds to 0.2:0.1:1.6 seconds (thinning of dot rim)
-    exp.trial.delay_dur           = presentationrate_hz * 8.0 ; % 240 x 33 ms frames = 8.0 seconds
+    exp.trial.delay_dur           = presentationrate_hz * 8.0 ; % 16.67 ms x 8.0 seconds = 240 frames
     
     exp.trial.single_epoch_dur   = ...
         sum([exp.trial.start_cue_dur,... % frames

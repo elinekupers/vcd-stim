@@ -44,7 +44,7 @@
 %%%%%% PARAMETERS %%%% 
 %%%%%%%%%%%%%%%%%%%%%%
 params = struct();
-params.verbose        = true; % visualize stimuli or not
+params.verbose        = false; % visualize stimuli or not
 params.store_imgs     = true; % store visualization figures
 params.saveFigsFolder = fullfile(vcd_rootPath,'figs'); % where to store visualization figures
 
@@ -62,7 +62,7 @@ else
 end
 
 % Get stimulus parameters
-params.load_params                 = false; % load stored params
+params.load_params                 = true; % load stored params
 params.store_params                = true;
 
 % SETUP RNG
@@ -86,9 +86,10 @@ params.exp    = vcd_getSessionParams('disp_name', params.disp.name, ...
                                 'store_params', params.store_params);
 
 %% Make/Load blocks with trials that sample unique stimuli from each class
-% !!WARNING!! There is a randomization component involved in creating the 
+% !!WARNING!! There is a randomization component involved in creating the
 % trial sequence (e.g., order of unique images within a block). If you
-% don't want this, set second input (load_params) to true.
+% don't want this, set second input (load_params) to true and load an
+% existing file
 %
 % This function contains the following important steps/functions:
 % * vcd_defineUniqueImages
@@ -104,55 +105,15 @@ params.trials =  condition_master;
 %% Create/Load miniblocks into runs and sessions, shuffle blocks within a run for each subject's run
 % !!WARNING!! There is a randomization component involved in creating the
 % block order within a run. If you don't want this, set second input
-% (load_params) to true.
+% (load_params) to true and load an existing file
 %
 % This function contains the following important steps/functions:
 % * vcd_allocateBlocksToRuns
 % * vcd_createRunTimeTables
-[params,time_table_master] = vcd_createSessions(params,'load_params', params.load_params, ...
+% * vcd_addFIXandCDtoTimeTableMaster
+[params,time_table_master] = vcd_createSessions(params,'load_params',  params.load_params, ...
                                                        'store_params', params.store_params, ...
                                                        'session_type', session_type);
-                                      
-                                      
-%% Select unique image for a given subject run
-
-% define the subjects, sessions, and run nrs that we want to load the
-% specific stimuli for..
-subject_nrs = 1;%:params.exp.total_subjects;
-session_nrs = 1;%:params.exp.n_sessions;
-run_nrs     = 1;%:params.exp.n_runs_per_session;
-
-% all_run_images is a cell array: subjects x sessions x runs
-% Within each cell, there is run_images:  a cell matrix with trials x locations (1:l, 2:r)
-% Same structure holds for all_run_alpha_masks.
-% The input 'images' refers the to the BIG stimulus matfile that is
-% outputted by the individual stimulus creation functions called by
-% "s_createStim.".
-[all_run_images, all_run_alpha_masks] = vcd_getImageOrderSingleRun(...
-     params, time_table_master, ...
-     subject_nrs, session_nrs, run_nrs, ...
-     'images',struct(), ...
-     'load_params',  params.load_params, ...
-     'store_params', params.store_params);
- 
-
-%% Define onset functions for fixation change and contrast decrement
-% Fixation order and fixation
-fixsoafun = @() round(params.stim.fix.dotmeanchange);
-
-% Contrast decrement gaussian time window onset
-cdsoafun = @() round(params.stim.cd.meanchange + params.stim.cd.changeplusminus*(2*(rand-.5)));
-
-% Expand time table with images that are a 30 Hz framelocked sequence. 
-[subj_run_frames] = vcd_expandImageOrderSingleRun_30Hz(...
-    params, time_table_master, subject_nrs, session_nrs, run_nrs, ...
-    'all_run_images',all_run_images, ...
-    'all_run_alpha_masks', all_run_alpha_masks,...
-    'fixsoafun', fixsoafun,...
-    'cdsoafun', cdsoafun, ...
-    'load_params', false, ...params.load_params, ...
-    'store_params', true);
-
 
 
 

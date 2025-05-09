@@ -6,7 +6,7 @@ p = inputParser;
 p.addRequired('subjID'          , @isnumeric); % subject number
 p.addRequired('sesID'           , @isnumeric); % session number
 p.addRequired('runnum'          , @isnumeric); % nun number
-p.addParameter('scan'           , struct()  , @isstruct);                    % struct with optimized images for ptb
+p.addParameter('scan'           , struct()  , @isstruct);                    % struct with exp im rects, centers,  and sizes for ptb
 p.addParameter('savedatadir'    , []        , @ischar);                      % place to store data with today's date
 p.addParameter('behaviorfile'   , []        , @ischar);                      % filename to store behavioral data with today's date
 p.addParameter('eyelinkfile'    , []        , @ischar);                      % where the eyelink edf file can be obtained
@@ -25,9 +25,8 @@ p.addParameter('offsetpix'      , [0 0]     , @isnumeric);                   % o
 p.addParameter('movieflip'      , [0 0]     , @isnumeric)                    % whether to flip up-down, whether to flip left-right
 p.addParameter('debugmode'      , false     , @islogical)                    % whether to use debug mode (no BOLDscreen, no eyelink)
 p.addParameter('dispName'       , '7TAS_BOLDSCREEN32' , @ischar)             % display params: 7TAS_BOLDSCREEN32, KKOFFICE_AOCQ3277, PPROOM_EIZOFLEXSCAN, 'EKHOME_ASUSVE247'
-p.addParameter('savestimtiming' , false     , @islogical)                    % whether we want to store tempfile with stimulus timing (no stimuli)
 p.addParameter('savestim'       , false     , @islogical)                    % whether we want to store temp file with stimuli and timing
-p.addParameter('loadstimtiming' , false     , @islogical)                    % whether we want to store temp stim timing file
+p.addParameter('loadstimfromrunfile', false     , @islogical)                % whether we want to load stim from run file
 
 % Parse inputs
 p.parse(subjID, sesID, runnum, varargin{:});
@@ -61,19 +60,19 @@ if ~isfield(params, 'disp') || isempty(params.disp)
     params.disp = vcd_getDisplayParams(params.dispName); % BOLDSCREEN is default
 end
 
-    % EK HACK START ---
+
+% EK HACK START ---
 if params.debugmode
     params.disp.name = 'PPROOM_EIZOFLEXSCAN';
 end
-    % EK HACK END ---
-
+% EK HACK END ---
 
 if params.debugmode % skip synctest
     skipsync = 1;
 else
     skipsync = 0;
 end
-    
+
 % Get device nr for KbCheck
 deviceNr = vcd_checkDevices(params.deviceNr, params.device_check);
 
@@ -85,23 +84,25 @@ deviceNr = vcd_checkDevices(params.deviceNr, params.device_check);
 % 3: clutfile -- 0 for linear CLUT (-2 for squaring CLUT for BOLDSCREEN to simulate normal monitors --> NB: we do this manually!)
 % 4: skipsync (bool: 0 is false, 1 is true)
 % 5: wantstereo (bool: default is false)
-% if strcmp(params.disp.name, 'PPROOM_EIZOFLEXSCAN')
-%     % apparently PP room monitor native refresh rate show up as 0 (but is 60 Hz)
-%     ptonparams = {[params.disp.w_pix params.disp.h_pix 0 24],[],params.disp.clut, skipsync};
-% else
+if strcmp(params.disp.name, 'PPROOM_EIZOFLEXSCAN')
+    % apparently PP room monitor native refresh rate show up as 0 (but is 60 Hz)
+    ptonparams = {[params.disp.w_pix params.disp.h_pix 0 24],[],params.disp.clut, skipsync};
+else
     ptonparams = {[params.disp.w_pix params.disp.h_pix params.disp.refresh_hz 24],[],params.disp.clut, skipsync};
-% end
+end
 
 % Buttonbox / keyboard
 params.ignorekeys = KbName({params.triggerkey});  % dont record TR triggers as subject responses
 
 
-%% %%%%%%%%% SETUP RNG %%%%%%%%%
 
-% rand('seed', sum(100*clock));
-% randn('seed', sum(100*clock));
-% params.rng.rand = rand;
-% params.rng.randn = randn;
+
+% %%%%%%%%% SETUP RNG %%%%%%%%%
+
+rand('seed', sum(100*clock));
+randn('seed', sum(100*clock));
+params.rng.rand = rand;
+params.rng.randn = randn;
 
 %% %%%%%%%%%%%%% STIM PARAMS %%%%%%%%%%%%%
 
@@ -110,7 +111,7 @@ if strcmp(params.disp.name, '7TAS_BOLDSCREEN32')
     session_type = 'MRI';
     
 elseif strcmp(params.disp.name,'PPROOM_EIZOFLEXSCAN')
-    session_type = 'BEHAVIORAL';
+    session_type = 'BEHAVIOR';
 else
     session_type = 'MRI';
 end
@@ -152,26 +153,54 @@ if ~isfield(params, 'exp') ||  isempty(params.exp)
     end
 end
 
+% TIME TABLE MASTER
+if ~exist('time_table_master','var') ||  isempty(params.exp)
+    if params.loadparams
+        d = dir(fullfile(params.infofolder,'time_table_master2*.mat'));
+        if ~isempty(d)
+            load(fullfile(d(end).folder,d(end).name),'time_table_master','all_subj_run_frames');
+        end
+    end
+    
+else
+    error('[%s]: Can''t find time table master!!',mfilename)
+end
+
 %% %%%%%%%%% LOAD IMAGES & ORDER
 
 if ~exist('scan','var') || ~isfield(scan,'exp_im') || isempty(scan.exp_im)
-    % Images are in the format of:
-    % subj001_ses01_run01_images_PPROOM_EIZOFLEXSCAN_20250505T184109.mat
-    d = dir(fullfile(params.infofolder,sprintf('subj%03d',params.subjID),  ...
-        sprintf('subj%03d_ses%02d_run%02d_frames_%s_*.mat', ...
-        params.subjID, params.sesID, params.runnum, params.disp.name)));
-    a = load(fullfile(d(end).folder,d(end).name));
-    scan.run = a.run; 
-    scan.time_table = a.subj_run; 
-    clear a d;
+    
+    if params.loadstimfromrunfile
+        
+        % Images are in the format of:
+        % subj001_ses01_run01_images_PPROOM_EIZOFLEXSCAN_20250505T184109.mat
+        d = dir(fullfile(params.infofolder,sprintf('subj%03d',params.subjID),  ...
+            sprintf('subj%03d_ses%02d_run%02d_images_%s_*.mat', ...
+            params.subjID, params.sesID, params.runnum, params.disp.name)));
+        a = load(fullfile(d(end).folder,d(end).name));
+        images = a.images;
+        masks = a.masks;
+        clear a d;
+        
+    else
+        
+        [images, masks] = vcd_getImageOrderSingleRun(params, ...
+            time_table_master, all_subj_run_frames, params.subjID, params.sesID, params.runnum, ...
+            'store_params', false,'session_type', session_type);
+    end
+    
+    subj_run_frames = all_subj_run_frames{params.subjID, params.sesID, params.runnum};
+    subj_run_table = time_table_master(time_table_master.subj_nr==params.subjID ...
+        & time_table_master.session_nr==params.sesID ...
+        & time_table_master.run_nr==params.runnum,:);
+    
+    stim.im = images{params.subjID, params.sesID, params.runnum};
+    stim.masks = masks{params.subjID, params.sesID, params.runnum};
+    clear images masks
+    
 end
 
 %% %%%%%%%%% IMAGE XY CENTER OFFSET
-
-    % EK HACK START ---
-    scan.run.images(1,:) = [];
-    scan.run.masks(1,:) = [];
-    % EK HACK END ---
 
 if ~exist('scan','var') || ~isfield(scan, 'rects') || isempty(scan.rects)
     
@@ -191,97 +220,91 @@ if ~exist('scan','var') || ~isfield(scan, 'rects') || isempty(scan.rects)
     
     % Get [x,y]-center in pixels of peripheral stimuli given display size, and
     % offset. Get stimulus aperture size..
-    centers = cell(size(scan.run.images,1),2); 
-    apsize  = cell(size(scan.run.images,1),2); 
-
-    im_idx = find(~cellfun(@isempty, scan.run.images));
-    im_idx(1:9) = [];
-    im_cnt = 1;
+    centers = cell(size(stim.im,1),2);
+    apsize  = cell(size(stim.im,1),2);
     
-    for nn = 1:size(scan.time_table,1)
+    
+    for nn = 1:size(stim.im,1)
         
-        if strcmp(scan.time_table.event_name(nn),'stim1') || strcmp(scan.time_table.event_name(nn),'stim2')
+        if ismember(subj_run_frames.frame_event_nr(nn), [params.exp.block.stim_epoch1_ID, params.exp.block.stim_epoch2_ID, ...
+                params.exp.block.eye_gaze_fix_ID,params.exp.block.eye_gaze_pupil_ID,  params.exp.block.eye_gaze_sac_target_ID])
             
-            frame = scan.time_table.event_start(nn)+1;
+            numSides = find(~cellfun(@isempty, stim.im(nn,:)));
             
-            numSides = find(~cellfun(@isempty, scan.run.images(im_idx(im_cnt),:)));
-            
-            for side = numSides
+            if ~isempty(numSides)
                 
-                if strcmp(scan.time_table.stim_class_name{nn,side},'gabor')
-                    centers{frame,side} = [params.stim.gabor.x0_pix(side) + params.stim.xc, ... % x-coord (pixels)
-                        params.stim.gabor.y0_pix(side) + params.stim.yc]; % y-coord (pixels)
+                for side = numSides
                     
-                elseif strcmp(scan.time_table.stim_class_name{nn,side},'rdk')
-                    centers{frame,side} = [params.stim.rdk.x0_pix(side) + params.stim.xc, ...
-                        params.stim.rdk.y0_pix(side) + params.stim.yc];
+                    if ismember(subj_run_frames.frame_im_nr(nn,side), [params.stim.gabor.unique_im_nrs_core,params.stim.gabor.unique_im_nrs_wm_test])
+                        centers{nn,side} = [params.stim.gabor.x0_pix(side) + params.stim.xc, ... % x-coord (pixels)
+                            params.stim.gabor.y0_pix(side) + params.stim.yc]; % y-coord (pixels)
+                        
+                    elseif ismember(subj_run_frames.frame_im_nr(nn,side), [params.stim.rdk.unique_im_nrs_core,params.stim.rdk.unique_im_nrs_wm_test])
+                        centers{nn,side} = [params.stim.rdk.x0_pix(side) + params.stim.xc, ...
+                            params.stim.rdk.y0_pix(side) + params.stim.yc];
+                        
+                    elseif ismember(subj_run_frames.frame_im_nr(nn,side), [params.stim.dot.unique_im_nrs_core,params.stim.dot.unique_im_nrs_wm_test])
+                        
+                        % deal with dot pol2cart
+                        if ismember(subj_run_frames.frame_im_nr(nn,side), params.stim.dot.unique_im_nrs_wm_test)
+                            test_im2D  = reshape(params.stim.dot.unique_im_nrs_wm_test,4,[]);
+                            [~,test_im_idx] = ismember(subj_run_frames.frame_im_nr(nn,side), test_im2D);
+                            [x,y] = ind2sub([size(test_im2D,1),size(test_im2D,2)],test_im_idx);
+                            
+                            dot_x = params.stim.dot.x0_pix_delta(x,y);
+                            dot_y = params.stim.dot.y0_pix_delta(x,y);
+                            
+                        elseif ismember(subj_run_frames.frame_im_nr(nn,side), params.stim.dot.unique_im_nrs_core)
+                            [~,core_im_idx] = ismember(subj_run_frames.frame_im_nr(nn,side), params.stim.dot.unique_im_nrs_core);
+                            dot_x = params.stim.dot.x0_pix(core_im_idx);
+                            dot_y = params.stim.dot.y0_pix(core_im_idx);
+                        end
+                        
+                        centers{nn,side} = [dot_x + params.stim.xc, dot_y + params.stim.yc];
+                        
+                    elseif ismember(subj_run_frames.frame_im_nr(nn,side), [params.stim.obj.unique_im_nrs_core,params.stim.obj.unique_im_nrs_wm_test])
+                        centers{nn,side} = [params.stim.obj.x0_pix(side) + params.stim.xc, ...
+                            params.stim.obj.y0_pix(side) + params.stim.yc];
+                        
+                    elseif ismember(subj_run_frames.frame_im_nr(nn,side), ...
+                            [params.stim.ns.unique_im_nrs_core,params.stim.ns.unique_im_nrs_wm_test,params.stim.ns.unique_im_nrs_wm_test,params.stim.ns.unique_im_nrs_ltm_lures])
+                        centers{nn,side} = [params.stim.ns.x0_pix + params.stim.xc, params.stim.ns.y0_pix + params.stim.yc];
                     
-                elseif strcmp(scan.time_table.stim_class_name{nn,side},'dot')
-                    
-                    % deal with dot pol2cart
-                    if strcmp(scan.time_table.event_name(nn),'stim2')
-                        delta_idx = find(scan.time_table.stim2_delta(nn,side)==params.stim.dot.delta_from_ref);
-                        
-                        tmp             = reshape(params.stim.dot.unique_im_nrs_wm_test,4,[]);
-                        [~,test_im_idx] = ismember(scan.time_table.stim2_im_nr(nn,side),params.stim.dot.unique_im_nrs_wm_test);
-                        test_im_sub = ind2sub(test_im_idx, size(tmp,1),size(tmp,2));
-                        
-                        checkme = [params.stim.dot.x0_pix_delta(test_im_sub(2),delta_idx), params.stim.dot.y0_pix_delta(test_im_sub(2),delta_idx)];
-                        dot_angle = scan.time_table.stim2_orient_dir(nn,side);
-                        [dot_x,dot_y] = pol2cart(deg2rad(dot_angle),params.stim.dot.iso_eccen);
-                        
-                    elseif strcmp(scan.time_table.event_name(nn),'stim1')
-                        dot_angle = scan.time_table.orient_dir(nn,side);
-                        xy_idx = find(dot_angle == params.stim.dot.ang_deg);
-                        dot_x = params.stim.dot.x0_pix(xy_idx);
-                        dot_y = params.stim.dot.y0_pix(xy_idx);
+                    elseif isnan(subj_run_frames.frame_im_nr(nn,side)) || (subj_run_frames.frame_im_nr(nn,side)==0)
+                        centers{nn,side} = [NaN, NaN];
                     end
                     
-                    centers{frame,side} = [dot_x + params.stim.xc, dot_y + params.stim.yc];
+                    if isnan(subj_run_frames.frame_im_nr(nn,side))
+                        apsize{nn,side}  = [NaN, NaN];
+                    else
+                        % apsize 1: image width (pixels), apsize 2: image height (pixels)
+                        apsize{nn,side}  = [size(stim.im{nn,side},2), size(stim.im{nn,side},1)];
+                    end
                     
-                elseif strcmp(scan.time_table.stim_class_name{nn,side},'obj')
-                    centers{frame,side} = [params.stim.obj.x0_pix(side) + params.stim.xc, ...
-                        params.stim.obj.y0_pix(side) + params.stim.yc];
+                    % COMBINE IMAGE AND MASKS, FLIP IM IF REQUESTED
+                    if isempty(stim.masks{nn,side})
+                        stim.im{nn,side} = feval(flipfun, stim.im{nn,side});
+                    else
+                        stim.im{nn,side} = feval(flipfun, cat(3, stim.im{nn,side}, stim.masks{nn,side}));
+                        stim.masks{nn,side} = [];
+                    end
                     
-                elseif strcmp(scan.time_table.stim_class_name{nn,side},'ns')
-                    centers{frame,side} = [params.stim.ns.x0_pix + params.stim.xc, params.stim.ns.y0_pix + params.stim.yc];
-                elseif isnan(scan.time_table.stim_class_name{nn,side})
-                    centers{frame,side} = [NaN, NaN];
                 end
-                
-                if isnan(scan.time_table.stim_class_name{nn,side})
-                    apsize{frame,side}  = [NaN, NaN];
-                else
-                    % apsize 1: image width (pixels), apsize 2: image height (pixels)
-                    apsize{frame,side}  = [size(scan.run.images{im_idx(im_cnt),side},2), size(scan.run.images{im_idx(im_cnt),side},1)];
-                end
-                
-                % COMBINE IMAGE AND MASKS, FLIP IM IF REQUESTED
-                if isempty(scan.run.masks{im_idx(im_cnt),side})
-                    scan.run.images{im_idx(im_cnt),side} = feval(flipfun, scan.run.images{im_idx(im_cnt),side});
-                    im_cnt = im_cnt+1;
-                else
-                    scan.run.images{im_idx(im_cnt),side} = feval(flipfun, cat(3, scan.run.images{im_idx(im_cnt),side}, scan.run.masks{im_idx(im_cnt),side}));
-                    scan.run.masks{im_idx(im_cnt),side} = [];
-                    
-                    im_cnt = im_cnt+1;
-                end
-                
             end
         end
     end
 end
 
 
-scan.run.centers = centers; clear centers;
-scan.run.apsize  = apsize; clear apsize;
+stim.centers = centers; clear centers;
+stim.apsize  = apsize; clear apsize;
 
 %%%%%%% CENTER RECT
-nonemptycenters = ~cellfun(@isempty, scan.run.centers(:,1));
-nonemptysizes = ~cellfun(@isempty, scan.run.apsize(:,1));
+nonemptycenters = ~cellfun(@isempty, stim.centers(:,1));
+nonemptysizes = ~cellfun(@isempty, stim.apsize(:,1));
 assert(isequal(nonemptycenters,nonemptysizes)); clear nonemptysizes
-centers_shortlist = scan.run.centers(nonemptycenters,:);
-apsize_shortlist  = scan.run.apsize(nonemptycenters,:);
+centers_shortlist = stim.centers(nonemptycenters,:);
+apsize_shortlist  = stim.apsize(nonemptycenters,:);
 
 % insert NaNs for second column when using single square stimulus (nat scene)
 if size(centers_shortlist,2)==2
@@ -300,8 +323,8 @@ for side = [1,2]
         apsize_shortlist(:,side),centers_shortlist(:,side), 'UniformOutput', false);
 end
 
-scan.run.rects = cell(size(scan.run.centers));
-scan.run.rects(nonemptycenters,:) = rects_shortlist;
+stim.rects = cell(size(stim.centers));
+stim.rects(nonemptycenters,:) = rects_shortlist;
 
 
 
@@ -333,7 +356,7 @@ bckground = feval(flipfun,bckground);
 %% %%%%%%%%%%%%% FIX IM %%%%%%%%%%%%%
 %  FIX CIRCLE: 5D array: [x,y, 3, lum, type]
 
-if ~exist('fix_im','var') || isempty(fix_im)
+if ~exist('fix','var') || isempty(fix) || ~isfield(fix,'im')
     d = dir(fullfile(params.stimfolder,params.disp.name, sprintf('fix_%s*.mat',params.disp.name)));
     a = load(fullfile(d(end).folder, d(end).name),'fix_im','mask');
     fix_im = a.fix_im;
@@ -362,30 +385,17 @@ for ll = 1:size(fix_im,4) % loop over luminance values
     fix_thick_both{ll}  = feval(flipfun,  cat(3, fix_im(:,:,:,ll,5), fix_mask(:,:,5)));
 end
 
-clear fix_im;
-fix_im = struct('fix_thin_full',[], 'fix_thick_full', [], ...
+clear fix_im fix_mask;
+fix = struct('fix_thin_full',[], 'fix_thick_full', [], ...
     'fix_thick_left', [], 'fix_thick_right', [], ...
     'fix_thick_both', [], 'fix_thin_rect', [], 'fix_thick_rect', []);
-fix_im.fix_thin_full   = fix_thin_full;
-fix_im.fix_thick_full  = fix_thick_full;
-fix_im.fix_thick_left  = fix_thick_left;
-fix_im.fix_thick_right = fix_thick_right;
-fix_im.fix_thick_both  = fix_thick_both;
-fix_im.fix_thin_rect   = fix_thin_rect;
-fix_im.fix_thick_rect  = fix_thick_rect;
-
-%% Save images and/or timing just in case we run into an error?
-if params.savestimtiming
-    fprintf('[%s]: Saving stimulus timing..',mfilename)
-    tic
-    timing_data = struct('scan',scan, 'params',params,'timing',timing);
-    timing_data.scan.exp_im = []; timing_data.scan.exp_im_masks = [];
-    timing_data.scan.fix_im = []; timing_data.scan.fix_im_masks = [];
-    timing_data.scan.bckground_im = [];
-    save(fullfile(params.savedatadir,sprintf('tmp_expim_%s.mat',datestr(now,30))),'timing_data','-v7.3');
-    clear tmp_data
-    fprintf('done!\n'); toc
-end
+fix.fix_thin_full   = fix_thin_full; clear fix_thin_full
+fix.fix_thick_full  = fix_thick_full; clear fix_thick_full
+fix.fix_thick_left  = fix_thick_left; clear fix_thick_left
+fix.fix_thick_right = fix_thick_right; clear fix_thick_right
+fix.fix_thick_both  = fix_thick_both; clear fix_thick_both
+fix.fix_thin_rect   = fix_thin_rect; clear fix_thin_rect
+fix.fix_thick_rect  = fix_thick_rect; clear fix_thick_rect
 
 
 %% %%%%%%%%%%%%% TASK INSTRUCTIONS %%%%%%%%%%%%%
@@ -395,7 +405,7 @@ if ~exist(introscript,'file')
     error('[%s]: Can''t find instructions text file!',mfilename')
 end
 
-taskIDs = unique(scan.time_table.block_ID); 
+taskIDs = unique(subj_run_table.block_ID);
 taskIDs = taskIDs(~isnan(taskIDs));
 taskIDs = taskIDs(taskIDs~=0);
 taskIDs = taskIDs(taskIDs~=999);
@@ -423,7 +433,7 @@ rect = Screen('Rect',win); % what is the total rect
 %% %%%%%%%%%%%%% Eyelink stuff %%%%%%%%%%%%%
 % ANON EYE FUN for SYNC TIME
 if params.wanteyetracking
-    tfunEYE     = @() cat(2,fprintf('EXP STARTS.\n'),Eyelink('Message','SYNCTIME'));
+    tfunEYE     = @() Eyelink('Message','SYNCTIME');
     
     if ~isfield(params,'eyelinkfile') || isempty(params.eyelinkfile)
         params.eyelinkfile = fullfile(params.savedatadir,sprintf('eye_%s_vcd_subj-%s_run-%d.edf',datestr(now,30),params.subjID,params.runnum));
@@ -480,7 +490,7 @@ if params.wanteyetracking && ~isempty(params.eyelinkfile)
         yc_off = round(wheight/2);
     end
     
-
+    
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % Customize calibration points (include pixel shift, change size and
     % color)
@@ -558,7 +568,8 @@ timeofshowstimcall = datestr(now,30);
     win, rect, params, ...
     scan, ...
     bckground, ...
-    fix_im, ...
+    fix, ...
+    stim, ...
     introscript, ...
     taskscript, ...
     tfunEYE, ...
@@ -568,12 +579,11 @@ timeofshowstimcall = datestr(now,30);
 
 %% CLEAN UP AND SAVE
 
+fprintf('RUN ENDED: %4.4f.\n',GetSecs);
+
 % Close out eyelink
 if params.wanteyetracking
     if ~isempty(eyetempfile)
-        
-        % before we close out the eyelink, we send one more syntime message
-        feval(tfunEYE);
         
         % Close eyelink and record end
         Eyelink('StopRecording');
@@ -581,7 +591,6 @@ if params.wanteyetracking
         Eyelink('CloseFile');
         status = Eyelink('ReceiveFile',eyetempfile, params.savedatadir, 1);
         fprintf('ReceiveFile status %d\n', status);
-        fprintf('RUN ENDED: %4.4f.\n',GetSecs);
         
         % RENAME DOWNLOADED FILE TO THE FINAL FILENAME
         mycmd=['mv ' params.savedatadir '/' eyetempfile ' ' params.eyelinkfile];
@@ -593,8 +602,6 @@ if params.wanteyetracking
         Eyelink('ShutDown'); % Do we need to shut down???
         
     end
-else
-    fprintf('RUN ENDED: %4.4f.\n',GetSecs);
 end
 
 % Create folder where data will be stored
@@ -612,13 +619,11 @@ if ~isfield(params,'behaviorfile') || isempty(params.behaviorfile)
         timeofshowstimcall,params.subjID,params.sesID,params.runnum);
 end
 
-% figure out names of all variables except 'scan.images', 'fix_im', and
+% figure out names of all variables except 'stim', 'fix', and
 % 'bckground'
-scan.run.images = [];
 vars = whos;
 vars = {vars.name};
-vars = vars(cellfun(@(x) ~isequal(x,'fix_im'),vars));
-vars = vars(cellfun(@(x) ~isequal(x,'bckground'),vars));
+vars = vars(cellfun(@(x) ~isequal(x,'fix','bckground','stim'),vars));
 
 
 % Save data (button presses, params, etc)
@@ -627,14 +632,16 @@ save(fullfile(params.savedatadir,params.behaviorfile),vars{:}, '-v7.3');
 % check the timing
 if getoutearly == 0 %if we completed the experiment
     fprintf('Experiment duration was %4.3f.\n',data.timing.endtime);
-    slack = [-5 5].*frameduration;
-    expectedduration = (data.timing.empiricalrundur+data.timing.frameduration) + slack;
-    
+    slack = [-0.0004, 0.0004];
+    expectedduration = (length(data.timing.timeframes)/params.disp.refresh_hz) + slack;
     if data.timing.endtime > expectedduration(1) && data.timing.endtime < expectedduration(2)
         fprintf('Timing was ok and within [%d - %d] sec slack\n',slack(1),slack(2));
     else
         fprintf('ERROR !!! Timing was OFF!!! Difference between expected and recorded is %3.2f seconds\n', expectedduration-data.timing.endtime);
     end
+    
+    deltatime = []; badkey = []; deltatimeBAD = []; wanthide = [];
+    [keytimes,badtimes,keybuttons] = ptviewmoviecheck(data.timing.timeframes,data.timekeys,deltatime,badkey,deltatimeBAD,wanthide)
     
     if exist(fullfile(params.savedatadir,params.behaviorfile),'file')
         d = dir(fullfile(vcd_rootPath,'tmp_data*.mat'));

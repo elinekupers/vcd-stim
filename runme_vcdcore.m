@@ -77,9 +77,8 @@ p.addParameter('dispName'       , '7TAS_BOLDSCREEN32' , @(x) any(strcmp(x, {'7TA
 p.addParameter('debugmode'      , false, @islogical);
 p.addParameter('loadparams'     , true, @islogical);
 p.addParameter('storeparams'    , true, @islogical);
-p.addParameter('loadstimtiming' , false, @islogical);
-p.addParameter('savestimtiming' , false, @islogical);
 p.addParameter('savestim'       , false, @islogical);
+p.addParameter('loadstimfromrunfile', false, @islogical);
 p.addParameter('offsetpix'      , [0 0], @isnumerical); % [x,y]
 p.addParameter('movieflip'      , [0 0], @isnumerical); % up/down, left/right
 p.addParameter('stimDir'        , fullfile(vcd_rootPath,'workspaces','info'), @ischar);
@@ -216,21 +215,8 @@ if debugmode
     wanteyetracking = false;
 end
 
-
-if loadstimtiming
-    d = dir(fullfile(savedatadir,'tmp_expim_*.mat'));
-    if isempty(d)
-        error('[%s]: Cannot find temporarily stored run stimulus file\n',mfilename)
-    elseif length(d)>1
-        warning('[%s]: Found more than one temporarily stored run stimulus file, will use most recent one.\n',mfilename)
-        load(fullfile(d(end).folder,d(end).name),'scan','timing');
-    else
-        fprintf('[%s]: Loading temporarily stored files\n',mfilename)
-        load(fullfile(d(end).folder,d(end).name),'scan','timing');
-    end
-else
-    scan = struct();
-end
+% We will load stimuli from scratch 
+scan = struct();
 
 %% run experiment
 vcd_singleRun(subjID, sesID, runnum, ... % mandatory inputs
@@ -246,7 +232,8 @@ vcd_singleRun(subjID, sesID, runnum, ... % mandatory inputs
     'movieflip', movieflip, ...
     'instrtextdir',instructionsDir, ...
     'scan', scan, ...
-    'savestimtiming', savestimtiming); 
+    'savestim', savestim, ...
+    'loadstimfromrunfile', loadstimfromrunfile); 
 
 % analyze dat
 % runvcdbehavioralanalysis(behaviorfile,3000,[299.8 300.2],[stimulusdir filesep 'vcd_expdesign.mat']);

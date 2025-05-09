@@ -3,6 +3,7 @@ function [data,getoutearly,scan] = vcd_showStimulus(...
     scan, ...
     bckground, ...
     fix_im, ...
+    exp_im, ...
     introscript, ...
     taskscript, ...
     tfunEYE, ...
@@ -25,7 +26,7 @@ digitpolarity  = [];
 
 %% PREPARE IMAGES
 allowforceglitch  = 0; % 0 means do nothing special. [1 D] means allow keyboard input 'p' to force a glitch of duration D secs.
-frameorder        = 1:size(scan.run.images,1);
+frameorder        = 1:size(exp_ims,1);
 
 % init variables, routines, constants
 timeframes = NaN(1, floor(size(frameorder,2)-1)+1);
@@ -229,7 +230,7 @@ end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%% log the start!
 
-feval(tfunEYE) % SEND Eyelink('Message','SYNCTIME'));
+feval(tfunEYE); fprintf('EXP START'); % SEND Eyelink('Message','SYNCTIME'));
 timekeys = [timekeys; {GetSecs 'trigger'}];
 
 %% DRAW THE TEXTURES
@@ -431,16 +432,15 @@ fprintf('frames per second: %.10f\n',length(timeframes)/dur);
 digitrecord = {digitrecord digitframe digitpolarity};
 
 data = struct();
-data.timing.mfi             = mfi;
 data.wantframefiles         = wantframefiles;
 data.detectinput            = detectinput;
 data.forceglitch            = forceglitch;
 data.timeKeys               = timekeys;
+data.timing.mfi             = mfi;
 data.timing.glitchcnt       = glitchcnt;
 data.timing.timeframes      = timeframes;
 data.timing.starttime       = starttime;
-data.timing.endtime         = timeframes(end);
-data.timing.empiricalrundur = dur;
+data.timing.endtime         = dur;
 data.timing.empiricalfps    = length(timeframes)/dur;
 data.timing.frameduration   = frameduration;
 data.digitrecord            = digitrecord;

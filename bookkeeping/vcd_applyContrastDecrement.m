@@ -1,4 +1,4 @@
-function [output_im, c_onset] = vcd_applyContrastDecrement(params, cdsoafun, stim_class,  input_im)
+function output_im = vcd_applyContrastDecrement(params, c_onset, stim_class,  input_im)
 
 
 if size(input_im,1) == 1
@@ -13,10 +13,6 @@ if strcmp(stim_class,'ns')
     
     % only one image, in first column
     assert(all(cellfun(@isempty, input_im(:,2))));
-    
-    % Get onset of contrast decrement within the
-    % stimulus period
-    c_onset = feval(cdsoafun);
     
     for tt = 1:length(params.stim.cd.t_gauss)
         

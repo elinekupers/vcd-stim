@@ -1,8 +1,8 @@
-function [params,time_table_master] = vcd_createSessions(params,varargin)
+function [params,time_table_master, all_subj_run_frames] = vcd_createSessions(params,varargin)
 % VCD function to create image and event order for individual subject 
 % sessions and runs
 % 
-%  [params,time_table_master] = vcd_createSessions(params,...
+%  [params,time_table_master,all_subj_run_frames] = vcd_createSessions(params,...
 %         'load_params',[load_params],'store_params',[store_params])
 %  
 
@@ -95,17 +95,18 @@ else
     % Different trial order per block (already accomplished in vcd_makeTrials.m)
     % Across a single session, each subject will experience the same
     % blocks and unique images
-    
-
     params.trials = vcd_allocateBlocksToRuns(params,session_type);
 
-    %% We expand the condition master table and add all trial events (in units of presentationrate_hz frames), 
+    %% 2. We expand the condition master table and add all trial events 
+    % (in units of presentationrate_hz frames), and we now call it
+    % "time_table_master"
     % We also shuffle blocks within a run for each subject session
     time_table_master = vcd_createRunTimeTables(params,session_type);
     
-    params.time_table = time_table_master;
-    
-
+    %% 3. We expand the "time_table_master" with the fixation sequence 
+    % and onset of contrast dip, and correct button presses for FIX and CD
+    % task-crossings
+    [time_table_master,all_subj_run_frames] = vcd_addFIXandCDtoTimeTableMaster(params,time_table_master);
     
     
 end

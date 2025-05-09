@@ -24,7 +24,7 @@
 %%%%%%%%%%%%%%%%%%%%%%
 
 params = struct();
-params.verbose      = true; % visualize stimuli (true) or not (false)
+params.verbose      = false; % visualize stimuli (true) or not (false)
 params.store_imgs   = true; % store visualization figures (true) or not (false)
 
 % Get display params

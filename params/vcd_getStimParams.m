@@ -85,17 +85,17 @@ else
     %% GENERAL PARAMS
     stim.store_imgs          = true;                                       % Store images when creating them? (see s_createStimuli.m)
     
-    % we want to present images at a rate of 30 Hz (every 33 ms)
-    stim.presentationrate_hz = 30;                                         % rate of stimulus presentation (Hz)
-    stim.f2f                 = disp_params.refresh_hz*(1/stim.presentationrate_hz); % frame-to-frame duration: nr of monitor refreshes in between 2 (33-ms) frames
-                                                                           % we want to wait to achieve 30 Hz presentation rate. 
-                                                                           % so this number is 4 for a monitor refresh rate of 120 Hz and 2 for 60 Hz. 
+    % we want to present images at a rate of 60 Hz (every 16.6667 ms)
+    stim.presentationrate_hz = 60;                                         % rate of stimulus presentation (Hz)
+    stim.f2f                 = disp_params.refresh_hz*(1/stim.presentationrate_hz); % frame-to-frame duration: nr of monitor refreshes in between presentation frames
+                                                                           % we want to wait to achieve 60 Hz presentation rate. 
+                                                                           % so this number is 2 for a monitor refresh rate of 120 Hz and 1 for 60 Hz. 
 
     % Ensure we have a round number of monitor refreshes to achieve 30 Hz presentation rate  
     assert(isint(disp_params.refresh_hz/stim.presentationrate_hz));
     
-    stim.framedur_s          = stim.f2f*(1/disp_params.refresh_hz);        % duration for each presentation frame (should be 33 ms)
-    assert(isequal(stim.framedur_s, (1/stim.presentationrate_hz)));        % check if this is 33 ms.
+    stim.framedur_s          = stim.f2f*(1/disp_params.refresh_hz);        % duration for each presentation frame (should be 16.67 ms)
+    assert(isequal(stim.framedur_s, (1/stim.presentationrate_hz)));        % check if this is 16.67 ms.
     
     stim.bckgrnd_grayval     = ceil(255/2);                                % background color (middle of 1-255 pixel lum)
     assert(isequal(stim.bckgrnd_grayval, 128));                            % we want 128 to be mean luminance
@@ -107,7 +107,7 @@ else
     % Define default params to inherit (or overwrite) by STIM CLASSES BELOW
     
     % **** TEMPORAL **** 
-    stimdur_frames           = stim.presentationrate_hz * 2.0;             % nr of (33 ms) presentation frames that results in 2 s (7TAS has 60 frames = 2 sec, PP room has 30 frames = 2 sec)
+    stimdur_frames           = stim.presentationrate_hz * 2.0;             % nr of (16.67 ms) presentation frames that results in 2 s (7TAS has 60 frames = 2 sec, PP room has 30 frames = 2 sec)
     
     % **** SPATIAL ****
     
@@ -152,8 +152,8 @@ else
     stim.fix.infofile               = fullfile(vcd_rootPath,'workspaces','info',sprintf('fix_info_%s',disp_params.name)); % csv file
     
     % TEMPORAL
-    stim.fix.dotmeanchange          = 1.4*stim.presentationrate_hz;         % nr 33ms frames, dot changes occur every 1.4 seconds
-    stim.fix.dotchangeplusminus     = 0*stim.presentationrate_hz;           % nr 33ms frames, earliest and latests time that dot changes occur. 2 seconds means [-1:1] from meanchange
+    stim.fix.dotmeanchange          = 1.4*stim.presentationrate_hz;         % nr 16.67ms frames, dot changes occur every 1.4 seconds
+    stim.fix.dotchangeplusminus     = 0*stim.presentationrate_hz;           % nr 16.67ms frames, earliest and latests time that dot changes occur. 2 seconds means [-1:1] from meanchange
     stim.fix.dres                   = [];                                   % rescale factor as a fraction between 0-1  
         
     % SPATIAL
@@ -189,22 +189,22 @@ else
     %% CONTRAST DECREMENT -- INVERTED GAUSSIAN TEMPORAL WINDOW
     % We treat timepoint t=0 as the onset time of a frame flip, and t=1 is 
     % the offset of the first frame flip and the onset of the second frame 
-    % flip (so in between flips). Each time point has a duration of 33.33 ms 
+    % flip (so in between flips). Each time point has a duration of 16.67 ms 
     % (see framedur_s). 
     % For the contrast decrement, we implement an inverted gaussian with a
     % support of 15 time points (a 1/4 of the total stimulus duration),
     % thus t=[0,14]. How quickly the contrast decrement change occurs is 
-    % determined by the std. Here, we pick std = 3 time points (3*33.33 ms). 
+    % determined by the std. Here, we pick std = 6 time points (6*16.67 ms). 
     % This means that peak contrast decrement occurs at t=7 (233.33 ms).
-    stim.cd.t_gausswin_N            = 15;                                   % 15 number of presentation frames (33 ms) for gaussian time window (contrast decrement)
-    stim.cd.t_gausswin_std          = 3;                                    % standard devation of gaussian window in time (presentation frames)
+    stim.cd.t_gausswin_N            = 30;                                   % number of presentation frames (16.67 ms) for gaussian time window (contrast decrement)
+    stim.cd.t_gausswin_std          = 6;                                    % standard devation of gaussian window in time (presentation frames)
     stim.cd.meanchange              = stim.presentationrate_hz * 1.0;       % mean of gaussian window in time (30 frames = 1 sec)  
     stim.cd.changeplusminus         = (0.5/stim.framedur_s)-1;              % plus or minus this amount (14 frames = 0.46 sec)  
     stim.cd.max_cd                  = 0.2;                                  % stimulus contrast is reduced by 20% of mean luminance at lowest point of temporal gaussian window (note: this corresponds to subtracting a contrast fraction of 10.^(log10(c)-0.1))
     stim.cd.prob                    = 0.5;                                  % 50% probability that a trial will have a luminance change
     
     % Create 1D gaussian
-    t_support           = linspace(-stim.cd.t_gausswin_N / 2, stim.cd.t_gausswin_N / 2, stim.cd.t_gausswin_N);  % [-7:1:7] in units of presentation 33 ms frames
+    t_support           = linspace(-stim.cd.t_gausswin_N / 2, stim.cd.t_gausswin_N / 2, stim.cd.t_gausswin_N);  % [-7:1:7] in units of presentation 16.67 ms frames
     t_gauss             = exp(-t_support .^ 2 / (2 * stim.cd.t_gausswin_std ^ 2)); % 1D gaussian with a sd of 3 presentation frames
     
     % invert and scale it
