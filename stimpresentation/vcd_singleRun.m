@@ -61,9 +61,11 @@ if ~isfield(params, 'disp') || isempty(params.disp)
     params.disp = vcd_getDisplayParams(params.dispName); % BOLDSCREEN is default
 end
 
-% if params.debugmode
-%     params.disp.name = 'PPROOM_EIZOFLEXSCAN';
-% end
+    % EK HACK START ---
+if params.debugmode
+    params.disp.name = 'PPROOM_EIZOFLEXSCAN';
+end
+    % EK HACK END ---
 
 
 if params.debugmode % skip synctest
@@ -83,12 +85,12 @@ deviceNr = vcd_checkDevices(params.deviceNr, params.device_check);
 % 3: clutfile -- 0 for linear CLUT (-2 for squaring CLUT for BOLDSCREEN to simulate normal monitors --> NB: we do this manually!)
 % 4: skipsync (bool: 0 is false, 1 is true)
 % 5: wantstereo (bool: default is false)
-if strcmp(params.disp.name, 'PPROOM_EIZOFLEXSCAN')
-    % apparently PP room monitor native refresh rate show up as 0 (but is 60 Hz)
-    ptonparams = {[params.disp.w_pix params.disp.h_pix 0 24],[],params.disp.clut, skipsync};
-else
+% if strcmp(params.disp.name, 'PPROOM_EIZOFLEXSCAN')
+%     % apparently PP room monitor native refresh rate show up as 0 (but is 60 Hz)
+%     ptonparams = {[params.disp.w_pix params.disp.h_pix 0 24],[],params.disp.clut, skipsync};
+% else
     ptonparams = {[params.disp.w_pix params.disp.h_pix params.disp.refresh_hz 24],[],params.disp.clut, skipsync};
-end
+% end
 
 % Buttonbox / keyboard
 params.ignorekeys = KbName({params.triggerkey});  % dont record TR triggers as subject responses
@@ -166,6 +168,11 @@ end
 
 %% %%%%%%%%% IMAGE XY CENTER OFFSET
 
+    % EK HACK START ---
+    scan.run.images(1,:) = [];
+    scan.run.masks(1,:) = [];
+    % EK HACK END ---
+
 if ~exist('scan','var') || ~isfield(scan, 'rects') || isempty(scan.rects)
     
     % recenter x,y-center coordinates if needed
@@ -184,24 +191,29 @@ if ~exist('scan','var') || ~isfield(scan, 'rects') || isempty(scan.rects)
     
     % Get [x,y]-center in pixels of peripheral stimuli given display size, and
     % offset. Get stimulus aperture size..
-    centers = cell(size(scan.time_table,1),2); 
-    apsize  = cell(size(scan.time_table,1),2); 
-    
+    centers = cell(size(scan.run.images,1),2); 
+    apsize  = cell(size(scan.run.images,1),2); 
 
+    im_idx = find(~cellfun(@isempty, scan.run.images));
+    im_idx(1:9) = [];
+    im_cnt = 1;
+    
     for nn = 1:size(scan.time_table,1)
         
         if strcmp(scan.time_table.event_name(nn),'stim1') || strcmp(scan.time_table.event_name(nn),'stim2')
             
-            numSides = find(~cellfun(@isempty, scan.run.images(nn,:)));
+            frame = scan.time_table.event_start(nn)+1;
+            
+            numSides = find(~cellfun(@isempty, scan.run.images(im_idx(im_cnt),:)));
             
             for side = numSides
                 
                 if strcmp(scan.time_table.stim_class_name{nn,side},'gabor')
-                    centers{nn,side} = [params.stim.gabor.x0_pix(side) + params.stim.xc, ... % x-coord (pixels)
+                    centers{frame,side} = [params.stim.gabor.x0_pix(side) + params.stim.xc, ... % x-coord (pixels)
                         params.stim.gabor.y0_pix(side) + params.stim.yc]; % y-coord (pixels)
                     
                 elseif strcmp(scan.time_table.stim_class_name{nn,side},'rdk')
-                    centers{nn,side} = [params.stim.rdk.x0_pix(side) + params.stim.xc, ...
+                    centers{frame,side} = [params.stim.rdk.x0_pix(side) + params.stim.xc, ...
                         params.stim.rdk.y0_pix(side) + params.stim.yc];
                     
                 elseif strcmp(scan.time_table.stim_class_name{nn,side},'dot')
@@ -225,31 +237,31 @@ if ~exist('scan','var') || ~isfield(scan, 'rects') || isempty(scan.rects)
                         dot_y = params.stim.dot.y0_pix(xy_idx);
                     end
                     
-                    centers{nn,side} = [dot_x + params.stim.xc, dot_y + params.stim.yc];
+                    centers{frame,side} = [dot_x + params.stim.xc, dot_y + params.stim.yc];
                     
                 elseif strcmp(scan.time_table.stim_class_name{nn,side},'obj')
-                    centers{nn,side} = [params.stim.obj.x0_pix(side) + params.stim.xc, ...
+                    centers{frame,side} = [params.stim.obj.x0_pix(side) + params.stim.xc, ...
                         params.stim.obj.y0_pix(side) + params.stim.yc];
                     
                 elseif strcmp(scan.time_table.stim_class_name{nn,side},'ns')
-                    centers{nn,side} = [params.stim.ns.x0_pix + params.stim.xc, params.stim.ns.y0_pix + params.stim.yc];
+                    centers{frame,side} = [params.stim.ns.x0_pix + params.stim.xc, params.stim.ns.y0_pix + params.stim.yc];
                 elseif isnan(scan.time_table.stim_class_name{nn,side})
-                    centers{nn,side} = [NaN, NaN];
+                    centers{frame,side} = [NaN, NaN];
                 end
                 
                 if isnan(scan.time_table.stim_class_name{nn,side})
-                    apsize{nn,side}  = [NaN, NaN];
+                    apsize{frame,side}  = [NaN, NaN];
                 else
                     % apsize 1: image width (pixels), apsize 2: image height (pixels)
-                    apsize{nn,side}  = [size(scan.run.images{nn,side},2), size(scan.run.images{nn,side},1)];
+                    apsize{frame,side}  = [size(scan.run.images{im_idx(im_cnt),side},2), size(scan.run.images{im_idx(im_cnt),side},1)];
                 end
                 
                 % COMBINE IMAGE AND MASKS, FLIP IM IF REQUESTED
-                if isempty(scan.masks{nn,side})
-                    scan.run.images{nn,side} = feval(flipfun, scan.run.images{nn,side});
+                if isempty(scan.run.masks{frame,side})
+                    scan.run.images{frame,side} = feval(flipfun, scan.run.images{im_idx(im_cnt),side});
                 else
-                    scan.run.images{nn,side} = feval(flipfun, cat(3, scan.run.images{nn,side}, scan.run.masks{nn,side}));
-                    scan.run.masks{nn,side} = [];
+                    scan.run.images{frame,side} = feval(flipfun, cat(3, scan.run.images{im_idx(im_cnt),side}, scan.run.masks{im_idx(im_cnt),side}));
+                    scan.run.masks{frame,side} = [];
                 end
                 
             end
@@ -262,11 +274,11 @@ scan.run.centers = centers; clear centers;
 scan.run.apsize  = apsize; clear apsize;
 
 %%%%%%% CENTER RECT
-nonemptycells = ~cellfun(@isempty, scan.run.centers(:,1));
-emptycells2 = ~cellfun(@isempty, scan.run.apsize(:,1));
-assert(isequal(nonemptycells,emptycells2)); clear emptycells2
-centers_shortlist = scan.centers(nonemptycells,:);
-apsize_shortlist  = scan.apsize(nonemptycells,:);
+nonemptycenters = ~cellfun(@isempty, scan.run.centers(:,1));
+nonemptysizes = ~cellfun(@isempty, scan.run.apsize(:,1));
+assert(isequal(nonemptycenters,nonemptysizes)); clear nonemptysizes
+centers_shortlist = scan.run.centers(nonemptycenters,:);
+apsize_shortlist  = scan.run.apsize(nonemptycenters,:);
 
 % insert NaNs for second column when using single square stimulus (nat scene)
 if size(centers_shortlist,2)==2
@@ -285,8 +297,8 @@ for side = [1,2]
         apsize_shortlist(:,side),centers_shortlist(:,side), 'UniformOutput', false);
 end
 
-scan.run.rects = cell(size(scan.centers));
-scan.run.rects(nonemptycells,:) = rects_shortlist;
+scan.run.rects = cell(size(scan.run.centers));
+scan.run.rects(nonemptycenters,:) = rects_shortlist;
 
 
 
@@ -333,10 +345,11 @@ fix_thick_full  = cell(1,size(fix_im,4));
 fix_thick_left  = cell(1,size(fix_im,4));
 fix_thick_right = cell(1,size(fix_im,4));
 fix_thick_both  = cell(1,size(fix_im,4));
-fix_thin_rect   = CenterRect([0 0 round(size(fix_im,1)) round(size(fix_im,2))], [0 0 params.disp.w_pix params.disp.h_pix]);
-fix_thick_rect  = CenterRect([0 0 round(size(fix_im,1)) round(size(fix_im,2))], [0 0 params.disp.w_pix params.disp.h_pix]);
-fix_thin_rect   = fix_thin_rect + repmat(params.offsetpix,1,2);
-fix_thick_rect  = fix_thick_rect + repmat(params.offsetpix,1,2);
+
+fix_thin_rect0   = CenterRect([0 0 round(size(fix_im,1)) round(size(fix_im,2))], [0 0 params.disp.w_pix params.disp.h_pix]);
+fix_thick_rect0  = CenterRect([0 0 round(size(fix_im,1)) round(size(fix_im,2))], [0 0 params.disp.w_pix params.disp.h_pix]);
+fix_thin_rect   = {fix_thin_rect0 + repmat(params.offsetpix,1,2)};
+fix_thick_rect  = {fix_thick_rect0 + repmat(params.offsetpix,1,2)};
 
 for ll = 1:size(fix_im,4) % loop over luminance values
     fix_thin_full{ll}   = feval(flipfun,  cat(3, fix_im(:,:,:,ll,1), fix_mask(:,:,1)));
@@ -379,9 +392,10 @@ if ~exist(introscript,'file')
     error('[%s]: Can''t find instructions text file!',mfilename')
 end
 
-taskIDs = unique(scan.block_ID);
+taskIDs = unique(scan.time_table.block_ID); 
 taskIDs = taskIDs(~isnan(taskIDs));
 taskIDs = taskIDs(taskIDs~=0);
+taskIDs = taskIDs(taskIDs~=999);
 taskNames = params.exp.crossingnames(taskIDs);
 
 for nn = 1:length(taskIDs)
@@ -597,7 +611,7 @@ end
 
 % figure out names of all variables except 'scan.images', 'fix_im', and
 % 'bckground'
-scan.images = [];
+scan.run.images = [];
 vars = whos;
 vars = {vars.name};
 vars = vars(cellfun(@(x) ~isequal(x,'fix_im'),vars));

@@ -25,7 +25,7 @@ digitpolarity  = [];
 
 %% PREPARE IMAGES
 allowforceglitch  = 0; % 0 means do nothing special. [1 D] means allow keyboard input 'p' to force a glitch of duration D secs.
-frameorder        = 1:size(scan.frame_nr,1);
+frameorder        = 1:size(scan.run.images,1);
 
 % init variables, routines, constants
 timeframes = NaN(1, floor(size(frameorder,2)-1)+1);
@@ -82,50 +82,62 @@ end
 
 %% Prepare background and fixation texture vector outside the flip loop
 
-fix_tex    = cell(length(scan.frame_nr),1);
+fix_tex    = cell(length(scan.run.images),1);
 fix_rect   = fix_tex;
 im_tex     = fix_tex;
 im_rect    = fix_tex;
 framecolor = fix_tex;
 txt_tex    = fix_tex;
 txt_rect   = fix_tex;
+frame_blockIDs = NaN(length(scan.run.images),1);
+im_IDs = NaN(length(scan.run.images),1);
 
-for frame = 1:length(scan.frame_nr)
+im_idx = find(~cellfun(@isempty, scan.run.images));
+im_idx(1:9) = [];
+im_cnt = 1;
+for nn = 1:size(scan.time_table,1)
     
-    blockID = scan.event_id(frame);
+    blockID = scan.time_table.event_id(nn);
     if isnan(blockID)
         blockID = 0;
     end
-    % set up fixation dot textures
-    lum_idx = find(scan.fix_abs_lum(frame)==params.stim.fix.dotlum);
     
-    if blockID == 0 || isnan(scan.is_cued(frame)) || isnan(blockID)
-        fix_tex{frame} = fix_texture_thin_full{lum_idx};
-        fix_rect{frame} = fix_im.fix_thin_rect;   
+    framestart = scan.time_table.event_start(nn)+1;
+    frameend = scan.time_table.event_end(nn)+1;
+
+    curr_frames = framestart:frameend;
+    frame_blockIDs(curr_frames) = repmat(blockID,length(curr_frames),1);
+    
+    % set up fixation dot textures
+    lum_idx = find(scan.run.fix_abs_lum(framestart)==params.stim.fix.dotlum);
+    
+    if blockID == 0 || isnan(scan.time_table.is_cued(nn)) || isnan(blockID)
+        fix_tex(curr_frames) = repmat(fix_texture_thin_full(lum_idx),length(curr_frames),1);
+        fix_rect(curr_frames) = repmat(fix_im.fix_thin_rect,length(curr_frames),1);   
     else
         if blockID==95
-            if scan.is_cued(frame)==1
-                fix_tex{frame}  = fix_texture_thick_left{lum_idx};
-                fix_rect{frame} = fix_im.fix_thick_rect;
-            elseif scan.is_cued(frame)==2
-                fix_tex{frame}  = fix_texture_thick_right{lum_idx};
-                fix_rect{frame} = fix_im.fix_thick_rect;
-            elseif scan.is_cued(frame)==3
-                fix_tex{frame}  = fix_texture_thick_both{lum_idx};
-                fix_rect{frame} = fix_im.fix_thick_rect;
+            if scan.time_table.is_cued(nn)==1
+                fix_tex(curr_frames)  = repmat(fix_texture_thick_left(lum_idx),length(curr_frames),1);
+                fix_rect(curr_frames) = repmat(fix_im.fix_thick_rect,length(curr_frames),1);
+            elseif scan.time_table.is_cued(nn)==2
+                fix_tex(curr_frames)  = repmat(fix_texture_thick_right(lum_idx),length(curr_frames),1);
+                fix_rect(curr_frames) = repmat(fix_im.fix_thick_rect,length(curr_frames),1);
+            elseif scan.time_table.is_cued(nn)==3
+                fix_tex(curr_frames)  = repmat(fix_texture_thick_both(lum_idx),length(curr_frames),1);
+                fix_rect(curr_frames) = repmat(fix_im.fix_thick_rect,length(curr_frames),1);
             end
         elseif ismember(blockID,[91,92,93,94,96,97])
-            fix_tex{frame} = fix_texture_thick_full{lum_idx};
-            fix_rect{frame} = fix_im.fix_thick_rect;
+            fix_tex(curr_frames) = repmat(fix_texture_thick_full(lum_idx),length(curr_frames),1);
+            fix_rect(curr_frames) = repmat(fix_im.fix_thick_rect,length(curr_frames),1);
         elseif ismember(blockID,[98,99])
-            fix_tex{frame} = fix_texture_thin_full{lum_idx};
-            fix_rect{frame} = fix_im.fix_thin_rect;
+            fix_tex(curr_frames) = repmat(fix_texture_thin_full(lum_idx),length(curr_frames),1);
+            fix_rect(curr_frames) = repmat(fix_im.fix_thin_rect,length(curr_frames),1);
         elseif (blockID > 0) || (blockID < 90)
-            fix_tex{frame} = fix_texture_thick_full{lum_idx};
-            fix_rect{frame} = fix_im.fix_thick_rect;
+            fix_tex(curr_frames) = repmat(fix_texture_thick_full(lum_idx),length(curr_frames),1);
+            fix_rect(curr_frames) = repmat(fix_im.fix_thick_rect,length(curr_frames),1);
         elseif blockID > 990 % eyetracking target (TODO: implement actual targets)
-            fix_tex{frame} = fix_texture_thin_full{lum_idx};
-            fix_rect{frame} = fix_im.fix_thin_rect;
+            fix_tex(curr_frames) = repmat(fix_texture_thin_full(lum_idx),length(curr_frames),1);
+            fix_rect(curr_frames) = repmat(fix_im.fix_thin_rect,length(curr_frames),1);
         end
     end
     
@@ -147,37 +159,45 @@ for frame = 1:length(scan.frame_nr)
             % DrawTextures
             % * TexturePointers  need to be: n vector (where n is the number of textures)
             % * DestinationRects need to be: 4 row x n columns (where n is the number of textures)
-            im_tex{frame} = cat(1, bckrgound_texture, fix_tex{frame});
-            im_rect{frame} = cat(1, bckground_rect, fix_rect{frame});
-            framecolor{frame} = 255*ones(2,3); % <framecolor> can also be size(<frameorder>,2) x 1 with values in [0,1] indicating an alpha change.
+            
+            im_tex(curr_frames) = repmat({cat(1, bckrgound_texture, fix_tex(curr_frames(1)))},length(curr_frames),1);
+            im_rect(curr_frames) = repmat({cat(1, bckground_rect, fix_rect{curr_frames(1)})},length(curr_frames),1);
+            framecolor(curr_frames) = repmat({255*ones(2,3)},length(curr_frames),1); % <framecolor> can also be size(<frameorder>,2) x 1 with values in [0,1] indicating an alpha change.
             
         case 97 % task_cue_ID
             
-            script = taskscript{~cellfun(@isempty, regexp(taskscript,sprintf('%02d',scan.block_ID(frame)),'match'))};
+            script = taskscript{~cellfun(@isempty, regexp(taskscript,sprintf('%02d',scan.time_table.block_ID(nn)),'match'))};
             [task_instr, task_rect] = vcd_getInstructionText(params, script, rect);
             
-            im_tex{frame} = cat(1, bckrgound_texture, fix_tex{frame});
-            im_rect{frame} = cat(1, bckground_rect, fix_rect{frame});
+            im_tex(curr_frames) = repmat({cat(1, bckrgound_texture, fix_tex(curr_frames(1)))},length(curr_frames),1);
+            im_rect(curr_frames) = repmat({cat(1, bckground_rect, fix_rect{curr_frames(1)})},length(curr_frames),1);
             
-            txt_tex{frame} = task_instr;
-            txt_rect{frame} = task_rect;
+            txt_tex(curr_frames) = repmat({task_instr},length(curr_frames),1);
+            txt_rect(curr_frames) = repmat({task_rect},length(curr_frames),1);
             
-            framecolor{frame} = 255*ones(2,3); % <framecolor> can also be size(<frameorder>,2) x 1 with values in [0,1] indicating an alpha change.
+            framecolor(curr_frames) = repmat({255*ones(2,3)},length(curr_frames),1); % <framecolor> can also be size(<frameorder>,2) x 1 with values in [0,1] indicating an alpha change.
         
         % Draw background with eyetracking target
         case {990, 991, 992, 993, 994, 995, 996}
-            im_tex{frame} = cat(1, bckrgound_texture, fix_tex{frame});
-            im_rect{frame} = cat(1, bckground_rect, fix_rect{frame});
-            framecolor{frame} = 255*ones(2,3);
+            im_tex(curr_frames) = repmat({cat(1, bckrgound_texture, fix_tex{curr_frames(1)})},length(curr_frames),1);
+            im_rect(curr_frames) = repmat({cat(1, bckground_rect, fix_rect{curr_frames(1)})},length(curr_frames),1);
+            framecolor(curr_frames) = repmat({255*ones(2,3)},length(curr_frames),1);
             
             
         case 91 
-            if scan.is_catch(frame) % treat catch trials as delays
-                scan.event_id(frame) = 96;
+            if scan.time_table.is_catch(nn) % treat catch trials as delays
+                scan.time_table.event_id(nn) = 96;
+                frame_blockIDs(curr_frames) = repmat(96,length(curr_frames),1);
+            else
+                im_IDs(curr_frames) = repmat(im_idx(im_cnt),length(curr_frames),1);
+                im_cnt = im_cnt+1;
             end
-
+        case 92
+            im_IDs(curr_frames) = repmat(im_idx(im_cnt),length(curr_frames),1);
+            im_cnt = im_cnt+1;
     end
 end
+
 clear frame;
 
 % Get pre-run intructions
@@ -214,7 +234,7 @@ timekeys = [timekeys; {GetSecs 'trigger'}];
 
 %% DRAW THE TEXTURES
 framecnt = 0;
-for frame = 1:6420 %size(frameorder,2)+1 % we add 1 to log end
+for frame = 1:size(frameorder,2)+1 % we add 1 to log end 6420 %
     
     framecnt = framecnt +1;
     frame0 = floor(framecnt);
@@ -239,7 +259,7 @@ for frame = 1:6420 %size(frameorder,2)+1 % we add 1 to log end
         break;
     end
     
-    switch scan.event_id(framecnt)
+    switch frame_blockIDs(framecnt)
         
         % 0  : pre/post blank
         % 93 : exp_session.block.response_ID
@@ -253,29 +273,29 @@ for frame = 1:6420 %size(frameorder,2)+1 % we add 1 to log end
         % Draw background + thin fix dot on top
         case {0, 93, 94, 95, 96, 98, 99}
             % draw background and dot textures
-            Screen('DrawTextures',win,im_tex{framecnt},[],im_rect{framecnt}',[0;0],[],[1;1],framecolor{framecnt}');
+            Screen('DrawTextures',win,cell2mat(im_tex{frame}),[],im_rect{frame}',[0;0],[],[1;1],framecolor{frame}');
             
         case 97 % task_cue_ID
             
             % draw background and left/right cuing dot textures
-            Screen('DrawTextures',win, im_tex{framecnt},[],im_rect{framecnt}',[0;0],[],[1;1],framecolor{framecnt}');
+            Screen('DrawTextures',win, cell2mat(im_tex{frame}),[],im_rect{frame}',[0;0],[],[1;1],framecolor{frame}');
             
             % draw text
             % inputs are winptr, tstring, sx, sy, color, wrapat, flipHorizontal, flipVertical, vSpacing, righttoleft, winRect)
-            DrawFormattedText(win, txt_tex{framecnt}, 'center', (txt_rect{framecnt}(4)/2)-25,0,75,[],[],[],[],txt_rect{framecnt});
+            DrawFormattedText(win, txt_tex{frame}, 'center', (txt_rect{frame}(4)/2)-25,0,75,[],[],[],[],txt_rect{frame});
             
-        case {91,92} % 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30
+        case {91,92} % stim IDs
             % Draw stimulus textures
             Screen('DrawTexture',win, bckrgound_texture,[], bckground_rect, 0, [], 1, 255*ones(1,3));...
         
             % im_w_mask is a cell with dims: frames x 1, where each cell has 1 or 2 sides (1:l, 2:r)
-            for side = 1:length(find(~cellfun(@isempty, scan.images(framecnt,:))))
-                stim_texture = Screen('MakeTexture',win, scan.images{framecnt,side});
-                Screen('DrawTexture',win,stim_texture,[], scan.rects{framecnt,side}, 0,[],1, 255*ones(1,3));
+            for side = 1:length(find(~cellfun(@isempty, scan.run.images(im_IDs(frame),:))))
+                stim_texture = Screen('MakeTexture',win, scan.run.images{im_IDs(frame),side});
+                Screen('DrawTexture',win,stim_texture,[], scan.run.rects{im_IDs(frame),side}, 0,[],1, 255*ones(1,3));
             end
 
             % Draw fix dot on top
-            Screen('DrawTexture',win,fix_tex{framecnt},[], fix_rect{framecnt}, 0,[],1, 255*ones(1,3));
+            Screen('DrawTexture',win,fix_tex{frame},[], fix_rect{frame}, 0,[],1, 255*ones(1,3));
             Screen('Close',stim_texture);
     end
 
@@ -342,9 +362,9 @@ for frame = 1:6420 %size(frameorder,2)+1 % we add 1 to log end
      % write to file if desired
      if wantframefiles
          if isempty(framefiles{2}) %#ok<UNRCH>
-             imwrite(Screen('GetImage',win),sprintf(framefiles{1},frame));
+             imwrite(Screen('GetImage',win),sprintf(framefiles{1},framestart));
          else
-             imwrite(uint8(placematrix(zeros([framefiles{2} 3]),Screen('GetImage',win))),sprintf(framefiles{1},frame));
+             imwrite(uint8(placematrix(zeros([framefiles{2} 3]),Screen('GetImage',win))),sprintf(framefiles{1},framestart));
          end
      end
      
@@ -378,7 +398,7 @@ if  getoutearly
     vars = whos;
     vars = {vars.name};
     vars = vars(cellfun(@(x) ~isequal(x,'scan'),vars));
-    save(fullfile(vcd_rootPath,sprintf('tmp_data_%s.mat',datestr(30)),vars{:}));
+    save(fullfile(vcd_rootPath,sprintf('tmp_data_%s.mat',datestr(now,30))),vars{:});
     
 end
 
