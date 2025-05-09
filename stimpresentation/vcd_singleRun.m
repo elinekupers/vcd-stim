@@ -399,16 +399,16 @@ for ll = 1:size(fix_im,4) % loop over luminance values
 end
 
 clear fix_im fix_mask;
-fix = struct('fix_thin_full',[], 'fix_thick_full', [], ...
+fix_im = struct('fix_thin_full',[], 'fix_thick_full', [], ...
     'fix_thick_left', [], 'fix_thick_right', [], ...
     'fix_thick_both', [], 'fix_thin_rect', [], 'fix_thick_rect', []);
-fix.fix_thin_full   = fix_thin_full; clear fix_thin_full
-fix.fix_thick_full  = fix_thick_full; clear fix_thick_full
-fix.fix_thick_left  = fix_thick_left; clear fix_thick_left
-fix.fix_thick_right = fix_thick_right; clear fix_thick_right
-fix.fix_thick_both  = fix_thick_both; clear fix_thick_both
-fix.fix_thin_rect   = fix_thin_rect; clear fix_thin_rect
-fix.fix_thick_rect  = fix_thick_rect; clear fix_thick_rect
+fix_im.fix_thin_full   = fix_thin_full; clear fix_thin_full
+fix_im.fix_thick_full  = fix_thick_full; clear fix_thick_full
+fix_im.fix_thick_left  = fix_thick_left; clear fix_thick_left
+fix_im.fix_thick_right = fix_thick_right; clear fix_thick_right
+fix_im.fix_thick_both  = fix_thick_both; clear fix_thick_both
+fix_im.fix_thin_rect   = fix_thin_rect; clear fix_thin_rect
+fix_im.fix_thick_rect  = fix_thick_rect; clear fix_thick_rect
 
 
 %% %%%%%%%%%%%%% TASK INSTRUCTIONS %%%%%%%%%%%%%
@@ -581,7 +581,7 @@ timeofshowstimcall = datestr(now,30);
     win, rect, params, ...
     scan, ...
     bckground, ...
-    fix, ...
+    fix_im, ...
     stim, ...
     subj_run_frames, ...
     subj_run_table, ...
@@ -638,7 +638,7 @@ end
 % 'bckground'
 vars = whos;
 vars = {vars.name};
-vars = vars(cellfun(@(x) ~isequal(x,'fix','bckground','stim'),vars));
+vars = vars(cellfun(@(x) ~isequal(x,'fix_im','bckground','stim'),vars));
 
 
 % Save data (button presses, params, etc)
