@@ -326,8 +326,21 @@ end
 stim.rects = cell(size(stim.centers));
 stim.rects(nonemptycenters,:) = rects_shortlist;
 
+%% Index stim cell vector with monotonic counter
 
+im_IDs = NaN(length(stim),1);
+ 
+empty_rows = find(~cellfun(@isempty, stim(:,1)));
+im_cnt = 1;
+for mm = 1:length(empty_rows)
+    
+    if subj_run_frames.frame_im_nr(empty_rows(mm),:)~=[0,0]
+        im_IDs(empty_rows(mm):(empty_rows(mm)+params.stim.gabor.duration-1)) = im_cnt;
+        im_cnt = im_cnt +1;
+    end
+end
 
+subj_run_frames.im_IDs = im_IDs; clear im_IDs im_cnt empty_rows
 
 %% %%%%%%%%%%%%% BACKGROUND IM %%%%%%%%%%%%%
 %  BACKGROUND: 4D array: [x,y, 3, num images]
@@ -570,6 +583,8 @@ timeofshowstimcall = datestr(now,30);
     bckground, ...
     fix, ...
     stim, ...
+    subj_run_frames, ...
+    subj_run_table, ...
     introscript, ...
     taskscript, ...
     tfunEYE, ...

@@ -2,8 +2,10 @@ function [data,getoutearly,scan] = vcd_showStimulus(...
     win, rect, params, ...
     scan, ...
     bckground, ...
-    fix_im, ...
-    exp_im, ...
+    fix, ...
+    stim, ...
+    subj_run_frames, ...
+    subj_run_table, ...
     introscript, ...
     taskscript, ...
     tfunEYE, ...
@@ -68,77 +70,66 @@ bckground_rect    = rect; %CenterRect([0 0 round(size(bckground,1)) round(size(b
 bckrgound_texture = Screen('MakeTexture', win, bckground);
 
 % make fixation dot texture
-fix_texture_thin_full   = cell(1,size(fix_im.fix_thin_full,2));
-fix_texture_thick_full  = cell(1,size(fix_im.fix_thin_full,2));
-fix_texture_thick_left  = cell(1,size(fix_im.fix_thin_full,2));
-fix_texture_thick_right = cell(1,size(fix_im.fix_thin_full,2));
-fix_texture_thick_both  = cell(1,size(fix_im.fix_thin_full,2));
-for ll = 1:size(fix_im.fix_thin_full,2) % loop over luminance values
-    fix_texture_thin_full{ll}   = Screen('MakeTexture',win,fix_im.fix_thin_full{ll});
-    fix_texture_thick_full{ll}  = Screen('MakeTexture',win,fix_im.fix_thick_full{ll});
-    fix_texture_thick_left{ll}  = Screen('MakeTexture',win,fix_im.fix_thick_left{ll});
-    fix_texture_thick_right{ll} = Screen('MakeTexture',win,fix_im.fix_thick_right{ll});
-    fix_texture_thick_both{ll}  = Screen('MakeTexture',win,fix_im.fix_thick_both{ll});
+fix_texture_thin_full   = cell(1,size(fix.fix_thin_full,2));
+fix_texture_thick_full  = cell(1,size(fix.fix_thin_full,2));
+fix_texture_thick_left  = cell(1,size(fix.fix_thin_full,2));
+fix_texture_thick_right = cell(1,size(fix.fix_thin_full,2));
+fix_texture_thick_both  = cell(1,size(fix.fix_thin_full,2));
+for ll = 1:size(fix.fix_thin_full,2) % loop over luminance values
+    fix_texture_thin_full{ll}   = Screen('MakeTexture',win,fix.fix_thin_full{ll});
+    fix_texture_thick_full{ll}  = Screen('MakeTexture',win,fix.fix_thick_full{ll});
+    fix_texture_thick_left{ll}  = Screen('MakeTexture',win,fix.fix_thick_left{ll});
+    fix_texture_thick_right{ll} = Screen('MakeTexture',win,fix.fix_thick_right{ll});
+    fix_texture_thick_both{ll}  = Screen('MakeTexture',win,fix.fix_thick_both{ll});
 end
 
 %% Prepare background and fixation texture vector outside the flip loop
 
-fix_tex    = cell(length(scan.run.images),1);
+fix_tex    = cell(length(stim_im),1);
 fix_rect   = fix_tex;
 im_tex     = fix_tex;
 im_rect    = fix_tex;
 framecolor = fix_tex;
 txt_tex    = fix_tex;
 txt_rect   = fix_tex;
-frame_blockIDs = NaN(length(scan.run.images),1);
-im_IDs = NaN(length(scan.run.images),1);
 
-im_idx = find(~cellfun(@isempty, scan.run.images));
-im_idx(1:9) = [];
-im_cnt = 1;
-for nn = 1:size(scan.time_table,1)
+for nn = 1:size(subj_run_frames.frame_event_nr,1)
     
-    blockID = scan.time_table.event_id(nn);
+    blockID = subj_run_frames.frame_event_nr(nn);
     if isnan(blockID)
         blockID = 0;
     end
     
-    framestart = scan.time_table.event_start(nn)+1;
-    frameend = scan.time_table.event_end(nn)+1;
-
-    curr_frames = framestart:frameend;
-    frame_blockIDs(curr_frames) = repmat(blockID,length(curr_frames),1);
-    
     % set up fixation dot textures
-    lum_idx = find(scan.run.fix_abs_lum(framestart)==params.stim.fix.dotlum);
+    lum_idx = find(subj_run_frames.fix_abs_lum(framestart)==params.stim.fix.dotlum);
     
-    if blockID == 0 || isnan(scan.time_table.is_cued(nn)) || isnan(blockID)
-        fix_tex(curr_frames) = repmat(fix_texture_thin_full(lum_idx),length(curr_frames),1);
-        fix_rect(curr_frames) = repmat(fix_im.fix_thin_rect,length(curr_frames),1);   
+    if blockID == 0 || isnan(subj_run_frames.is_cued(nn)) || (subj_run_frames.is_cued(nn)==0)
+        fix_tex(nn)  = fix_texture_thin_full(lum_idx);
+        fix_rect(nn) = fix.fix_thin_rect;   
     else
         if blockID==95
             if scan.time_table.is_cued(nn)==1
-                fix_tex(curr_frames)  = repmat(fix_texture_thick_left(lum_idx),length(curr_frames),1);
-                fix_rect(curr_frames) = repmat(fix_im.fix_thick_rect,length(curr_frames),1);
+                fix_tex(nn)  = fix_texture_thick_left(lum_idx);
+                fix_rect(nn) = fix.fix_thick_rect;
             elseif scan.time_table.is_cued(nn)==2
-                fix_tex(curr_frames)  = repmat(fix_texture_thick_right(lum_idx),length(curr_frames),1);
-                fix_rect(curr_frames) = repmat(fix_im.fix_thick_rect,length(curr_frames),1);
+                fix_tex(nn)  = fix_texture_thick_right(lum_idx);
+                fix_rect(nn) = fix.fix_thick_rect;
             elseif scan.time_table.is_cued(nn)==3
-                fix_tex(curr_frames)  = repmat(fix_texture_thick_both(lum_idx),length(curr_frames),1);
-                fix_rect(curr_frames) = repmat(fix_im.fix_thick_rect,length(curr_frames),1);
+                fix_tex(nn)  = fix_texture_thick_both(lum_idx);
+                fix_rect(nn) = fix.fix_thick_rect;
             end
         elseif ismember(blockID,[91,92,93,94,96,97])
-            fix_tex(curr_frames) = repmat(fix_texture_thick_full(lum_idx),length(curr_frames),1);
-            fix_rect(curr_frames) = repmat(fix_im.fix_thick_rect,length(curr_frames),1);
+            fix_tex(nn)  = fix_texture_thick_full(lum_idx);
+            fix_rect(nn) = fix.fix_thick_rect;
         elseif ismember(blockID,[98,99])
-            fix_tex(curr_frames) = repmat(fix_texture_thin_full(lum_idx),length(curr_frames),1);
-            fix_rect(curr_frames) = repmat(fix_im.fix_thin_rect,length(curr_frames),1);
+            fix_tex(nn)  = fix_texture_thin_full(lum_idx);
+            fix_rect(nn) = fix.fix_thin_rect;
         elseif (blockID > 0) || (blockID < 90)
-            fix_tex(curr_frames) = repmat(fix_texture_thick_full(lum_idx),length(curr_frames),1);
-            fix_rect(curr_frames) = repmat(fix_im.fix_thick_rect,length(curr_frames),1);
+            fix_tex(nn) = fix_texture_thick_full(lum_idx);
+            fix_rect(nn) = fix.fix_thick_rect;
         elseif blockID > 990 % eyetracking target (TODO: implement actual targets)
-            fix_tex(curr_frames) = repmat(fix_texture_thin_full(lum_idx),length(curr_frames),1);
-            fix_rect(curr_frames) = repmat(fix_im.fix_thin_rect,length(curr_frames),1);
+            fix_tex(nn) = fix_texture_thin_full(lum_idx);
+            fix_rect(nn) = fix.fix_thin_rect;
         end
     end
     
@@ -161,41 +152,37 @@ for nn = 1:size(scan.time_table,1)
             % * TexturePointers  need to be: n vector (where n is the number of textures)
             % * DestinationRects need to be: 4 row x n columns (where n is the number of textures)
             
-            im_tex(curr_frames) = repmat({cat(1, bckrgound_texture, fix_tex(curr_frames(1)))},length(curr_frames),1);
-            im_rect(curr_frames) = repmat({cat(1, bckground_rect, fix_rect{curr_frames(1)})},length(curr_frames),1);
-            framecolor(curr_frames) = repmat({255*ones(2,3)},length(curr_frames),1); % <framecolor> can also be size(<frameorder>,2) x 1 with values in [0,1] indicating an alpha change.
+            im_tex{nn}  = cat(1, bckrgound_texture, fix_tex(nn));
+            im_rect{nn} = cat(1, bckground_rect, fix_rect{nn});
+            framecolor{nn} = 255*ones(2,3); % <framecolor> can also be size(<frameorder>,2) x 1 with values in [0,1] indicating an alpha change.
             
         case 97 % task_cue_ID
             
             script = taskscript{~cellfun(@isempty, regexp(taskscript,sprintf('%02d',scan.time_table.block_ID(nn)),'match'))};
             [task_instr, task_rect] = vcd_getInstructionText(params, script, rect);
             
-            im_tex(curr_frames) = repmat({cat(1, bckrgound_texture, fix_tex(curr_frames(1)))},length(curr_frames),1);
-            im_rect(curr_frames) = repmat({cat(1, bckground_rect, fix_rect{curr_frames(1)})},length(curr_frames),1);
+            im_tex{nn}  = cat(1, bckrgound_texture, fix_tex(nn));
+            im_rect{nn} = cat(1, bckground_rect, fix_rect{nn});
             
-            txt_tex(curr_frames) = repmat({task_instr},length(curr_frames),1);
-            txt_rect(curr_frames) = repmat({task_rect},length(curr_frames),1);
+            txt_tex{nn} = task_instr;
+            txt_rect{nn} = task_rect;
             
-            framecolor(curr_frames) = repmat({255*ones(2,3)},length(curr_frames),1); % <framecolor> can also be size(<frameorder>,2) x 1 with values in [0,1] indicating an alpha change.
+            framecolor(curr_frames) = 255*ones(2,3); % <framecolor> can also be size(<frameorder>,2) x 1 with values in [0,1] indicating an alpha change.
         
         % Draw background with eyetracking target
         case {990, 991, 992, 993, 994, 995, 996}
-            im_tex(curr_frames) = repmat({cat(1, bckrgound_texture, fix_tex{curr_frames(1)})},length(curr_frames),1);
-            im_rect(curr_frames) = repmat({cat(1, bckground_rect, fix_rect{curr_frames(1)})},length(curr_frames),1);
-            framecolor(curr_frames) = repmat({255*ones(2,3)},length(curr_frames),1);
+            im_tex{nn} = cat(1, bckrgound_texture, fix_tex{nn});
+            im_rect{nn} = cat(1, bckground_rect, fix_rect{nn});
+            framecolor{nn} = 255*ones(2,3);
             
             
-        case 91 
-            if scan.time_table.is_catch(nn) % treat catch trials as delays
-                scan.time_table.event_id(nn) = 96;
-                frame_blockIDs(curr_frames) = repmat(96,length(curr_frames),1);
-            else
-                im_IDs(curr_frames) = repmat(im_idx(im_cnt),length(curr_frames),1);
-                im_cnt = im_cnt+1;
+        case {91, 92}
+            if subj_run_frames.is_catch(nn) % treat catch trials as delays
+                im_tex{nn} = cat(1, bckrgound_texture, fix_tex{nn});
+                im_rect{nn} = cat(1, bckground_rect, fix_rect{nn});
+                framecolor{nn} = 255*ones(2,3);
             end
-        case 92
-            im_IDs(curr_frames) = repmat(im_idx(im_cnt),length(curr_frames),1);
-            im_cnt = im_cnt+1;
+      
     end
 end
 
@@ -290,9 +277,9 @@ for frame = 1:size(frameorder,2)+1 % we add 1 to log end 6420 %
             Screen('DrawTexture',win, bckrgound_texture,[], bckground_rect, 0, [], 1, 255*ones(1,3));...
         
             % im_w_mask is a cell with dims: frames x 1, where each cell has 1 or 2 sides (1:l, 2:r)
-            for side = 1:length(find(~cellfun(@isempty, scan.run.images(im_IDs(frame),:))))
-                stim_texture = Screen('MakeTexture',win, scan.run.images{im_IDs(frame),side});
-                Screen('DrawTexture',win,stim_texture,[], scan.run.rects{im_IDs(frame),side}, 0,[],1, 255*ones(1,3));
+            for side = 1:length(find(~cellfun(@isempty, stim.im(subj_run_frames.im_IDs(frame),:))))
+                stim_texture = Screen('MakeTexture',win, stim.im{subj_run_frames.im_IDs(frame),side});
+                Screen('DrawTexture',win,stim_texture,[], stim.rects{frame,side}, 0,[],1, 255*ones(1,3));
             end
 
             % Draw fix dot on top
