@@ -257,11 +257,14 @@ if ~exist('scan','var') || ~isfield(scan, 'rects') || isempty(scan.rects)
                 end
                 
                 % COMBINE IMAGE AND MASKS, FLIP IM IF REQUESTED
-                if isempty(scan.run.masks{frame,side})
-                    scan.run.images{frame,side} = feval(flipfun, scan.run.images{im_idx(im_cnt),side});
+                if isempty(scan.run.masks{im_idx(im_cnt),side})
+                    scan.run.images{im_idx(im_cnt),side} = feval(flipfun, scan.run.images{im_idx(im_cnt),side});
+                    im_cnt = im_cnt+1;
                 else
-                    scan.run.images{frame,side} = feval(flipfun, cat(3, scan.run.images{im_idx(im_cnt),side}, scan.run.masks{im_idx(im_cnt),side}));
-                    scan.run.masks{frame,side} = [];
+                    scan.run.images{im_idx(im_cnt),side} = feval(flipfun, cat(3, scan.run.images{im_idx(im_cnt),side}, scan.run.masks{im_idx(im_cnt),side}));
+                    scan.run.masks{im_idx(im_cnt),side} = [];
+                    
+                    im_cnt = im_cnt+1;
                 end
                 
             end
