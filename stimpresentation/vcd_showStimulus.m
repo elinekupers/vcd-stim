@@ -1,4 +1,4 @@
-function [data,getoutearly,scan] = vcd_showStimulus(...
+function [data,getoutearly,subj_run_frames,subj_run_table,scan] = vcd_showStimulus(...
     win, rect, params, ...
     scan, ...
     bckground, ...
@@ -28,7 +28,7 @@ digitpolarity  = [];
 
 %% PREPARE IMAGES
 allowforceglitch  = 0; % 0 means do nothing special. [1 D] means allow keyboard input 'p' to force a glitch of duration D secs.
-frameorder        = 1:size(exp_ims,1);
+frameorder        = 1:size(stim.im,1);
 
 % init variables, routines, constants
 timeframes = NaN(1, floor(size(frameorder,2)-1)+1);
@@ -85,7 +85,7 @@ end
 
 %% Prepare background and fixation texture vector outside the flip loop
 
-fix_tex    = cell(length(stim_im),1);
+fix_tex    = cell(length(stim.im),1);
 fix_rect   = fix_tex;
 im_tex     = fix_tex;
 im_rect    = fix_tex;
@@ -93,47 +93,51 @@ framecolor = fix_tex;
 txt_tex    = fix_tex;
 txt_rect   = fix_tex;
 
+subj_run_frames.frame_event_nr = subj_run_frames.frame_event_nr(1:end-1);
+subj_run_frames.is_catch = subj_run_frames.is_catch(1:end-1);
+subj_run_frames.crossingIDs = subj_run_frames.crossingIDs(1:end-1);
+
 for nn = 1:size(subj_run_frames.frame_event_nr,1)
     
-    blockID = subj_run_frames.frame_event_nr(nn);
-    if isnan(blockID)
-        blockID = 0;
+    eventID = subj_run_frames.frame_event_nr(nn);
+    if isnan(eventID)
+        eventID = 0;
     end
     
     % set up fixation dot textures
-    lum_idx = find(subj_run_frames.fix_abs_lum(framestart)==params.stim.fix.dotlum);
+    lum_idx = find(subj_run_frames.fix_abs_lum(nn)==params.stim.fix.dotlum);
     
-    if blockID == 0 || isnan(subj_run_frames.is_cued(nn)) || (subj_run_frames.is_cued(nn)==0)
+    if eventID == 0 || isnan(subj_run_frames.is_cued(nn)) || (subj_run_frames.is_cued(nn)==0)
         fix_tex(nn)  = fix_texture_thin_full(lum_idx);
         fix_rect(nn) = fix.fix_thin_rect;   
     else
-        if blockID==95
-            if scan.time_table.is_cued(nn)==1
+        if eventID==95
+            if subj_run_frames.is_cued(nn)==1
                 fix_tex(nn)  = fix_texture_thick_left(lum_idx);
                 fix_rect(nn) = fix.fix_thick_rect;
-            elseif scan.time_table.is_cued(nn)==2
+            elseif subj_run_frames.is_cued(nn)==2
                 fix_tex(nn)  = fix_texture_thick_right(lum_idx);
                 fix_rect(nn) = fix.fix_thick_rect;
-            elseif scan.time_table.is_cued(nn)==3
+            elseif subj_run_frames.is_cued(nn)==3
                 fix_tex(nn)  = fix_texture_thick_both(lum_idx);
                 fix_rect(nn) = fix.fix_thick_rect;
             end
-        elseif ismember(blockID,[91,92,93,94,96,97])
+        elseif ismember(eventID,[91,92,93,94,96,97])
             fix_tex(nn)  = fix_texture_thick_full(lum_idx);
             fix_rect(nn) = fix.fix_thick_rect;
-        elseif ismember(blockID,[98,99])
+        elseif ismember(eventID,[98,99])
             fix_tex(nn)  = fix_texture_thin_full(lum_idx);
             fix_rect(nn) = fix.fix_thin_rect;
-        elseif (blockID > 0) || (blockID < 90)
+        elseif (eventID > 0) || (eventID < 90)
             fix_tex(nn) = fix_texture_thick_full(lum_idx);
             fix_rect(nn) = fix.fix_thick_rect;
-        elseif blockID > 990 % eyetracking target (TODO: implement actual targets)
+        elseif eventID > 990 % eyetracking target (TODO: implement actual targets)
             fix_tex(nn) = fix_texture_thin_full(lum_idx);
             fix_rect(nn) = fix.fix_thin_rect;
         end
     end
     
-    switch blockID
+    switch eventID
         
 %     exp.block.stim_epoch1_ID        = 91; % generic stim ID
 %     exp.block.stim_epoch2_ID        = 92; % generic stim ID
@@ -158,7 +162,7 @@ for nn = 1:size(subj_run_frames.frame_event_nr,1)
             
         case 97 % task_cue_ID
             
-            script = taskscript{~cellfun(@isempty, regexp(taskscript,sprintf('%02d',scan.time_table.block_ID(nn)),'match'))};
+            script = taskscript{~cellfun(@isempty, regexp(taskscript,sprintf('%02d',subj_run_frames.crossingIDs(nn)),'match'))};
             [task_instr, task_rect] = vcd_getInstructionText(params, script, rect);
             
             im_tex{nn}  = cat(1, bckrgound_texture, fix_tex(nn));
@@ -167,7 +171,7 @@ for nn = 1:size(subj_run_frames.frame_event_nr,1)
             txt_tex{nn} = task_instr;
             txt_rect{nn} = task_rect;
             
-            framecolor(curr_frames) = 255*ones(2,3); % <framecolor> can also be size(<frameorder>,2) x 1 with values in [0,1] indicating an alpha change.
+            framecolor{nn} = 255*ones(2,3); % <framecolor> can also be size(<frameorder>,2) x 1 with values in [0,1] indicating an alpha change.
         
         % Draw background with eyetracking target
         case {990, 991, 992, 993, 994, 995, 996}
@@ -222,7 +226,7 @@ timekeys = [timekeys; {GetSecs 'trigger'}];
 
 %% DRAW THE TEXTURES
 framecnt = 0;
-for frame = 1:size(frameorder,2)+1 % we add 1 to log end 6420 %
+for frame = 1:size(frameorder,2)+1 % we add 1 to log end
     
     framecnt = framecnt +1;
     frame0 = floor(framecnt);
@@ -247,7 +251,7 @@ for frame = 1:size(frameorder,2)+1 % we add 1 to log end 6420 %
         break;
     end
     
-    switch frame_blockIDs(framecnt)
+    switch subj_run_frames.frame_event_nr(framecnt)
         
         % 0  : pre/post blank
         % 93 : exp_session.block.response_ID
@@ -381,11 +385,9 @@ end
 if  getoutearly
     
     % Save a quick version of the data in case something fails...
-    tmp_scan = scan;
-    tmp_scan.images = [];
     vars = whos;
     vars = {vars.name};
-    vars = vars(cellfun(@(x) ~isequal(x,'scan'),vars));
+    vars = vars(cellfun(@(x) ~isequal(x,'stim'),vars));
     save(fullfile(vcd_rootPath,sprintf('tmp_data_%s.mat',datestr(now,30))),vars{:});
     
 end

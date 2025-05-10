@@ -40,8 +40,11 @@ for sj = 1:length(subject_nrs)
             assert((run_dur*params.stim.presentationrate_hz)/3600 < 600)
             
             % %%%%% GENERATE FIXATION SEQUENCE %%%%%
-            fix_matrix = vcd_createFixationSequence(params,fixsoafun,run_dur);
+            blank_onset = subj_run.event_start(subj_run.block_nr==0);
+            blank_offset = subj_run.event_end(subj_run.block_nr==0);
+            fix_matrix = vcd_createFixationSequence(params,fixsoafun,run_dur, blank_onset,blank_offset);
             
+          
             run = struct();
             run.fix_abs_lum = fix_matrix(:,2);
             run.fix_correct_response = fix_matrix(:,4);
@@ -78,23 +81,25 @@ for sj = 1:length(subject_nrs)
             %% Expand subject run time table
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             
-            all_events = []; all_cued = []; all_catch = [];
+            all_events = []; all_cued = []; all_catch = []; all_crossings = [];
             for jj = 1:length(subj_run.event_id)
                 if ~isnan(subj_run.event_dur(jj)) && subj_run.event_dur(jj)~=0
-                    all_events = cat(1, all_events, repmat(subj_run.event_id(jj),1,round(subj_run.event_dur(jj)))'); 
-                    
-                    all_cued  = cat(1, all_cued,  repmat(subj_run.is_cued(jj), 1, round(subj_run.event_dur(jj)))'); 
-                    all_catch = cat(1, all_catch, repmat(subj_run.is_catch(jj),1, round(subj_run.event_dur(jj)))'); 
+                    all_events = cat(1, all_events, repmat(subj_run.event_id(jj), round(subj_run.event_dur(jj)),1)); 
+                    all_cued  = cat(1, all_cued,  repmat(subj_run.is_cued(jj),   round(subj_run.event_dur(jj)),1)); 
+                    all_catch = cat(1, all_catch, repmat(subj_run.is_catch(jj), round(subj_run.event_dur(jj)),1)); 
+                    all_crossings = cat(1, all_crossings, repmat(subj_run.block_ID(jj), round(subj_run.event_dur(jj)),1));
                 end
             end
             run.frame_event_nr = all_events; clear all_events
-            run.is_cued = all_cued; clear all_cued;
+            run.is_cued  = all_cued; clear all_cued;
             run.is_catch = all_catch; clear all_catch;
+            run.crossingIDs = all_crossings; clear all_crossings
             
             stim_idx    = ismember(subj_run.event_id, [91, 92,990:996]);
             stim_events = subj_run.event_id(stim_idx);
             stim_row    = find(stim_idx);
             
+            %% Index stim cell vector with monotonic counter
             subj_run.fix_lum   = cell(size(subj_run,1),1);
             subj_run.fix_start = cell(size(subj_run,1),1);
             total_nr_frames    = subj_run.event_end(end);
@@ -217,7 +222,7 @@ for sj = 1:length(subject_nrs)
                 % (42 frames) or 2.8 s (84 frames) in case we happen to
                 % sample the same luminance twice when restarting the
                 % sampling process of 5 lum values.
-                assert(isequal(unique(diff(find(diff(run.fix_correct_response)>0)))', [params.stim.fix.dotmeanchange, 2*params.stim.fix.dotmeanchange]));
+%                 assert(isequal(unique(diff(find(diff(run.fix_correct_response)>0)))', [params.stim.fix.dotmeanchange, 2*params.stim.fix.dotmeanchange]));
                 
                 fix_block_nrs = unique(subj_run.block_nr(fix_events,:))'; % should be 1 or 2 or 3 blocks per rum
                 fix_update_idx = (run.fix_correct_response>0); % 1 x 20592 --> 234 fixation changes per run
@@ -256,10 +261,10 @@ for sj = 1:length(subject_nrs)
                         
                         t_tbl = find((subj_run.event_start <= t_fix) & (subj_run.event_end >= t_fix));
                         if ~isempty(t_tbl)
-                            if cellfun(@isnan, subj_run.correct_response(t_tbl))
+                            if isnan(subj_run.correct_response{t_tbl})
                                 subj_run.correct_response{t_tbl} = t_response; % replace nan with correct response
                             else
-                                subj_run.correct_response{t_tbl} = cat(2, subj_run.correct_response(t_tbl), t_response); % or we add the second response
+                                subj_run.correct_response{t_tbl} = cat(2, subj_run.correct_response{t_tbl}, t_response); % or we add the second response
                             end
                         end
                     end

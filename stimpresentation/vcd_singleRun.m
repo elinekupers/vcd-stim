@@ -326,11 +326,9 @@ end
 stim.rects = cell(size(stim.centers));
 stim.rects(nonemptycenters,:) = rects_shortlist;
 
-%% Index stim cell vector with monotonic counter
-
-im_IDs = NaN(length(stim),1);
- 
-empty_rows = find(~cellfun(@isempty, stim(:,1)));
+%% Accumulate stimulus idx
+im_IDs     = NaN(length(subj_run_frames.frame_im_nr),1);
+empty_rows = find(~cellfun(@isempty, stim.im(:,1)));
 im_cnt = 1;
 for mm = 1:length(empty_rows)
     
