@@ -329,12 +329,12 @@ stim.rects(nonemptycenters,:) = rects_shortlist;
 %% Accumulate stimulus idx
 im_IDs     = NaN(length(subj_run_frames.frame_im_nr),1);
 empty_rows = find(~cellfun(@isempty, stim.im(:,1)));
-im_cnt = 1;
+
 for mm = 1:length(empty_rows)
     
     if subj_run_frames.frame_im_nr(empty_rows(mm),:)~=[0,0]
-        im_IDs(empty_rows(mm):(empty_rows(mm)+params.stim.gabor.duration-1)) = im_cnt;
-        im_cnt = im_cnt +1;
+%         im_frame = empty_rows(mm);
+        im_IDs(empty_rows(mm):(empty_rows(mm)+params.stim.gabor.duration-1)) = empty_rows(mm);
     end
 end
 
@@ -397,9 +397,7 @@ for ll = 1:size(fix_im,4) % loop over luminance values
 end
 
 clear fix_im fix_mask;
-fix_im = struct('fix_thin_full',[], 'fix_thick_full', [], ...
-    'fix_thick_left', [], 'fix_thick_right', [], ...
-    'fix_thick_both', [], 'fix_thin_rect', [], 'fix_thick_rect', []);
+fix_im = struct();
 fix_im.fix_thin_full   = fix_thin_full; clear fix_thin_full
 fix_im.fix_thick_full  = fix_thick_full; clear fix_thick_full
 fix_im.fix_thick_left  = fix_thick_left; clear fix_thick_left

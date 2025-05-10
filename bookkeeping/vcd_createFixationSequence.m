@@ -1,9 +1,10 @@
-function fix_matrix = vcd_createFixationSequence(params,fixsoafun,run_dur)
+function fix_matrix = vcd_createFixationSequence(params,fixsoafun,run_dur,blank_onset,blank_offset)
 % VCD function to create a continuous sequence of fixation circle luminance
 % changes for a given run duration, given a particular
 % stimulus-onset-asynchrony (SOA).
 %
 % INPUTS:
+%  * WRITE ME
 %
 % OUTPUTS:
 %  * fix_matrix     : (double) Nx4 matrix where N is the number of time
@@ -22,6 +23,14 @@ end
 
 % trim in case we accidentally went overtime
 f_fix = f_fix(f_fix<run_dur);
+
+% freeze fixation lum during black periods
+delete_me = [];
+for ii = 1:length(blank_onset)
+    delete_me = cat(2,delete_me, find(f_fix > blank_onset(ii) & f_fix < blank_offset(ii)));
+end
+
+f_fix(delete_me) = [];
 
 % Update luminance of fixation dot randomly (WITHOUT replacement)
 lum_shuffled_idx = [];
@@ -44,6 +53,7 @@ response_fix_vex(1) = 0; % set first lum to no response;
 
 % Add pre and post fixation sequence duration
 dur_fix_frames = [f_fix(1), diff(f_fix), (run_dur-f_fix(end))];
+
 fix_timing = []; fix_abs_lum = []; fix_rel_lum = [];
 for ff = 1:length(dur_fix_frames)
     fix_timing = cat(1, fix_timing, Expand(ff, 1, dur_fix_frames(ff)));

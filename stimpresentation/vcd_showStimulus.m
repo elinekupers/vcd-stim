@@ -221,7 +221,7 @@ end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%% log the start!
 
-feval(tfunEYE); fprintf('EXP START'); % SEND Eyelink('Message','SYNCTIME'));
+feval(tfunEYE); %fprintf('EXP START'); % SEND Eyelink('Message','SYNCTIME'));
 timekeys = [timekeys; {GetSecs 'trigger'}];
 
 %% DRAW THE TEXTURES
@@ -283,7 +283,7 @@ for frame = 1:size(frameorder,2)+1 % we add 1 to log end
             % im_w_mask is a cell with dims: frames x 1, where each cell has 1 or 2 sides (1:l, 2:r)
             for side = 1:length(find(~cellfun(@isempty, stim.im(subj_run_frames.im_IDs(frame),:))))
                 stim_texture = Screen('MakeTexture',win, stim.im{subj_run_frames.im_IDs(frame),side});
-                Screen('DrawTexture',win,stim_texture,[], stim.rects{frame,side}, 0,[],1, 255*ones(1,3));
+                Screen('DrawTexture',win,stim_texture,[], stim.rects{subj_run_frames.im_IDs(frame),side}, 0,[],1, 255*ones(1,3));
             end
 
             % Draw fix dot on top

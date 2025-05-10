@@ -123,7 +123,7 @@ for sj = 1:length(subject_nrs)
             fprintf('[%s]: Load stimuli for each trial..\n',mfilename); tic;
             for ii = 1:length(stim_row)
                 
-                frame_counter = subj_run_table.event_start(stim_row(ii))+1;
+                frame_counter = subj_run_table.event_start(stim_row(ii))+1; % t=1 is 0, but we can't use 0 as index
 
                 nframes     = round(subj_run_table.event_dur(stim_row(ii)));
                 curr_frames = frame_counter:(frame_counter+nframes-1);
@@ -238,23 +238,13 @@ for sj = 1:length(subject_nrs)
                                 
                                 if strcmp(subj_run_table.event_name(stim_row(ii)),'stim1') && subj_run_table.is_catch(stim_row(ii)) == 0
                                     
-                                    if ~isfield(images,'info') || ~isfield(images.info,'rdk')
-                                        infofile = dir(fullfile(sprintf('%s*',params.stim.rdk.infofile)));
-                                        if ~isempty(infofile)
-                                            images.info.rdk = readtable(fullfile(infofile(end).folder,infofile(end).name));
-                                        else
-                                            error('[%s]: Can''t find RDK info file!')
-                                        end
-                                    end
-                                    
-                                    % check if stim description matches
-                                    idx0 = find(images.info.rdk.unique_im == unique_im);
-                                    dot_motdir = images.info.rdk.dot_motdir_deg(idx0);
-                                    dot_coh    = images.info.rdk.dot_coh(idx0);
-                                    assert(isequal(subj_run_table.rdk_coherence(stim_row(ii),side),dot_coh));
-                                    assert(isequal(subj_run_table.orient_dir(stim_row(ii),side),dot_motdir));
-                                    
                                     % RDKs: 130 mat files: 8 directions x 3 coherence levels x 5 deltas (0 + 4 deltas)
+%                                     stimDir = dir(fullfile(sprintf('%s*',params.stim.rdk.stimfile)));
+%                                     filename = sprintf('%04d_vcd_rdk_ori%02d_coh%02d_delta%02d',...
+%                                         unique_im, ...
+%                                         find(subj_run_table.orient_dir(stim_row(ii),side) == params.stim.rdk.dots_direction), ...
+%                                         find(subj_run_table.rdk_coherence(stim_row(ii),side) == params.stim.rdk.dots_coherence), ...
+%                                         0);
                                     stimDir = dir(fullfile(sprintf('%s*',params.stim.rdk.stimfile)));
                                     filename = sprintf('%04d_vcd_rdk_ori%02d_coh%02d_delta%02d',...
                                         unique_im, ...
@@ -264,10 +254,29 @@ for sj = 1:length(subject_nrs)
                                     
                                     stimfile = fullfile(stimDir(1).folder,stimDir(1).name,sprintf('%s.mat', filename));
                                     if exist(stimfile,'file')
-                                        load(stimfile, 'frames','mask');
+                                        load(stimfile, 'frames','mask', 'rdk_info');
                                     else
                                         error('[%s]: Can''t find RDK stim file!')
                                     end
+                                    
+                                    
+%                                     if ~isfield(images,'info') || ~isfield(images.info,'rdk')
+%                                         infofile = dir(fullfile(sprintf('%s*',params.stim.rdk.infofile)));
+%                                         if ~isempty(infofile)
+%                                             images.info.rdk = readtable(fullfile(infofile(end).folder,infofile(end).name));
+%                                         else
+%                                             error('[%s]: Can''t find RDK info file!')
+%                                         end
+%                                     end
+                                    
+
+                                    % check if stim description matches
+                                    idx0 = find(rdk_info.unique_im == unique_im);
+                                    dot_motdir = rdk_info.dot_motdir_deg(idx0);
+                                    dot_coh    = rdk_info.dot_coh(idx0);
+                                    assert(isequal(subj_run_table.rdk_coherence(stim_row(ii),side),dot_coh));
+                                    assert(isequal(subj_run_table.orient_dir(stim_row(ii),side),dot_motdir));
+                                    
                                     
                                     % expand rdk movies into frames
                                     rdk_images = squeeze(mat2cell(frames, size(frames,1), ...
