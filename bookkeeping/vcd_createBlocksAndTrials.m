@@ -130,6 +130,11 @@ else % Recreate conditions and blocks and trials
         end
     end
     
+    % Fixation order and fixation
+    fixsoafun = @() round(p.stim.fix.dotmeanchange);
+    
+    % Contrast decrement gaussian time window onset
+    cdsoafun = @() round(p.stim.cd.meanchange + p.stim.cd.changeplusminus*(2*(rand-.5)));
     
     % Bookkeeping structs
     all_unique_im   = struct();
@@ -173,7 +178,7 @@ else % Recreate conditions and blocks and trials
             
             % If IMG or LTM, we only want to use a subset of unique images
             if strcmp(taskClass_name,'ltm') || strcmp(taskClass_name,'img')
-                t_cond = t_cond(t_cond.is_in_img_ltm,:);
+                t_cond = t_cond(t_cond.is_special_core,:);
             end
             
             % Get the number of trials and blocks, which depend on task
@@ -193,7 +198,7 @@ else % Recreate conditions and blocks and trials
             
             % --- Allocate trials to blocks ---
             tbl.stim_class_unique_block_nr = NaN(size(tbl,1),1);
-            tbl.block_local_trial_nr = NaN(size(tbl,1),1);
+            tbl.trial_nr = NaN(size(tbl,1),1);
             
             % assign block nr
             block_start_idx = 1:n_trials_per_block:size(tbl,1);
@@ -204,7 +209,37 @@ else % Recreate conditions and blocks and trials
                 end
                 block_nr = find(mm==block_start_idx);
                 tbl.stim_class_unique_block_nr(selected_trials) = block_nr;
-                tbl.block_local_trial_nr(selected_trials) = 1:length(selected_trials);
+                tbl.trial_nr(selected_trials) = 1:length(selected_trials);
+            end
+            
+            if strcmp(taskClass_name,'cd')
+                if strcmp(stimClass_name, 'ns'), nsides = 1; else, nsides = 2; end
+                % shuffle [1,2] such that there is a 50% chance on either side 
+                % we will actually apply the contrast decrement change to
+                % stimulus.
+                cd_change = repmat((1:(1/p.stim.cd.prob)),2,(ceil(size(tbl,1)/2)*2)/(1/p.stim.cd.prob));
+                cd_change = cd_change([randperm(length(cd_change),length(cd_change));randperm(length(cd_change),length(cd_change))]);
+                cd_change = cd_change';
+                % Get onset of contrast decrement within the
+                % stimulus period and log in the table
+                for stimrow = 1:size(tbl,1)
+                    if ~tbl.is_catch(stimrow,:)
+                        for side = 1:nsides
+                            if cd_change(stimrow,side) == 2
+                                tbl.cd_start(stimrow,side) = feval(cdsoafun);
+                                
+                            elseif cd_change(stimrow,side) == 1
+                                tbl.cd_start(stimrow,side) = 0;
+                            end
+                        end
+                    else
+                        tbl.cd_start(stimrow,2) = NaN;
+                    end
+                end
+                if nsides == 1, tbl.cd_start(:,2) = NaN; end
+
+            else
+                tbl.cd_start = NaN(size(tbl,1),2);
             end
             
             % Concatete single stim-task crossing table to master table
