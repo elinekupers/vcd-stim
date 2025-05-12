@@ -331,17 +331,17 @@ else
                 
                 % TEMPORAL -- fixed params
                 % RDK specific
-                p.dots_size       = 3;                                            % single dot radius in pixels
+                p.dots_size       = 4.5;                                          % single dot radius in pixels
                 p.dots_color      = [255 255 255; 1 1 1]./255;                    % 50:50 white:black, color in RGB and converted to [0-1] as expected by stimulus creation function
-                p.max_dots_per_frame = 150;                                       % how many dots within a square support from (number is similar to Kiani lab, rokers lab aims for 150) and roughly matches to nr of pixels in aperture
+                p.max_dots_per_frame = 200;                                       % how many dots within a square support from (number is similar to Kiani lab, rokers lab aims for 150) and roughly matches to nr of pixels in aperture
                 p.dots_contrast   = 1;                                            % Michelson [0-1] (fraction)
                 p.duration        = stimdur_frames;                               % frames (nr of monitor refreshes)
-                p.dots_speed      = (3*disp_params.ppd)/stim.presentationrate_hz; % pixels/frames (or 3 deg/s). For reference: Kiani lab uses usually 5 to 10 deg/s. Rokers lab uses 5 deg/s.
+                p.dots_speed      = (5*disp_params.ppd)/stim.presentationrate_hz; % speed in pixels per frame (same as 5 deg/s). For reference: Kiani lab uses usually 5 to 10 deg/s. Rokers lab uses 5 deg/s.
                 p.dots_interval   = 1;                                            % update dots every frame   (For reference: Kiani's 75 hz refresh rate + interval = 3 -->  25 frames/sec)
                 p.dots_lifetime   = 0.1 * stim.presentationrate_hz;               % 3 frames / 0.1 seconds   
                 
                 % TEMPORAL -- manipulated params
-                p.dots_coherence  = [0.25, 0.50, 1.0];                            % fraction of coherent moving dots. Kiani lab uses usually one of these [0 0.032 0.064 0.128 0.256 0.512]
+                p.dots_coherence  = [0:0.1:1];                                    % fraction of coherent moving dots. Kiani lab uses usually one of these [0 0.032 0.064 0.128 0.256 0.512]
                 
                 % SPATIAL -- fixed params
                 p.img_sz_deg      = parafov_circle_diam_deg;                      % stimulus aperture diameter (deg)
@@ -544,7 +544,7 @@ else
                 p.basic_cat{1}       = {'facemale','facefemale','facefemale'};
                 p.basic_cat{2}       = {'small','small','large','large'};
                 p.basic_cat{3}       = {'tool','tool','vehicle','vehicle'};
-                p.basic_cat{4}       = {'man-made','produce'};
+                p.basic_cat{4}       = {'manmade','produce'};
                 p.basic_cat{5}       = {'building','building','building'};
                 
                 p.sub_cat{1}         = {'damon','lisa','sophia'};
@@ -590,37 +590,38 @@ else
             case {'ns',5}
                 
                 % GENERAL
-                p.indivscenefile = fullfile(vcd_rootPath,'workspaces','stimuli','RAW','vcd_natural_scenes'); % mat-file Where to load indiv pngs?
-                p.stimfile = fullfile(vcd_rootPath,'workspaces','stimuli',disp_params.name,sprintf('scene_%s',disp_params.name)); % mat-file Where to store stimulus images?
-                p.infofile = fullfile(vcd_rootPath,'workspaces','info',sprintf('scene_info_%s',disp_params.name)); % csv-file Where to find stimulus info?
-                p.unique_im_nrs_core      = [81:110];                             % Unique image nrs associated with the 16 single dot stimuli
-
-                p.iscolor = true;                                            % Use color or not? 
-                if p.iscolor
-                    p.square_pix_val     = true;                             % [IF YES: MAKE SURE TO SQUARE IMAGE VALS FOR CLUT]
-                else
-                    p.square_pix_val     = false;
-                end
+                p.core_png_folder    = fullfile(vcd_rootPath,'workspaces','stimuli','RAW','vcd_natural_scenes'); % folder, where to find core scene pngs?
+                p.wmtest_png_folder  = fullfile(p.core_png_folder, 'wm_test');                                   % folder, where to find individual wm test pngs?
+                p.ltmlure_png_folder = fullfile(p.core_png_folder, 'ltm_novel_lures');                           % folder, where to find individual novel ltm lure pngs?
+                p.imgtest_png_folder = fullfile(p.core_png_folder, 'img_test');                                  % folder, where to find individual imagery test pngs?
                 
+                p.stimfile = fullfile(vcd_rootPath,'workspaces','stimuli',disp_params.name,sprintf('scene_%s',disp_params.name)); % prefix to mat file of preprocessed stimulus images
+                p.infofile = fullfile(vcd_rootPath,'workspaces','info',sprintf('scene_info_%s',disp_params.name));                % csv-file with stimulus info
+                
+                p.unique_im_nrs_core      = [81:110];                                                         % Unique image nrs associated with the 30 core scene stimuli
+
+                p.iscolor = true;                                                                             % Use color or not? 
+                if p.iscolor, p.square_pix_val = true;                                                        % [IF YES: MAKE SURE TO SQUARE IMAGE VALS FOR CLUT]                                                                
+                else, p.square_pix_val = false; end
+
                 % TEMPORAL
-                p.duration              = stimdur_frames;                          % frames (nr of monitor refreshes)
+                p.duration       = stimdur_frames;                                                            % frames (nr of monitor refreshes)
                 
                 % SPATIAL
-                p.og_res_stim           = 425;                                     % original resolution of NSD stimuli
-                p.rz_res_stim           = 714;                                     % resized  resolution of NSD stimuli
-                p.dres                  = ((ctr_square_deg/disp_params.h_deg * disp_params.h_pix) / p.og_res_stim);  % scale factor to apply
+                p.og_res_stim    = 425;                                                                       % original resolution of NSD stimuli
+                p.rz_res_stim    = 714;                                                                       % resized  resolution of NSD stimuli
+                p.dres           = ((ctr_square_deg/disp_params.h_deg * disp_params.h_pix) / p.og_res_stim);  % scale factor to apply
+                p.img_sz_deg     = ctr_square_deg;                                                            % desired height (or width) of square stimulus support (deg)
+                p.img_sz_pix     = ceil(p.og_res_stim.*p.dres);                                               % height (or width) of square stimulus support (pix)
+                p.x0_deg         = 0;                                                                         % desired x-center loc in degrees (translation from 0,0)
+                p.y0_deg         = 0;                                                                         % desired y-center loc in degrees (translation from 0,0)
+                p.x0_pix         = round((p.x0_deg.*disp_params.ppd)/2)*2;                                    % x-center loc in pixels (translation from 0,0)
+                p.y0_pix         = round((p.y0_deg.*disp_params.ppd)/2)*2;                                    % y-center loc in pixels (translation from 0,0)
                 
-                p.img_sz_deg            = ctr_square_deg;                          % desired height (or width) of square stimulus support (deg)
-                p.img_sz_pix            = ceil(p.og_res_stim.*p.dres);             % height (or width) of square stimulus support (pix)
-                p.square_pix_val        = true;                                    % MAKE SURE TO SQUARE IMAGE VALS FOR LINEAR CLUT
-
-                p.x0_deg                = 0;                                       % desired x-center loc in deg (translation from 0,0)
-                p.y0_deg                = 0;                                       % desired y-center loc in deg (translation from 0,0)
-                p.x0_pix                = round((p.x0_deg.*disp_params.ppd)/2)*2;  % x-center loc in pix (translation from 0,0)
-                p.y0_pix                = round((p.y0_deg.*disp_params.ppd)/2)*2;  % y-center loc in pix (translation from 0,0)
+                % SEMANTIC CATEGORY INFORMATION
                 
                 % 5 superordinate semantic object categories
-                p.super_cat     = {'human','animal','food','object','place'};      
+                p.super_cat     = {'human','animal','object','food','place'};      
                 
                 %  x 2 basic semantic object categories (scene location)
                 p.basic_cat{1}  = {'indoor','outdoor'};
@@ -635,50 +636,49 @@ else
                 
                 p.sub_cat{2,1}  = {'cat1_left','cat2_center','cat3_right'};
                 p.sub_cat{2,2}  = {'giraffe1_left','giraffe2_center','giraffe3_right'};
+               
+                p.sub_cat{3,1}  = {'vase1_left','vase2_center','vase3_right'};
+                p.sub_cat{3,2}  = {'bus1_left','bus2_center','bus3_right'};
                 
-                p.sub_cat{3,1}  = {'donut1_left','donut2_center','donut3_right'};
-                p.sub_cat{3,2}  = {'banana1_left','banana2_center','banana3_right'};
-                
-                p.sub_cat{4,1}  = {'vase1_left','vase2_center','vase3_right'};
-                p.sub_cat{4,2}  = {'bus1_left','bus2_center','bus3_right'};
+                p.sub_cat{4,1}  = {'donut1_left','donut2_center','donut3_right'};
+                p.sub_cat{4,2}  = {'banana1_left','banana2_center','banana3_right'};
                 
                 p.sub_cat{5,1}  = {'bathroom1_left','bathroom2_center','bathroom3_right'};
                 p.sub_cat{5,2}  = {'building1_left','building2_center','building3_right'};
                 
                 % 4 affordance categories
-                p.affordance{1,1} = {'walk','greet','greet'};
-                p.affordance{1,2} = {'greet','observe','observe'};
-                p.affordance{2,1} = {'greet','greet','greet'};
-                p.affordance{2,2} = {'observe','observe','observe'};
-                p.affordance{3,1} = {'grasp','grasp','grasp'};
-                p.affordance{3,2} = {'grasp','grasp','observe'};
-                p.affordance{4,1} = {'grasp','grasp','grasp'};
-                p.affordance{4,2} = {'walk','observe','walk'};
-                p.affordance{5,1} = {'walk','walk','walk'};
-                p.affordance{5,2} = {'observe','walk','walk'};
-                
+                p.affordance{1,1} = {'observe','greet','greet'}; % people indoor
+                p.affordance{1,2} = {'walk','greet','greet'};    % people outdoor
+                p.affordance{2,1} = {'greet','greet','greet'};   % cats
+                p.affordance{2,2} = {'observe','observe','observe'}; % giraffes
+                p.affordance{3,1} = {'grasp','grasp','grasp'}; % object indoor
+                p.affordance{3,2} = {'walk','observe','walk'}; % object outdoor
+                p.affordance{4,1} = {'grasp','grasp','grasp'}; % food indoor
+                p.affordance{4,2} = {'grasp','grasp','observe'}; % food outdoor
+                p.affordance{5,1} = {'walk','walk','walk'}; % bathrooms indoor
+                p.affordance{5,2} = {'observe','walk','walk'};  % streets outdoor
 
                 % FOR WM task crossing, we have manipulated the original
                 % NSD image by adding or removing something in the image.
                 % These changes can be obvious (easy) or subtle (hard) to
                 % detect:
-                p.change_im              = [2,1,-1,-2];
-                p.change_im_name         = {'easy_add', 'hard_add','easy_remove', 'hard_remove'};
-                p.unique_im_nrs_wm_test  = [431:550];                            % Unique image nrs associated with the 120 WM NS changed stimuli
+                p.change_im                 = [1,2,-1,-2];
+                p.change_im_name            = {'easy_add', 'hard_add','easy_remove', 'hard_remove'};
+                p.unique_im_nrs_wm_test     = [431:550];                               % Unique image nrs associated with the 120 WM NS changed stimuli
 
                 % FOR LTM incorrect trials, we have very similar looking images called "lures":
-                p.lure_im       = {'lure01', 'lure02', 'lure03', 'lure04'};
-                p.unique_im_nrs_ltm_lures  = [1491:1550];                   % Unique image nrs associated with the 15*4=60 WM NS lure images
+                p.lure_im                   = {'lure01', 'lure02', 'lure03', 'lure04'};
+                p.unique_im_nrs_ltm_lures   = [1491:1550];                             % Unique image nrs associated with the 15*4=60 WM NS lure images
 
                 % LTM PAIRED ASSOCIATES
-                p.ltm_pairs     = [];                                       %
+                p.ltm_pairs     = [];                                       
                 
                 % IMAGERY 
-                p.unique_im_nrs_specialcore     = p.unique_im_nrs_core([2,4,5,8,10,11,13,15,18,20,21,23,26,27,30]); % Half of the images will be used for  IMG/LTM pairing (these are carefully handpicked! see scene_info csv file)
-                p.imagery_sz_deg                = p.img_sz_deg;                    % desired diameter (degree) of the second, quiz dots image in an imagery trial to encourage subjects to create a vidid mental image.
-                p.imagery_sz_pix                = p.img_sz_pix;                    % diameter of quiz dot image (pixels) (we already ensured even nr of pixels)
-                p.unique_im_nrs_img_test        = [1191:1490];                     % Unique image nrs associated with the 15*20=300 IMG NS test dot images
-                p.imagery_quiz_images           = [ones(1,10),2.*ones(1,10)];          % quiz dots overlap (1) or not (2)
+                p.unique_im_nrs_specialcore = p.unique_im_nrs_core([2,4,5,8,10,11,13,15,18,20,21,23,26,27,30]); % Half of the images will be used for  IMG/LTM pairing (these are carefully handpicked! see scene_info csv file)
+                p.imagery_sz_deg            = p.img_sz_deg;                                                     % desired diameter (degree) of the second, quiz dots image in an imagery trial to encourage subjects to create a vidid mental image.
+                p.imagery_sz_pix            = p.img_sz_pix;                                                     % diameter of quiz dot image (pixels) (we already ensured even nr of pixels)
+                p.unique_im_nrs_img_test    = [1191:1490];                                                      % Unique image nrs associated with the 15*20=300 IMG NS test dot images
+                p.imagery_quiz_images       = [ones(1,10),2.*ones(1,10)];                                       % Quiz dots overlap (1) or not (2)
                 
                 % Add params to struct
                 stim.ns = p;
