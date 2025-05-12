@@ -258,10 +258,10 @@ for ii = 1:size(combined_trial_shuffleABC,1)
     new_trial.stim_class = 99;
     new_trial.repeat_nr  = 99;
         
-    % update block_nr, block_local_trial_nr and repeat nr according to
+    % update block_nr,  and repeat nr according to
     % new image/trial order
     new_trial.stim_class_unique_block_nr = ceil(ii/nr_of_trials_per_block);
-    new_trial.block_local_trial_nr = mod(ii-1,nr_of_trials_per_block)+1;
+    new_trial.trial_nr = mod(ii-1,nr_of_trials_per_block)+1;
 
     new_trial.stim_nr_left = master_table.stim_nr_left(combined_trial_shuffleABC(ii,1));
     if ~isnan(combined_trial_shuffleABC(ii,2))
