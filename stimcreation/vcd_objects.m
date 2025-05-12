@@ -29,7 +29,7 @@ function [objects, masks, info] = vcd_objects(params)
 %   object images as a single mat file in params.stim.obj.stimfile (e.g.:
 %   fullfile(vcd_rootPath,'workspaces','stimuli',<disp_name>,'objects.mat').
 %
-%   We also create a struct called "im_order", which contains subset of 
+%   We also create a struct called "info", which contains subset of 
 %   the info table in the order they were loaded, which makes it easier to
 %   keep track and double check indexing.
 %    - object_name: {1×80 cell} - same as filename in info
@@ -113,7 +113,7 @@ function [objects, masks, info] = vcd_objects(params)
 %                           between 0-90 and relative rotation is < 0, OR
 %                           when absolute rotation is between 91-180
 %                           relative rotation is > 0 deg.
-%      is_in_img_ltm    : (logical) whether the object is part of the
+%      is_specialcore    : (logical) whether the object is part of the
 %                           subselected stimuli used in imagery and
 %                           long-term memory task.
 %
@@ -125,40 +125,95 @@ function [objects, masks, info] = vcd_objects(params)
 
 %% Prepare images
 
-% Get preprocessed image folder
-d = dir(sprintf('%s*',fullfile(params.stim.obj.infofile)));
-
 % Read in table with filenames
-info = readtable(fullfile(d(end).folder,d(end).name));
+info = table();
+[info.filename, info.unique_im] = vcd_getOBJfilenames;
 
 % Define superordinate and basic categories, and number of exemplars per basic category
-idx0            = info.rot_rel == 0;
-subordinate     = info.subordinate;
-base_rot        = info.rot_abs(idx0);  % alternating 2 view ± 4 steps spaced 2 deg apart
+[~,idx0] = intersect(info.unique_im, params.stim.obj.unique_im_nrs_core);
+[~,idx1] = intersect(info.unique_im,params.stim.obj.unique_im_nrs_wm_test);
+% [~,idx2] = intersect(info.unique_im,params.stim.obj.unique_im_nrs_img_test);
+
+core_im_name     = info.filename(idx0);
+wm_test_im_name  = info.filename(idx1);
+% img_test_im_name = info.filename(idx2);
+
+% Define superordinate and basic categories, and number of exemplars per basic category
+superordinate = cat(2, repmat(params.stim.obj.super_cat(1),1,3), ...
+                          repmat(params.stim.obj.super_cat(2),1,4),...
+                          repmat(params.stim.obj.super_cat(3),1,4),...
+                          repmat(params.stim.obj.super_cat(4),1,2),...
+                          repmat(params.stim.obj.super_cat(5),1,3))';                    % 5 superordinate categories
+basic         = catcell(2,params.stim.obj.basic_cat)';         % 1,2,or 3 basic categories
+subordinate   = catcell(2,params.stim.obj.sub_cat)';           % 16 subordiante categories: each object
+affordance    = catcell(2,params.stim.obj.affordance)';
+[~,superordinate_i] = ismember(superordinate, params.stim.obj.super_cat);
+
+basic_i = []; subordinate_i = [];
+for bb = 1:length(params.stim.obj.super_cat)
+    [~,bi] = ismember(basic,unique(params.stim.obj.basic_cat{bb},'stable'));
+    basic_i = cat(1,basic_i,bi(bi>0));
+    
+    sb = 1:length(params.stim.obj.sub_cat{bb});
+    subordinate_i = cat(2,subordinate_i,sb);
+end
+
+[~,affordance_i]    = ismember(affordance,{'greet','grasp','enter','observe'});
+
+% Get info about images
+n_obj        = length(core_im_name);
+n_wm_im      = length(wm_test_im_name);
+n_wm_changes   = length(params.stim.obj.delta_from_ref);
+
+% Predefine info table
+info.stim_pos_name   = cat(1, repmat({'left';'right'},length(core_im_name)/2,1) , ....
+                              repmat(repelem({'left';'right'},n_wm_changes), length(core_im_name)/2,1));
+info.stim_pos        = cat(1, repmat([1;2],length(core_im_name)/2,1) , ....
+                              repmat(repelem([1;2],n_wm_changes), length(core_im_name)/2,1));
+                          
+info.super_cat_name  = cat(1,superordinate, ... core im
+                                repelem(superordinate,n_wm_changes));... wm im
+info.super_cat       = cat(1,superordinate_i, ... core im
+                                repelem(superordinate_i,n_wm_changes));... wm im
+info.basic_cat_name  = cat(1,basic, ... core im
+                                repelem(basic,n_wm_changes));... wm im
+info.basic_cat       = cat(1,basic_i, ... core im
+                                repelem(basic_i,n_wm_changes));... wm im
+info.sub_cat_name    = cat(1,subordinate_i', ... core im
+                                repelem(subordinate_i,n_wm_changes)');... wm im
+info.sub_cat         = cat(1,affordance_i, ... core im
+                                repelem(affordance_i, n_wm_changes)); % wm im
+info.affordance_name = cat(1,affordance,repelem(affordance,n_wm_changes)); 
+info.affordance_cat  = cat(1,affordance_i,repelem(affordance_i,n_wm_changes)); 
+info.is_specialcore  = ismember(info.unique_im,params.stim.obj.unique_im_nrs_specialcore);  % is_specialcore (logical)
 
 % Define all rotations
-rotations       = [0, params.stim.obj.delta_from_ref];
+rotations     = [0, params.stim.obj.delta_from_ref];
+info.base_rot = cat(1,params.stim.obj.facing_dir_deg',repelem(params.stim.obj.facing_dir_deg,n_wm_changes)'); 
+rot_abs_wm    = params.stim.obj.facing_dir_deg + params.stim.obj.delta_from_ref';
+info.abs_rot  = cat(1,params.stim.obj.facing_dir_deg', rot_abs_wm(:));  % alternating 2 view ± 4 steps spaced 2 deg apart
+info.rel_rot  = cat(1, repmat(rotations(1),n_obj,1),repmat(rotations(2:end)',n_obj,1));
 
 % reshape unique image nr for WM test images
-unique_ref_im   = reshape(params.stim.obj.unique_im_nrs_wm_test, [],sum(idx0));
+unique_wm_im   = reshape(params.stim.obj.unique_im_nrs_wm_test, [],n_obj);
 
 % Get (rescaled) image extent
 extent   = params.stim.obj.img_sz_pix.*params.stim.obj.dres;
 
 % Preallocate space
-objects = uint8(ones(extent, extent,3, length(subordinate(idx0)),length(rotations)));
-masks   = uint8(ones(extent, extent, length(subordinate(idx0)),length(rotations)));
+objects = uint8(ones(extent, extent, 3, n_obj, length(rotations)));
+masks   = uint8(ones(extent, extent, n_obj, length(rotations)));
 
 counter = 1; % we use the lazy counter way to keep track of image
 
 % Loop over each image
-for sub = 1:length(subordinate(idx0))
+for sub = 1:n_obj
     
     % loop over each rotation
     for rr = 1:length(rotations)
         
         % Get file name
-        rot = 1+((base_rot(sub) + rotations(rr))/2);
+        rot = 1+((info.base_rot(sub) + rotations(rr))/2);
         fname = sprintf('*%s*_rot%02d.png', subordinate{sub},rot);
         d = dir(fullfile(params.stim.obj.indivobjfile,fname));
         if isempty(d)
@@ -199,64 +254,53 @@ for sub = 1:length(subordinate(idx0))
         
         objects(:,:,:,sub,rr) = repmat(im, [1 1 3]);
         masks(:,:,sub,rr) = alpha_im;
-        
-        % Keep track of image order
-        im_order.object_name(counter)    = subordinate(sub);
-        im_order.base_rot(counter)       = base_rot(sub);
-        im_order.abs_rot(counter)        = base_rot(sub)+rotations(rr);
-        im_order.rel_rot(counter)        = rotations(rr);
-        if rr == 1
-            im_order.unique_im(counter)   = params.stim.obj.unique_im_nrs_core(sub);
-        else 
-            im_order.unique_im(counter)  = unique_ref_im(rr-1,sub);
-        end
-        
+
         % check facing direction, when the offset may technically result in
         % a flipping of the facing direction, go by original core facing
         % direction, as subjects will never perform the PC task on working
         % memory test images.
-        if im_order.rel_rot(counter) == 0
-            if (im_order.abs_rot(counter) < 45) || (im_order.abs_rot(counter) > 135)
-                im_order.facing_dir(counter) = {'sideways'};
-            elseif (im_order.abs_rot(counter) > 45) || (im_order.abs_rot(counter) < 135)
-                im_order.facing_dir(counter) = {'forward'};
+        if info.rel_rot(counter) == 0
+            if (info.abs_rot(counter) < 45) || (info.abs_rot(counter) > 135)
+                info.facing_dir(counter) = {'sideways'};
+            elseif (info.abs_rot(counter) > 45) || (info.abs_rot(counter) < 135)
+                info.facing_dir(counter) = {'forward'};
             end
-        elseif im_order.rel_rot(counter) ~= 0
-            og_rot = im_order.base_rot(counter);
+        elseif info.rel_rot(counter) ~= 0
+            og_rot = info.base_rot(counter);
             if (og_rot < 45) || (og_rot > 135)
-                im_order.facing_dir(counter) = {'sideways'};
+                info.facing_dir(counter) = {'sideways'};
             elseif (og_rot > 45) || (og_rot < 135)
-                im_order.facing_dir(counter) = {'forward'};
+                info.facing_dir(counter) = {'forward'};
             end
         end
 
         % we define rotations relative to the reference object rotation
             % if abs rotation is between 0-90 and rel rotation is negative
-        if (im_order.abs_rot(counter)-90) < 0 && im_order.rel_rot(counter) < 0 
-            im_order.rel_rot_name(counter) = {'rightward'};
+        if (info.abs_rot(counter)-90) < 0 && info.rel_rot(counter) < 0 
+            info.rel_rot_name(counter) = {'rightward'};
             % if abs rotation is between 0-90 and rel rotation is positive
-        elseif (im_order.abs_rot(counter)-90) < 0 && im_order.rel_rot(counter) > 0 
-            im_order.rel_rot_name(counter) = {'leftward'};
+        elseif (info.abs_rot(counter)-90) < 0 && info.rel_rot(counter) > 0 
+            info.rel_rot_name(counter) = {'leftward'};
             % if abs rotation is between 90-180 and rel rotation is negative
-        elseif (im_order.abs_rot(counter)-90) > 0 && im_order.rel_rot(counter) < 0 
-            im_order.rel_rot_name(counter) = {'rightward'};
+        elseif (info.abs_rot(counter)-90) > 0 && info.rel_rot(counter) < 0 
+            info.rel_rot_name(counter) = {'rightward'};
             % if abs rotation is between 90-180 and rel rotation is positive
-        elseif (im_order.abs_rot(counter)-90) > 0 && im_order.rel_rot(counter) > 0 
-            im_order.rel_rot_name(counter) = {'leftward'};
+        elseif (info.abs_rot(counter)-90) > 0 && info.rel_rot(counter) > 0 
+            info.rel_rot_name(counter) = {'leftward'};
             % CORNER CASE 1: if abs rotation is exactly 90, but core rotation was between 0-90, and rel rotation is negative
-        elseif (im_order.abs_rot(counter)-90) == 0 && im_order.base_rot(counter) < 0 && im_order.rel_rot(counter) < 0 
-            im_order.rel_rot_name(counter) = {'rightward'};
+        elseif (info.abs_rot(counter)-90) == 0 && info.base_rot(counter) < 0 && info.rel_rot(counter) < 0 
+            info.rel_rot_name(counter) = {'rightward'};
             % CORNER CASE 2:  if abs rotation is exactly 90, but core rotation was between 0-90, and rel rotation is positive
-        elseif (im_order.abs_rot(counter)-90) == 0 && im_order.base_rot(counter) < 0 && im_order.rel_rot(counter) > 0
-            im_order.rel_rot_name(counter) = {'leftward'};
+        elseif (info.abs_rot(counter)-90) == 0 && info.base_rot(counter) < 0 && info.rel_rot(counter) > 0
+            info.rel_rot_name(counter) = {'leftward'};
             % CORNER CASE 3:  if abs rotation is exactly 90, but core rotation was between 90-180, and rel rotation is negative
-        elseif (im_order.abs_rot(counter)-90) == 0 && im_order.base_rot(counter) > 0 && im_order.rel_rot(counter) < 0
-            im_order.rel_rot_name(counter) = {'rightward'};
+        elseif (info.abs_rot(counter)-90) == 0 && info.base_rot(counter) > 0 && info.rel_rot(counter) < 0
+            info.rel_rot_name(counter) = {'rightward'};
             % CORNER CASE 4:  if abs rotation is exactly 90, but core rotation was between 90-180, and rel rotation is positive
-        elseif (im_order.abs_rot(counter)-90) == 0 && im_order.base_rot(counter) > 0 && im_order.rel_rot(counter) > 0
-            im_order.rel_rot_name(counter) = {'leftward'};
-        elseif im_order.rel_rot(counter) == 0
-            im_order.rel_rot_name(counter) = {'none'};
+        elseif (info.abs_rot(counter)-90) == 0 && info.base_rot(counter) > 0 && info.rel_rot(counter) > 0
+            info.rel_rot_name(counter) = {'leftward'};
+        elseif info.rel_rot(counter) == 0
+            info.rel_rot_name(counter) = {'none'};
         end
         
         % Update counter
@@ -269,7 +313,11 @@ if params.stim.store_imgs
     fprintf('\nStoring images..')
     saveDir = fileparts(fullfile(params.stim.obj.stimfile));
     if ~exist(saveDir,'dir'), mkdir(saveDir); end
-    save(fullfile(sprintf('%s_%s.mat',params.stim.obj.stimfile,datestr(now,30))),'objects','masks','info','im_order','-v7.3');
+    save(fullfile(sprintf('%s_%s.mat',params.stim.obj.stimfile,datestr(now,30))),'objects','masks','info','-v7.3');
+    
+    saveDir = fileparts(fullfile(params.stim.obj.infofile));
+    if ~exist(saveDir,'dir'), mkdir(saveDir); end
+    writetable(info, fullfile(sprintf('%s_%s.csv',params.stim.obj.infofile,datestr(now,30))))
 end
 
 %% Visualize stimuli if requested
@@ -314,7 +362,7 @@ if params.verbose
 %             I.AlphaData = masks(:,:,objectNr,rot);
 %             axis image
 %             
-%             title(sprintf('Object:%04d Rot:%02d Delta:%02d',objectNr,im_order.abs_rot(counter),im_order.rel_rot(counter)), 'FontSize',20);
+%             title(sprintf('Object:%04d Rot:%02d Delta:%02d',objectNr,info.abs_rot(counter),info.rel_rot(counter)), 'FontSize',20);
 %             
 %             if rot == 1, dd = 0;
 %             else, dd = rot; end
