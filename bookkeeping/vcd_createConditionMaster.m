@@ -1165,7 +1165,7 @@ if nr_reps > 0
                 % classes
                 fnames = {'orient_dir','contrast','gbr_phase','rdk_coherence',...
                     'super_cat','basic_cat','sub_cat','affordance_cat',...
-                    'super_cat_name','basic_cat_name','sub_cat_name','affordance_name','stim_class_name','is_in_img_ltm'};
+                    'super_cat_name','basic_cat_name','sub_cat_name','affordance_name','stim_class_name','is_special_core'};
 
                 for fn = 1:length(fnames)
                     if size(conds_master_single_rep2.(fnames{fn}),2) == 1
