@@ -63,7 +63,7 @@ im1 = NaN(params.disp.h_pix,params.disp.w_pix,num);
 for ii = 1:num
     
     % generate pink noise image
-    im0 = generatepinknoise(params.disp.w_pix,1,1,0); % mode 0 means fixed amplitude spectrum + random phase
+    im0 = generatepinknoise(params.disp.w_pix,1,1,0); % KNK function: mode 0 means fixed amplitude spectrum + random phase
     
     % trim edges (initial generated pinknoise image is a square)
     screen_edge_pix = (params.disp.w_pix - params.disp.h_pix)/2;
