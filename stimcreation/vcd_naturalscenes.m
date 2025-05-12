@@ -326,7 +326,7 @@ if params.verbose
     makeprettyfigures;
     figure; set(gcf,'Position', [156    91   881   706],'color','w');
     
-    ltm_lure_counter = 1;
+    specialcore_counter = 0;
     
     for ii = 1:n_scenes
         
@@ -347,41 +347,40 @@ if params.verbose
             if ~exist(saveFigDir2,'dir'), mkdir(saveFigDir2); end
             imwrite(scenes(:,:,:,ss,tt,uu), fullfile(saveFigDir2, sprintf('%04d_vcd_ns%02d.png', im_nr(ii), ii)));
         end
-        
-        
-        for ll = 1:size(ltm_lures,7)
-            if ~isequal(ltm_lures(:,:,:,ss,tt,uu,ll),ones(size(ltm_lures(:,:,:,ss,tt,uu,ll))))
-                % Plot LTM lure image
-                clf; imagesc(ltm_lures(:,:,:,ss,tt,uu,ll));
-                title(sprintf('NS %02d, LTM lure im %02d resized ',ii,ll), 'FontSize',20);
-                axis image; box off
-                set(gca,'CLim',[1 255]);
-                
-                if params.stim.store_imgs
-                    imwrite(ltm_lures(:,:,:,ss,tt,uu,ll), fullfile(saveFigDir2, sprintf('%04d_vcd_ns%02d_ltm_lure%02d.png', ltm_lure_im_nr(((ltm_lure_counter-1)*n_ltm_lure_types)+ll), ii,ll)));
-                end
-                
-                if ll==size(ltm_lures,7)
-                    ltm_lure_counter = ltm_lure_counter+1;
-                end
-            end
+
+        for wm_idx = 1:size(wm_im,7)
+            % Plot WM image
+            clf;
+            imagesc(wm_im(:,:,:,ss,tt,uu,wm_idx));
+            title(sprintf('Im %02d, WM test im %02d resized',ii,wm_idx), 'FontSize',20);
+            axis image; box off
+            set(gca,'CLim',[1 255]);
             
-            if ~isequal(wm_im(:,:,:,ss,tt,uu,ll),ones(size(wm_im(:,:,:,ss,tt,uu,ll))))
-                
-                % Plot WM image
-                clf;
-                imagesc(wm_im(:,:,:,ss,tt,uu,ll));
-                title(sprintf('Im %02d, WM test im %02d resized',ii,ll), 'FontSize',20);
-                axis image; box off
-                set(gca,'CLim',[1 255]);
-                
-                if params.stim.store_imgs
-                    imwrite(wm_im(:,:,:,ss,tt,uu,ll), fullfile(saveFigDir2, sprintf('%04d_vcd_ns%02d_wm_im%02d.png', wm_test_im_nr(((ii-1)*n_wm_changes)+ll), ii,ll)));
-                end
+            if params.stim.store_imgs
+                imwrite(wm_im(:,:,:,ss,tt,uu,wm_idx), fullfile(saveFigDir2, sprintf('%04d_vcd_ns%02d_wm_im%02d.png', wm_test_im_nr(((ii-1)*n_wm_changes)+ll), ii,wm_idx)));
             end
         end
         
         
+        if info.is_specialcore(ii)
+            
+            specialcore_counter = specialcore_counter +1;
+            
+            for lure_idx = 1:n_ltm_lure_types
+
+                % Plot LTM lure image
+                clf; imagesc(ltm_lures(:,:,:,ss,tt,uu,lure_idx));
+                title(sprintf('NS %02d, LTM lure im %02d resized ',ii,lure_idx), 'FontSize',20);
+                axis image; box off
+                set(gca,'CLim',[1 255]);
+                
+                if params.stim.store_imgs
+                    imwrite(ltm_lures(:,:,:,ss,tt,uu,lure_idx), ...
+                        fullfile(saveFigDir2, sprintf('%04d_vcd_ns%02d_ltm_lure%02d.png', ltm_lure_im_nr(((specialcore_counter-1)*n_ltm_lure_types)+lure_idx), ii,lure_idx)));
+                end
+
+            end
+        end
     end
 end
 
@@ -435,9 +434,10 @@ end
 % Visualize squared and resized images
 if any(strcmp(params.disp.name, {'7TAS_BOLDSCREEN32', 'PPROOM_EIZOFLEXSCAN'})) && params.verbose
     
-        ltm_lure_counter = 1;
+    specialcore_counter = 0;
     
     figure; set(gcf,'Position', [156    91   881   706],'color','w');
+    
     for ii = 1:n_scenes
         
         [~,ss] = ismember(info.super_cat_name(ii),superordinate);
@@ -456,32 +456,33 @@ if any(strcmp(params.disp.name, {'7TAS_BOLDSCREEN32', 'PPROOM_EIZOFLEXSCAN'})) &
             imwrite(scenes(:,:,:,ss,tt,uu), fullfile(saveFigDir2, sprintf('%04d_vcd_ns%02d.png',im_nr(ii), ii)));
         end
         
-        for ll = 1:size(wm_im,7)
+        for wm_idx = 1:size(wm_im,7)
             
             clf;
-            imagesc(wm_im(:,:,:,ss,tt,uu,ll)); drawnow;
-            title(sprintf('Im %02d, wm test im %02d resized & squared',ii,ll), 'FontSize',20);
+            imagesc(wm_im(:,:,:,ss,tt,uu,wm_idx)); drawnow;
+            title(sprintf('Im %02d, wm test im %02d resized & squared',ii,wm_idx), 'FontSize',20);
             axis image; box off
             set(gca,'CLim',[1 255]);
             
             if params.stim.store_imgs
-                imwrite(wm_im(:,:,:,ss,tt,uu,ll), fullfile(saveFigDir2, sprintf('%04d_vcd_ns%02d_wm_im%02d.png', wm_test_im_nr(((ii-1)*n_wm_changes)+ll), ii,ll)));
+                imwrite(wm_im(:,:,:,ss,tt,uu,wm_idx), fullfile(saveFigDir2, sprintf('%04d_vcd_ns%02d_wm_im%02d.png', wm_test_im_nr(((ii-1)*n_wm_changes)+wm_idx), ii,wm_idx)));
             end
+        end
+        
+        if info.is_specialcore(ii)
             
-            if ~isequal(ltm_lures(:,:,:,ss,tt,uu,ll),ones(size(ltm_lures,1),size(ltm_lures,2),size(ltm_lures,3)))
-                title(sprintf('Im %02d, ltm lure %02d resized & squared',ii,ll), 'FontSize',20);
+            specialcore_counter = specialcore_counter +1;
+            
+            for lure_idx = 1:n_ltm_lure_types
+                title(sprintf('Im %02d, ltm lure %02d resized & squared',ii,lure_idx), 'FontSize',20);
                 axis image; box off
                 set(gca,'CLim',[1 255]);
                 if params.stim.store_imgs
-                    imwrite(ltm_lures(:,:,:,ss,ll), fullfile(saveFigDir2, sprintf('%04d_vcd_ns%02d_ltm_lure%02d.png', ltm_lure_im_nr(((ltm_lure_counter-1)*n_ltm_lure_types)+ll), ii,ll)));
+                    imwrite(ltm_lures(:,:,:,ss,tt,uu,lure_idx), ...
+                        fullfile(saveFigDir2, sprintf('%04d_vcd_ns%02d_ltm_lure%02d.png', ltm_lure_im_nr(((specialcore_counter-1)*n_ltm_lure_types)+lure_idx), ii,lure_idx)));
                 end
                 
-                if ll==size(ltm_lures,7)
-                    ltm_lure_counter = ltm_lure_counter+1;
-                end
             end
-            
-            
         end
     end
 end
