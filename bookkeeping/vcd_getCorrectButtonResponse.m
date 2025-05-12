@@ -14,10 +14,33 @@ switch block_name
         % skip (defined by createFixationSequence function)
         button_response = NaN;
         
-    case {'cd-gabor','cd-rdk','cd-dot','cd-obj','cd-ns'}
-        % skip (defined by applyContrastDecrement function)
-         button_response = NaN;
-         
+    case {'cd-gabor','cd-rdk','cd-dot','cd-obj'}
+        % Contrast change detection task
+        % “Did image change contrast?” (1=yes, 2=no)
+
+        if ~isnan(table_row.cd_start)
+            if table_row.cd_start(table_row.is_cued) > 0 % if this happens to be the cued side, then log the correct response
+                button_response = 1; % button 1: yes there was a change
+            elseif table_row.cd_start(table_row.is_cued) == 0
+                button_response = 2; % button 2: no there was a change (apply to all time points in the block)
+            end
+        else
+            button_response = 0;
+        end
+        
+    case {'cd-ns'}
+                % Contrast change detection task
+        % “Did image change contrast?” (1=yes, 2=no)
+        if ~isnan(table_row.cd_start(1))
+            if table_row.cd_start(1) > 0 % if this happens to be the cued side, then log the correct response
+                button_response = 1; % button 1: yes there was a change
+            elseif table_row.cd_start(1) == 0
+                button_response = 2; % button 2: no there was a change (apply to all time points in the block)
+            end
+        else
+            button_response = 0;
+        end
+        
     case {'scc-all','scc-gabor','scc-rdk','scc-dot','scc-obj','scc-ns'}
         %  Categorization task
         % What is the image?
