@@ -164,15 +164,16 @@ num_col = size(params.stim.rdk.dots_color,1);
 counter = 1;
 
 %% Folder to store RDK videos
-tmpDir = fullfile(vcd_rootPath, 'workspaces','stimuli',params.disp.name,['rdk_' datestr(now,'yyyymmdd')]);
+tmpDir = fullfile(vcd_rootPath, 'workspaces','stimuli',params.disp.name,'rdk',['rdk_test' datestr(now,'yyyymmdd')]);
 if ~exist(tmpDir,'dir'), mkdir(tmpDir); end
-saveStimDir = fullfile(vcd_rootPath, 'figs', params.disp.name, ['rdk_' datestr(now,'yyyymmdd')]);
-if ~exist(fullfile(saveStimDir,'export'),'dir'), mkdir(fullfile(saveStimDir,'export')); end
+saveStimDir = fullfile(vcd_rootPath, 'figs', params.disp.name, 'rdk',['rdk_' datestr(now,'yyyymmdd')]);
+if ~exist(fullfile(saveStimDir),'dir'), mkdir(fullfile(saveStimDir)); end
 
 %% Create rdk images
 fH = figure(1); clf; 
 set(gcf,'Position',[0,0,2*params.stim.rdk.img_sz_pix,2*params.stim.rdk.img_sz_pix], ...
     'Units','Pixels','Renderer','OpenGL','PaperUnits','normalized')
+
 
 for cc = 1:length(params.stim.rdk.dots_coherence)
     
@@ -210,21 +211,21 @@ for cc = 1:length(params.stim.rdk.dots_coherence)
             dot_kill_time      = NaN(ndots,1);
             stored_coh_dot_pos = NaN(ndots,2,n_unique_videos);
 
-            % Calculate velocity of dots
-            v = randn(ndots,2);                                             % sample from random *normal* distribution
-            v = bsxfun(@rdivide,v,sqrt(sum(v.^2,2)));                       % normalize to unit length
-            
             % Calculate direction of dots, for noise (incoherent) and signal (coherent)
-            mot_dir = [cosd(curr_motdir_deg) -sind(curr_motdir_deg)];                  % convert angle (deg) to xy direction
-            v_signal_pix_per_frames   = params.stim.rdk.dots_speed .* repmat(mot_dir,ndots,1); %[v_x; v_y] (in pixels/frames)
-            v_noise_pix_per_frames    = params.stim.rdk.dots_speed .* v;                       %[v_x; v_y] (in pixels/frames)
+            v_coh = [cos(deg2rad(curr_motdir_deg)) -sin(deg2rad(curr_motdir_deg))];    % convert angle from deg to radians, and then into dxdy direction (is already unit length)    
+            
+            % Get direction vectors with random orientation (unit length)
+            v_incoh = rand(ndots,1)*(2*pi);                                 % sample from random *uniform* motion directions (in radians)
+            v_incoh = [cos(v_incoh) -sin(v_incoh)];  
+            v_incoh = bsxfun(@rdivide,v_incoh,sqrt(sum(v_incoh.^2,2)));     % normalize to unit length (EK: Is this needed?)
+            
+            % Create coherence (single motion direction) and incoherent (random motion direction) velocities
+            v_signal_pix_per_frames   = params.stim.rdk.dots_speed .* repmat(v_coh,ndots,1); %[v_x; v_y] (in pixels/frames)
+            v_noise_pix_per_frames    = params.stim.rdk.dots_speed .* v_incoh;               %[v_x; v_y] (in pixels/frames)
             
             % Assign proportion of signal and noise dot velocities
             dot_vel_pix_per_frames = v_noise_pix_per_frames;
             dot_vel_pix_per_frames(1:round(params.stim.rdk.dots_coherence(cc) .* ndots),:) = v_signal_pix_per_frames(1:round(params.stim.rdk.dots_coherence(cc) .* ndots),:);
-
-            % Assign dot index (we just count from 1)
-            dot_idx = 1:ndots;
             
             % Select color (50:50 black:white)
             colori = ([0 randperm(ndots-1)]) < ceil(ndots/num_col);
@@ -267,7 +268,7 @@ for cc = 1:length(params.stim.rdk.dots_coherence)
                 for ii = 1:ndots
 
                     % update spatial position
-                    dots(ii,:) = dots(ii,:) + dot_vel_pix_per_frames(ii,:) .* 1; %(1/params.stim.presentationrate_hz);
+                    dots(ii,:) = dots(ii,:) + dot_vel_pix_per_frames(ii,:); % .* 1; %(1/params.stim.presentationrate_hz);
 
                     % Check whether the dot has reached its 'kill time'
                     % based on frames
@@ -295,7 +296,7 @@ for cc = 1:length(params.stim.rdk.dots_coherence)
                             end
                         end
 
-                        dot_kill_time(ii) = curr_frame + params.stim.rdk.dots_lifetime;
+                        dot_kill_time(ii) = curr_frame + params.stim.rdk.dots_lifetime -1;
 
                     end
 
@@ -393,9 +394,11 @@ for cc = 1:length(params.stim.rdk.dots_coherence)
                 rdk_info = info(counter,:);
                 rdk_rng_seed = clock_seed;
                 save(fullfile(tmpDir, sprintf('%04d_vcd_rdk_ori%02d_coh%02d_delta%02d.mat', info.unique_im(counter), bb,cc,dd)),'frames','rdk_info','mask','rdk_rng_seed','stored_coh_dot_pos','-v7.3');
+                save(fullfile(tmpDir, sprintf('%04d_vcd_rdk_ori%02d_coh%02d_delta%02d.mat', counter, bb,cc,dd)),'frames','rdk_rng_seed','stored_coh_dot_pos','-v7.3');
             
                 % Create RDK movie (mp4, with compression)
                 vcd_createStimVideo(rdks{bb,cc,dd+1}, 1/params.stim.presentationrate_hz, ...
+                                    fullfile(saveStimDir),sprintf('%04d_vcd_rdk_coh%02d_dir%02d_delta%02d',counter,cc,bb,dd));
                     fullfile(vcd_rootPath,'figs',params.disp.name,'rdk'),sprintf('%04d_vcd_rdk_coh%02d_dir%02d_delta%02d',info.unique_im(counter),cc,bb,dd));
             
             end
@@ -425,6 +428,7 @@ if params.store_imgs
     writetable(info, fullfile(sprintf('%s_%s.csv',params.stim.rdk.infofile,datestr(now,30))))
 end
 
+return
 %% Debug figures 
 
 % if params.verbose
@@ -497,5 +501,5 @@ end
 %         end
 %     end
 % end
-return
+% return
 
