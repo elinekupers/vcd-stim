@@ -2,7 +2,7 @@ function [params,time_table_master, all_subj_run_frames] = vcd_createSessions(pa
 % VCD function to create image and event order for individual subject 
 % sessions and runs
 % 
-%  [params,time_table_master,all_subj_run_frames] = vcd_createSessions(params,...
+%  [params,time_table_master,all_subj_run_frames] = vcd_createSessions(params,condition_master,...
 %         'load_params',[load_params],'store_params',[store_params])
 %  
 
@@ -36,7 +36,6 @@ if load_params
                 warning('[%s]: Multiple trial.mat files! Will pick the most recent one.\n', mfilename);
             end
             load(fullfile(d(end).folder,d(end).name),'condition_master');
-            params.trials = condition_master;
         end
     end
     
@@ -55,7 +54,7 @@ else
     % Create subject sessions
     
     % check if trial struct is already defined and load it if needed
-    if ~isfield(params,'trials') || isempty(params.trials)
+    if ~exist('condition_master','var') || isempty(condition_master)
         
         % load trial info
         d = dir(fullfile(vcd_rootPath,'workspaces','info',['trials*' session_type '*.mat']));
@@ -65,7 +64,6 @@ else
                 warning('[%s]: Multiple trial.mat files! Will pick the most recent one', mfilename);
             end
             load(fullfile(d(end).folder,d(end).name),'condition_master');
-            params.trials = condition_master;
         else
             error('[%s]: Can''t find trial.mat files! Please check or run vcd_makeTrials.m', mfilename);
         end
@@ -95,13 +93,13 @@ else
     % Different trial order per block (already accomplished in vcd_makeTrials.m)
     % Across a single session, each subject will experience the same
     % blocks and unique images
-    params.trials = vcd_allocateBlocksToRuns(params,session_type);
+    condition_master = vcd_allocateBlocksToRuns(params,condition_master,session_type);
 
     %% 2. We expand the condition master table and add all trial events 
     % (in units of presentationrate_hz frames), and we now call it
     % "time_table_master"
     % We also shuffle blocks within a run for each subject session
-    time_table_master = vcd_createRunTimeTables(params,session_type);
+    time_table_master = vcd_createRunTimeTables(params,condition_master,session_type);
     
     %% 3. We expand the "time_table_master" with the fixation sequence 
     % and onset of contrast dip, and correct button presses for FIX and CD
