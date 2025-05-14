@@ -84,7 +84,7 @@ function [rdks, masks, info] = vcd_rdk(params)
 %                           (-15 deg), 2 (-5 deg), 3 (+5 deg), or 4 (+15 deg).            
 %      dot_pos          : {1×1 cell} 200x2xtime dot positions on each frame
 %                           relative to the center of the aperture (pixels).
-%      is_in_img_ltm    : (logical) whether the RDK movie is part of the
+%      is_specialcore    : (logical) whether the RDK movie is part of the
 %                           subselected stimuli used in imagery and
 %                           long-term memory task.
 %
@@ -153,10 +153,10 @@ info = table(NaN(n_unique_videos,1), ... unique_im
              NaN(n_unique_videos,1), ... dot_coh_i
              NaN(n_unique_videos,1), ... rel_motdir_deg
              NaN(n_unique_videos,1), ... rel_motdir_deg_i
-             NaN(n_unique_videos,1), ... is_in_img_ltm
+             NaN(n_unique_videos,1), ... is_special_core
              cell(n_unique_videos,1)); % dot_pos
 info.Properties.VariableNames = {'unique_im','dot_motdir_deg','dot_motdir_deg_i',...
-    'dot_coh','dot_coh_i','rel_motdir_deg','rel_motdir_deg_i','is_in_img_ltm','dot_pos'};
+    'dot_coh','dot_coh_i','rel_motdir_deg','rel_motdir_deg_i','is_special_core','dot_pos'};
 
 %% RNG seed parameters
 rseed = [1000 2010];
@@ -374,9 +374,9 @@ for cc = 1:length(params.stim.rdk.dots_coherence)
 
             special_core_idx = find(info.unique_im(counter)==params.stim.rdk.unique_im_nrs_specialcore);
             if ~isempty(special_core_idx)
-                info.is_in_img_ltm(counter) = true;
+                info.is_specialcore(counter) = true;
             else
-                info.is_in_img_ltm(counter) = false;
+                info.is_specialcore(counter) = false;
             end
             
             % Create binary circular alpha mask for rdk frames
@@ -398,8 +398,8 @@ for cc = 1:length(params.stim.rdk.dots_coherence)
             
                 % Create RDK movie (mp4, with compression)
                 vcd_createStimVideo(rdks{bb,cc,dd+1}, 1/params.stim.presentationrate_hz, ...
-                                    fullfile(saveStimDir),sprintf('%04d_vcd_rdk_coh%02d_dir%02d_delta%02d',counter,cc,bb,dd));
-                    fullfile(vcd_rootPath,'figs',params.disp.name,'rdk'),sprintf('%04d_vcd_rdk_coh%02d_dir%02d_delta%02d',info.unique_im(counter),cc,bb,dd));
+                        fullfile(vcd_rootPath,'figs',params.disp.name,'rdk'),sprintf('%04d_vcd_rdk_coh%02d_dir%02d_delta%02d',info.unique_im(counter),cc,bb,dd));
+%                                     fullfile(saveStimDir),sprintf('%04d_vcd_rdk_coh%02d_dir%02d_delta%02d',counter,cc,bb,dd));
             
             end
             
