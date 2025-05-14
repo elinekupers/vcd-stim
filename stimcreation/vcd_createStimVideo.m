@@ -10,6 +10,7 @@ if ~exist(saveFolder,'dir')
     mkdir(saveFolder);
 end
 vidObj = VideoWriter(fullfile(saveFolder,[fname '.mp4']),'MPEG-4');
+vidObj.FrameRate = 1/ifi;
 open(vidObj);
 
 % Create an animation.
