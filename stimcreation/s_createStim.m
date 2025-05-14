@@ -24,7 +24,7 @@
 %%%%%%%%%%%%%%%%%%%%%%
 
 params = struct();
-params.verbose      = false; % visualize stimuli (true) or not (false)
+params.verbose      = true; % visualize stimuli (true) or not (false)
 params.store_imgs   = true; % store visualization figures (true) or not (false)
 
 % Get display params
@@ -47,7 +47,7 @@ if ~exist(saveFigsFolder,'dir'); mkdir(saveFigsFolder); end
 % "stim_<dispname>_*.mat" in fullfile(vcd_rootPath,'workspaces','info').
 % When storing generated parameters, we save the parameters as a .mat file
 % in "stim_<dispname>_YYYYMMDDTHHMMSS.mat" in fullfile(vcd_rootPath,'workspaces','info').
-params.load_params  = false;  % if true, we load from file. if false, define params.
+params.load_params  = true;  % if true, we load from file. if false, define params.
 params.store_params = true;  % if false, we don't store params. if true, we store mat file in fullfile(vcd_rootPath,'workspaces','info')
                                        
 % Reset random number generator with arbitrary number (based on system
@@ -63,10 +63,15 @@ params.rng.randn_seed  = rng;  % store randn seed
 % randomization involved in setting the stimulus parameters). This function
 % well get appropriate display params by calling vcd_getDisplayParams.m.
 
-params.stim   = vcd_getStimParams('disp_name',params.disp.name, ...       
+params.stim   = vcd_getStimParams('disp_name', params.disp.name, ...       
                                   'load_params', params.load_params, ...  
                                   'store_params', params.store_params);  
-
+                              
+%% Define/Load experiment session params
+params.exp    = vcd_getSessionParams('disp_name', params.disp.name, ...
+                                'presentationrate_hz',params.stim.presentationrate_hz, ...
+                                'load_params', params.load_params, ...
+                                'store_params', params.store_params);
 %% %%%%%%%%%%%%%%%%
 %%%%%% STIMULI %%%% 
 %%%%%%%%%%%%%%%%%%%
@@ -101,9 +106,11 @@ params.stim   = vcd_getStimParams('disp_name',params.disp.name, ...
 gaptype     = 'comb';
 borderwidth = 'fat';
 if strcmp(dispname,'PPROOM_EIZOFLEXSCAN')
-    num = 15*1; % 15 runs * 1 sessions (BEHAVIORAL001)
+    % 14 runs * 1 session x 2 session type ("BEHAVIOR001")
+    num = sum(params.exp.session.behavior.n_runs_per_session); 
 elseif strcmp(dispname,'7TAS_BOLDSCREEN32')
-    num = 268; % 264 MRI runs: 10 runs * 26 sessions (WIDE01A + WIDE01B + DEEP001-25) + 4 runs * 2 (DEEP26A/26Bp)
+    % 258 MRI runs: 10 runs x 2 (WIDE01A + WIDE01B) + 10 runs x 25 sessions (DEEP001-0025) + 4 runs x 2 sessions (DEEP26A/26Bp)
+    num = sum(params.exp.session.mri.wide.n_runs_per_session) + sum(params.exp.session.mri.deep.n_runs_per_session);
 else
     num = 1;
 end
@@ -157,7 +164,6 @@ bckgrnd_im  = vcd_pinknoisebackground(params, ...
 %                   height (354 pixels) x width (354 pixels) 
 %                   x 24 unique images x 5 tilt offsets
 % * info        : table with stimulus information matching the gabor array
-
 [gabors, masks, info] = vcd_gabor(params);
 
 %% RDKs (Random Dot motion Kinetograms)
