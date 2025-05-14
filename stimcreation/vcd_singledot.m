@@ -72,7 +72,7 @@ function [dot, mask, info] = vcd_singledot(params)
 %                             2: -5 deg, 3: +5 deg, or 4: +15 deg.            
 %      dot_xpos_pix  : (double) x-position of dot angle in image space (pixels)
 %      dot_ypos_pix  : (double) y-position of dot angle in image space (pixels)
-%      is_in_img_ltm : (logical) whether the dot location is part of the
+%      is_specialcore : (logical) whether the dot location is part of the
 %                           subselected stimuli used in imagery and long-term
 %                            memory task.
 %
@@ -169,8 +169,8 @@ dot_ref_locs  = repelem(dot_ref_locs,length(params.stim.dot.ang_deg))';
 dot_ref_loc_idx = repelem([0:length(params.stim.dot.delta_from_ref)],length(params.stim.dot.ang_deg))';
 unique_ref_im = reshape(params.stim.dot.unique_im_nrs_wm_test,4,[])';
 unique_im     = [params.stim.dot.unique_im_nrs_core, unique_ref_im(:)'];
-ltm_img_bool  = ismember(unique_im,params.stim.dot.unique_im_nrs_specialcore)';
-assert(sum(ltm_img_bool)==8);
+specialcore_bool  = ismember(unique_im,params.stim.dot.unique_im_nrs_specialcore)';
+assert(sum(specialcore_bool)==8);
 
 info = table(unique_im(:), ... 
              stim_loc(:), ...
@@ -183,11 +183,11 @@ info = table(unique_im(:), ...
              dot_ref_loc_idx(:),...
              dot_xpos_pix(:), ...
              dot_ypos_pix(:), ...
-             ltm_img_bool(:));
+             specialcore_bool(:));
          
 % add column names
 info.Properties.VariableNames = {'unique_im','stim_pos','stim_pos_i','angle_deg','angle_i',...
-    'eccen_deg','angle_rad','delta_deg','delta_i','dot_xpos_pix','dot_ypos_pix', 'is_in_img_ltm'};
+    'eccen_deg','angle_rad','delta_deg','delta_i','dot_xpos_pix','dot_ypos_pix', 'is_specialcore'};
 
 % Store if requested
 if params.stim.store_imgs
