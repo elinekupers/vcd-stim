@@ -362,6 +362,22 @@ end
 
 bckground = feval(flipfun,bckground);
 
+%% %%%%%%%%%%%%% ET IM %%%%%%%%%%%%%
+%  ET TARGETS: 4D array: [x,y, 3, type]
+% Load stored eyetracking block target images if needed
+if ~isfield('eye_im') || isempty(eye_im)
+    fprintf('[%s]: Loading eyetracking target images..\n',mfilename);
+    
+    % FIX: 5D array: [x,y, 3, 5 lum, 2 widths]
+    d = dir(sprintf('%s*.mat', params.stim.el.stimfile));
+    a = load(fullfile(d(end).folder,d(end).name), 'sac_im','pupil_im_white','pupil_im_black');
+    eye_im.sac_im          = a.sac_im; 
+    eye_im.pupil_im_white  = a.pupil_im_white;
+    eye_im.pupil_im_black  = a.pupil_im_black;
+    clear a d;
+end
+
+
 %% %%%%%%%%%%%%% FIX IM %%%%%%%%%%%%%
 %  FIX CIRCLE: 5D array: [x,y, 3, lum, type]
 
@@ -576,6 +592,7 @@ timeofshowstimcall = datestr(now,30);
     scan, ...
     bckground, ...
     fix_im, ...
+    eye_im, ...
     stim, ...
     run_frames, ...
     run_table, ...
