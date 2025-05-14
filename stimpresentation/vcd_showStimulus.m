@@ -1,11 +1,11 @@
-function [data,getoutearly,subj_run_frames,subj_run_table,scan] = vcd_showStimulus(...
+function [data,getoutearly,run_frames,subj_run_table,scan] = vcd_showStimulus(...
     win, rect, params, ...
     scan, ...
     bckground, ...
     fix, ...
     eye_im, ...
     stim, ...
-    subj_run_frames, ...
+    run_frames, ...
     subj_run_table, ...
     introscript, ...
     taskscript, ...
@@ -102,32 +102,32 @@ framecolor = fix_tex;
 txt_tex    = fix_tex;
 txt_rect   = fix_tex;
 
-subj_run_frames.frame_event_nr = subj_run_frames.frame_event_nr(1:end-1);
-subj_run_frames.is_catch = subj_run_frames.is_catch(1:end-1);
-subj_run_frames.crossingIDs = subj_run_frames.crossingIDs(1:end-1);
+% run_frames.frame_event_nr = run_frames.frame_event_nr(1:end-1);
+% run_frames.is_catch = run_frames.is_catch(1:end-1);
+% run_frames.crossingIDs = run_frames.crossingIDs(1:end-1);
 
-for nn = 1:size(subj_run_frames.frame_event_nr,1)
+for nn = 1:size(run_frames.frame_event_nr,1)
     
-    eventID = subj_run_frames.frame_event_nr(nn);
+    eventID = run_frames.frame_event_nr(nn);
     if isnan(eventID)
         eventID = 0;
     end
     
     % set up fixation dot textures
-    lum_idx = find(subj_run_frames.fix_abs_lum(nn)==params.stim.fix.dotlum);
+    lum_idx = find(run_frames.fix_abs_lum(nn)==params.stim.fix.dotlum);
     
-    if eventID == 0 || isnan(subj_run_frames.is_cued(nn)) || (subj_run_frames.is_cued(nn)==0)
+    if eventID == 0 || isnan(run_frames.is_cued(nn)) || (run_frames.is_cued(nn)==0)
         fix_tex(nn)  = fix_texture_thin_full(lum_idx);
         fix_rect(nn) = fix.fix_thin_rect;   
     else
         if eventID==95
-            if subj_run_frames.is_cued(nn)==1
+            if run_frames.is_cued(nn)==1
                 fix_tex(nn)  = fix_texture_thick_left(lum_idx);
                 fix_rect(nn) = fix.fix_thick_rect;
-            elseif subj_run_frames.is_cued(nn)==2
+            elseif run_frames.is_cued(nn)==2
                 fix_tex(nn)  = fix_texture_thick_right(lum_idx);
                 fix_rect(nn) = fix.fix_thick_rect;
-            elseif subj_run_frames.is_cued(nn)==3
+            elseif run_frames.is_cued(nn)==3
                 fix_tex(nn)  = fix_texture_thick_both(lum_idx);
                 fix_rect(nn) = fix.fix_thick_rect;
             end
@@ -171,7 +171,7 @@ for nn = 1:size(subj_run_frames.frame_event_nr,1)
             
         case 97 % task_cue_ID
             
-            script = taskscript{~cellfun(@isempty, regexp(taskscript,sprintf('%02d',subj_run_frames.crossingIDs(nn)),'match'))};
+            script = taskscript{~cellfun(@isempty, regexp(taskscript,sprintf('%02d',run_frames.crossingIDs(nn)),'match'))};
             [task_instr, task_rect] = vcd_getInstructionText(params, script, rect);
             
             im_tex{nn}  = cat(1, bckrgound_texture, fix_tex(nn));
@@ -223,7 +223,7 @@ for nn = 1:size(subj_run_frames.frame_event_nr,1)
             framecolor{nn} = 255*ones(1,3);
             
         case {91, 92}
-            if subj_run_frames.is_catch(nn) % treat catch trials as delays
+            if run_frames.is_catch(nn) % treat catch trials as delays
                 im_tex{nn} = cat(1, bckrgound_texture, fix_tex{nn});
                 im_rect{nn} = cat(1, bckground_rect, fix_rect{nn});
                 framecolor{nn} = 255*ones(2,3);
@@ -293,7 +293,7 @@ for frame = 1:size(frameorder,2)+1 % we add 1 to log end
         break;
     end
     
-    switch subj_run_frames.frame_event_nr(framecnt)
+    switch run_frames.frame_event_nr(framecnt)
         
         % 0  : pre/post blank
         % 93 : exp_session.block.response_ID
@@ -323,9 +323,9 @@ for frame = 1:size(frameorder,2)+1 % we add 1 to log end
             Screen('DrawTexture',win, bckrgound_texture,[], bckground_rect, 0, [], 1, 255*ones(1,3));...
         
             % im_w_mask is a cell with dims: frames x 1, where each cell has 1 or 2 sides (1:l, 2:r)
-            for side = 1:length(find(~cellfun(@isempty, stim.im(subj_run_frames.im_IDs(frame),:))))
-                stim_texture = Screen('MakeTexture',win, stim.im{subj_run_frames.im_IDs(frame),side});
-                Screen('DrawTexture',win,stim_texture,[], stim.rects{subj_run_frames.im_IDs(frame),side}, 0,[],1, 255*ones(1,3));
+            for side = 1:length(find(~cellfun(@isempty, stim.im(run_frames.im_IDs(frame),:))))
+                stim_texture = Screen('MakeTexture',win, stim.im{run_frames.im_IDs(frame),side});
+                Screen('DrawTexture',win,stim_texture,[], stim.rects{run_frames.im_IDs(frame),side}, 0,[],1, 255*ones(1,3));
             end
 
             % Draw fix dot on top
