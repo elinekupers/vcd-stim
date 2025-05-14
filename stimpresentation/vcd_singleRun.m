@@ -336,7 +336,7 @@ im_counter = 1;
 for mm = 1:length(non_empty_rows)
     tmp = run_frames.frame_im_nr(non_empty_rows(mm),:)~=[0,0];
     if any(tmp)
-        im_IDs(non_empty_rows(mm):(non_empty_rows(mm)+params.stim.gabor.duration-1)) = any(tmp).*im_counter;
+        im_IDs(non_empty_rows(mm):(non_empty_rows(mm)+params.stim.gabor.duration-1)) = non_empty_rows(mm);
     end
     im_counter = im_counter+1;
 end
