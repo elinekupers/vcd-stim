@@ -176,7 +176,7 @@ else
     lumminmaxstep_norm              = [0.15,0.85,5];                        % min, max, and nr of dot luminance values normalized to range between [0-1],
     dotlum_lin                      = linspace(lumminmaxstep_norm(1),lumminmaxstep_norm(2),lumminmaxstep_norm(3)); % normalized dot gray luminance levels (0-1):
     dotlum_sq                       = round(255*(dotlum_lin.^2));           % dot luminance values adjusted for monitor with linearized gamma, ranging between [1-255],
-    stim.fix.dotlum                 = dotlum_sq;
+    stim.fix.dotlum                 = [dotlum_sq, stim.bckgrnd_grayval];
     
     stim.fix.dotopacity             = 0.5;                                 % dot and border have 50% opacity
     stim.fix.color                  = [255, 255, 255; 255 0 0];            % white and red (for spatial cue)

@@ -159,7 +159,7 @@ if params.verbose
     counter = 1;
     for ii = 1:size(fix_im,4)
         for jj = 1:size(fix_im,5)
-            subplot(5,5,counter)
+            subplot(6,5,counter)
             imagesc(squeeze(fix_im(:,:,:,ii,jj)), 'AlphaData',params.stim.fix.dotopacity)
             axis square
             axis off
@@ -181,7 +181,7 @@ if params.verbose
     counter = 1;
     for ii = 1:size(fix_im,4)
         for jj = 1:size(fix_im,5)
-            subplot(5,5,counter)
+            subplot(6,5,counter)
             imagesc(squeeze(fix_im(:,:,:,ii,jj)))
             axis square
             axis off
