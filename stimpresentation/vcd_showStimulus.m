@@ -306,7 +306,7 @@ for frame = 1:size(frameorder,2)+1 % we add 1 to log end
         
         % Draw ET targets on grey/white/black background
         case {990, 991, 992, 993, 994, 995, 996, 997}
-            Screen('DrawTexture',win,im_tex{frame},[],im_rect{frame},[0;0],[],[1;1],framecolor{frame});
+            Screen('DrawTexture',win,im_tex{frame},[],im_rect{frame},0,[],1,framecolor{frame});
 
         % Draw background + thin or thick fix dot on top
         case {0, 90, 93, 94, 95, 96, 98, 99}
