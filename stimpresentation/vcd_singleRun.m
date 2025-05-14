@@ -365,7 +365,7 @@ bckground = feval(flipfun,bckground);
 %% %%%%%%%%%%%%% ET IM %%%%%%%%%%%%%
 %  ET TARGETS: 4D array: [x,y, 3, type]
 % Load stored eyetracking block target images if needed
-if ~isfield('eye_im') || isempty(eye_im)
+if ~exist('eye_im','var') || isempty(eye_im)
     fprintf('[%s]: Loading eyetracking target images..\n',mfilename);
     
     % FIX: 5D array: [x,y, 3, 5 lum, 2 widths]
