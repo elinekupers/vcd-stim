@@ -327,13 +327,18 @@ stim.rects(nonemptycenters,:) = rects_shortlist;
 
 %% Accumulate stimulus idx
 im_IDs     = NaN(length(run_frames.frame_im_nr),1);
-empty_rows = find(~cellfun(@isempty, stim.im(:,1)));
+empty_rows = cellfun(@isempty, stim.im(:,1));
+non_empty_rows = ~empty_rows;
+empty_rows = find(empty_rows);
+non_empty_rows = find(non_empty_rows);
 
-for mm = 1:length(empty_rows)
-    
-    if run_frames.frame_im_nr(empty_rows(mm),:)~=[0,0]
-        im_IDs(empty_rows(mm):(empty_rows(mm)+params.stim.gabor.duration-1)) = empty_rows(mm);
+im_counter = 1;
+for mm = 1:length(non_empty_rows)
+    tmp = run_frames.frame_im_nr(non_empty_rows(mm),:)~=[0,0];
+    if any(tmp)
+        im_IDs(non_empty_rows(mm):(non_empty_rows(mm)+params.stim.gabor.duration-1)) = any(tmp).*im_counter;
     end
+    im_counter = im_counter+1;
 end
 
 run_frames.im_IDs = im_IDs; clear im_IDs im_cnt empty_rows

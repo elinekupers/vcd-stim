@@ -89,8 +89,8 @@ et_rect = rect; et_texture = {};
 for sac = 1:size(eye_im.sac_im,4)
     et_texture{sac} = Screen('MakeTexture',win,eye_im.sac_im(:,:,:,sac));
 end
-et_texture{size(eye_im.sac_im,4)+1} = Screen('MakeTexture',win,eye_im.pupil_im_white);
-et_texture{size(eye_im.sac_im,4)+2} = Screen('MakeTexture',win,eye_im.pupil_im_black);
+et_texture{size(eye_im.sac_im,4)+1} = Screen('MakeTexture',win,eye_im.pupil_im_black);
+et_texture{size(eye_im.sac_im,4)+2} = Screen('MakeTexture',win,eye_im.pupil_im_white);
 
 %% Prepare background and fixation texture vector outside the flip loop
 
