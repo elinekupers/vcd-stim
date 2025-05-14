@@ -134,22 +134,22 @@ switch stimClass
         t.Properties.VariableNames = varNames;
         t.Properties.VariableUnits = varUnits;
         
-        t.unique_im_nr  = im_nr_vec'; 
-        t.stimloc       = stimloc_vec';
-        t.stimloc_name  = stimloc_name_vec';
-        t.orient_dir    = ori_vec';
-        t.contrast      = con_vec';
-        t.gbr_phase     = ph_vec';
-        t.rdk_coherence = nan_vec;
-        t.super_cat     = nan_vec;
-        t.basic_cat     = nan_vec;
-        t.sub_cat       = nan_vec;
-        t.affordance_cat = nan_vec;
-        t.super_cat_name = num2cell(nan_vec);
-        t.basic_cat_name = num2cell(nan_vec);
-        t.sub_cat_name   = num2cell(nan_vec);
+        t.unique_im_nr    = im_nr_vec'; 
+        t.stimloc         = stimloc_vec';
+        t.stimloc_name    = stimloc_name_vec';
+        t.orient_dir      = ori_vec';
+        t.contrast        = con_vec';
+        t.gbr_phase       = ph_vec';
+        t.rdk_coherence   = nan_vec;
+        t.super_cat       = nan_vec;
+        t.basic_cat       = nan_vec;
+        t.sub_cat         = nan_vec;
+        t.affordance_cat  = nan_vec;
+        t.super_cat_name  = num2cell(nan_vec);
+        t.basic_cat_name  = num2cell(nan_vec);
+        t.sub_cat_name    = num2cell(nan_vec);
         t.affordance_name = num2cell(nan_vec);
-        t.is_special_core      = special_core_vec';
+        t.is_special_core = special_core_vec';
         
 
     case 'rdk'
@@ -197,7 +197,7 @@ switch stimClass
         t.basic_cat_name = num2cell(nan_vec);
         t.sub_cat_name   = num2cell(nan_vec);
         t.affordance_name = num2cell(nan_vec);
-        t.is_special_core     = special_core_vec';
+        t.is_special_core = special_core_vec';
                 
     case 'dot' 
         

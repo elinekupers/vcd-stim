@@ -280,7 +280,7 @@ else
                 p.ph_deg          = [0:(180/2):359];                            % 4 quadrature Gabor phases (deg) (0,90,180,270)
                 
                 % SPATIAL -- Manipulated params
-                p.contrast        = [0.10, 0.50, 1];                            % Michelson contrasts [0-1] (fraction)
+                p.contrast        = [0.05, 0.20, 0.8];                          % Michelson contrasts [0-1] (fraction)
                 p.num_ori         = 8;                                          % gabor orientations (deg), 0 = 12 o'clock
                 p.ori_deg         = [0:(180/p.num_ori):179]+(0.5*(180/p.num_ori)); % rotate half shift away from vertical, to avoid ill-defined response options                                                                 
                                                                                 % will return [11.25 33.75 56.25 78.75 101.25 123.75 146.25 168.75]
@@ -331,17 +331,17 @@ else
                 
                 % TEMPORAL -- fixed params
                 % RDK specific
-                p.dots_size       = 4.5;                                          % single dot radius in pixels
+                p.dots_size       = 3;                                            % single dot radius in pixels
                 p.dots_color      = [255 255 255; 1 1 1]./255;                    % 50:50 white:black, color in RGB and converted to [0-1] as expected by stimulus creation function
-                p.max_dots_per_frame = 200;                                       % how many dots within a square support from (number is similar to Kiani lab, rokers lab aims for 150) and roughly matches to nr of pixels in aperture
+                p.max_dots_per_frame = 200;                                       % how many dots within a square support. Density is 15.9 dots / deg^2   (Number is similar to Kiani lab, rokers lab aims for 150) and roughly matches to nr of pixels in aperture
                 p.dots_contrast   = 1;                                            % Michelson [0-1] (fraction)
                 p.duration        = stimdur_frames;                               % frames (nr of monitor refreshes)
-                p.dots_speed      = (5*disp_params.ppd)/stim.presentationrate_hz; % speed in pixels per frame (same as 5 deg/s). For reference: Kiani lab uses usually 5 to 10 deg/s. Rokers lab uses 5 deg/s.
+                p.dots_speed      = (8*disp_params.ppd)/stim.presentationrate_hz; % speed in pixels per frame (same as 5 deg/s). For reference: Kiani lab uses usually 5 to 10 deg/s. Rokers lab uses 5 deg/s.
                 p.dots_interval   = 1;                                            % update dots every frame   (For reference: Kiani's 75 hz refresh rate + interval = 3 -->  25 frames/sec)
-                p.dots_lifetime   = 0.1 * stim.presentationrate_hz;               % 3 frames / 0.1 seconds   
+                p.dots_lifetime   = 0.05 * stim.presentationrate_hz;              % 3 frames / 0.05 seconds   
                 
                 % TEMPORAL -- manipulated params
-                p.dots_coherence  = [0:0.1:1];                                    % fraction of coherent moving dots. Kiani lab uses usually one of these [0 0.032 0.064 0.128 0.256 0.512]
+                p.dots_coherence  = [0.1, 0.55, 1.0];                              % fraction of coherent moving dots. Kiani lab uses usually one of these [0 0.032 0.064 0.128 0.256 0.512]
                 
                 % SPATIAL -- fixed params
                 p.img_sz_deg      = parafov_circle_diam_deg;                      % stimulus aperture diameter (deg)

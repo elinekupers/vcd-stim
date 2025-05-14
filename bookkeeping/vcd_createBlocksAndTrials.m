@@ -216,7 +216,7 @@ else % Recreate conditions and blocks and trials
                 if strcmp(stimClass_name, 'ns'), nsides = 1; else, nsides = 2; end
                 % shuffle [1,2] such that there is a 50% chance on either side 
                 % we will actually apply the contrast decrement change to
-                % stimulus.
+                % stimulus.  1=yes change, 2=no change
                 cd_change = repmat((1:(1/p.stim.cd.prob)),2,(ceil(size(tbl,1)/2)*2)/(1/p.stim.cd.prob));
                 cd_change = cd_change([randperm(length(cd_change),length(cd_change));randperm(length(cd_change),length(cd_change))]);
                 cd_change = cd_change';
@@ -225,10 +225,10 @@ else % Recreate conditions and blocks and trials
                 for stimrow = 1:size(tbl,1)
                     if ~tbl.is_catch(stimrow,:)
                         for side = 1:nsides
-                            if cd_change(stimrow,side) == 2
+                            if cd_change(stimrow,side) == 1
                                 tbl.cd_start(stimrow,side) = feval(cdsoafun);
                                 
-                            elseif cd_change(stimrow,side) == 1
+                            elseif cd_change(stimrow,side) == 2
                                 tbl.cd_start(stimrow,side) = 0;
                             end
                         end
@@ -297,7 +297,7 @@ else % Recreate conditions and blocks and trials
     % Now dive into each stimulus class
     unique_im_from_table = [];
     N_tbl = NaN(5,30); unique_stim_class_names_in_table = unique(condition_master.stim_class_name(:,1),'stable')';
-    adjusted_crossings = double(p.exp.crossings);
+    adjusted_crossings = p.exp.nr_unique_trials_per_crossing;
     for ii = 1:length(unique_stim_class_names_in_table)
         
         % Check nr of unique stimuli per stimulus class
@@ -313,16 +313,13 @@ else % Recreate conditions and blocks and trials
             
             if strcmp(session_type,'MRI')
                 % lower IMG/LTM block contribution (we have less unique images)
-                adjusted_crossings(ii,6) = 0.5;
-                adjusted_crossings(ii,7) = 0.5;
-                nique_trial_repeats = p.exp.n_unique_trial_repeats_mri;
+                unique_trial_repeats = p.exp.n_unique_trial_repeats_mri;
             elseif strcmp(session_type,'BEHAVIOR') % NO LTM/IMG
                 adjusted_crossings(ii,6) = 0;
                 adjusted_crossings(ii,7) = 0;
                 unique_trial_repeats = p.exp.n_unique_trial_repeats_behavior;
             end
-            assert(isequal(size(tmp,1),...
-                sum(adjusted_crossings(ii,:).* unique_im_from_table(ii) .* unique_trial_repeats(ii,:))))
+            assert(isequal(size(tmp,1), sum(adjusted_crossings(ii,:) .* unique_trial_repeats(ii,:),'omitnan')))
             
         else
             tmp = condition_master(any(~condition_master.is_catch & strcmp(condition_master.stim_class_name, unique_stim_class_names_in_table{ii}),2),:);
@@ -337,17 +334,16 @@ else % Recreate conditions and blocks and trials
                                             
             unique_im_from_table(ii) = length(unique(colsLR(:)));
 
-            adjusted_crossings(ii,1) = 0.5;
             if strcmp(session_type,'MRI')
-                adjusted_crossings(ii,6) = 2*length(p.stim.(p.exp.stimclassnames{ii}).unique_im_nrs_specialcore)/length(p.stim.(p.exp.stimclassnames{ii}).unique_im_nrs_core);
-                adjusted_crossings(ii,7) = 2*length(p.stim.(p.exp.stimclassnames{ii}).unique_im_nrs_specialcore)/length(p.stim.(p.exp.stimclassnames{ii}).unique_im_nrs_core);
+                adjusted_crossings(ii,6) = 2*adjusted_crossings(ii,6);
+                adjusted_crossings(ii,7) = 2*adjusted_crossings(ii,7);
                 unique_trial_repeats = p.exp.n_unique_trial_repeats_mri;
             elseif strcmp(session_type,'BEHAVIOR') % NO LTM/IMG
                 adjusted_crossings(ii,6) = 0;
                 adjusted_crossings(ii,7) = 0;
                 unique_trial_repeats = p.exp.n_unique_trial_repeats_behavior;
             end
-            assert(isequal(size(colsLR,1), sum(unique_im_from_table(ii).* adjusted_crossings(ii,:) .* unique_trial_repeats(ii,:))));
+            assert(isequal(size(colsLR,1), sum(adjusted_crossings(ii,:) .* unique_trial_repeats(ii,:),'omitnan')));
         end
     end
     

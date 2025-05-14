@@ -104,7 +104,7 @@ else
     %% 3. We expand the "time_table_master" with the fixation sequence 
     % and onset of contrast dip, and correct button presses for FIX and CD
     % task-crossings
-    [time_table_master,all_subj_run_frames] = vcd_addFIXandCDtoTimeTableMaster(params,time_table_master);
+    [time_table_master,all_subj_run_frames] = vcd_addFIXandCDtoTimeTableMaster(params,time_table_master,session_type);
     
     
 end

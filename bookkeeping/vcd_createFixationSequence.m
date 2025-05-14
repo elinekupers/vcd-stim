@@ -25,12 +25,10 @@ end
 f_fix = f_fix(f_fix<run_dur);
 
 % freeze fixation lum during black periods
-delete_me = [];
+freeze_me = [];
 for ii = 1:length(blank_onset)
-    delete_me = cat(2,delete_me, find(f_fix > blank_onset(ii) & f_fix < blank_offset(ii)));
+    freeze_me = cat(2,freeze_me, find(f_fix > blank_onset(ii) & f_fix < blank_offset(ii)));
 end
-
-f_fix(delete_me) = [];
 
 % Update luminance of fixation dot randomly (WITHOUT replacement)
 lum_shuffled_idx = [];
@@ -39,6 +37,7 @@ for kk = 1:(1+ceil(length(f_fix)/length(params.stim.fix.dotlum)))
 end
 
 lum_shuffled_idx = lum_shuffled_idx(1:(length(f_fix)+1));
+lum_shuffled_idx(freeze_me) = 128; % mean luminance gray
 
 % figure out when dot is brighter, dimmer or the same
 % relative to previous time point

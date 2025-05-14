@@ -122,7 +122,7 @@ for nn = 1:size(subj_run_frames.frame_event_nr,1)
                 fix_tex(nn)  = fix_texture_thick_both(lum_idx);
                 fix_rect(nn) = fix.fix_thick_rect;
             end
-        elseif ismember(eventID,[91,92,93,94,96,97])
+        elseif ismember(eventID,[90,91,92,93,94,96,97])
             fix_tex(nn)  = fix_texture_thick_full(lum_idx);
             fix_rect(nn) = fix.fix_thick_rect;
         elseif ismember(eventID,[98,99])
@@ -150,7 +150,7 @@ for nn = 1:size(subj_run_frames.frame_event_nr,1)
 %     exp.block.IBI_ID                = 99; % Inter-block interval
         
         % Draw background + fix dot on top
-        case {0, 93, 94, 95, 96, 98, 99}
+        case {0, 90, 93, 94, 95, 96, 98, 99}
             
             % DrawTextures
             % * TexturePointers  need to be: n vector (where n is the number of textures)
@@ -262,8 +262,8 @@ for frame = 1:size(frameorder,2)+1 % we add 1 to log end
         % 98 : exp_session.block.ITI_ID
         % 99 : exp_session.block.IBI_ID
         
-        % Draw background + thin fix dot on top
-        case {0, 93, 94, 95, 96, 98, 99}
+        % Draw background + thin or thick fix dot on top
+        case {0, 90, 93, 94, 95, 96, 98, 99}
             % draw background and dot textures
             Screen('DrawTextures',win,cell2mat(im_tex{frame}),[],im_rect{frame}',[0;0],[],[1;1],framecolor{frame}');
             
@@ -381,27 +381,8 @@ end
 
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-if  getoutearly
-    
-    % Save a quick version of the data in case something fails...
-    vars = whos;
-    vars = {vars.name};
-    vars = vars(cellfun(@(x) ~isequal(x,'stim'),vars));
-    save(fullfile(vcd_rootPath,sprintf('tmp_data_%s.mat',datestr(now,30))),vars{:});
-    
-end
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% PT CLEANUP STUFF
-Screen('Close',win);
-ptoff();
-
-% restore priority and cursor
-Priority(oldPriority);
-ShowCursor;
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% BUTTON LOGGING CLEAN UP STUFF
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% BUTTON LOGGING CLEAN UP STUFF %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % adjust the times in timeframes and timekeys to be relative to the first time recorded.
 % thus, time==0 corresponds to the showing of the first frame.
 starttime = timeframes(1);
@@ -433,6 +414,40 @@ data.timing.endtime         = dur;
 data.timing.empiricalfps    = length(timeframes)/dur;
 data.timing.frameduration   = frameduration;
 data.digitrecord            = digitrecord;
+
+if getoutearly
+    % Save a quick version of the data in case something fails...
+    vars = whos;
+    vars = {vars.name};
+    vars = vars(cellfun(@(x) ~isequal(x,'stim'),vars));
+    save(fullfile(vcd_rootPath,sprintf('tmp_data_%s.mat',datestr(now,30))),vars{:});
+end
+ 
+
+if ~getoutearly
+   performance = vcd_getBehavioralPerformance(params, data, correct_response);
+   [instrtext, txt_rect, params] = vcd_getMotivationText(params, performance.hitrate);
+
+   % draw background and central fixation dot
+   Screen('DrawTextures',win, cell2mat(im_tex{1}),[],im_rect{1}',[0;0],[],[1;1],framecolor{1}');
+   
+   % draw text
+   % inputs are winptr, tstring, sx, sy, color, wrapat, flipHorizontal, flipVertical, vSpacing, righttoleft, winRect)
+   DrawFormattedText(win, instrtext, 'center', (txt_rect{frame}(4)/2)-25,0,75,[],[],[],[],txt_rect{1});
+   
+   waitSecs(4);
+end
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% PT CLEANUP STUFF
+Screen('Close',win);
+ptoff();
+
+% restore priority and cursor
+Priority(oldPriority);
+ShowCursor;
+
+
 
 
 return

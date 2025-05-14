@@ -1,11 +1,12 @@
-function [] = vcd_singleRun(subjID, sesID, runnum, varargin)
+function [] = vcd_singleRun(subj_nr, ses_nr, run_nr, varargin)
 
 
 %% %%%%%%%%%%%%% PARSE INPUTS %%%%%%%%%%%%%
 p = inputParser;
-p.addRequired('subjID'          , @isnumeric); % subject number
-p.addRequired('sesID'           , @isnumeric); % session number
-p.addRequired('runnum'          , @isnumeric); % nun number
+p.addRequired('subj_nr'         , @isnumeric); % subject number
+p.addRequired('ses_nr'          , @isnumeric); % session number
+p.addRequired('ses_type'        , @isnumeric); % session type
+p.addRequired('run_nr'          , @isnumeric); % nun number
 p.addParameter('scan'           , struct()  , @isstruct);                    % struct with exp im rects, centers,  and sizes for ptb
 p.addParameter('savedatadir'    , []        , @ischar);                      % place to store data with today's date
 p.addParameter('behaviorfile'   , []        , @ischar);                      % filename to store behavioral data with today's date
@@ -29,7 +30,7 @@ p.addParameter('savestim'       , false     , @islogical)                    % w
 p.addParameter('loadstimfromrunfile', false     , @islogical)                % whether we want to load stim from run file
 
 % Parse inputs
-p.parse(subjID, sesID, runnum, varargin{:});
+p.parse(subj_nr, ses_nr, run_nr, varargin{:});
 
 % Rename variables into general params struct
 rename_me = fieldnames(p.Results);
@@ -91,14 +92,7 @@ else
     ptonparams = {[params.disp.w_pix params.disp.h_pix params.disp.refresh_hz 24],[],params.disp.clut, skipsync};
 end
 
-% Buttonbox / keyboard
-params.ignorekeys = KbName({params.triggerkey});  % dont record TR triggers as subject responses
-
-
-
-
 % %%%%%%%%% SETUP RNG %%%%%%%%%
-
 rand('seed', sum(100*clock));
 randn('seed', sum(100*clock));
 params.rng.rand = rand;
@@ -108,12 +102,15 @@ params.rng.randn = randn;
 
 % Infer session type
 if strcmp(params.disp.name, '7TAS_BOLDSCREEN32')
-    session_type = 'MRI';
+    session_env = 'MRI';
+    
+    % Buttonbox / keyboard
+    params.ignorekeys = KbName({params.triggerkey});  % dont record TR triggers as subject response
     
 elseif strcmp(params.disp.name,'PPROOM_EIZOFLEXSCAN')
-    session_type = 'BEHAVIOR';
+    session_env = 'BEHAVIOR';
 else
-    session_type = 'MRI';
+    session_env = 'MRI';
 end
 
 
@@ -156,9 +153,9 @@ end
 % TIME TABLE MASTER
 if ~exist('time_table_master','var') ||  isempty(params.exp)
     if params.loadparams
-        d = dir(fullfile(params.infofolder,'time_table_master2*.mat'));
+        d = dir(fullfile(params.infofolder,'time_table_master_complete*.mat'));
         if ~isempty(d)
-            load(fullfile(d(end).folder,d(end).name),'time_table_master','all_subj_run_frames');
+            load(fullfile(d(end).folder,d(end).name),'time_table_master','all_run_frames');
         end
     end
     
@@ -173,10 +170,10 @@ if ~exist('scan','var') || ~isfield(scan,'exp_im') || isempty(scan.exp_im)
     if params.loadstimfromrunfile
         
         % Images are in the format of:
-        % subj001_ses01_run01_images_PPROOM_EIZOFLEXSCAN_20250505T184109.mat
-        d = dir(fullfile(params.infofolder,sprintf('subj%03d',params.subjID),  ...
-            sprintf('subj%03d_ses%02d_run%02d_images_%s_*.mat', ...
-            params.subjID, params.sesID, params.runnum, params.disp.name)));
+        % subj001_ses01_A_run01_images_PPROOM_EIZOFLEXSCAN_20250505T184109.mat
+        d = dir(fullfile(params.infofolder,sprintf('subj%03d',params.subj_nr),  ...
+            sprintf('subj%03d_ses%02d_%s_run%02d_images_%s_*.mat', ...
+            params.subj_nr, params.ses_nr, choose(params.ses_type==1,'A','B'), params.run_nr, params.disp.name)));
         a = load(fullfile(d(end).folder,d(end).name));
         images = a.images;
         masks = a.masks;
@@ -185,17 +182,19 @@ if ~exist('scan','var') || ~isfield(scan,'exp_im') || isempty(scan.exp_im)
     else
         
         [images, masks] = vcd_getImageOrderSingleRun(params, ...
-            time_table_master, all_subj_run_frames, params.subjID, params.sesID, params.runnum, ...
-            'store_params', false,'session_type', session_type);
+            time_table_master, all_run_frames, params.subj_nr, params.ses_nr, params.ses_type, params.run_nr, ...
+            'store_params', false,'session_env', session_env);
     end
     
-    subj_run_frames = all_subj_run_frames{params.subjID, params.sesID, params.runnum};
-    subj_run_table = time_table_master(time_table_master.subj_nr==params.subjID ...
-        & time_table_master.session_nr==params.sesID ...
-        & time_table_master.run_nr==params.runnum,:);
+    run_frames = all_run_frames(all_run_frames.session_nr == params.ses_nr & ...
+                                all_run_frames.session_type == params.ses_type & ...
+                            all_run_frames.run_nr ==params.run_nr,:);
+    run_table = time_table_master(time_table_master.session_nr==params.ses_nr ... 
+        & time_table_master.session_type==params.ses_type ... 
+        & time_table_master.run_nr==params.run_nr,:);
     
-    stim.im = images{params.subjID, params.sesID, params.runnum};
-    stim.masks = masks{params.subjID, params.sesID, params.runnum};
+    stim.im    = images;
+    stim.masks = masks;
     clear images masks
     
 end
@@ -226,7 +225,7 @@ if ~exist('scan','var') || ~isfield(scan, 'rects') || isempty(scan.rects)
     
     for nn = 1:size(stim.im,1)
         
-        if ismember(subj_run_frames.frame_event_nr(nn), [params.exp.block.stim_epoch1_ID, params.exp.block.stim_epoch2_ID, ...
+        if ismember(run_frames.frame_event_nr(nn), [params.exp.block.stim_epoch1_ID, params.exp.block.stim_epoch2_ID, ...
                 params.exp.block.eye_gaze_fix_ID,params.exp.block.eye_gaze_pupil_ID,  params.exp.block.eye_gaze_sac_target_ID])
             
             numSides = find(~cellfun(@isempty, stim.im(nn,:)));
@@ -235,46 +234,46 @@ if ~exist('scan','var') || ~isfield(scan, 'rects') || isempty(scan.rects)
                 
                 for side = numSides
                     
-                    if ismember(subj_run_frames.frame_im_nr(nn,side), [params.stim.gabor.unique_im_nrs_core,params.stim.gabor.unique_im_nrs_wm_test])
+                    if ismember(run_frames.frame_im_nr(nn,side), [params.stim.gabor.unique_im_nrs_core,params.stim.gabor.unique_im_nrs_wm_test])
                         centers{nn,side} = [params.stim.gabor.x0_pix(side) + params.stim.xc, ... % x-coord (pixels)
                             params.stim.gabor.y0_pix(side) + params.stim.yc]; % y-coord (pixels)
                         
-                    elseif ismember(subj_run_frames.frame_im_nr(nn,side), [params.stim.rdk.unique_im_nrs_core,params.stim.rdk.unique_im_nrs_wm_test])
+                    elseif ismember(run_frames.frame_im_nr(nn,side), [params.stim.rdk.unique_im_nrs_core,params.stim.rdk.unique_im_nrs_wm_test])
                         centers{nn,side} = [params.stim.rdk.x0_pix(side) + params.stim.xc, ...
                             params.stim.rdk.y0_pix(side) + params.stim.yc];
                         
-                    elseif ismember(subj_run_frames.frame_im_nr(nn,side), [params.stim.dot.unique_im_nrs_core,params.stim.dot.unique_im_nrs_wm_test])
+                    elseif ismember(run_frames.frame_im_nr(nn,side), [params.stim.dot.unique_im_nrs_core,params.stim.dot.unique_im_nrs_wm_test])
                         
                         % deal with dot pol2cart
-                        if ismember(subj_run_frames.frame_im_nr(nn,side), params.stim.dot.unique_im_nrs_wm_test)
+                        if ismember(run_frames.frame_im_nr(nn,side), params.stim.dot.unique_im_nrs_wm_test)
                             test_im2D  = reshape(params.stim.dot.unique_im_nrs_wm_test,4,[]);
-                            [~,test_im_idx] = ismember(subj_run_frames.frame_im_nr(nn,side), test_im2D);
+                            [~,test_im_idx] = ismember(run_frames.frame_im_nr(nn,side), test_im2D);
                             [x,y] = ind2sub([size(test_im2D,1),size(test_im2D,2)],test_im_idx);
                             
                             dot_x = params.stim.dot.x0_pix_delta(x,y);
                             dot_y = params.stim.dot.y0_pix_delta(x,y);
                             
-                        elseif ismember(subj_run_frames.frame_im_nr(nn,side), params.stim.dot.unique_im_nrs_core)
-                            [~,core_im_idx] = ismember(subj_run_frames.frame_im_nr(nn,side), params.stim.dot.unique_im_nrs_core);
+                        elseif ismember(run_frames.frame_im_nr(nn,side), params.stim.dot.unique_im_nrs_core)
+                            [~,core_im_idx] = ismember(run_frames.frame_im_nr(nn,side), params.stim.dot.unique_im_nrs_core);
                             dot_x = params.stim.dot.x0_pix(core_im_idx);
                             dot_y = params.stim.dot.y0_pix(core_im_idx);
                         end
                         
                         centers{nn,side} = [dot_x + params.stim.xc, dot_y + params.stim.yc];
                         
-                    elseif ismember(subj_run_frames.frame_im_nr(nn,side), [params.stim.obj.unique_im_nrs_core,params.stim.obj.unique_im_nrs_wm_test])
+                    elseif ismember(run_frames.frame_im_nr(nn,side), [params.stim.obj.unique_im_nrs_core,params.stim.obj.unique_im_nrs_wm_test])
                         centers{nn,side} = [params.stim.obj.x0_pix(side) + params.stim.xc, ...
                             params.stim.obj.y0_pix(side) + params.stim.yc];
                         
-                    elseif ismember(subj_run_frames.frame_im_nr(nn,side), ...
+                    elseif ismember(run_frames.frame_im_nr(nn,side), ...
                             [params.stim.ns.unique_im_nrs_core,params.stim.ns.unique_im_nrs_wm_test,params.stim.ns.unique_im_nrs_wm_test,params.stim.ns.unique_im_nrs_ltm_lures])
                         centers{nn,side} = [params.stim.ns.x0_pix + params.stim.xc, params.stim.ns.y0_pix + params.stim.yc];
                     
-                    elseif isnan(subj_run_frames.frame_im_nr(nn,side)) || (subj_run_frames.frame_im_nr(nn,side)==0)
+                    elseif isnan(run_frames.frame_im_nr(nn,side)) || (run_frames.frame_im_nr(nn,side)==0)
                         centers{nn,side} = [NaN, NaN];
                     end
                     
-                    if isnan(subj_run_frames.frame_im_nr(nn,side))
+                    if isnan(run_frames.frame_im_nr(nn,side))
                         apsize{nn,side}  = [NaN, NaN];
                     else
                         % apsize 1: image width (pixels), apsize 2: image height (pixels)
@@ -327,18 +326,17 @@ stim.rects = cell(size(stim.centers));
 stim.rects(nonemptycenters,:) = rects_shortlist;
 
 %% Accumulate stimulus idx
-im_IDs     = NaN(length(subj_run_frames.frame_im_nr),1);
+im_IDs     = NaN(length(run_frames.frame_im_nr),1);
 empty_rows = find(~cellfun(@isempty, stim.im(:,1)));
 
 for mm = 1:length(empty_rows)
     
-    if subj_run_frames.frame_im_nr(empty_rows(mm),:)~=[0,0]
-%         im_frame = empty_rows(mm);
+    if run_frames.frame_im_nr(empty_rows(mm),:)~=[0,0]
         im_IDs(empty_rows(mm):(empty_rows(mm)+params.stim.gabor.duration-1)) = empty_rows(mm);
     end
 end
 
-subj_run_frames.im_IDs = im_IDs; clear im_IDs im_cnt empty_rows
+run_frames.im_IDs = im_IDs; clear im_IDs im_cnt empty_rows
 
 %% %%%%%%%%%%%%% BACKGROUND IM %%%%%%%%%%%%%
 %  BACKGROUND: 4D array: [x,y, 3, num images]
@@ -354,7 +352,7 @@ subj_run_frames.im_IDs = im_IDs; clear im_IDs im_cnt empty_rows
 if ~exist('bckground','var') || isempty(bckground)
     d = dir(fullfile(params.stimfolder,params.disp.name, sprintf('bckgrnd_%s*.mat',params.disp.name)));
     a = load(fullfile(d(end).folder, d(end).name),'bckgrnd_im');
-    bckground = a.bckgrnd_im(:,:,:,params.runnum);
+    bckground = a.bckgrnd_im(:,:,:,params.run_nr);
     clear a d
 end
 
@@ -414,7 +412,7 @@ if ~exist(introscript,'file')
     error('[%s]: Can''t find instructions text file!',mfilename')
 end
 
-taskIDs = unique(subj_run_table.block_ID);
+taskIDs = unique(run_table.crossing_nr);
 taskIDs = taskIDs(~isnan(taskIDs));
 taskIDs = taskIDs(taskIDs~=0);
 taskIDs = taskIDs(taskIDs~=999);
@@ -445,7 +443,7 @@ if params.wanteyetracking
     tfunEYE     = @() Eyelink('Message','SYNCTIME');
     
     if ~isfield(params,'eyelinkfile') || isempty(params.eyelinkfile)
-        params.eyelinkfile = fullfile(params.savedatadir,sprintf('eye_%s_vcd_subj-%s_run-%d.edf',datestr(now,30),params.subjID,params.runnum));
+        params.eyelinkfile = fullfile(params.savedatadir,sprintf('eye_%s_vcd_subj-%s_run-%d.edf',datestr(now,30),params.subj_nr,params.run_nr));
     end
 else
     tfunEYE = @() fprintf('EXP STARTS.\n');
@@ -550,7 +548,7 @@ if params.wanteyetracking && ~isempty(params.eyelinkfile)
     
     % Send preamble to EDF header
     preamble = sprintf('add_file_preamble_text ''VCD experiment @ CMRR %s, subject %03d, session %03d, run: %02d.''', ...
-        params.disp.name, params.subjID, params.sesID, params.runnum);
+        params.disp.name, params.subj_nr, params.ses_nr, params.run_nr);
     Eyelink('command', preamble);
     
     % Do calibration & validation!
@@ -579,8 +577,8 @@ timeofshowstimcall = datestr(now,30);
     bckground, ...
     fix_im, ...
     stim, ...
-    subj_run_frames, ...
-    subj_run_table, ...
+    run_frames, ...
+    run_table, ...
     introscript, ...
     taskscript, ...
     tfunEYE, ...
@@ -619,7 +617,7 @@ end
 if isempty(params.savedatadir)
     params.savedatadir = fullfile(vcd_rootPath,'data', ...
         sprintf('%s_vcd_subj%d_ses%02d',...
-        timeofshowstimcall,params.subjID, params.sesID));
+        timeofshowstimcall,params.subj_nr, params.ses_nr));
 end
 
 if ~exist('params.savedatadir','dir'), mkdir(params.savedatadir); end
@@ -627,7 +625,7 @@ if ~exist('params.savedatadir','dir'), mkdir(params.savedatadir); end
 % Create filename where behavioral and timing data will be stored
 if ~isfield(params,'behaviorfile') || isempty(params.behaviorfile)
     params.behaviorfile = sprintf('%s_vcd_subj%d_ses%02d_run%02d.mat', ...
-        timeofshowstimcall,params.subjID,params.sesID,params.runnum);
+        timeofshowstimcall,params.subj_nr,params.ses_nr,params.run_nr);
 end
 
 % figure out names of all variables except 'stim', 'fix', and
@@ -640,10 +638,11 @@ vars = vars(cellfun(@(x) ~isequal(x,'fix_im','bckground','stim'),vars));
 % Save data (button presses, params, etc)
 save(fullfile(params.savedatadir,params.behaviorfile),vars{:}, '-v7.3');
 
+
 % check the timing
 if getoutearly == 0 %if we completed the experiment
     fprintf('Experiment duration was %4.3f.\n',data.timing.endtime);
-    slack = [-0.0004, 0.0004];
+    slack = [-0.0004, 0.0004]; % (seconds) as much as we allow PTB SyncTime to vary
     expectedduration = (length(data.timing.timeframes)/params.disp.refresh_hz) + slack;
     if data.timing.endtime > expectedduration(1) && data.timing.endtime < expectedduration(2)
         fprintf('Timing was ok and within [%d - %d] sec slack\n',slack(1),slack(2));
@@ -651,14 +650,14 @@ if getoutearly == 0 %if we completed the experiment
         fprintf('ERROR !!! Timing was OFF!!! Difference between expected and recorded is %3.2f seconds\n', expectedduration-data.timing.endtime);
     end
     
-    deltatime = []; badkey = []; deltatimeBAD = []; wanthide = [];
-    [keytimes,badtimes,keybuttons] = ptviewmoviecheck(data.timing.timeframes,data.timekeys,deltatime,badkey,deltatimeBAD,wanthide)
-    
+    % Visualize timing
+    vcd_checkMonitorTiming(data)
+   
     if exist(fullfile(params.savedatadir,params.behaviorfile),'file')
         d = dir(fullfile(vcd_rootPath,'tmp_data*.mat'));
         if ~isempty(d)
             delete(fullfile(d(end).folder,d(end).name))
-            fprintf('Deleted tmp file because behavioral file was stored.');
+            fprintf('Deleted tmp file because we stored the complete behavioral file.');
         end
     end
     

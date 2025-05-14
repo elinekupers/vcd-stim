@@ -61,10 +61,10 @@ if ~strcmp(unique(conds_master.task_class_name),{'fix'})
     if ismember(unique(conds_master.task_class_name),{'img','ltm'})  
 
         % double the nr of trials for imagery, but not catch trials, given that we only selected a subset
-        left_cued    = [shuffle_concat(left_cued(ismember(left_cued,find(conds_master.is_in_img_ltm)))', 2)'; left_cued(ismember(left_cued,find(conds_master.is_catch)))];
-        left_uncued  = [shuffle_concat(left_uncued(ismember(left_uncued,find(conds_master.is_in_img_ltm)))', 2)'; left_uncued(ismember(left_uncued,find(conds_master.is_catch)))];
-        right_cued   = [shuffle_concat(right_cued(ismember(right_cued,find(conds_master.is_in_img_ltm)))', 2)'; right_cued(ismember(right_cued,find(conds_master.is_catch)))];
-        right_uncued = [shuffle_concat(right_uncued(ismember(right_uncued,find(conds_master.is_in_img_ltm)))', 2)';right_uncued(ismember(right_uncued,find(conds_master.is_catch)))];
+        left_cued    = [shuffle_concat(left_cued(ismember(left_cued,find(conds_master.is_special_core)))', 2)'; left_cued(ismember(left_cued,find(conds_master.is_catch)))];
+        left_uncued  = [shuffle_concat(left_uncued(ismember(left_uncued,find(conds_master.is_special_core)))', 2)'; left_uncued(ismember(left_uncued,find(conds_master.is_catch)))];
+        right_cued   = [shuffle_concat(right_cued(ismember(right_cued,find(conds_master.is_special_core)))', 2)'; right_cued(ismember(right_cued,find(conds_master.is_catch)))];
+        right_uncued = [shuffle_concat(right_uncued(ismember(right_uncued,find(conds_master.is_special_core)))', 2)';right_uncued(ismember(right_uncued,find(conds_master.is_catch)))];
 
         % update trial vec and trial vec idx 
         trial_vec_i = NaN(length(left_cued)*2,2);

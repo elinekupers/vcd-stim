@@ -62,7 +62,7 @@ else
 end
 
 % Get stimulus parameters
-params.load_params                 = true; % load stored params
+params.load_params                 = false; % load stored params or recreate them
 params.store_params                = true;
 
 % SETUP RNG
@@ -100,7 +100,6 @@ params.verbose = false;
             vcd_createBlocksAndTrials(params,'load_params', params.load_params, ...
                                           'store_params', params.store_params, ...
                                           'session_type', session_type);
-params.trials =  condition_master;
 
 %% Create/Load miniblocks into runs and sessions, shuffle blocks within a run for each subject's run
 % !!WARNING!! There is a randomization component involved in creating the
@@ -111,7 +110,7 @@ params.trials =  condition_master;
 % * vcd_allocateBlocksToRuns
 % * vcd_createRunTimeTables
 % * vcd_addFIXandCDtoTimeTableMaster
-[params,time_table_master] = vcd_createSessions(params,'load_params',  false, ...params.load_params, ...
+[params,time_table_master] = vcd_createSessions(params,'load_params',  params.load_params, ...
                                                        'store_params', params.store_params, ...
                                                        'session_type', session_type);
 
