@@ -85,11 +85,11 @@ end
 
 %% create eyetracking targets
 et_rect = rect; et_texture = {};
-for sac = 1:size(images.eye.sac_im,4)
-    et_texture{sac} = Screen('MakeTexture',win,images.eye.sac_im(:,:,:,sac));
+for sac = 1:size(stim.im.eye.sac_im,4)
+    et_texture{sac} = Screen('MakeTexture',win,stim.im.eye.sac_im(:,:,:,sac));
 end
-et_texture{size(images.eye.sac_im,4)+1} = Screen('MakeTexture',win,images.eye.pupil_im_white);
-et_texture{size(images.eye.sac_im,4)+1} = Screen('MakeTexture',win,images.eye.pupil_im_black);
+et_texture{size(stim.im.eye.sac_im,4)+1} = Screen('MakeTexture',win,stim.im.eye.pupil_im_white);
+et_texture{size(stim.im.eye.sac_im,4)+1} = Screen('MakeTexture',win,stim.im.eye.pupil_im_black);
 
 %% Prepare background and fixation texture vector outside the flip loop
 
@@ -304,7 +304,7 @@ for frame = 1:size(frameorder,2)+1 % we add 1 to log end
         % 99 : exp_session.block.IBI_ID
         
         % Draw background + thin or thick fix dot on top
-        case {0, 90, 93, 94, 95, 96, 98, 99}
+        case {0, 90, 93, 94, 95, 96, 98, 99, 990, 991, 992, 993, 994, 995, 996, 997}
             % draw background and dot textures
             Screen('DrawTextures',win,cell2mat(im_tex{frame}),[],im_rect{frame}',[0;0],[],[1;1],framecolor{frame}');
             
