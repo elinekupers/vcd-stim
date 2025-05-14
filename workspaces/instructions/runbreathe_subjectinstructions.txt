@@ -1,0 +1,12 @@
+When the word "BREATHE" appears,
+breathe normally and rest.
+
+When the word "HOLD" appears,
+take a breath and hold it.
+
+This run will alternate between BREATHE and
+HOLD every 24 seconds.
+
+The run is 4.4 minutes.
+
+Waiting for scanner...

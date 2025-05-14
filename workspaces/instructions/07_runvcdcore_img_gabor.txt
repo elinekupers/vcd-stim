@@ -1,0 +1,6 @@
+Imagery task - Gabors
+Imagine the prompted Gabor for entire delay period.
+Do test dots align with imagined tilt?
+
+1-INDEX  = YES
+2-MIDDLE = NO

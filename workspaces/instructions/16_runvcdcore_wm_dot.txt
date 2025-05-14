@@ -1,0 +1,6 @@
+Position memory task - Single dots
+Remember position of reference dot for entire delay period.
+How did position of test dot change?
+
+1-INDEX  = CCW
+2-MIDDLE = CW

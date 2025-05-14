@@ -1,0 +1,5 @@
+Contrast change task - Single dots
+Did image change contrast?
+
+1-INDEX  = YES
+2-MIDDLE = NO

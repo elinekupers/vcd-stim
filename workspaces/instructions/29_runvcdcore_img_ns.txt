@@ -1,0 +1,6 @@
+Imagery task - Scenes 
+Imagine the prompted scene for entire delay period.
+Are both dots within the same object in imagined scene?
+
+1-INDEX  = YES
+2-MIDDLE = NO

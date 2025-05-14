@@ -1,0 +1,5 @@
+Tilt task - Gabors
+Is tilt of Gabor closer to horizontal or vertical?
+
+1-INDEX  = HORIZONTAL
+2-MIDDLE = VERTICAL

@@ -1,0 +1,7 @@
+Categorization task
+What is the image?
+
+1-INDEX  = GABOR
+2-MIDDLE = SINGLE DOT
+3-RING   = MOVING DOTS
+4-PINKY  = OBJECT

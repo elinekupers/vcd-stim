@@ -7,8 +7,9 @@
 workspaces/*
 !workspaces/info/
 workspaces/info/*
-!workspaces/info/trials_*.mat
-workspaces/instructions/*
+!workspaces/info/time_table_master_complete_*.mat
+!workspaces/info/*.csv
+!workspaces/instructions/
 workspaces/stimuli/*
 figs/*
 data/*

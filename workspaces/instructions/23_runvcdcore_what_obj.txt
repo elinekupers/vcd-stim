@@ -1,0 +1,7 @@
+"What?" task - Objects
+What is the object?
+
+1-INDEX  = HUMAN
+2-MIDDLE = ANIMAL
+3-RING   = OBJECT/FOOD
+4-PINKY  = PLACE/BUILDING

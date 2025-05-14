@@ -1,0 +1,7 @@
+"How?" task - Scenes 
+How would you act in this scene?
+
+1-INDEX  = GREET
+2-MIDDLE = GRASP
+3-RING   = WALK
+4-PINKY  = OBSERVE/DO NOTHING

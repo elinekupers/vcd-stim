@@ -1,0 +1,6 @@
+Imagery task - Moving dots
+Imagine the prompted moving dots for entire delay period.
+Do test dots align with imagined motion direction?
+
+1-INDEX  = YES
+2-MIDDLE = NO

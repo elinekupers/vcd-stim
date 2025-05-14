@@ -1,0 +1,5 @@
+Dot position task - Single dots
+Is position of dot closer to horizontal or vertical?
+
+1-INDEX  = HORIZONTAL
+2-MIDDLE = VERTICAL

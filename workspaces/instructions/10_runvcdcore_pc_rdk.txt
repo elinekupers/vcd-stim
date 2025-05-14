@@ -1,0 +1,5 @@
+Motion direction task - Moving dots
+Is direction of moving dots closer to horizontal or vertical?
+
+1-INDEX  = HORIZONTAL
+2-MIDDLE = VERTICAL
