@@ -226,7 +226,7 @@ if ~exist('scan','var') || ~isfield(scan, 'rects') || isempty(scan.rects)
     for nn = 1:size(stim.im,1)
         
         if ismember(run_frames.frame_event_nr(nn), [params.exp.block.stim_epoch1_ID, params.exp.block.stim_epoch2_ID, ...
-                params.exp.block.eye_gaze_fix_ID,params.exp.block.eye_gaze_pupil_ID,  params.exp.block.eye_gaze_sac_target_ID])
+                params.exp.block.eye_gaze_fix_ID,params.exp.block.eye_gaze_pupil_white_ID, params.exp.block.eye_gaze_pupil_black_ID, params.exp.block.eye_gaze_sac_target_ID])
             
             numSides = find(~cellfun(@isempty, stim.im(nn,:)));
             
