@@ -189,37 +189,37 @@ for nn = 1:size(run_frames.frame_event_nr,1)
 
         case {990,991}
             im_tex{nn}  = et_texture{1};
-            im_rect{nn} = et_rext;
+            im_rect{nn} = et_rect;
             framecolor{nn} = 255*ones(1,3);
             
         case 992
             im_tex{nn}  = et_texture{2};
-            im_rect{nn} = et_rext;
+            im_rect{nn} = et_rect;
             framecolor{nn} = 255*ones(1,3);
             
         case 993
             im_tex{nn}  = et_texture{3};
-            im_rect{nn} = et_rext;
+            im_rect{nn} = et_rect;
             framecolor{nn} = 255*ones(1,3);
             
         case 994
             im_tex{nn}  = et_texture{4};
-            im_rect{nn} = et_rext;
+            im_rect{nn} = et_rect;
             framecolor{nn} = 255*ones(1,3);
             
         case 995
             im_tex{nn}  = et_texture{5};
-            im_rect{nn} = et_rext;
+            im_rect{nn} = et_rect;
             framecolor{nn} = 255*ones(1,3);
             
         case 996
             im_tex{nn}  = et_texture{6};
-            im_rect{nn} = et_rext;
+            im_rect{nn} = et_rect;
             framecolor{nn} = 255*ones(1,3);
                         
         case 997
             im_tex{nn}  = et_texture{7};
-            im_rect{nn} = et_rext;
+            im_rect{nn} = et_rect;
             framecolor{nn} = 255*ones(1,3);
             
         case {91, 92}
