@@ -6,12 +6,12 @@ function outputs = vcd(varargin)
 %   outputs = vcd('varname1',var1,'varname2',var2, ...'varnameN',varN);
 %
 % Note that 'fullinfo', 'stimulusnumberstonames', and
-% 'stimulusnamestonumbers' requires the condition_master table. This
+% 'stimulusnamestonumbers' requires the time_table_master table. This
 % variable is stored here: 
 %   vcd_rootPath/workspaces/info/trials_7TASBOLDSCREEN_YYYYMMDDTHHMMSS.mat.
 % You can re-generate a new trials_*.mat file by running (see also
 % s_createDesignMatrix.m.):
-% [~, condition_master] = vcd_createBlocksAndTrials(params, ...
+% [~, time_table_master] = vcd_createBlocksAndTrials(params, ...
 %   'load_params', false, 'store_params', true);
 % 
 % Abbreviations for stimulus classes are: 
@@ -32,6 +32,15 @@ function outputs = vcd(varargin)
 %   8:'what'  - "What?" task
 %   9:'where' - "Where?" task
 %   10:'how'  - "How?" task
+% 
+% Any stimulus used in VCD has its own unique integer number between 1-1550.
+% Each stimulus has also a fixed spatial location: either left or right 
+% (for gabors, RDKs, single dots, and objects) or center (for NS). 
+% Note that <stimulus numbers> are different from <conditon numbers>.
+% Condition numbers refers to the stimulus with a particular cueing state
+% 'CUED' = 
+% 'UNCUED', 'NCUED'
+% and under a task
 %
 % Possible inputs:
 % 'stimulusclassnames'    : Provide all stimulus class names (use []),
@@ -117,7 +126,7 @@ function outputs = vcd(varargin)
 %                           preserve the order specified by the user's
 %                           input (or ascending if input is {}).
 % 'stimulusnumberstonames' : Provide stimulus name(s) associated with 
-%                           given image number(s). Stimulus number should
+%                           given stimulus number(s). Stimulus number should
 %                           be an integral number and range between 1-1550.
 %                           Input can be a single number or a vector. Input
 %                           cannot be an empty array.
@@ -127,9 +136,9 @@ function outputs = vcd(varargin)
 %                           Note that for stimclassname: "gabor" is
 %                           shortened to "GBR". Output will preserve the
 %                           order specified by the user's input(s).
-% 'stimulusnamestonumbers' : Provide stimulus numbers(s) associated with
-%                           stimulus name(s). Input stimulus name(s) should
-%                           be a string in the format:
+% 'stimulusnamestonumbers' : Provide unique stimulus numbers(s) associated 
+%                           with stimulus name(s). Input stimulus name(s) 
+%                           should be a string in the format:
 %                           <stimclassname>-<stimnumber>-<stimlocation>,
 %                           and can also be cell array of strings. Note
 %                           that for stimclassname: "gabor" is shortened to
@@ -177,6 +186,37 @@ function outputs = vcd(varargin)
 %                           2:'cd',3:'scc',4:'pc',5:'wm',6:'ltm',7:'img',
 %                           8:'what', 9:'where',10:'how'. Output will
 %                           preserve the order specified by the user's
+%                           input(s).
+% 'conditionnametonumber' : Get the corresponding condition number for a
+%                           given condition name. Condition names should be
+%                           char (or a cell with list of char names) in the 
+%                           format: 
+%                           <stimclassname>-<stimnumber>-<stimlocation>-<cuestate>-<taskclassname>
+%                           Output is a vector of integers, preserving the
+%                           order specified by the user's input(s). The
+%                           first three components use a similar format as
+%                           described for "stimulus name", where the
+%                           <stimclassname> is either: 'GBR, 'RDK', 'DOT',
+%                           'OBJ', 'NS', or 'ALL' (latter is for 'SCC' and
+%                           'LTM' task classes only). 
+%                           <stimnumber> is an integer between 1-1550.  
+%                           <stimlocation> is either: 'L' for left,'R' for
+%                           right, 'C' for central (NS only), or 'X' (catch
+%                           trial, no stimulus).
+%                           <cuestate> is either: 'CUED','UNCUED','NCUED', 
+%                           for trials with stimuli. If trial is a catch, 
+%                           then there are blanks for stimuli and the 
+%                           cuestate refers to the location that is cued: 
+%                           'LCUED', 'RCUED', 'NCUED'   
+%                           <taskclassname> can be 'FIX, 'CD','SCC','PC',
+%                           'WM','LTM','IMG','WHAT','WHERE','HOW'. 
+% 'conditionnumbertoname' : Get the corresponding condition name for a
+%                           given condition number. Condition numbers should
+%                           be integral ranging from 1-1200. Output is a 
+%                           char (or a cell with list of char names) in the 
+%                           format: 
+%                           <stimclassname>-<stimnumber>-<stimlocation>-<cuestate>-<taskclassname>
+%                           and preserves the order specified by the user's 
 %                           input(s).
 % 'allcore'               : Provide all core stimulus number(s) for one (or
 %                           more) stimulus class(es). Input names should be
@@ -240,7 +280,8 @@ function outputs = vcd(varargin)
 % vcd('fullinfo',35) 
 % vcd('stimulusclassname',[3 2 2 2 1],'taskclassnames',[1 5 3 2 2 2 1]) 
 % vcd('stimulusnumberstonames',[10])
-% vcd('stimulusnumberstonames',[900, 451])
+% vcd('conditionnumbertoname',[3, 400])
+% vcd('conditionnametonumber',{'GBR-0023-L-UNCUED-PC', 'NS-0082-C-NCUED-WHERE'})
 %
 % Written by Eline Kupers @ UMN 2025/04
 
@@ -256,6 +297,7 @@ p0 = inputParser;
 f_stimclassname = @(x) all(ismember(lower(x), exp.stimclassnames));
 f_taskclassname = @(x) all(ismember(lower(x), exp.taskclassnames));
 f_crossname     = @(x) all(ismember(lower(x), exp.crossingnames));
+f_conditionname = @(x) all(vcd_conditionName2Number(x)~=0);
 
 % General
 p0.addParameter('verbose'               , true, @islogical);  
@@ -279,7 +321,11 @@ p0.addParameter('stimtostimclassname'   , [], @(x) isstimnr(x));
 p0.addParameter('stimtostimclassnumber' , [], @(x) isstimnr(x));   
 p0.addParameter('stimtotaskclassname'   , [], @(x) isstimnr(x));   
 p0.addParameter('stimtotaskclassnumber' , [], @(x) isstimnr(x));   
-p0.addParameter('fullinfo'              , [], @(x) isstimnr(x));   
+p0.addParameter('fullinfo'              , [], @(x) isstimnr(x)); 
+
+% Condition specific
+p0.addParameter('conditionnumbertoname' , [], @(x) isconditionnr(x));
+p0.addParameter('conditionnametonumber' , [], @(x) f_conditionname(x));
 
 % Test image specific (only for WM, LTM, IMG task crossings)
 p0.addParameter('allwmteststimulusnumbers' , [], @(x) choose_isempty(x) || f_stimclassname(x));   
@@ -311,7 +357,7 @@ if isempty(vcd_info) || ~exist('vcd_info','var')
     d = dir(fullfile(vcd_rootPath,'workspaces','info',sprintf('trials*%s*.mat',displayname)));
     
     if isempty(d)
-        error('[%s]: Can''t find vcd_info! Looking for a file called: "vcd_rootPath/workspaces/info/trials*%s.mat"',mfilename,displayname)
+        error('[%s]: Can''t find vcd_info! Looking for a file called: "vcd_rootPath/workspaces/info/time_table_master_complete*%s.mat"',mfilename,displayname)
     else
         if verbose
         fprintf('[%s]: Found %d vcd info file(s)\n',mfilename,length(d));
@@ -320,7 +366,7 @@ if isempty(vcd_info) || ~exist('vcd_info','var')
             end
             fprintf('[%s]: Loading exp params .mat file: %s\n', mfilename, d(end).name);
         end
-        vcd_info = load(fullfile(d(end).folder,d(end).name),'condition_master');
+        vcd_info = load(fullfile(d(end).folder,d(end).name),'time_table_master');
     end
 end
 
@@ -529,29 +575,29 @@ for ii = 1:2:length(requested_info)
                 % if we deal with a core stimulus
                 if ismember(stim_nr(nn), stim.all_core_im_nrs)  
                     
-                    [~,idx] = ismember(stim_nr(nn),vcd_info.condition_master.stim_nr_left,'legacy');
+                    [~,idx] = ismember(stim_nr(nn),vcd_info.time_table_master.stim_nr_left,'legacy');
                     if idx == 0
-                        [~,idx] = ismember(stim_nr(nn), vcd_info.condition_master.stim_nr_right,'legacy');
+                        [~,idx] = ismember(stim_nr(nn), vcd_info.time_table_master.stim_nr_right,'legacy');
                         im_loc = 2; % right stim
-                        stimnumber = vcd_info.condition_master.stim_nr_right(idx);
+                        stimnumber = vcd_info.time_table_master.stim_nr_right(idx);
                     else
                         im_loc = 1; % left stim
-                        stimnumber = vcd_info.condition_master.stim_nr_left(idx);
+                        stimnumber = vcd_info.time_table_master.stim_nr_left(idx);
                     end
 
                 elseif ismember(stim_nr(nn), stim.all_test_im_nrs)  
                     % find unique stimulus number for test image
-                    [~,idx] = ismember(stim_nr(nn),vcd_info.condition_master.stim2(:,1),'legacy');
+                    [~,idx] = ismember(stim_nr(nn),vcd_info.time_table_master.stim2(:,1),'legacy');
                     if idx == 0
-                        [~,idx] = ismember(stim_nr(nn), vcd_info.condition_master.stim2(:,2),'legacy');
+                        [~,idx] = ismember(stim_nr(nn), vcd_info.time_table_master.stim2(:,2),'legacy');
                         im_loc = 2; % right stim
-                        stimnumber = vcd_info.condition_master.stim_nr_right(idx);
+                        stimnumber = vcd_info.time_table_master.stim_nr_right(idx);
                     else
                         im_loc = 1; % left stim
-                        stimnumber = vcd_info.condition_master.stim_nr_left(idx);
+                        stimnumber = vcd_info.time_table_master.stim_nr_left(idx);
                     end
                 end
-                stimclassname = upper(vcd_info.condition_master.stim_class_name{idx,im_loc});
+                stimclassname = upper(vcd_info.time_table_master.stim_class_name{idx,im_loc});
                 if strcmp(stimclassname,'GABOR')
                     stimclassname = regexprep('GABOR','[AO]','');
                 end
@@ -599,8 +645,8 @@ for ii = 1:2:length(requested_info)
                 end
                
                 % Check position of stimulus
-                [~,idx_l] = ismember(input_stim_nr, vcd_info.condition_master.stim_nr_left,'legacy');
-                [~,idx_r] = ismember(input_stim_nr, vcd_info.condition_master.stim_nr_right,'legacy');
+                [~,idx_l] = ismember(input_stim_nr, vcd_info.time_table_master.stim_nr_left,'legacy');
+                [~,idx_r] = ismember(input_stim_nr, vcd_info.time_table_master.stim_nr_right,'legacy');
                 if (idx_l == 0) && (idx_r > 0) % if right stimulus nr matches
                     true_stim_pos = 'R'; % right stim
                 elseif (idx_l > 0) && (idx_r == 0) % if left stimulus nr matches
@@ -685,9 +731,7 @@ for ii = 1:2:length(requested_info)
         case 'stimtostimclassnumber'
             % translate stimulus number(s) to stimulus class number(s)
             if isnumeric(info_val) % if user provides singleton or vector
-                
                 stim_nr = info_val;
-                
             elseif iscell(info_val)  % convert cell to vector if user provides cell
                 stim_nr = cell2mat(info_val);
             end
@@ -805,9 +849,9 @@ for ii = 1:2:length(requested_info)
                 % if we deal with a core stimulus
                 if ismember(stim_nr(nn), stim.all_core_im_nrs,'legacy')  
                     
-                    [~,idx] = ismember(stim_nr(nn),vcd_info.condition_master.stim_nr_left,'legacy');
+                    [~,idx] = ismember(stim_nr(nn),vcd_info.time_table_master.stim_nr_left,'legacy');
                     if idx == 0
-                        [~,idx] = ismember(stim_nr(nn), vcd_info.condition_master.stim_nr_right,'legacy');
+                        [~,idx] = ismember(stim_nr(nn), vcd_info.time_table_master.stim_nr_right,'legacy');
                         im_loc = 2; % right stim
                     else
                         im_loc = 1; % left stim
@@ -815,9 +859,9 @@ for ii = 1:2:length(requested_info)
 
                 elseif ismember(stim_nr(nn), stim.all_test_im_nrs)  
                     % find unique stim number for test image
-                    [~,idx] = ismember(stim_nr(nn),vcd_info.condition_master.stim2(:,1),'legacy');
+                    [~,idx] = ismember(stim_nr(nn),vcd_info.time_table_master.stim2(:,1),'legacy');
                     if idx == 0
-                        [~,idx] = ismember(stim_nr(nn), vcd_info.condition_master.stim2(:,2),'legacy');
+                        [~,idx] = ismember(stim_nr(nn), vcd_info.time_table_master.stim2(:,2),'legacy');
                         im_loc = 2; % right stim
                     else
                         im_loc = 1; % left stim
@@ -825,7 +869,7 @@ for ii = 1:2:length(requested_info)
                 end
                     
                 % Get stim info (reference first)
-                stim_info = table2struct(vcd_info.condition_master(idx,:));
+                stim_info = table2struct(vcd_info.time_table_master(idx,:));
                 field_sz  = struct2array(structfun(@numel, stim_info, 'UniformOutput', false));
                 fnames = fieldnames(stim_info);
                 for ff = find(field_sz==2)
@@ -874,6 +918,28 @@ for ii = 1:2:length(requested_info)
                 
                 out{nn} = stim_info;
             end
+            
+        case 'conditionnumbertoname'
+            % provide condition number(s) for given condition name(s) 
+            if isnumeric(info_val) % if user provides single integer or vector of integers
+                cond_nr = info_val;
+            elseif iscell(info_val)  % if user provides cell, turn into vector
+                if ischar(info_val{1})
+                    cond_nr = str2double(str2mat(info_val))';
+                else
+                    cond_nr = info_val{:};
+                end
+            end
+           
+            out = vcd_conditionNumber2Name(cond_nr);
+            
+        case 'conditionnametonumber'
+            if ischar(info_val)
+                info_val = {info_val};
+            end 
+            
+            out = vcd_conditionName2Number(info_val);
+            
     end
     
     % Check outputs

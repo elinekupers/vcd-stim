@@ -12,7 +12,11 @@ input_type = class(var_in);
 f_stimnr = @(x) all(x >=1 & x <= 1550);
 
 if strcmp(input_type,'cell')
-    var_in = cell2mat(var_in);
+    if  ischar(var_in{1})
+        var_in = str2double(str2mat(var_in))';
+    else
+        var_in = cell2mat(var_in);
+    end
 elseif strcmp(input_type,'char')    
     var_in = str2num(var_in);
 end
