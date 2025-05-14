@@ -179,10 +179,10 @@ info.basic_cat_name  = cat(1,basic, ... core im
                                 repelem(basic,n_wm_changes));... wm im
 info.basic_cat       = cat(1,basic_i, ... core im
                                 repelem(basic_i,n_wm_changes));... wm im
-info.sub_cat_name    = cat(1,subordinate_i', ... core im
-                                repelem(subordinate_i,n_wm_changes)');... wm im
-info.sub_cat         = cat(1,affordance_i, ... core im
-                                repelem(affordance_i, n_wm_changes)); % wm im
+info.sub_cat_name    = cat(1,subordinate, ... core im
+                                repelem(subordinate,n_wm_changes));... wm im
+info.sub_cat         = cat(1,subordinate_i', ... core im
+                                repelem(subordinate_i', n_wm_changes)); % wm im
 info.affordance_name = cat(1,affordance,repelem(affordance,n_wm_changes)); 
 info.affordance_cat  = cat(1,affordance_i,repelem(affordance_i,n_wm_changes)); 
 info.is_specialcore  = ismember(info.unique_im,params.stim.obj.unique_im_nrs_specialcore);  % is_specialcore (logical)
