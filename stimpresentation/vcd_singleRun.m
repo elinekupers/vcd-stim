@@ -435,8 +435,8 @@ end
 
 taskIDs = unique(run_table.crossing_nr);
 taskIDs = taskIDs(~isnan(taskIDs));
-taskIDs = taskIDs(taskIDs~=0);
-taskIDs = taskIDs(taskIDs~=999);
+taskIDs = taskIDs(taskIDs~=0); % black periods
+taskIDs = taskIDs(taskIDs~=999); % eyetracking block events
 taskNames = params.exp.crossingnames(taskIDs);
 
 for nn = 1:length(taskIDs)

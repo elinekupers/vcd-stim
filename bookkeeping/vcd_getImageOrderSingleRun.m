@@ -122,8 +122,12 @@ run_images      = cell(size(run_frames.frame_im_nr)); % second dim represent lef
 run_alpha_masks = run_images;
 
 % Get stimulus rows in time table
-stim_events = run_table.event_id(ismember(run_table.event_id, [91, 92,990:996]));
-stim_row = find(ismember(run_table.event_id, [91, 92,990:996]));
+stim_events = run_table.event_id(ismember(run_table.event_id, [params.exp.block.stim_epoch1_ID, params.exp.block.stim_epoch2_ID, ...
+                    params.exp.block.eye_gaze_fix_ID, params.exp.block.eye_gaze_sac_target_ID, ...
+                    params.exp.block.eye_gaze_pupil_black_ID, params.exp.block.eye_gaze_pupil_white_ID]));
+stim_row = find(ismember(run_table.event_id, [params.exp.block.stim_epoch1_ID, params.exp.block.stim_epoch2_ID, ...
+                    params.exp.block.eye_gaze_fix_ID, params.exp.block.eye_gaze_sac_target_ID, ...
+                    params.exp.block.eye_gaze_pupil_black_ID, params.exp.block.eye_gaze_pupil_white_ID]));
 
 
 % Loop over all stimulus rows

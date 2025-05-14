@@ -21,7 +21,7 @@ function optimized_ITIs = vcd_optimizeITIs(block_dur, trial_dur, itis, nr_trials
 dur_to_optimize = block_dur - sum(trial_dur*nr_trials);
 
 % Find a distributed combination of possible IBIs
-f = distributewithconstraints(dur_to_optimize,itis,nr_trials-1,0);
+f = distributewithconstraints(dur_to_optimize,itis,nr_trials-1,0, 75);
 
 if isempty(f)
     error('[%s]: Cannot find a combination of ITIs that works!!')

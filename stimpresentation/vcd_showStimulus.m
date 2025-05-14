@@ -120,7 +120,7 @@ for nn = 1:size(run_frames.frame_event_nr,1)
         fix_tex(nn)  = fix_texture_thin_full(lum_idx);
         fix_rect(nn) = fix.fix_thin_rect;   
     else
-        if eventID==95
+        if eventID==92 % SPATIAL CUE
             if run_frames.is_cued(nn)==1
                 fix_tex(nn)  = fix_texture_thick_left(lum_idx);
                 fix_rect(nn) = fix.fix_thick_rect;
@@ -131,35 +131,39 @@ for nn = 1:size(run_frames.frame_event_nr,1)
                 fix_tex(nn)  = fix_texture_thick_both(lum_idx);
                 fix_rect(nn) = fix.fix_thick_rect;
             end
-        elseif ismember(eventID,[90,91,92,93,94,96,97])
+        elseif ismember(eventID,[90]) % TASK CUE -- no fixation circle!
+            fix_tex(nn)  = [];
+            fix_rect(nn) = [];
+        elseif ismember(eventID,[91,93,94,95,96,97,98]) % ALL TRIAL EVENTS + ITI
             fix_tex(nn)  = fix_texture_thick_full(lum_idx);
             fix_rect(nn) = fix.fix_thick_rect;
-        elseif ismember(eventID,[98,99])
+        elseif ismember(eventID,99) % IBI
             fix_tex(nn)  = fix_texture_thin_full(lum_idx);
             fix_rect(nn) = fix.fix_thin_rect;
-        elseif (eventID > 0) || (eventID < 90)
+        elseif (eventID > 0) || (eventID < 90) % STIMULUS EVENTS
             fix_tex(nn) = fix_texture_thick_full(lum_idx);
             fix_rect(nn) = fix.fix_thick_rect;
-        elseif eventID > 990 % eyetracking target (TODO: implement actual targets)
-            fix_tex(nn) = fix_texture_thin_full(lum_idx);
-            fix_rect(nn) = fix.fix_thin_rect;
+        elseif eventID > 990 % eyetracking targets / pupil displays
+            fix_tex(nn) = [];
+            fix_rect(nn) = [];
         end
     end
     
     switch eventID
         
-%     exp.block.stim_epoch1_ID        = 91; % generic stim ID
-%     exp.block.stim_epoch2_ID        = 92; % generic stim ID
-%     exp.block.response_ID           = 93; % Time for subject to respond
-%     exp.block.trial_start_ID        = 94; % Fixation dot thickening
-%     exp.block.spatial_cue_ID        = 95; % Fixation dot turning black on L/R/both sides
-%     exp.block.delay_ID              = 96; % Delay period between two stimulus epochs
-%     exp.block.task_cue_ID           = 97; % Text on display to instruct subject
-%     exp.block.ITI_ID                = 98; % Inter-trial interval
-%     exp.block.IBI_ID                = 99; % Inter-block interval
+%     params.exp.block.task_cue_ID           = 90; % Text on display to instruct subject
+%     params.exp.block.post_task_cue_ITI_ID  = 91; % THICK dot rim (white)
+%     params.exp.block.spatial_cue_ID        = 92; % Fixation dot turning black on L/R/both sides  
+%     params.exp.block.pre_stim_blank_ID     = 93; % Blank period in between trial events
+%     params.exp.block.stim_epoch1_ID        = 94; % Stim onset (1st interval)
+%     params.exp.block.stim_epoch2_ID        = 95; % Stim onset (2nd interval after delay)
+%     params.exp.block.delay_ID              = 96; % Delay period between two stimulus epochs
+%     params.exp.block.response_ID           = 97; % Time for subject to respond
+%     params.exp.block.ITI_ID                = 98; % Inter-trial interval
+%     params.exp.block.IBI_ID                = 99; % Inter-block interval
         
         % Draw background + fix dot on top
-        case {0, 90, 93, 94, 95, 96, 98, 99}
+        case {0, 91, 92, 93, 94, 95, 96, 97, 98, 99}
             
             % DrawTextures
             % * TexturePointers  need to be: n vector (where n is the number of textures)
@@ -169,66 +173,57 @@ for nn = 1:size(run_frames.frame_event_nr,1)
             im_rect{nn} = cat(1, bckground_rect, fix_rect{nn});
             framecolor{nn} = 255*ones(2,3); % <framecolor> can also be size(<frameorder>,2) x 1 with values in [0,1] indicating an alpha change.
             
-        case 97 % task_cue_ID
             
-            script = taskscript{~cellfun(@isempty, regexp(taskscript,sprintf('%02d',run_frames.crossingIDs(nn)),'match'))};
+        case 90 % task_cue_ID
+            
+            script = taskscript{~cellfun(@isempty, ...
+                regexp(taskscript,sprintf('%02d',run_frames.crossingIDs(nn)),'match'))};
             [task_instr, task_rect] = vcd_getInstructionText(params, script, rect);
             
-            im_tex{nn}  = cat(1, bckrgound_texture, fix_tex(nn));
-            im_rect{nn} = cat(1, bckground_rect, fix_rect{nn});
+            im_tex{nn}  = bckrgound_texture;
+            im_rect{nn} = bckground_rect;
             
-            txt_tex{nn} = task_instr;
+            txt_tex{nn}  = task_instr;
             txt_rect{nn} = task_rect;
             
-            framecolor{nn} = 255*ones(2,3); % <framecolor> can also be size(<frameorder>,2) x 1 with values in [0,1] indicating an alpha change.
-        
-        % Draw background with eyetracking target
-        % eye_gaze_fix_ID         = 990; % fixation target
-        % eye_gaze_sac_target_ID  = 991:995; % central, left, right, up, down.
-        % eye_gaze_pupil_ID       = 996; % white then black
+            framecolor{nn} = 255*ones(1,3); % <framecolor> can also be size(<frameorder>,2) x 1 with values in [0,1] indicating an alpha change.
 
-        case {990,991}
+        % Draw background with eyetracking target
+        case {990,991} % eye_gaze_fix_ID = 990.991; % central fixation "rest" and "target"
             im_tex{nn}  = et_texture{1};
             im_rect{nn} = et_rect;
             framecolor{nn} = 255*ones(1,3);
             
-        case 992
+        case 992 % eye_gaze_sac_target_ID  = left
             im_tex{nn}  = et_texture{2};
             im_rect{nn} = et_rect;
             framecolor{nn} = 255*ones(1,3);
             
-        case 993
+        case 993 % eye_gaze_sac_target_ID  = right
             im_tex{nn}  = et_texture{3};
             im_rect{nn} = et_rect;
             framecolor{nn} = 255*ones(1,3);
             
-        case 994
+        case 994 % eye_gaze_sac_target_ID  = up
             im_tex{nn}  = et_texture{4};
             im_rect{nn} = et_rect;
             framecolor{nn} = 255*ones(1,3);
             
-        case 995
+        case 995 % eye_gaze_sac_target_ID  = down
             im_tex{nn}  = et_texture{5};
             im_rect{nn} = et_rect;
             framecolor{nn} = 255*ones(1,3);
             
-        case 996
+        case 996 % eye_gaze_pupil_ID is black
             im_tex{nn}  = et_texture{6};
             im_rect{nn} = et_rect;
             framecolor{nn} = 255*ones(1,3);
-                        
-        case 997
+                         
+        case 997 % eye_gaze_pupil_ID is white
             im_tex{nn}  = et_texture{7};
             im_rect{nn} = et_rect;
             framecolor{nn} = 255*ones(1,3);
             
-        case {91, 92}
-            if run_frames.is_catch(nn) % treat catch trials as delays
-                im_tex{nn} = cat(1, bckrgound_texture, fix_tex{nn});
-                im_rect{nn} = cat(1, bckground_rect, fix_rect{nn});
-                framecolor{nn} = 255*ones(2,3);
-            end
-      
     end
 end
 
@@ -239,7 +234,7 @@ clear frame;
 
 % Draw background + dot
 % windowPointer, texturePointer(s), [sourceRect], destRects, rotAngles, filterModes, globalAlphas, modulateColors, textureShader, specialFlags, auxParameters]);
-Screen('DrawTextures',win, im_tex{1},[], im_rect{1}',[], [0;0], [1;1], framecolor{1}');
+Screen('DrawTexture',win, bckrgound_texture,[], bckground_rect,[], 0, 1, 255*ones(1,3));
     
 % Draw text
 DrawFormattedText(win, instrtext, 'center', (prerun_text_rect(4)/2)-50, 0, 75,[],[],[],[],prerun_text_rect);
@@ -296,33 +291,36 @@ for frame = 1:size(frameorder,2)+1 % we add 1 to log end
     switch run_frames.frame_event_nr(framecnt)
         
         % 0  : pre/post blank
-        % 93 : exp_session.block.response_ID
-        % 94 : exp_session.block.trial_start_ID
-        % 95 : exp_session.block.spatial_cue_ID
-        % 96 : exp_session.block.delay_ID
-        % 97 : exp_session.block.task_cue_ID
-        % 98 : exp_session.block.ITI_ID
-        % 99 : exp_session.block.IBI_ID
+        % 90 : task_cue       
+        % 91 : post_task_cue_ITI
+        % 92 : spatial_cue
+        % 93 : pre_stim_blank
+        % 94 : stim_epoch1
+        % 95 : stim_epoch2
+        % 96 : delay
+        % 97 : response
+        % 98 : ITI
+        % 99 : IBI 
         
         % Draw ET targets on grey/white/black background
         case {990, 991, 992, 993, 994, 995, 996, 997}
             Screen('DrawTexture',win,im_tex{frame},[],im_rect{frame},0,[],1,framecolor{frame});
 
-        % Draw background + thin or thick fix dot on top
-        case {0, 90, 93, 94, 95, 96, 98, 99}
+        % Draw background + fix circle (thin or thick) on top
+        case {0, 91, 92, 93, 96, 97, 98, 99}
             % draw background and dot textures
             Screen('DrawTextures',win,cell2mat(im_tex{frame}),[],im_rect{frame}',[0;0],[],[1;1],framecolor{frame}');
             
-        case 97 % task_cue_ID
+        case 90 % task_cue_ID
             
             % draw background and left/right cuing dot textures
-            Screen('DrawTextures',win, cell2mat(im_tex{frame}),[],im_rect{frame}',[0;0],[],[1;1],framecolor{frame}');
+            Screen('DrawTexture',win, im_tex{frame},[],im_rect{frame},0,[],1,framecolor{frame});
             
             % draw text
             % inputs are winptr, tstring, sx, sy, color, wrapat, flipHorizontal, flipVertical, vSpacing, righttoleft, winRect)
             DrawFormattedText(win, txt_tex{frame}, 'center', (txt_rect{frame}(4)/2)-25,0,75,[],[],[],[],txt_rect{frame});
             
-        case {91,92} % stim IDs
+        case {94, 95} % stim IDs
             % Draw stimulus textures
             Screen('DrawTexture',win, bckrgound_texture,[], bckground_rect, 0, [], 1, 255*ones(1,3));...
         

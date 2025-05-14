@@ -195,7 +195,8 @@ else
                 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                 
                 % available run images should match the stimulus events
-                assert(isequal(sum(ismember(subj_run.event_id(~subj_run.is_catch), [91, 92])), size(run_images,1)))
+                assert(isequal(sum(ismember(subj_run.event_id(~subj_run.is_catch), ...
+                    [params.exp.block.stim_epoch1_ID, params.exp.block.stim_epoch2_ID])), size(run_images,1)))
                 
                 % create a larger cell where each row is a frame
                 total_nr_frames    = subj_run.event_end(end);
@@ -209,8 +210,14 @@ else
                 jj = 1;
                 frame_counter = 2;
                 
-                stim_events = subj_run.event_id(ismember(subj_run.event_id, [91, 92,990:996]));
-                stim_row = find(ismember(subj_run.event_id, [91, 92,990:996]));
+                stim_events = subj_run.event_id(ismember(subj_run.event_id, ...
+                    [params.exp.block.stim_epoch1_ID, params.exp.block.stim_epoch2_ID, ...
+                    params.exp.block.eye_gaze_fix_ID, params.exp.block.eye_gaze_sac_target_ID, ...
+                    params.exp.block.eye_gaze_pupil_black_ID, params.exp.block.eye_gaze_pupil_white_ID]));
+                stim_row = find(ismember(subj_run.event_id, ...
+                    [params.exp.block.stim_epoch1_ID, params.exp.block.stim_epoch2_ID, ...
+                    params.exp.block.eye_gaze_fix_ID, params.exp.block.eye_gaze_sac_target_ID, ...
+                    params.exp.block.eye_gaze_pupil_black_ID, params.exp.block.eye_gaze_pupil_white_ID]));
                 subj_run.fix_lum   = cell(size(subj_run,1),1);
                 subj_run.fix_start = cell(size(subj_run,1),1);
                 
@@ -227,8 +234,9 @@ else
                     curr_frames = frame_counter:(frame_counter+nframes-1);
                     run.frame_event_nr(curr_frames,:) = stim_events(ii);
                     
-                    % EYETRACKING TARGETS: 990 = center circle, 991:995 = saccade targets, 996 = pupil
-                    if ismember(stim_events(ii),[990:996])
+                    % EYETRACKING TARGETS: 990 = center circle, 991:995 = saccade targets, 996:997 = pupil
+                    if ismember(stim_events(ii),[params.exp.block.eye_gaze_fix_ID, params.exp.block.eye_gaze_sac_target_ID, ...
+                    params.exp.block.eye_gaze_pupil_black_ID, params.exp.block.eye_gaze_pupil_white_ID])
                         
                         %% TODO
                         % ADD EYETRACKING IMAGES
@@ -237,7 +245,7 @@ else
                         run.frame_im_nr(curr_frames,1) = NaN;
                         
                         % STIMULI:  91 = Stim interval 1, 92 = Stim interval 2,
-                    elseif (stim_events(ii) == 91 ||stim_events(ii) == 92)
+                    elseif (stim_events(ii) == params.exp.block.stim_epoch1_ID ||stim_events(ii) == params.exp.block.stim_epoch2_ID)
                         
                         if ~subj_run.is_catch(stim_row(ii))
                             

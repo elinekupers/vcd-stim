@@ -38,7 +38,7 @@ end
     
 % Find a distributed combination of possible IBIs
 % inputrs: totalamt,validoptions,numbins,mode,numlookback
-f = distributewithconstraints(dur_to_optimize,ibis,nr_blocks-1,0);
+f = distributewithconstraints(dur_to_optimize,ibis,nr_blocks-1,0, 100);
 
 if isempty(f)
     error('[%s]: Cannot find a combination of IBIs that works!!')

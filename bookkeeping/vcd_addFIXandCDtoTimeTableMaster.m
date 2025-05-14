@@ -116,7 +116,9 @@ for ses = 1:length(session_nrs)
                 run_frames.is_catch = logical(all_catch); clear all_catch;
                 run_frames.crossingIDs = single(all_crossings); clear all_crossings
                 
-                stim_idx    = ismember(this_run.event_id, [91, 92,990:997]);
+                stim_idx    = ismember(this_run.event_id, [params.exp.block.stim_epoch1_ID, params.exp.block.stim_epoch2_ID, ...
+                    params.exp.block.eye_gaze_fix_ID, params.exp.block.eye_gaze_sac_target_ID, ...
+                    params.exp.block.eye_gaze_pupil_black_ID, params.exp.block.eye_gaze_pupil_white_ID]);
                 stim_events = this_run.event_id(stim_idx);
                 stim_row    = find(stim_idx);
                 
@@ -161,8 +163,8 @@ for ses = 1:length(session_nrs)
                     end
 
                     % ADD CD in frames
-                    % only for STIMULI:  91 = Stim interval 1, 92 = Stim interval 2,
-                    if (stim_events(ii) == 91 ||stim_events(ii) == 92)
+                    % only for STIMULI:  94 = Stim interval 1, 95 = Stim interval 2,
+                    if (stim_events(ii) == params.exp.block.stim_epoch1_ID ||stim_events(ii) == params.exp.block.stim_epoch2_ID)
                         
                         % NOT A CATCH TRIAL
                         if ~this_run.is_catch(stim_row(ii))
@@ -204,11 +206,7 @@ for ses = 1:length(session_nrs)
                     [~,fix_block_frames] = ismember(this_run.block_nr,fix_block_nrs); % 40 trial events per block
                     fix_block_change_direction = run_frames.fix_correct_response(fix_update_idx); % 1=brighter, 2=dimmer
                     fix_block_abs_lum = run_frames.fix_abs_lum(fix_update_idx); %
-                    
-                    % nr of block frames should be exactly 1 or more single-stim presentation
-                    % block duration
-                    %                     assert(isequal(mod((max(this_run.event_end(fix_block_frames>0))-min(this_run.event_start(fix_block_frames>0)))+1,params.exp.block.total_single_epoch_dur),0))
-                    % get all the frames for the entire run
+                   
                    
                     % find those frames where the fixation circle updated
                     time_frames_fix_updated = all_frames(fix_update_idx);
@@ -219,29 +217,6 @@ for ses = 1:length(session_nrs)
                         this_run.nr_of_fix_changes(t_tbl) = this_run.nr_of_fix_changes(t_tbl) + 1;
                     end
                     
-%                     for ff_block = 1:length(fix_block_nrs)
-%                         fix_events2 = (fix_block_frames==ff_block);
-%                         % get start and end time frames for fixation block from time table master
-%                         fix_block_start_end = [min(this_run.event_start(fix_events2)),  max(this_run.event_end(fix_events2))];
-%                         % see what fix block frames overlap with frames where the fixation circle changed
-%                         fix_block_changes_idx = ((time_frames_fix_updated >= fix_block_start_end(1)) & (time_frames_fix_updated <= fix_block_start_end(2)));
-%                         fix_block_changes_times = time_frames_fix_updated(fix_block_changes_idx);
-%                         fix_block_changes_correct_response = fix_block_change_direction(fix_block_changes_idx);
-%                         
-%                         for ff = 1:length(fix_block_changes_correct_response)
-%                             t_fix = fix_block_changes_times(ff);
-%                             t_response = fix_block_changes_correct_response(ff);
-%                             
-%                             t_tbl = find((this_run.event_start <= t_fix) & (this_run.event_end >= t_fix));
-%                             if ~isempty(t_tbl)
-%                                 if isnan(this_run.correct_response{t_tbl})
-%                                     this_run.correct_response{t_tbl} = t_response; % replace nan with correct response
-%                                 else
-%                                     this_run.correct_response{t_tbl} = cat(2, this_run.correct_response{t_tbl}, t_response); % or we add the second response
-%                                 end
-%                             end
-%                         end
-%                     end
                 end
                 
                 % add timing

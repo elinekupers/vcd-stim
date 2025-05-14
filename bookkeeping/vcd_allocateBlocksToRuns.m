@@ -281,15 +281,18 @@ for ses = 1:size(all_sessions,3)
             
             %% SHUFFLE RUN AND BLOCK ORDER WITHIN RUNS
             
-            block_vec      = condition_master.block_nr;
-            trialtype_vec  = condition_master.trial_type;
-            ses_idx        = (condition_master.session_nr==ses);
-            ses_sub        = find(ses_idx);
-            ses_blocks     = block_vec(ses_idx);
-            ses_trialtype  = trialtype_vec(ses_idx);
+            block_vec        = condition_master.block_nr;
+            trialtype_vec    = condition_master.trial_type;
+            crossing_vec     = condition_master.crossing_nr;
+            ses_idx          = (condition_master.session_nr==ses);
+            ses_sub          = find(ses_idx);
+            ses_blocks       = block_vec(ses_idx);
+            ses_trialtype    = trialtype_vec(ses_idx);
+            ses_crossing_vec = crossing_vec(ses_idx);
             
             % get unique block nrs and associated trial types
             [unique_blocks, ia] = unique(ses_blocks);
+            crossings_unique_blocks  = ses_crossing_vec(ia);
             unique_trialtypes = ses_trialtype(ia);
             n_trialtype1 = sum(unique_trialtypes==1); % single
             n_trialtype2 = sum(unique_trialtypes==2); % double
@@ -309,7 +312,7 @@ for ses = 1:size(all_sessions,3)
             block_type_allocation  = [params.exp.run.run_type1,params.exp.run.run_type2,params.exp.run.run_type3,params.exp.run.run_type4];
             ses_run_types          = [runtype1(ses,st),runtype2(ses,st),runtype3(ses,st),runtype4(ses,st)];
             nr_blocks_per_run_type = ses_run_types * block_type_allocation';
-            
+
             assert(isequal(unique_blocks,[1:length(unique_blocks)]'))
             if strcmp(session_type,'MRI')
                 if ses==27
@@ -336,14 +339,52 @@ for ses = 1:size(all_sessions,3)
             % separate single and double stim blocks:
             s_blocks = unique_blocks(find(unique_trialtypes==1));
             d_blocks = unique_blocks(find(unique_trialtypes==2));
-            
-            
+
             assert(isequal(length(s_blocks)+length(d_blocks),length(unique_blocks)))
             
             % Shuffle block order within a session
-            s_blocks_shuffled = s_blocks(randperm(length(s_blocks),length(s_blocks)));
-            d_blocks_shuffled = d_blocks(randperm(length(d_blocks),length(d_blocks)));
+            while 1
+                s_blocks_shuffled = s_blocks(randperm(length(s_blocks),length(s_blocks)));
+                d_blocks_shuffled = d_blocks(randperm(length(d_blocks),length(d_blocks)));
+                
+                shuffled_s_block_crossings = crossings_unique_blocks(s_blocks_shuffled);
+                shuffled_d_block_crossings = crossings_unique_blocks(d_blocks_shuffled);
+                
+                for nn = 1:4:length(shuffled_s_block_crossings)
+                    if (nn+3) <= length(shuffled_s_block_crossings)
+                        tmp_blocks = shuffled_s_block_crossings(nn:(nn+3));
+                        
+                        if length(unique(tmp_blocks)) >= 4
+                            shuffle_ok = true;
+                        else
+                            shuffle_ok = false;
+                            break;
+                        end
+                    end
+                end
+                
+                if shuffle_ok
+                    for nn = 1:4:length(shuffled_d_block_crossings)
+                        if (nn+3) <= length(shuffled_d_block_crossings)
+                            tmp_blocks = shuffled_s_block_crossings(nn:(nn+3));
+                            
+                            if length(unique(tmp_blocks)) >= 2
+                                shuffle_ok = true;
+                            else
+                                shuffle_ok = false;
+                                break;
+                            end
+                        end
+                    end
+                end
+                
+                if shuffle_ok,
+                    break;
+                end
+            end
+                    
             
+            % reset counters
             bb_s = 0; bb_d = 0;
             
             % Double check if we have at least two double-epoch trial types per run
