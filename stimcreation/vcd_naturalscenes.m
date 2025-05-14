@@ -343,7 +343,7 @@ if params.verbose
         axis image; box off
         set(gca,'CLim',[1 255]);
         if params.stim.store_imgs
-            saveFigDir2 = fullfile(vcd_rootPath,'figs',params.disp.name,'ns','visual_checks','resized');
+            saveFigDir2 = fullfile(vcd_rootPath,'figs',params.disp.name,'ns','resized');
             if ~exist(saveFigDir2,'dir'), mkdir(saveFigDir2); end
             imwrite(scenes(:,:,:,ss,tt,uu), fullfile(saveFigDir2, sprintf('%04d_vcd_ns%02d.png', im_nr(ii), ii)));
         end
@@ -451,7 +451,7 @@ if any(strcmp(params.disp.name, {'7TAS_BOLDSCREEN32', 'PPROOM_EIZOFLEXSCAN'})) &
         axis image; box off
         set(gca,'CLim',[1 255]);
         if params.stim.store_imgs
-            saveFigDir2 = fullfile(vcd_rootPath,'figs',params.disp.name,'ns','visual_checks','resized_and_squared');
+            saveFigDir2 = fullfile(vcd_rootPath,'figs',params.disp.name,'ns','resized_and_squared');
             if ~exist(saveFigDir2,'dir'), mkdir(saveFigDir2); end
             imwrite(scenes(:,:,:,ss,tt,uu), fullfile(saveFigDir2, sprintf('%04d_vcd_ns%02d.png',im_nr(ii), ii)));
         end
@@ -494,7 +494,7 @@ if params.stim.store_imgs
     fprintf('[%]: Storing images',mfilename);
     saveDir = fileparts(fullfile(params.stim.ns.stimfile));
     if ~exist(saveDir,'dir'), mkdir(saveDir); end
-    save(fullfile(sprintf('%s_%s_%s.mat',params.stim.ns.stimfile,params.disp.name,datestr(now,30))),'scenes','ltm_lures','wm_im','info','-v7.3');
+    save(fullfile(sprintf('%s_%s.mat',params.stim.ns.stimfile,datestr(now,30))),'scenes','ltm_lures','wm_im','info','-v7.3');
     
     saveDir = fileparts(fullfile(params.stim.ns.infofile));
     if ~exist(saveDir,'dir'), mkdir(saveDir); end
