@@ -120,6 +120,10 @@ bckgrnd_im  = vcd_pinknoisebackground(params, ...
                                      'num', num, ...
                                      'pixoffset', [0,0]); 
 
+%% Eyetracking targets
+
+vcd_createEyeTrackingBlockTargets(params)
+                                 
 %% Fixation circle
 % vcd_fixationDot function creates 25 types of fixation circles, the full
 % crossing between 5 inner circle luminance levels and 5 rim types. 

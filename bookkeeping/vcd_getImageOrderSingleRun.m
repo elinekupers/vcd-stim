@@ -73,7 +73,7 @@ end
 % create the field names of the images struct
 if isempty(images) || isempty(fieldnames(images))
     images = struct('gabor',[],'rdk',[],'dot',[],'obj',[],'ns',[],...
-        'fix',[], 'info',[], 'image_order',[],'alpha',[]);
+        'fix',[], 'info',[], 'eye',[],'alpha',[]);
 else
     % If we provided images, then add it to params struct
     % !!! WARNING that this will override the existing params.images field!)
@@ -94,7 +94,18 @@ if ~isfield(images,'fix') || isempty(images.fix)
     images.alpha.fix = mask; clear mask;
 end
 
-
+% Load stored fixation dot images if needed
+if ~isfield(images,'eye') || isempty(images.eye)
+    fprintf('[%s]: Loading eyetracking target images..\n',mfilename);
+    
+    % FIX: 5D array: [x,y, 3, 5 lum, 2 widths]
+    d = dir(sprintf('%s*.mat', params.stim.el.stimfile));
+    a = load(fullfile(d(end).folder,d(end).name), 'sac_im','pupil_im_white','pupil_im_black');
+    images.eye.sac_im    = a.sac_im; 
+    images.eye.pupil_im_white  = a.pupil_im_white;
+    images.eye.pupil_im_black = a.pupil_im_black;
+    clear a d;
+end
 
 
 % Get subject time table from master table

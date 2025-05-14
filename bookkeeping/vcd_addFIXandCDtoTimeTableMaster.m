@@ -116,7 +116,7 @@ for ses = 1:length(session_nrs)
                 run_frames.is_catch = logical(all_catch); clear all_catch;
                 run_frames.crossingIDs = single(all_crossings); clear all_crossings
                 
-                stim_idx    = ismember(this_run.event_id, [91, 92,990:996]);
+                stim_idx    = ismember(this_run.event_id, [91, 92,990:997]);
                 stim_events = this_run.event_id(stim_idx);
                 stim_row    = find(stim_idx);
                 

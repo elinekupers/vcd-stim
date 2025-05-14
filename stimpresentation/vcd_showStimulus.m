@@ -83,6 +83,14 @@ for ll = 1:size(fix.fix_thin_full,2) % loop over luminance values
     fix_texture_thick_both{ll}  = Screen('MakeTexture',win,fix.fix_thick_both{ll});
 end
 
+%% create eyetracking targets
+et_rect = rect; et_texture = {};
+for sac = 1:size(images.eye.sac_im,4)
+    et_texture{sac} = Screen('MakeTexture',win,images.eye.sac_im(:,:,:,sac));
+end
+et_texture{size(images.eye.sac_im,4)+1} = Screen('MakeTexture',win,images.eye.pupil_im_white);
+et_texture{size(images.eye.sac_im,4)+1} = Screen('MakeTexture',win,images.eye.pupil_im_black);
+
 %% Prepare background and fixation texture vector outside the flip loop
 
 fix_tex    = cell(length(stim.im),1);
@@ -174,11 +182,44 @@ for nn = 1:size(subj_run_frames.frame_event_nr,1)
             framecolor{nn} = 255*ones(2,3); % <framecolor> can also be size(<frameorder>,2) x 1 with values in [0,1] indicating an alpha change.
         
         % Draw background with eyetracking target
-        case {990, 991, 992, 993, 994, 995, 996}
-            im_tex{nn} = cat(1, bckrgound_texture, fix_tex{nn});
-            im_rect{nn} = cat(1, bckground_rect, fix_rect{nn});
-            framecolor{nn} = 255*ones(2,3);
+        % eye_gaze_fix_ID         = 990; % fixation target
+        % eye_gaze_sac_target_ID  = 991:995; % central, left, right, up, down.
+        % eye_gaze_pupil_ID       = 996; % white then black
+
+        case {990,991}
+            im_tex{nn}  = et_texture{1};
+            im_rect{nn} = et_rext;
+            framecolor{nn} = 255*ones(1,3);
             
+        case 992
+            im_tex{nn}  = et_texture{2};
+            im_rect{nn} = et_rext;
+            framecolor{nn} = 255*ones(1,3);
+            
+        case 993
+            im_tex{nn}  = et_texture{3};
+            im_rect{nn} = et_rext;
+            framecolor{nn} = 255*ones(1,3);
+            
+        case 994
+            im_tex{nn}  = et_texture{4};
+            im_rect{nn} = et_rext;
+            framecolor{nn} = 255*ones(1,3);
+            
+        case 995
+            im_tex{nn}  = et_texture{5};
+            im_rect{nn} = et_rext;
+            framecolor{nn} = 255*ones(1,3);
+            
+        case 996
+            im_tex{nn}  = et_texture{6};
+            im_rect{nn} = et_rext;
+            framecolor{nn} = 255*ones(1,3);
+                        
+        case 997
+            im_tex{nn}  = et_texture{7};
+            im_rect{nn} = et_rext;
+            framecolor{nn} = 255*ones(1,3);
             
         case {91, 92}
             if subj_run_frames.is_catch(nn) % treat catch trials as delays

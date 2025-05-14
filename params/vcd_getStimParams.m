@@ -233,6 +233,7 @@ else
     % * BOLDscreen: 265 pixels, which corresponds to 3.0059 degrees.
     % * PP room EIZOFLEX: 194 pixels, which corresponds to 3.0139 degrees.
     % See vcd_setEyelinkParams.m for other parameters regarding Eyelink.
+    stim.el.stimfile = fullfile(vcd_rootPath,'workspaces','stimuli',disp_params.name,sprintf('eye_%s',disp_params.name)); % mat file
     stim.el.point2point_distance_deg = 3.0;                                % desired target distance (in deg) from fixation 
     stim.el.point2point_distance_pix = round((stim.el.point2point_distance_deg*disp_params.ppd/2))*2; % desired target distance in pixels
     stim.el.total_target_diam_pix    = stim.fix.dotthickborderdiam_pix;    % same as thick fixation circle (22 pixels for BOLDscreen)

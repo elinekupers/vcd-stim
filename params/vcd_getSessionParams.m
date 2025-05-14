@@ -186,15 +186,20 @@ else
     exp.block.eye_gaze_fix0       = presentationrate_hz * 1.0; % start with 1 second fixation period
     exp.block.eye_gaze_sac_target = presentationrate_hz * 1.2; % then 5x1.2 = 6 seconds of saccades (mimicing EL HV5 grid,±3 deg in all directions)
     exp.block.eye_gaze_fix1       = presentationrate_hz * 2.0; % then a 2-seconds rest trial
-    exp.block.eye_gaze_pupil      = presentationrate_hz .* [3.0,1.0]; % then a 4-seconds pupil trial: 3-s black adaptation, 1-s white screen to evoke max pupil response.
+    exp.block.eye_gaze_pupil_black = presentationrate_hz .* 3.0; % then a 4-seconds pupil trial: 3-s black adaptation, 1-s white screen to evoke max pupil response.
+    exp.block.eye_gaze_pupil_white = presentationrate_hz .* 1.0; % then a 4-seconds pupil trial: 3-s black adaptation, 1-s white screen to evoke max pupil response.
+    exp.block.eye_gaze_fix2        = presentationrate_hz * 4.0; % end with 4 second fixation period
     exp.block.total_eyetracking_block_dur = sum([exp.block.eye_gaze_fix0, ...
                                                         exp.block.eye_gaze_sac_target*exp.block.nr_of_saccades, ...
                                                         exp.block.eye_gaze_fix1, ...
-                                                        exp.block.eye_gaze_pupil]);
+                                                        exp.block.eye_gaze_pupil_black,...
+                                                        exp.block.eye_gaze_pupil_white, ...
+                                                        exp.block.eye_gaze_fix2]);
     
     exp.block.eye_gaze_fix_ID         = 990;
     exp.block.eye_gaze_sac_target_ID  = 991:995; % central, left, right, up, down.
-    exp.block.eye_gaze_pupil_ID       = 996;
+    exp.block.eye_gaze_pupil_black_ID = 996;
+    exp.block.eye_gaze_pupil_white_ID = 997;
     
     exp.run.actual_task_dur_MRI      = exp.run.total_run_dur_MRI - exp.block.total_eyetracking_block_dur - exp.run.pre_blank_dur_MRI - exp.run.post_blank_dur_MRI; % nr of presentation frames we actually spend doing the experiment
     exp.run.actual_task_dur_BEHAVIOR = exp.run.total_run_dur_BEHAVIOR - exp.block.total_eyetracking_block_dur - exp.run.pre_blank_dur_BEHAVIOR - exp.run.post_blank_dur_BEHAVIOR; % nr of presentation frames we actually spend doing the experiment

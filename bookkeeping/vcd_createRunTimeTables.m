@@ -302,34 +302,83 @@ for ses = 1:size(all_sessions,3)
                     % update time table idx
                     table_idx = table_idx+1;
                     
-                    % Add pupil trial (3s black, 1s white)
-                    for ppl = 1:length(params.exp.block.eye_gaze_pupil)
-                        
-                        time_table.run_nr(table_idx)         = rr;
-                        time_table.session_nr(table_idx)     = ses;
-                        time_table.session_type(table_idx)   = st;
-                        time_table.crossing_nr(table_idx)       = 999;
-                        time_table.global_trial_nr(table_idx)   = et_global_trial_nr;
-                        time_table.global_block_nr(table_idx)   = et_global_block_nr;
-                        time_table.global_session_nr(table_idx) = t_trial.global_session_nr(1);
-                        time_table.block_nr(table_idx)       = 999;
-                        time_table.trial_nr(table_idx) = params.exp.block.nr_of_saccades+2+ppl;
-                        time_table.stim_class(table_idx)      = NaN;
-                        time_table.task_class(table_idx)      = NaN;
-                        time_table.event_start(table_idx)    = total_run_frames;
-                        time_table.event_dur(table_idx)      = params.exp.block.eye_gaze_pupil(ppl);
-                        time_table.event_end(table_idx)      = time_table.event_start(table_idx) + time_table.event_dur(table_idx)-1;
-                        time_table.event_id(table_idx)       = params.exp.block.eye_gaze_pupil_ID;
-                        time_table.event_name(table_idx)     = {['et_pupil' num2str(ppl)]};
-                        
-                        total_run_frames = time_table.event_end(table_idx) + 1;
-                        
-                        % update time table idx
-                        table_idx = table_idx+1;
-                        
-                        et_global_trial_nr = et_global_trial_nr+1;
-                        et_global_block_nr = et_global_block_nr+1;
-                    end
+                    % Add pupil trial (3s black)
+                    time_table.run_nr(table_idx)         = rr;
+                    time_table.session_nr(table_idx)     = ses;
+                    time_table.session_type(table_idx)   = st;
+                    time_table.crossing_nr(table_idx)       = 999;
+                    time_table.global_trial_nr(table_idx)   = et_global_trial_nr;
+                    time_table.global_block_nr(table_idx)   = et_global_block_nr;
+                    time_table.global_session_nr(table_idx) = t_trial.global_session_nr(1);
+                    time_table.block_nr(table_idx)          = 999;
+                    time_table.trial_nr(table_idx)          = params.exp.block.nr_of_saccades+3;
+                    time_table.stim_class(table_idx)       = NaN;
+                    time_table.task_class(table_idx)       = NaN;
+                    time_table.event_start(table_idx)    = total_run_frames;
+                    time_table.event_dur(table_idx)      = params.exp.block.eye_gaze_pupil_black;
+                    time_table.event_end(table_idx)      = time_table.event_start(table_idx) + time_table.event_dur(table_idx)-1;
+                    time_table.event_id(table_idx)       = params.exp.block.eye_gaze_pupil_black_ID;
+                    time_table.event_name(table_idx)     = {'et_pupil_black'};
+                    
+                    total_run_frames = time_table.event_end(table_idx) + 1;
+                    
+                    % update time table idx
+                    table_idx = table_idx+1;
+                    
+                    et_global_trial_nr = et_global_trial_nr+1;
+                    
+                    % Add pupil trial (1s white)
+                    time_table.run_nr(table_idx)         = rr;
+                    time_table.session_nr(table_idx)     = ses;
+                    time_table.session_type(table_idx)   = st;
+                    time_table.crossing_nr(table_idx)       = 999;
+                    time_table.global_trial_nr(table_idx)   = et_global_trial_nr;
+                    time_table.global_block_nr(table_idx)   = et_global_block_nr;
+                    time_table.global_session_nr(table_idx) = t_trial.global_session_nr(1);
+                    time_table.block_nr(table_idx)       = 999;
+                    time_table.trial_nr(table_idx)          = params.exp.block.nr_of_saccades+4;
+                    time_table.stim_class(table_idx)      = NaN;
+                    time_table.task_class(table_idx)      = NaN;
+                    time_table.event_start(table_idx)    = total_run_frames;
+                    time_table.event_dur(table_idx)      = params.exp.block.eye_gaze_pupil_white;
+                    time_table.event_end(table_idx)      = time_table.event_start(table_idx) + time_table.event_dur(table_idx)-1;
+                    time_table.event_id(table_idx)       = params.exp.block.eye_gaze_pupil_white_ID;
+                    time_table.event_name(table_idx)     = {'et_pupil_white'};
+                    
+                    total_run_frames = time_table.event_end(table_idx) + 1;
+                    
+                    % update time table idx
+                    table_idx = table_idx+1;
+                    
+                    et_global_trial_nr = et_global_trial_nr+1;
+                    
+                    % Add final rest period (3s gray)
+                    time_table.run_nr(table_idx)         = rr;
+                    time_table.session_nr(table_idx)     = ses;
+                    time_table.session_type(table_idx)   = st;
+                    time_table.crossing_nr(table_idx)       = 999;
+                    time_table.global_trial_nr(table_idx)   = et_global_trial_nr;
+                    time_table.global_block_nr(table_idx)   = et_global_block_nr;
+                    time_table.global_session_nr(table_idx) = t_trial.global_session_nr(1);
+                    time_table.block_nr(table_idx)          = 999;
+                    time_table.trial_nr(table_idx)          = params.exp.block.nr_of_saccades+5;
+                    time_table.stim_class(table_idx)      = NaN;
+                    time_table.task_class(table_idx)      = NaN;
+                    time_table.event_start(table_idx)    = total_run_frames;
+                    time_table.event_dur(table_idx)      = params.exp.block.eye_gaze_fix2;
+                    time_table.event_end(table_idx)      = time_table.event_start(table_idx) + time_table.event_dur(table_idx)-1;
+                    time_table.event_id(table_idx)       = params.exp.block.eye_gaze_fix_ID;
+                    time_table.event_name(table_idx)     = {'et_fix'};
+                    
+                    total_run_frames = time_table.event_end(table_idx) + 1;
+                    
+                    % update time table idx
+                    table_idx = table_idx+1;
+                    
+                    % update global eyetracking counters
+                    et_global_trial_nr = et_global_trial_nr+1;
+                    et_global_block_nr = et_global_block_nr+1;
+
                     
                     % Add pre-blank period
                     time_table.event_start(table_idx)    = total_run_frames;
