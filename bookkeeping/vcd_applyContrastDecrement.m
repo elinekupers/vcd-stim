@@ -45,12 +45,11 @@ else % Gabors, RDKs, Single dot, Objects
         
         % Get onset of contrast decrement within the
         % stimulus period
-        c_onset(side) = feval(cdsoafun);
-        
+%         c_onset(side) = feval(cdsoafun);
 
         for tt = 1:length(params.stim.cd.t_gauss)
             
-            tmp_im = double(output_im{c_onset(side)+tt-1,side});
+            tmp_im = double(output_im{c_onset+tt-1,side});
             sz0 = size(tmp_im);
             
             % Check if there is an alpha mask in fourth dim
