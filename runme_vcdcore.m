@@ -230,7 +230,7 @@ end
 scan = struct();
 
 %% run experiment
-vcd_singleRun(subj_nr, ses_nr, ses_type, run_nr, ... % mandatory inputs
+[data, params, getoutearly] = vcd_singleRun(subj_nr, ses_nr, ses_type, run_nr, ... % mandatory inputs
     'debugmode',debugmode, ...
     'behaviorfile',behavioralfilename, ... % optional inputs use: 'var',<val>
     'eyelinkfile',eyelinkfilename, ...

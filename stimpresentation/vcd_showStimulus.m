@@ -463,23 +463,23 @@ if getoutearly
     % Save a quick version of the data in case something fails...
     vars = whos;
     vars = {vars.name};
-    vars = vars(cellfun(@(x) ~isequal(x,'stim'),vars));
+    vars = vars(cellfun(@(x) ~isequal(x,'stim','fix_im','fix','eye_im','bckground'),vars));
     save(fullfile(vcd_rootPath,sprintf('tmp_data_%s.mat',datestr(now,30))),vars{:});
 end
  
 
 if ~getoutearly
-   performance = vcd_getBehavioralPerformance(params, data, correct_response);
-   [instrtext, txt_rect, params] = vcd_getMotivationText(params, performance.hitrate);
+%    performance = vcd_getBehavioralPerformance(params, data, subj_run_table.correct_response);
+%    [instrtext, txt_rect, params] = vcd_getMotivationText(params, performance.hitrate);
 
-   % draw background and central fixation dot
-   Screen('DrawTextures',win, cell2mat(im_tex{1}),[],im_rect{1}',[0;0],[],[1;1],framecolor{1}');
-   
-   % draw text
-   % inputs are winptr, tstring, sx, sy, color, wrapat, flipHorizontal, flipVertical, vSpacing, righttoleft, winRect)
-   DrawFormattedText(win, instrtext, 'center', (txt_rect{frame}(4)/2)-25,0,75,[],[],[],[],txt_rect{1});
-   
-   waitSecs(4);
+%    % draw background and central fixation dot
+%    Screen('DrawTextures',win, cell2mat(im_tex{1}),[],im_rect{1}',[0;0],[],[1;1],framecolor{1}');
+%    
+%    % draw text
+%    % inputs are winptr, tstring, sx, sy, color, wrapat, flipHorizontal, flipVertical, vSpacing, righttoleft, winRect)
+%    DrawFormattedText(win, instrtext, 'center', (txt_rect{frame}(4)/2)-25,0,75,[],[],[],[],txt_rect{1});
+%    
+%    waitSecs(4);
 end
 
 

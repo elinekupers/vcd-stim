@@ -1,4 +1,4 @@
-function [] = vcd_singleRun(subj_nr, ses_nr, run_nr, varargin)
+function [data, params, getoutearly] = vcd_singleRun(subj_nr, ses_nr, run_nr, varargin)
 
 
 %% %%%%%%%%%%%%% PARSE INPUTS %%%%%%%%%%%%%
@@ -27,7 +27,8 @@ p.addParameter('movieflip'      , [0 0]     , @isnumeric)                    % w
 p.addParameter('debugmode'      , false     , @islogical)                    % whether to use debug mode (no BOLDscreen, no eyelink)
 p.addParameter('dispName'       , '7TAS_BOLDSCREEN32' , @ischar)             % display params: 7TAS_BOLDSCREEN32, KKOFFICE_AOCQ3277, PPROOM_EIZOFLEXSCAN, 'EKHOME_ASUSVE247'
 p.addParameter('savestim'       , false     , @islogical)                    % whether we want to store temp file with stimuli and timing
-p.addParameter('loadstimfromrunfile', false     , @islogical)                % whether we want to load stim from run file
+p.addParameter('loadstimfromrunfile', false , @islogical)                % whether we want to load stim from run file
+p.addParameter('ptbMaxVBLstd'   , 0.0004    , @isnumeric)                    % what standard deviation for screen flip duration do we allow?
 
 % Parse inputs
 p.parse(subj_nr, ses_nr, run_nr, varargin{:});
@@ -200,7 +201,7 @@ if ~exist('scan','var') || ~isfield(scan,'exp_im') || isempty(scan.exp_im)
 end
 
 %% %%%%%%%%% IMAGE XY CENTER OFFSET
-
+im_IDs = NaN(size(stim.im,1),2);
 if ~exist('scan','var') || ~isfield(scan, 'rects') || isempty(scan.rects)
     
     % recenter x,y-center coordinates if needed
@@ -222,14 +223,13 @@ if ~exist('scan','var') || ~isfield(scan, 'rects') || isempty(scan.rects)
     centers = cell(size(stim.im,1),2);
     apsize  = cell(size(stim.im,1),2);
     
-    
+    stim_frames = (~cellfun(@isempty, stim.im));
     for nn = 1:size(stim.im,1)
         
         if ismember(run_frames.frame_event_nr(nn), [params.exp.block.stim_epoch1_ID, params.exp.block.stim_epoch2_ID, ...
                 params.exp.block.eye_gaze_fix_ID,params.exp.block.eye_gaze_pupil_white_ID, params.exp.block.eye_gaze_pupil_black_ID, params.exp.block.eye_gaze_sac_target_ID])
             
-            numSides = find(~cellfun(@isempty, stim.im(nn,:)));
-            
+            numSides = find(stim_frames(nn,:));
             if ~isempty(numSides)
                 
                 for side = numSides
@@ -259,7 +259,7 @@ if ~exist('scan','var') || ~isfield(scan, 'rects') || isempty(scan.rects)
                             dot_y = params.stim.dot.y0_pix(core_im_idx);
                         end
                         
-                        centers{nn,side} = [dot_x + params.stim.xc, dot_y + params.stim.yc];
+                        centers{nn,side} = [dot_x,dot_y];
                         
                     elseif ismember(run_frames.frame_im_nr(nn,side), [params.stim.obj.unique_im_nrs_core,params.stim.obj.unique_im_nrs_wm_test])
                         centers{nn,side} = [params.stim.obj.x0_pix(side) + params.stim.xc, ...
@@ -288,12 +288,18 @@ if ~exist('scan','var') || ~isfield(scan, 'rects') || isempty(scan.rects)
                         stim.masks{nn,side} = [];
                     end
                     
+                    if ismember(run_frames.frame_im_nr(nn,side), [params.stim.dot.unique_im_nrs_core,params.stim.dot.unique_im_nrs_wm_test])
+                        im_IDs(nn,side) = nn;
+                    else
+                        im_IDs(nn:(nn+120-1),side) = nn;
+                    end 
                 end
             end
         end
     end
 end
 
+run_frames.im_IDs = im_IDs; clear im_ID
 
 stim.centers = centers; clear centers;
 stim.apsize  = apsize; clear apsize;
@@ -325,23 +331,6 @@ end
 stim.rects = cell(size(stim.centers));
 stim.rects(nonemptycenters,:) = rects_shortlist;
 
-%% Accumulate stimulus idx
-im_IDs     = NaN(length(run_frames.frame_im_nr),1);
-empty_rows = cellfun(@isempty, stim.im(:,1));
-non_empty_rows = ~empty_rows;
-empty_rows = find(empty_rows);
-non_empty_rows = find(non_empty_rows);
-
-im_counter = 1;
-for mm = 1:length(non_empty_rows)
-    tmp = run_frames.frame_im_nr(non_empty_rows(mm),:)~=[0,0];
-    if any(tmp)
-        im_IDs(non_empty_rows(mm):(non_empty_rows(mm)+params.stim.gabor.duration-1)) = non_empty_rows(mm);
-    end
-    im_counter = im_counter+1;
-end
-
-run_frames.im_IDs = im_IDs; clear im_IDs im_cnt empty_rows
 
 %% %%%%%%%%%%%%% BACKGROUND IM %%%%%%%%%%%%%
 %  BACKGROUND: 4D array: [x,y, 3, num images]
@@ -528,7 +517,7 @@ if params.wanteyetracking && ~isempty(params.eyelinkfile)
     Eyelink('command','calibration_type = HV5'); % horizontal-vertical 5-points.
     Eyelink('command','generate_default_targets = NO');
     Eyelink('command','calibration_samples  = 5');
-    Eyelink('command','calibration_sequence = 0,1,2,3,4');
+    Eyelink('command','calibration_sequence = 0,1,2,3,4,5');
     Eyelink('command','calibration_targets  = %d,%d %d,%d %d,%d %d,%d %d,%d',...
         xc_off,yc_off,  ... center x,y
         xc_off + params.stim.el.point2point_distance_pix, yc_off, ... horz shift right
@@ -536,7 +525,7 @@ if params.wanteyetracking && ~isempty(params.eyelinkfile)
         xc_off, yc_off + params.stim.el.point2point_distance_pix, ... vert shift down
         xc_off, yc_off - params.stim.el.point2point_distance_pix); %  vert shift up
     Eyelink('command','validation_samples = 5');
-    Eyelink('command','validation_sequence = 0,1,2,3,4');
+    Eyelink('command','validation_sequence = 0,1,2,3,4,5');
     Eyelink('command','validation_targets  = %d,%d %d,%d %d,%d %d,%d %d,%d',...
         xc_off,yc_off,  ... center x,y
         xc_off + params.stim.el.point2point_distance_pix, yc_off, ... horz shift right
@@ -654,7 +643,7 @@ end
 % 'bckground'
 vars = whos;
 vars = {vars.name};
-vars = vars(cellfun(@(x) ~isequal(x,'fix_im','bckground','stim'),vars));
+vars = vars(cellfun(@(x) ~isequal(x,'fix_im','bckground','stim','eye_im'),vars));
 
 
 % Save data (button presses, params, etc)
@@ -662,29 +651,25 @@ save(fullfile(params.savedatadir,params.behaviorfile),vars{:}, '-v7.3');
 
 
 % check the timing
-if getoutearly == 0 %if we completed the experiment
-    fprintf('Experiment duration was %4.3f.\n',data.timing.endtime);
-    slack = [-0.0004, 0.0004]; % (seconds) as much as we allow PTB SyncTime to vary
-    expectedduration = (length(data.timing.timeframes)/params.disp.refresh_hz) + slack;
-    if data.timing.endtime > expectedduration(1) && data.timing.endtime < expectedduration(2)
-        fprintf('Timing was ok and within [%d - %d] sec slack\n',slack(1),slack(2));
-    else
-        fprintf('ERROR !!! Timing was OFF!!! Difference between expected and recorded is %3.2f seconds\n', expectedduration-data.timing.endtime);
-    end
-    
-    % Visualize timing
-    vcd_checkMonitorTiming(data)
-   
-    if exist(fullfile(params.savedatadir,params.behaviorfile),'file')
-        d = dir(fullfile(vcd_rootPath,'tmp_data*.mat'));
-        if ~isempty(d)
-            delete(fullfile(d(end).folder,d(end).name))
-            fprintf('Deleted tmp file because we stored the complete behavioral file.');
-        end
-    end
-    
+fprintf('Experiment duration was %4.3f.\n',data.timing.endtime);
+slack = [-0.0004, 0.0004]; % (seconds) as much as we allow PTB SyncTime to vary
+expectedduration = (length(data.timing.timeframes)/params.disp.refresh_hz) + slack;
+if data.timing.endtime > expectedduration(1) && data.timing.endtime < expectedduration(2)
+    fprintf('Timing was ok and within [%d - %d] sec slack\n',slack(1),slack(2));
+else
+    fprintf('ERROR !!! Timing was OFF!!! Difference between expected and recorded is %3.2f seconds\n', expectedduration-data.timing.endtime);
 end
 
+% Visualize timing
+vcd_checkMonitorTiming(data)
+
+if exist(fullfile(params.savedatadir,params.behaviorfile),'file')
+    d = dir(fullfile(vcd_rootPath,'tmp_data*.mat'));
+    if ~isempty(d)
+        delete(fullfile(d(end).folder,d(end).name))
+        fprintf('Deleted tmp file because we stored the complete behavioral file.');
+    end
+end
 
 
 

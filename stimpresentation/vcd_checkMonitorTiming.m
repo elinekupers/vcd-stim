@@ -1,9 +1,9 @@
 function vcd_checkMonitorTiming(data)
 
-dt = data.mfi;
+dt = data.timing.mfi;
 xtime             = [0:dt:((length(data.timing.timeframes)-1)*dt)];
 xtime             = xtime(1:end-1);
-desiredFlipTime   = data.timing.frameduration* data.mfi *ones(1,length(xtime));
+desiredFlipTime   = data.timing.frameduration* data.timing.mfi *ones(1,length(xtime));
 measuredFlipTime  = diff(data.timing.timeframes); 
 medianFlipDur     = median(measuredFlipTime,'omitnan');
 medianFlipTime    = medianFlipDur.*ones(1,length(measuredFlipTime));

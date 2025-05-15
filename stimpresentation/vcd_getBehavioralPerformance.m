@@ -1,4 +1,4 @@
-function performance = vcd_getBehavioralPerformance(params, data, correct_response)
+function performance = vcd_getBehavioralPerformance(params, data, run_table, run_frames)
 
 
 % Expand in case we have multiple keypresses at once
@@ -40,8 +40,21 @@ for kk=1:size(timekeysB,1)
   
 end
 
-respWindow = 1.0*params.stim.presentation_rate_hz;
+respWindow = 1.0*params.stim.presentationrate_hz;
+response_window_start = find(run_table.event_id==97);
+target_timewindow = []; correct_button = [];
+for rr = 1:length(response_window_start);
+    
+    target_timewindow = [run_table.event_start(response_window_start(rr)-1):run_table.event_end(response_window_start(rr))]);
 
+    if run_table.task_class(response_window_start(rr))==1 % FIX
+        fix_button  = (run_frames.fix_correct_response(target_timewindow));
+        fix_button = fix_button(fix_button>0);
+        correct_button   = cat(1,correct_button,fix_button);
+    else
+        correct_button   = cat(1, correct_button,run_table.correct_response(response_window_start(rr)-1));
+    end
+end
 hits = [];  misses = []; targets = []; RT = [];
 
 % for now, this only deals with hits, no false alarms...
@@ -49,9 +62,11 @@ for tt = keytimes(2:end)
     
     stim_onset  = [];
     targetRange = (tt-respWindow) : (tt-1);
+    targetRange = targetRange(targetRange>0);
     
+    curr_target = correct_button(target_timewindow==targetRange);
     
-    if sum(correct_response(targetRange)>0) % we only care about task 1 in this version
+%     if sum(target_timewindow==targetRange)>0) % we only care about task 1 in this version
         correct_button_to_press = correct_response(find(correct_response(targetRange)));
         targets = [targets, correct_button_to_press];
         
@@ -66,7 +81,7 @@ for tt = keytimes(2:end)
 %     else
 %         
 %         faRate = [faRate 1];
-    end
+%     end
 end
 
 

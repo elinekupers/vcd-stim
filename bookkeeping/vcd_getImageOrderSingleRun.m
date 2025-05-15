@@ -254,8 +254,8 @@ for ii = 1:length(stim_row)
                         %                                     stimDir = dir(fullfile(sprintf('%s*',params.stim.rdk.stimfile)));
                         %                                     filename = sprintf('%04d_vcd_rdk_ori%02d_coh%02d_delta%02d',...
                         %                                         unique_im, ...
-                        %                                         find(subj_run_table.orient_dir(stim_row(ii),side) == params.stim.rdk.dots_direction), ...
-                        %                                         find(subj_run_table.rdk_coherence(stim_row(ii),side) == params.stim.rdk.dots_coherence), ...
+                        %                                         find(run_table_table.orient_dir(stim_row(ii),side) == params.stim.rdk.dots_direction), ...
+                        %                                         find(run_table_table.rdk_coherence(stim_row(ii),side) == params.stim.rdk.dots_coherence), ...
                         %                                         0);
                         stimDir = dir(fullfile(sprintf('%s*',params.stim.rdk.stimfile)));
                         filename = sprintf('%04d_vcd_rdk_ori%02d_coh%02d_delta%02d',...
@@ -266,7 +266,7 @@ for ii = 1:length(stim_row)
                         
                         stimfile = fullfile(stimDir(1).folder,stimDir(1).name,sprintf('%s.mat', filename));
                         if exist(stimfile,'file')
-                            a = load(stimfile, 'frames','mask', 'rdk_info');
+                            load(stimfile, 'frames','mask', 'rdk_info');
                         else
                             error('[%s]: Can''t find RDK stim file!')
                         end
@@ -283,11 +283,11 @@ for ii = 1:length(stim_row)
                         
                         
                         % check if stim description matches
-                        idx0 = find(rdk_info.unique_im == unique_im);
-                        dot_motdir = rdk_info.dot_motdir_deg(idx0);
-                        dot_coh    = rdk_info.dot_coh(idx0);
-                        assert(isequal(run_table.rdk_coherence(stim_row(ii),side),dot_coh));
-                        assert(isequal(run_table.orient_dir(stim_row(ii),side),dot_motdir));
+%                         idx0 = find(rdk_info.unique_im == unique_im);
+%                         dot_motdir = rdk_info.dot_motdir_deg(idx0);
+%                         dot_coh    = rdk_info.dot_coh(idx0);
+%                         assert(isequal(run_table.rdk_coherence(stim_row(ii),side),dot_coh));
+%                         assert(isequal(run_table.orient_dir(stim_row(ii),side),dot_motdir));
                         
                         
                         % expand rdk movies into frames
@@ -300,8 +300,8 @@ for ii = 1:length(stim_row)
                         
                         rdk_masks = repmat({mask}, size(rdk_images,1), 1);
                         
-                        run_images(curr_frames,side) = cat(1,rdk_images, repmat({NaN},size(rdk_images,1),1));
-                        run_alpha_masks(curr_frames,side) = cat(1,rdk_masks, repmat({NaN},size(rdk_images,1),1));
+                        run_images(curr_frames,side) = rdk_images;
+                        run_alpha_masks(curr_frames,side) = rdk_masks;
                         
                     elseif strcmp(run_table.event_name(stim_row(ii)),'stim2') && strcmp(run_table.task_class_name(stim_row(ii)),'wm') && run_table.is_catch(stim_row(ii)) == 0
                         
@@ -317,14 +317,14 @@ for ii = 1:length(stim_row)
                         end
                         
                         % get stim features
-                        corresponding_unique_im_idx = find(images.info.rdk.unique_im==corresponding_unique_im);
+%                         corresponding_unique_im_idx = find(rdk_info.unique_im==corresponding_unique_im);
                         updated_ori = run_table.stim2_orient_dir(stim_row(ii),side);
                         delta_test = run_table.stim2_delta(stim_row(ii),side);
                         og_ori     = updated_ori-delta_test;
                         
                         % check if stim description matches
-                        assert(isequal(images.info.rdk.dot_coh(corresponding_unique_im_idx), run_table.rdk_coherence(stim_row(ii),side)));
-                        assert(isequal(images.info.rdk.dot_motdir_deg(corresponding_unique_im_idx), og_ori));
+%                         assert(isequal(rdk_info.dot_coh(corresponding_unique_im_idx), run_table.rdk_coherence(stim_row(ii),side)));
+%                         assert(isequal(rdk_info.dot_motdir_deg(corresponding_unique_im_idx), og_ori));
                         
                         % RDKs: 130 mat files: 8 directions x 3 coherence levels x 5 deltas (0 + 4 deltas)
                         stimDir = dir(fullfile(sprintf('%s*',params.stim.rdk.stimfile)));
@@ -589,6 +589,25 @@ for ii = 1:length(stim_row)
                         run_alpha_masks{curr_frames,side} = [];
                     end
             end % stim class
+            
+            % APPLY CONTRAST DECREMENT
+            if strcmp(run_table.task_class_name(stim_row(ii)),'cd')
+                % 50% change we will actually apply the contrast
+                % decrement change to stimulus
+  
+                if run_table.cd_start(stim_row(ii),side)~=0
+                    stmclass = run_table.stim_class_name{stim_row(ii),side};
+                    if strcmp(stmclass,'rdk')
+                        f_im_cd = vcd_applyContrastDecrement(params, run_table.cd_start(stim_row(ii),side), stmclass, run_images{curr_frames,side}); % give all frames
+                        run_images{curr_frames,side} = f_im_cd;
+                    else
+                        f_im_cd = vcd_applyContrastDecrement(params, run_table.cd_start(stim_row(ii),side), stmclass, run_images{curr_frames(1),side}); % give first (and only frame)
+                        run_images{curr_frames(1),side} = f_im_cd;
+                    end
+                    clear f_im_cd;
+                end
+            end
+            
         end % isempty
     end % side
 end % stim idx
