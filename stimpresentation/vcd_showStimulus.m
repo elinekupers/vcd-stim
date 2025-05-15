@@ -116,38 +116,37 @@ for nn = 1:size(run_frames.frame_event_nr,1)
     % set up fixation dot textures
     lum_idx = find(run_frames.fix_abs_lum(nn)==params.stim.fix.dotlum);
     
-    if eventID == 0 || isnan(run_frames.is_cued(nn)) || (run_frames.is_cued(nn)==0)
-        fix_tex(nn)  = fix_texture_thin_full(lum_idx);
-        fix_rect(nn) = fix.fix_thin_rect;   
-    else
-        if eventID==92 % SPATIAL CUE
-            if run_frames.is_cued(nn)==1
-                fix_tex(nn)  = fix_texture_thick_left(lum_idx);
-                fix_rect(nn) = fix.fix_thick_rect;
-            elseif run_frames.is_cued(nn)==2
-                fix_tex(nn)  = fix_texture_thick_right(lum_idx);
-                fix_rect(nn) = fix.fix_thick_rect;
-            elseif run_frames.is_cued(nn)==3
-                fix_tex(nn)  = fix_texture_thick_both(lum_idx);
-                fix_rect(nn) = fix.fix_thick_rect;
-            end
-        elseif ismember(eventID,[90]) % TASK CUE -- no fixation circle!
-            fix_tex(nn)  = [];
-            fix_rect(nn) = [];
-        elseif ismember(eventID,[91,93,94,95,96,97,98]) % ALL TRIAL EVENTS + ITI
-            fix_tex(nn)  = fix_texture_thick_full(lum_idx);
+    if eventID==92 % SPATIAL CUE
+        if run_frames.is_cued(nn)==1
+            fix_tex(nn)  = fix_texture_thick_left(lum_idx);
             fix_rect(nn) = fix.fix_thick_rect;
-        elseif ismember(eventID,99) % IBI
-            fix_tex(nn)  = fix_texture_thin_full(lum_idx);
-            fix_rect(nn) = fix.fix_thin_rect;
-        elseif (eventID > 0) || (eventID < 90) % STIMULUS EVENTS
-            fix_tex(nn) = fix_texture_thick_full(lum_idx);
+        elseif run_frames.is_cued(nn)==2
+            fix_tex(nn)  = fix_texture_thick_right(lum_idx);
             fix_rect(nn) = fix.fix_thick_rect;
-        elseif eventID > 990 % eyetracking targets / pupil displays
-            fix_tex(nn) = [];
-            fix_rect(nn) = [];
+        elseif run_frames.is_cued(nn)==3
+            fix_tex(nn)  = fix_texture_thick_both(lum_idx);
+            fix_rect(nn) = fix.fix_thick_rect;
         end
+    elseif ismember(eventID,[90]) % TASK CUE -- no fixation circle!
+        fix_tex(nn)  = [];
+        fix_rect(nn) = [];
+    elseif ismember(eventID,[91,93,94,95,96,97,98]) % ALL TRIAL EVENTS + ITI
+        fix_tex(nn)  = fix_texture_thick_full(lum_idx);
+        fix_rect(nn) = fix.fix_thick_rect;
+    elseif ismember(eventID,99) % IBI
+        fix_tex(nn)  = fix_texture_thin_full(lum_idx);
+        fix_rect(nn) = fix.fix_thin_rect;
+    elseif (eventID > 0) || (eventID < 90) % STIMULUS EVENTS
+        fix_tex(nn) = fix_texture_thick_full(lum_idx);
+        fix_rect(nn) = fix.fix_thick_rect;
+    elseif eventID >= 990 % eyetracking targets / pupil displays
+        fix_tex(nn) = [];
+        fix_rect(nn) = []; 
+    elseif eventID == 0 % pre/post blank
+        fix_tex(nn)  = fix_texture_thin_full(lum_idx);
+        fix_rect(nn) = fix.fix_thin_rect;
     end
+    
     
     switch eventID
         
