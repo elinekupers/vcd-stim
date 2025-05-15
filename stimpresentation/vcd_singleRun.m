@@ -62,13 +62,6 @@ if ~isfield(params, 'disp') || isempty(params.disp)
     params.disp = vcd_getDisplayParams(params.dispName); % BOLDSCREEN is default
 end
 
-
-% EK HACK START ---
-if params.debugmode
-    params.disp.name = 'PPROOM_EIZOFLEXSCAN';
-end
-% EK HACK END ---
-
 if params.debugmode % skip synctest
     skipsync = 1;
 else
@@ -453,7 +446,7 @@ if params.wanteyetracking
     tfunEYE     = @() Eyelink('Message','SYNCTIME');
     
     if ~isfield(params,'eyelinkfile') || isempty(params.eyelinkfile)
-        params.eyelinkfile = fullfile(params.savedatadir,sprintf('eye_%s_vcd_subj-%s_run-%d.edf',datestr(now,30),params.subj_nr,params.run_nr));
+        params.eyelinkfile = fullfile(sprintf('eye_%s_vcd_subj-%s_run-%d.edf',datestr(now,30),params.subj_nr,params.run_nr));
     end
 else
     tfunEYE = @() fprintf('EXP STARTS.\n');
@@ -613,7 +606,7 @@ if params.wanteyetracking
         fprintf('ReceiveFile status %d\n', status);
         
         % RENAME DOWNLOADED FILE TO THE FINAL FILENAME
-        mycmd=['mv ' params.savedatadir '/' eyetempfile ' ' params.eyelinkfile];
+        mycmd=['mv ' params.savedatadir '/' eyetempfile ' ' params.savedatadir '/' params.eyelinkfile];
         system(mycmd);
         if status <= 0, fprintf('\n\nProblem receiving edf file\n\n');
         else
@@ -664,7 +657,7 @@ end
 vcd_checkMonitorTiming(data)
 
 if exist(fullfile(params.savedatadir,params.behaviorfile),'file')
-    d = dir(fullfile(vcd_rootPath,'tmp_data*.mat'));
+    d = dir(fullfile(params.savedir,'tmp_data*.mat'));
     if ~isempty(d)
         delete(fullfile(d(end).folder,d(end).name))
         fprintf('Deleted tmp file because we stored the complete behavioral file.');
