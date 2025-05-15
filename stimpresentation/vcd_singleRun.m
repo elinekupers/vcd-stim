@@ -281,7 +281,7 @@ if ~exist('scan','var') || ~isfield(scan, 'rects') || isempty(scan.rects)
                         stim.masks{nn,side} = [];
                     end
                     
-                    if ismember(run_frames.frame_im_nr(nn,side), [params.stim.dot.unique_im_nrs_core,params.stim.dot.unique_im_nrs_wm_test])
+                    if ismember(run_frames.frame_im_nr(nn,side), [params.stim.rdk.unique_im_nrs_core,params.stim.rdk.unique_im_nrs_wm_test])
                         im_IDs(nn,side) = nn;
                     else
                         im_IDs(nn:(nn+120-1),side) = nn;

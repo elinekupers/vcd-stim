@@ -444,8 +444,8 @@ else
                 
                 % Convert dot polar angle coords to cartesian coords
                 [x,y] = pol2cart(deg2rad(p.ang_deg+90),p.eccen_deg);               % add 90 deg to ensure 0 deg is now 12 o'clock in x,y-pixel space
-                p.x0_pix        = disp_params.xc - round(x * disp_params.ppd);     % desired x-center loc in pix (translation from upper left corner [0,0])
-                p.y0_pix        = disp_params.yc - round(y * disp_params.ppd);     % desired y-center loc in pix (translation from upper left corner [0,0])
+                p.x0_pix        = disp_params.xc + round(x * disp_params.ppd);     % desired x-center loc in pix (translation from upper left corner [0,0])
+                p.y0_pix        = disp_params.yc + round(y * disp_params.ppd);     % desired y-center loc in pix (translation from upper left corner [0,0])
                 
                 % WORKING MEMORY: dot angle position deltas for test images
                 p.delta_from_ref  = [-15, -5, 5, 15];                              % how much should stim iso-eccen loc deviate from reference (WM: double epochs)
@@ -465,8 +465,8 @@ else
                     p.eccen_deg_delta(dd,:) = p.eccen_deg;                         % desired eccen for dot loc in deg (translation from center screen 0,0)
                     
                     [x_d,y_d] = pol2cart(deg2rad(p.ang_deg_delta(dd,:)+90),p.eccen_deg_delta(dd,:)); % again, note the +90
-                    p.x0_pix_delta(dd,:) = disp_params.xc - round(x_d * disp_params.ppd);  % x-center ref dot loc in pix (translation from upper left corner [0,0])
-                    p.y0_pix_delta(dd,:) = disp_params.yc - round(y_d * disp_params.ppd);  % y-center ref dot loc in pix (translation from upper left corner [0,0])
+                    p.x0_pix_delta(dd,:) = disp_params.xc + round(x_d * disp_params.ppd);  % x-center ref dot loc in pix (translation from upper left corner [0,0])
+                    p.y0_pix_delta(dd,:) = disp_params.yc + round(y_d * disp_params.ppd);  % y-center ref dot loc in pix (translation from upper left corner [0,0])
                 end
 
                 % LTM PAIR
