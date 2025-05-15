@@ -464,7 +464,7 @@ if getoutearly
     vars = whos;
     vars = {vars.name};
     vars = vars(cellfun(@(x) ~isequal(x,'stim','fix_im','fix','eye_im','bckground'),vars));
-    save(fullfile(params.savedatadir,sprintf('tmp_data_%s.mat',datestr(now,30))),vars{:});
+    save(fullfile(vcd_rootPath,'data',sprintf('tmp_data_%s.mat',datestr(now,30))),vars{:});
 end
  
 

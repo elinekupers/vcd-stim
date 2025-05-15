@@ -657,7 +657,7 @@ end
 vcd_checkMonitorTiming(data)
 
 if exist(fullfile(params.savedatadir,params.behaviorfile),'file')
-    d = dir(fullfile(params.savedir,'tmp_data*.mat'));
+    d = dir(fullfile(vcd_rootPath,'data','tmp_data*.mat'));
     if ~isempty(d)
         delete(fullfile(d(end).folder,d(end).name))
         fprintf('Deleted tmp file because we stored the complete behavioral file.');
