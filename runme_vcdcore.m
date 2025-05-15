@@ -185,7 +185,7 @@ if isempty(subjfilename)
     behavioralfilename    = sprintf('behavior_%s_vcd_subj%03d_ses%02d_%s_run%02d.mat',ts0,subj_nr,ses_nr,choose(ses_type==1,'A','B'),run_nr);
     
     if wanteyetracking
-        eyelinkfilename = fullfile(vcd_rootPath,sprintf('eye_%s_vcd_subj%03d_ses%02d_%s_run%02d.edf',ts0,subj_nr,ses_nr,choose(ses_type==1,'A','B'),run_nr));
+        eyelinkfilename = sprintf('eye_%s_vcd_subj%03d_ses%02d_%s_run%02d.edf',ts0,subj_nr,ses_nr,choose(ses_type==1,'A','B'),run_nr);
     else
         eyelinkfilename = '';
     end

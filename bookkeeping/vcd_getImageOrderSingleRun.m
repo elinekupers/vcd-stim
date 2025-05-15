@@ -597,12 +597,14 @@ for ii = 1:length(stim_row)
   
                 if run_table.cd_start(stim_row(ii),side)~=0
                     stmclass = run_table.stim_class_name{stim_row(ii),side};
+                    rel_onset = run_table.cd_start(stim_row(ii),side) - run_table.event_start(stim_row(ii));
+                    
                     if strcmp(stmclass,'rdk')
-                        f_im_cd = vcd_applyContrastDecrement(params, run_table.cd_start(stim_row(ii),side), stmclass, run_images{curr_frames,side}); % give all frames
-                        run_images{curr_frames,side} = f_im_cd;
+                        f_im_cd = vcd_applyContrastDecrement(params, rel_onset, stmclass, run_images(curr_frames,side)); % give all frames
+                        run_images(curr_frames,side) = f_im_cd;
                     else
-                        f_im_cd = vcd_applyContrastDecrement(params, run_table.cd_start(stim_row(ii),side), stmclass, run_images{curr_frames(1),side}); % give first (and only frame)
-                        run_images{curr_frames(1),side} = f_im_cd;
+                        f_im_cd = vcd_applyContrastDecrement(params, rel_onset, stmclass, run_images(curr_frames(1),side)); % give first (and only frame)
+                        run_images(curr_frames(1),side) = f_im_cd;
                     end
                     clear f_im_cd;
                 end
