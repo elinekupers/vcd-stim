@@ -193,10 +193,10 @@ else
     % thus t=[0,14]. How quickly the contrast decrement change occurs is 
     % determined by the std. Here, we pick std = 6 time points (6*16.67 ms). 
     % This means that peak contrast decrement occurs at t=7 (233.33 ms).
-    stim.cd.t_gausswin_N            = 30;                                   % number of presentation frames (16.67 ms) for gaussian time window (contrast decrement)
+    stim.cd.t_gausswin_N            = 20;                                   % number of presentation frames (16.67 ms) for gaussian time window (contrast decrement)
     stim.cd.t_gausswin_std          = 6;                                    % standard devation of gaussian window in time (presentation frames)
-    stim.cd.meanchange              = stim.presentationrate_hz * 1.0;       % mean of gaussian window in time (30 frames = 1 sec)  
-    stim.cd.changeplusminus         = (0.5/stim.framedur_s)-1;              % plus or minus this amount (14 frames = 0.46 sec)  
+    stim.cd.meanchange              = stim.presentationrate_hz * 0.2;       % mean of gaussian window in time (30 frames = 1 sec)  
+    stim.cd.changeplusminus         = (0.1/stim.framedur_s)-1;              % plus or minus this amount (14 frames = 0.46 sec)  
     stim.cd.max_cd                  = 0.2;                                  % stimulus contrast is reduced by 20% of mean luminance at lowest point of temporal gaussian window (note: this corresponds to subtracting a contrast fraction of 10.^(log10(c)-0.1))
     stim.cd.prob                    = 0.5;                                  % 50% probability that a trial will have a luminance change
     
