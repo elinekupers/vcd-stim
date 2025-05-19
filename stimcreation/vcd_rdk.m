@@ -107,7 +107,7 @@ if strcmp(params.disp.name, '7TAS_BOLDSCREEN32')
     scf = 1.548022598870056; % scf = 548/354; convert background square image from [93.04,78.880, 548.7,577.02] into [0 0 548 548]; 
     rect_box_sz = 577;
 elseif strcmp(params.disp.name, 'PPROOM_EIZOFLEXSCAN')
-    scf = 1.548022598870056; % scf = 400/258; convert background square image from [68.08, 57.76, 399.9, 420.54] into [0 0 400 400]; 
+    scf = 1.550387596899225; % scf = 400/258; convert background square image from [68.08, 57.76, 399.9, 420.54] into [0 0 400 400]; 
     rect_box_sz = 400;
 else
     scf = 1.548022598870056;
@@ -161,7 +161,7 @@ info.Properties.VariableNames = {'unique_im','dot_motdir_deg','dot_motdir_deg_i'
 %% RNG seed parameters
 rseed = [1000 2010];
 num_col = size(params.stim.rdk.dots_color,1);
-counter = 1;
+
 
 %% Folder to store RDK videos
 tmpDir = fullfile(vcd_rootPath, 'workspaces','stimuli',params.disp.name,'rdk',['rdk_test' datestr(now,'yyyymmdd')]);
@@ -171,10 +171,10 @@ if ~exist(fullfile(saveStimDir),'dir'), mkdir(fullfile(saveStimDir)); end
 
 %% Create rdk images
 fH = figure(1); clf; 
-set(gcf,'Position',[0,0,2*params.stim.rdk.img_sz_pix,2*params.stim.rdk.img_sz_pix], ...
+set(gcf,'Position',[1 1 2*params.stim.rdk.img_sz_pix, 2*params.stim.rdk.img_sz_pix], ...
     'Units','Pixels','Renderer','OpenGL','PaperUnits','normalized')
 
-
+counter = 1;
 for cc = 1:length(params.stim.rdk.dots_coherence)
     
     for bb = 1:length(params.stim.rdk.dots_direction)
@@ -329,12 +329,15 @@ for cc = 1:length(params.stim.rdk.dots_coherence)
                 % store location in case we want to check it later
                 stored_coh_dot_pos(:,:,curr_frame) = dots;
                 
-                % Check size of background image
-%                 ax_size = ax.Children(end).Parent.Position;
-                offsetRect = [0,0,scf*params.stim.rdk.img_sz_pix,scf*params.stim.rdk.img_sz_pix];
                 
+                % Check size of background image
+                ax_size = ax.Children(end).Parent.Position;
+                offsetRect = [0,0,scf*params.stim.rdk.img_sz_pix,scf*params.stim.rdk.img_sz_pix];
                 % ensure even nr of pixels
                 offsetRect(3:4) = 2*ceil(offsetRect(3:4)./2);
+                
+%                 whRect = matlab.ui.internal.PositionUtils.getPixelRectangleInDevicePixels([0 0 offsetRect(3:4)./2], fH);
+%                 xyRect = matlab.ui.internal.PositionUtils.getPixelRectangleInDevicePixels(offsetRect./2, fH);
                 
                 f = getframe(ax,offsetRect);
                 im = frame2im(f);
@@ -342,6 +345,10 @@ for cc = 1:length(params.stim.rdk.dots_coherence)
                 % if you want to print individual frames as png
 %                 fn = fullfile(saveStimDir,'export',sprintf('%04d_vcd_rdk_coh%02d_dir%02d_delta%02d_t%02d.png', cc,bb,dd,curr_frame));
 %                 imwrite(im,fn);
+                
+                if size(im,1) > offsetRect(3)
+                    im = imresize(im, offsetRect(3)/size(im,1));
+                end
 
                 % store frame
                 frames = cat(4,frames,im);
@@ -394,12 +401,10 @@ for cc = 1:length(params.stim.rdk.dots_coherence)
                 rdk_info = info(counter,:);
                 rdk_rng_seed = clock_seed;
                 save(fullfile(tmpDir, sprintf('%04d_vcd_rdk_ori%02d_coh%02d_delta%02d.mat', info.unique_im(counter), bb,cc,dd)),'frames','rdk_info','mask','rdk_rng_seed','stored_coh_dot_pos','-v7.3');
-                save(fullfile(tmpDir, sprintf('%04d_vcd_rdk_ori%02d_coh%02d_delta%02d.mat', counter, bb,cc,dd)),'frames','rdk_rng_seed','stored_coh_dot_pos','-v7.3');
             
                 % Create RDK movie (mp4, with compression)
                 vcd_createStimVideo(rdks{bb,cc,dd+1}, 1/params.stim.presentationrate_hz, ...
                         fullfile(vcd_rootPath,'figs',params.disp.name,'rdk'),sprintf('%04d_vcd_rdk_coh%02d_dir%02d_delta%02d',info.unique_im(counter),cc,bb,dd));
-%                                     fullfile(saveStimDir),sprintf('%04d_vcd_rdk_coh%02d_dir%02d_delta%02d',counter,cc,bb,dd));
             
             end
             

@@ -22,7 +22,8 @@ function bckgrnd_im = vcd_pinknoisebackground(params, varargin)
 %   gaptype      : (str) what type of gap do you want. Choose from:
 %                   - puzzle: center square overlayed with 2 parafoveal circular patches.
 %                   - dotring: simple dot iso-eccentricity ring.
-%                   - comb: combination of puzzle piece and dotring. (default)
+%                   - comb: combination of puzzle piece and dotring. 
+%                   - circle: a 4.2 or 5.2 deg radius circle (default)
 %   borderwidth  : (str) how wide should the gap between stimuli and gap be? 
 %                     Choose from:
 %                   - skinny: aligned to stimulus extend
@@ -39,7 +40,7 @@ function bckgrnd_im = vcd_pinknoisebackground(params, varargin)
 %% Parse inputs
 p = inputParser;
 p.addRequired('params'          , @isstruct); % params struct
-p.addParameter('gaptype'        , 'comb' , @(x) any(strcmp(x, {'puzzle','dotring','comb'})))
+p.addParameter('gaptype'        , 'comb' , @(x) any(strcmp(x, {'puzzle','dotring','comb', 'circle'})))
 p.addParameter('borderwidth'    , 'fat'  , @(x) any(strcmp(x, {'skinny','fat'}))) % skinny=no gap or fat=+2 deg extra
 p.addParameter('num'            , 1      , @isnumeric);                           % number of generated noise images
 p.addParameter('pixoffset'      , [0 0]  , @isnumeric);                           % [x,y] offset of center in pixels
@@ -100,6 +101,16 @@ end
 
 % Create the stimulus elements, take the union of the elements to create the cutout
 switch gaptype
+    
+    case 'circle'
+        
+        % Create the circle mask.
+        radius  = ((params.stim.ns.img_sz_pix/2) + rim) *params.disp.ppd;
+
+        circMask = (YY - 0).^2 ...
+            + (XX - 0).^2 <= radius.^2;
+
+        bckground_mask = logical(circMask);
     
     case 'puzzle'
         

@@ -101,16 +101,13 @@ else
     assert(isequal(stim.bckgrnd_grayval, 128));                            % we want 128 to be mean luminance
     
     stim.scfactor            = 1;                                          % no global scaling (only for specific stimulus images)
-    
-    
+
+    % **** TEMPORAL **** 
+    stim.stimdur_frames      = stim.presentationrate_hz * 1.0;             % nr of presentation frames (each 16.67 ms), currently 2 s (7TAS has 120 frames = 2 sec, PP room has 60 frames = 2 sec)
     
     % Define default params to inherit (or overwrite) by STIM CLASSES BELOW
-    
-    % **** TEMPORAL **** 
-    stimdur_frames           = stim.presentationrate_hz * 2.0;             % nr of (16.67 ms) presentation frames that results in 2 s (7TAS has 60 frames = 2 sec, PP room has 30 frames = 2 sec)
-    
+
     % **** SPATIAL ****
-    
     % EMPIRICAL parafoveal stimulus locations:
     %  * BOLDscreen: 354 pixels (4.0059 deg). 
     %  * PProom EIZOFLEX: 258 pixels (4.0082 deg). 
@@ -133,10 +130,11 @@ else
     
     
     %% NOISE BACKGROUND Puzzle piece
-    % general
+    % GENERAL
     stim.bckground.stimfile         = fullfile(vcd_rootPath,'workspaces','stimuli',disp_params.name,sprintf('bckgrnd_%s',disp_params.name)); % mat file
     stim.bckground.infofile         = fullfile(vcd_rootPath,'workspaces','info',sprintf('bckgrnd_info_%s',disp_params.name)); % csv file
     
+    % SPATIAL
     stim.bckground.alpha            = 1;                                    % exponent to apply to the amplitude spectrum (i.e. 1/f^alpha).  default: 1.
     stim.bckground.num              = 1;                                    % number of unique background images desired.  default: 1.
     stim.bckground.mode             = 0;                                    % mode of pinknoise function, 0 means fixed amplitude spectrum + random phase
@@ -147,12 +145,12 @@ else
     end
     %% FIXATION CIRCLE
     
-    % General
+    % GENERAL
     stim.fix.stimfile               = fullfile(vcd_rootPath,'workspaces','stimuli',disp_params.name,sprintf('fix_%s',disp_params.name)); % mat file
     stim.fix.infofile               = fullfile(vcd_rootPath,'workspaces','info',sprintf('fix_info_%s',disp_params.name)); % csv file
     
     % TEMPORAL
-    stim.fix.dotmeanchange          = 1.4*stim.presentationrate_hz;         % nr 16.67ms frames, dot changes occur every 1.4 seconds
+    stim.fix.dotmeanchange          = 1*stim.presentationrate_hz;           % nr 16.67ms frames, dot changes occur every 1.4 seconds
     stim.fix.dotchangeplusminus     = 0*stim.presentationrate_hz;           % nr 16.67ms frames, earliest and latests time that dot changes occur. 2 seconds means [-1:1] from meanchange
     stim.fix.dres                   = [];                                   % rescale factor as a fraction between 0-1  
         
@@ -172,12 +170,11 @@ else
     stim.fix.dotthinborderdiam_pix  = round(stim.fix.dotthinborderdiam_deg * disp_params.ppd);  % total fixation circle diameter with thin border in pixels (during ITI/IBI) 
     stim.fix.dotthickborderdiam_pix = round(stim.fix.dotthickborderdiam_deg * disp_params.ppd); % total fixation circle diameter with thick border in pixels (during trial)
     
-    % FIX CIRCLE LUMINANCE & COLOR
+    % FIX CIRCLE APPEARANCE: LUMINANCE, OPACITY & COLOR
     lumminmaxstep_norm              = [0.15,0.85,5];                        % min, max, and nr of dot luminance values normalized to range between [0-1],
     dotlum_lin                      = linspace(lumminmaxstep_norm(1),lumminmaxstep_norm(2),lumminmaxstep_norm(3)); % normalized dot gray luminance levels (0-1):
     dotlum_sq                       = round(255*(dotlum_lin.^2));           % dot luminance values adjusted for monitor with linearized gamma, ranging between [1-255],
     stim.fix.dotlum                 = [dotlum_sq, stim.bckgrnd_grayval];
-    
     stim.fix.dotopacity             = 0.5;                                 % dot and border have 50% opacity
     stim.fix.color                  = [255, 255, 255; 255 0 0];            % white and red (for spatial cue)
    
@@ -204,12 +201,12 @@ else
     stim.cd.prob                    = 0.5;                                  % 50% probability that a trial will have a luminance change
     
     % Create 1D gaussian
-    t_support           = linspace(-stim.cd.t_gausswin_N / 2, stim.cd.t_gausswin_N / 2, stim.cd.t_gausswin_N);  % [-7:1:7] in units of presentation 16.67 ms frames
-    t_gauss             = exp(-t_support .^ 2 / (2 * stim.cd.t_gausswin_std ^ 2)); % 1D gaussian with a sd of 3 presentation frames
+    t_support                       = linspace(-stim.cd.t_gausswin_N / 2, stim.cd.t_gausswin_N / 2, stim.cd.t_gausswin_N);  % [-7:1:7] in units of presentation 16.67 ms frames
+    t_gauss                         = exp(-t_support .^ 2 / (2 * stim.cd.t_gausswin_std ^ 2)); % 1D gaussian with a sd of 3 presentation frames
     
-    % invert and scale it
-    t_gauss             = 1-(t_gauss*stim.cd.max_cd); % invert gaussian, we start from 1, then dip to 0.5 and go back to 1. 
-    stim.cd.t_gauss     = t_gauss;
+    % Invert Gaussian time window, and scale max
+    t_gauss                         = 1-(t_gauss*stim.cd.max_cd); % invert gaussian, we start from 1, then dip to 0.5 and go back to 1. 
+    stim.cd.t_gauss                 = t_gauss;
 
     %% EYETRACKING BLOCK PARAMS
     % Each run starts with an eyetracking "block", which mimics the 
@@ -257,7 +254,7 @@ else
                 p.unique_im_nrs_core   = [1:24];                                     % Unique image nrs associated with the CORE 24 Gabors
 
                 % TEMPORAL -- Fixed params
-                p.duration        = stimdur_frames;                             % frames (nr of monitor refreshes)
+                p.duration        = stim.stimdur_frames;                             % frames (nr of monitor refreshes)
 
                 % SPATIAL -- Fixed params
                 p.img_sz_deg      = parafov_circle_diam_deg;                    % desired height (and width) of stimulus support (deg)
@@ -336,7 +333,7 @@ else
                 p.dots_color      = [255 255 255; 1 1 1]./255;                    % 50:50 white:black, color in RGB and converted to [0-1] as expected by stimulus creation function
                 p.max_dots_per_frame = 200;                                       % how many dots within a square support. Density is 15.9 dots / deg^2   (Number is similar to Kiani lab, rokers lab aims for 150) and roughly matches to nr of pixels in aperture
                 p.dots_contrast   = 1;                                            % Michelson [0-1] (fraction)
-                p.duration        = stimdur_frames;                               % frames (nr of monitor refreshes)
+                p.duration        = stim.stimdur_frames;                               % frames (nr of monitor refreshes)
                 p.dots_speed      = (8*disp_params.ppd)/stim.presentationrate_hz; % speed in pixels per frame (same as 5 deg/s). For reference: Kiani lab uses usually 5 to 10 deg/s. Rokers lab uses 5 deg/s.
                 p.dots_interval   = 1;                                            % update dots every frame   (For reference: Kiani's 75 hz refresh rate + interval = 3 -->  25 frames/sec)
                 p.dots_lifetime   = 0.05 * stim.presentationrate_hz;              % 3 frames / 0.05 seconds   
@@ -402,7 +399,7 @@ else
                 p.unique_im_nrs_core   = [49:64];                                     % Unique image nrs associated with the 16 single dot stimuli
                 
                 % TEMPORAL
-                p.duration        = stimdur_frames;                              % frames (nr of monitor refreshes)
+                p.duration        = stim.stimdur_frames;                              % frames (nr of monitor refreshes)
                 
                 % SPATIAL
                 % Empirical single dot radius is:
@@ -478,8 +475,8 @@ else
                 % IMAGERY: QUIZ DOT PARAMS
                 p.imagery_sz_deg   = [disp_params.w_deg/2, disp_params.h_deg];   % desired diameter (deg) of the second, quiz dots image in an imagery trial to encourage subjects to create a vidid mental image.
                 p.imagery_sz_pix   = [disp_params.xc,disp_params.h_pix];         % diameter of quiz dot image (pixels) (we already ensured even nr of pixels in display params function)
-                p.unique_im_nrs_img_test = [871:1030];                           % Unique image nrs associated with the 8*20=60 IMG DOT test dot images
-                p.imagery_quiz_images = [ones(1,10),2.*ones(1,10)];              % quiz dots overlap (1) or not (2)
+                p.unique_im_nrs_img_test = [871:1030];                           %#ok<NBRAK> % Unique image nrs associated with the 8*20=60 IMG DOT test dot images
+                p.imagery_quiz_images    = [ones(1,10),2.*ones(1,10)];              % quiz dots overlap (1) or not (2)
                 
                 % Add params to struct
                 stim.dot = p;
@@ -492,7 +489,7 @@ else
                 p.infofile       = fullfile(vcd_rootPath,'workspaces','info',sprintf('object_info_%s',disp_params.name));  % csv-file Where to find stimulus info?
 
                 % GENERAL
-                p.unique_im_nrs_core      = [65:80];                             % Unique image nrs associated with the 16 single dot stimuli
+                p.unique_im_nrs_core     = [65:80];                             %#ok<*NBRAK> % Unique image nrs associated with the 16 single dot stimuli
                 p.iscolor = false;                                          % Use color or not? 
                 if p.iscolor
                     p.square_pix_val     = true;                             % [IF YES: MAKE SURE TO SQUARE IMAGE VALS FOR CLUT]
@@ -501,7 +498,7 @@ else
                 end
                 
                 % TEMPORAL
-                p.duration       = stimdur_frames;                          % frames (nr of monitor refreshes)
+                p.duration       = stim.stimdur_frames;                          % frames (nr of monitor refreshes)
                 
                 % SPATIAL
                 p.contrast      = 1;                                        % Michelson [0-1] (fraction) 
@@ -606,7 +603,7 @@ else
                 else, p.square_pix_val = false; end
 
                 % TEMPORAL
-                p.duration       = stimdur_frames;                                                            % frames (nr of monitor refreshes)
+                p.duration       = stim.stimdur_frames;                                                            % frames (nr of monitor refreshes)
                 
                 % SPATIAL
                 p.og_res_stim    = 425;                                                                       % original resolution of NSD stimuli

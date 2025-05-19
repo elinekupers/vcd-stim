@@ -323,7 +323,7 @@ for frame = 1:size(frameorder,2)+1 % we add 1 to log end
             % Draw stimulus textures
             Screen('DrawTexture',win, bckrgound_texture,[], bckground_rect, 0, [], 1, 255*ones(1,3));...
         
-            % im_w_mask is a cell with dims: frames x 1, where each cell has 1 or 2 sides (1:l, 2:r)
+            % stim.im is a cell with dims: frames x 2, where each cell has a uint8 image (1:l, 2:r)
             for side = 1:length(find(~cellfun(@isempty, stim.im(run_frames.im_IDs(frame,1),choose(find(~isnan(run_frames.im_IDs(frame,:)))==1,1,[1,2])))))
                 stim_texture = Screen('MakeTexture',win, stim.im{run_frames.im_IDs(frame,side),side});
                 Screen('DrawTexture',win,stim_texture,[], stim.rects{run_frames.im_IDs(frame,side),side}, 0,[],1, 255*ones(1,3));

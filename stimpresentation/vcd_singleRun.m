@@ -1,4 +1,4 @@
-function [data, params, getoutearly] = vcd_singleRun(subj_nr, ses_nr, run_nr, varargin)
+function [data, params, getoutearly] = vcd_singleRun(subj_nr, ses_nr, ses_type, run_nr, varargin)
 
 
 %% %%%%%%%%%%%%% PARSE INPUTS %%%%%%%%%%%%%
@@ -31,7 +31,8 @@ p.addParameter('loadstimfromrunfile', false , @islogical)                % wheth
 p.addParameter('ptbMaxVBLstd'   , 0.0004    , @isnumeric)                    % what standard deviation for screen flip duration do we allow?
 
 % Parse inputs
-p.parse(subj_nr, ses_nr, run_nr, varargin{:});
+p.parse(subj_nr, ses_nr, ses_type, run_nr, varargin{:});
+
 
 % Rename variables into general params struct
 rename_me = fieldnames(p.Results);
@@ -234,7 +235,7 @@ if ~exist('scan','var') || ~isfield(scan, 'rects') || isempty(scan.rects)
                     elseif ismember(run_frames.frame_im_nr(nn,side), [params.stim.rdk.unique_im_nrs_core,params.stim.rdk.unique_im_nrs_wm_test])
                         centers{nn,side} = [params.stim.rdk.x0_pix(side) + params.stim.xc, ...
                             params.stim.rdk.y0_pix(side) + params.stim.yc];
-                        
+%                         disp([nn run_frames.frame_im_nr(nn,side) centers{nn,side}]);
                     elseif ismember(run_frames.frame_im_nr(nn,side), [params.stim.dot.unique_im_nrs_core,params.stim.dot.unique_im_nrs_wm_test])
                         
                         % deal with dot pol2cart
@@ -266,12 +267,27 @@ if ~exist('scan','var') || ~isfield(scan, 'rects') || isempty(scan.rects)
                         centers{nn,side} = [NaN, NaN];
                     end
                     
+                    if ismember(run_frames.frame_im_nr(nn,side), [params.stim.rdk.unique_im_nrs_core,params.stim.rdk.unique_im_nrs_wm_test])
+                        im_IDs(nn,side) = nn;
+                    else
+                        % Repeat im_ID, aperture size and centers if we only have a static image.
+                        im_IDs(nn:(nn+params.stim.stimdur_frames-1),side) = nn;
+                    end
+                    
+                    % EK START HERE
                     if isnan(run_frames.frame_im_nr(nn,side))
                         apsize{nn,side}  = [NaN, NaN];
                     else
-                        % apsize 1: image width (pixels), apsize 2: image height (pixels)
-                        apsize{nn,side}  = [size(stim.im{nn,side},2), size(stim.im{nn,side},1)];
+                        if ismember(run_frames.frame_im_nr(nn,side), [params.stim.rdk.unique_im_nrs_core,params.stim.rdk.unique_im_nrs_wm_test])
+                            % apsize 1: image width -- second dim (pixels), apsize 2: image height -- first dim (pixels)
+                            apsize{nn,side}  = [size(stim.im{nn,side},2), size(stim.im{nn,side},1)];
+                        else
+                            apsize{nn,side}  = [size(stim.im{nn,side},2), size(stim.im{nn,side},1)];
+                       end
                     end
+                    
+                    
+%                      disp([nn run_frames.frame_im_nr(nn,side) im_IDs(nn, side) centers{nn,side} apsize{nn,side}]);
                     
                     % COMBINE IMAGE AND MASKS, FLIP IM IF REQUESTED
                     if isempty(stim.masks{nn,side})
@@ -280,17 +296,28 @@ if ~exist('scan','var') || ~isfield(scan, 'rects') || isempty(scan.rects)
                         stim.im{nn,side} = feval(flipfun, cat(3, stim.im{nn,side}, stim.masks{nn,side}));
                         stim.masks{nn,side} = [];
                     end
-                    
-                    if ismember(run_frames.frame_im_nr(nn,side), [params.stim.rdk.unique_im_nrs_core,params.stim.rdk.unique_im_nrs_wm_test])
-                        im_IDs(nn,side) = nn;
-                    else
-                        im_IDs(nn:(nn+120-1),side) = nn;
-                    end 
+
                 end
             end
         end
     end
 end
+
+
+for nn = 1:size(stim.im,1)
+    
+    numSides = find(run_frames.frame_im_nr(nn,:)~=0);
+        
+    for side = numSides
+        if isempty(apsize{nn,side})
+            % Repeat aperture size and centers if we only have a static image.
+            apsize(nn,side)  = mat2cell([size(stim.im{im_IDs(nn,side),side},2), size(stim.im{im_IDs(nn,side),side},1)],1,2);
+            centers(nn,side) = mat2cell(centers{im_IDs(nn,side),side},1,2);
+        end
+    end
+    
+end
+
 
 run_frames.im_IDs = im_IDs; clear im_ID
 
@@ -298,32 +325,27 @@ stim.centers = centers; clear centers;
 stim.apsize  = apsize; clear apsize;
 
 %%%%%%% CENTER RECT
-nonemptycenters = ~cellfun(@isempty, stim.centers(:,1));
-nonemptysizes = ~cellfun(@isempty, stim.apsize(:,1));
-assert(isequal(nonemptycenters,nonemptysizes)); clear nonemptysizes
-centers_shortlist = stim.centers(nonemptycenters,:);
-apsize_shortlist  = stim.apsize(nonemptycenters,:);
-
-% insert NaNs for second column when using single square stimulus (nat scene)
-if size(centers_shortlist,2)==2
-    centers_shortlist(cellfun(@isempty,centers_shortlist(:,2)),2) = ...
-        repmat({[NaN,NaN]},size(find(cellfun(@isempty,centers_shortlist(:,2))),1),1);
-end
-if size(apsize_shortlist,2)==2
-    apsize_shortlist(cellfun(@isempty,apsize_shortlist(:,2)),2) = ...
-        repmat({[NaN,NaN]},size(find(cellfun(@isempty,apsize_shortlist(:,2))),1),1);
-end
-rects_shortlist = cell(size(apsize_shortlist));
-
-for side = [1,2]
-    rects_shortlist(:,side) = ...
-        cellfun(@(stimsize,stimcenter) CenterRectOnPoint([0 0 stimsize(1) stimsize(2)], stimcenter(1), stimcenter(2)), ...
-        apsize_shortlist(:,side),centers_shortlist(:,side), 'UniformOutput', false);
-end
-
 stim.rects = cell(size(stim.centers));
-stim.rects(nonemptycenters,:) = rects_shortlist;
+for side = [1,2]
+        
+    nonemptycenters   = ~cellfun(@isempty, stim.centers(:,side));
+    nonemptysizes     = ~cellfun(@isempty, stim.apsize(:,side));
+    assert(isequal(nonemptycenters,nonemptysizes)); clear nonemptysizes
+      
+    centers_shortlist = stim.centers(nonemptycenters,side);
+    apsize_shortlist  = stim.apsize(nonemptycenters,side);
+    
+    rects_shortlist   = ...
+        cellfun(@(stimsize,stimcenter) ...
+        CenterRectOnPoint([0 0 stimsize(1) stimsize(2)], stimcenter(1), stimcenter(2)), ...
+        apsize_shortlist,centers_shortlist, 'UniformOutput', false);
 
+    stim.rects(nonemptycenters,side) = rects_shortlist;
+    
+end
+
+
+clear rects_shortlist centers_shortlist apsize_shortlist
 
 %% %%%%%%%%%%%%% BACKGROUND IM %%%%%%%%%%%%%
 %  BACKGROUND: 4D array: [x,y, 3, num images]
