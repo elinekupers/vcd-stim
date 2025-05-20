@@ -135,7 +135,7 @@ else
     exp.session.mri.wide.n_runs_per_session = [10,10];                      % WIDE session 1A and 1B both have 10x 6.05 min runs per session
 
     % DEEP
-    exp.session.mri.deep.session_nrs                   = [1:26];                       % Session nr, deep subject sampling
+    exp.session.mri.deep.session_nrs                   = [1:26];                       %#ok<*NBRAK> % Session nr, deep subject sampling
     exp.session.mri.deep.session_types                 = NaN(26,2);                    % Refers to regular DEEP001 to DEEP025, DEEP26A and DEEP26B
     exp.session.mri.deep.session_types(:,1)            = 1;
     exp.session.mri.deep.session_types(end,2)          = 2;
@@ -166,15 +166,14 @@ else
    
     % timing MRI
     exp.run.pre_blank_dur_MRI     = presentationrate_hz * 4.0;   % pre-run blank period: 4 seconds in number of presentation frames
-    exp.run.post_blank_dur_MRI    = presentationrate_hz * 12.2;  % 12 seconds in number of presentation frames
-    exp.run.total_run_dur_MRI     = presentationrate_hz * 403.2; % 403.2 s or 252 volumes (1.6 s TR)    
-    assert(isint(exp.run.total_run_dur_MRI/exp.TR)); % ensure duration results in an integer nr of TRs
-
+    exp.run.post_blank_dur_MRI    = presentationrate_hz * 12;  % 12 seconds in number of presentation frames
+    
+    
     % timing BEHAVIOR
     exp.run.pre_blank_dur_BEHAVIOR     = presentationrate_hz * 4.0;     % pre-run blank period: 4 seconds in number of presentation frames
     exp.run.post_blank_dur_BEHAVIOR    = presentationrate_hz * 12.0;     % post-blank period: 4 seconds in number of presentation frames
-    exp.run.total_run_dur_BEHAVIOR     = presentationrate_hz * 437;     % total run duration 382.2 s
     
+   
     %% %%%% BLOCK PARAMS %%%%
     
     % general
@@ -184,7 +183,7 @@ else
     % eye gaze block
     exp.block.nr_of_saccades      = 5;
     exp.block.eye_gaze_fix0       = presentationrate_hz * 1.0; % start with 1 second fixation period
-    exp.block.eye_gaze_sac_target = presentationrate_hz * 1.2; % then 5x1.2 = 6 seconds of saccades (mimicing EL HV5 grid,±3 deg in all directions)
+    exp.block.eye_gaze_sac_target = presentationrate_hz * 1.5; % then 5x1.2 = 6 seconds of saccades (mimicing EL HV5 grid,±3 deg in all directions)
     exp.block.eye_gaze_fix1       = presentationrate_hz * 2.0; % then a 2-seconds rest trial
     exp.block.eye_gaze_pupil_black = presentationrate_hz * 3.0; % then a 4-seconds pupil trial: 3-s black adaptation, 1-s white screen to evoke max pupil response.
     exp.block.eye_gaze_pupil_white = presentationrate_hz * 1.0; % then a 4-seconds pupil trial: 3-s black adaptation, 1-s white screen to evoke max pupil response.
@@ -201,8 +200,6 @@ else
     exp.block.eye_gaze_pupil_black_ID = 996;
     exp.block.eye_gaze_pupil_white_ID = 997;
     
-    exp.run.actual_task_dur_MRI      = exp.run.total_run_dur_MRI - exp.block.total_eyetracking_block_dur - exp.run.pre_blank_dur_MRI - exp.run.post_blank_dur_MRI; % nr of presentation frames we actually spend doing the experiment
-    exp.run.actual_task_dur_BEHAVIOR = exp.run.total_run_dur_BEHAVIOR - exp.block.total_eyetracking_block_dur - exp.run.pre_blank_dur_BEHAVIOR - exp.run.post_blank_dur_BEHAVIOR; % nr of presentation frames we actually spend doing the experiment
 
     % event IDs
     exp.block.task_cue_ID           = 90; % Text on display to instruct subject
@@ -215,6 +212,7 @@ else
     exp.block.response_ID           = 97; % Time for subject to respond
     exp.block.ITI_ID                = 98; % Inter-trial interval
     exp.block.IBI_ID                = 99; % Inter-block interval
+ 
     
     % Check if these IDs do not already exist in stim-task labels
     assert(isempty(intersect([1:length(exp.crossingnames)],exp.block.pre_stim_blank_ID)));
@@ -235,24 +233,25 @@ else
     
     % BLOCK LEVEL
     exp.block.task_cue_dur           = presentationrate_hz * 4.0;               % 4.0 seconds in number of presentation frames
-    exp.block.IBI_MRI                = presentationrate_hz * [5:0.1:9];   % [5:1:9] seconds Inter-block interval -- uniformly sample between [min,max]
-    exp.block.IBI_BEHAVIOR           = presentationrate_hz * [5:0.1:9];   % [3:1:9] seconds inter-block interval
-    exp.block.total_single_epoch_dur = presentationrate_hz * 47;                % 47.667 seconds in number of presentation frames (excl. IBI)
-    exp.block.total_double_epoch_dur = presentationrate_hz * 66;                % 66.5 seconds in number of presentation frames (excl. IBI)
+    exp.block.IBI_MRI                = presentationrate_hz * [5:0.5:9];   % [5:1:9] seconds Inter-block interval -- uniformly sample between [min,max]
+    exp.block.IBI_BEHAVIOR           = presentationrate_hz * [5:0.5:9];   % [3:1:9] seconds inter-block interval
+    exp.block.total_single_epoch_dur = presentationrate_hz * 50.5;                % 47.667 seconds in number of presentation frames (excl. IBI)
+    exp.block.total_double_epoch_dur = presentationrate_hz * 63.5;                % 66.5 seconds in number of presentation frames (excl. IBI)
     
     % Make we have integer number of frames
     assert(isint(exp.block.task_cue_dur));
     assert(all(isint(exp.block.IBI_MRI))); assert(all(isint(exp.block.IBI_BEHAVIOR)));
 
     % TRIAL LEVEL
-    exp.trial.post_task_cue_ITI_dur   = presentationrate_hz * [1.0:0.1:1.6]; % 16.67 ms x at least 1.0 seconds = 60+ frames (thick dot rim) 
-    exp.trial.pre_stim_blank_dur  = presentationrate_hz * 1.0; % 16.67 ms x 1.0 second = 60 frames (thick dot rim, used in between spatial cue and stim onset) 
-    exp.trial.spatial_cue_dur     = presentationrate_hz * 1.0; % 16.67 ms x 1.0 seconds = 60 frames
-    exp.trial.stim_array_dur      = presentationrate_hz * 2.0; % 16.67 ms x 2.0 seconds = 120 frames
-    exp.trial.response_win_dur    = presentationrate_hz * 1.0; % 16.67 ms x 1.0 second  = 60 frames
+    exp.trial.post_task_cue_ITI_dur   = presentationrate_hz * [1.0:0.5:1.5]; % 16.67 ms x at least 1.0 seconds = 60+ frames (thick dot rim) 
+    exp.trial.pre_stim_blank_dur  = presentationrate_hz * 0.5; % 16.67 ms x 1.0 second = 60 frames (thick dot rim, used in between spatial cue and stim onset) 
+    exp.trial.spatial_cue_dur     = presentationrate_hz * 0.5; % 16.67 ms x 1.0 seconds = 60 frames
+    exp.trial.stim_array_dur      = presentationrate_hz * 1.0; % 16.67 ms x 2.0 seconds = 120 frames
+    exp.trial.response_win_dur    = presentationrate_hz * 3.0; % 16.67 ms x 1.0 second  = 60 frames
    
-    exp.trial.totalITI            = presentationrate_hz .* [6.3, 3.5];
-    exp.trial.ITI                 = presentationrate_hz .* [0.2:0.1:1.6]; % 0.2:0.1:1.6 corresponds to seconds [12:6:48] 60 Hz frames 
+    exp.trial.ITI                 = presentationrate_hz .* [0:0.5:1.5]; % 0.2:0.1:1.6 corresponds to seconds [12:6:48] 60 Hz frames 
+%     exp.trial.totalITI            = presentationrate_hz .* (mean(exp.trial.ITI).*[7, 3]);
+
     exp.trial.delay_dur           = presentationrate_hz * 8.0 ; % 16.67 ms x 8.0 seconds = 240 frames
     
     exp.trial.single_epoch_dur   = ...  % frames
@@ -272,7 +271,29 @@ else
     assert( nearZero(mod(exp.trial.single_epoch_dur / presentationrate_hz,1)))
     
     
-    % In each run, we have manipulations that we prioritize to fully sample,
+    %% TOTAL RUN DUR
+    
+%     
+%     total_run_dur = [exp.run.pre_blank_dur_MRI + ...
+%                      exp.run.post_blank_dur_MRI + ...    
+%                      exp.block.total_eyetracking_block_dur + ...
+%                      ((exp.block.task_cue_dur + max(exp.trial.post_task_cue_ITI_dur))*exp.run.run_type1(1)) + ...
+%                      ((exp.trial.single_epoch_dur * exp.block.n_trials_single_epoch)*exp.run.run_type1(1)) + ...
+%                      ((max(exp.trial.ITI)*(exp.block.n_trials_single_epoch-1))* exp.run.run_type1(1)) + ...
+%                      (max(exp.block.IBI_MRI) * exp.run.run_type1(1)-1)];
+
+    
+    exp.run.total_run_dur_MRI      = presentationrate_hz * 450.7; %428.8; %417.6; % 393.5 s or 252 volumes (1.6 s TR)
+    exp.run.total_run_dur_BEHAVIOR = presentationrate_hz * 450.7;     % total run duration 382.2 s
+    assert(isint(exp.run.total_run_dur_MRI/exp.TR)); % ensure duration results in an integer nr of TRs
+
+    
+    exp.run.actual_task_dur_MRI      = exp.run.total_run_dur_MRI - exp.block.total_eyetracking_block_dur - exp.run.pre_blank_dur_MRI - exp.run.post_blank_dur_MRI; % nr of presentation frames we actually spend doing the experiment
+    exp.run.actual_task_dur_BEHAVIOR = exp.run.total_run_dur_BEHAVIOR - exp.block.total_eyetracking_block_dur - exp.run.pre_blank_dur_BEHAVIOR - exp.run.post_blank_dur_BEHAVIOR; % nr of presentation frames we actually spend doing the experiment
+
+    
+    
+    %% In each run, we have manipulations that we prioritize to fully sample,
     % otherwise it is difficult to compare conditions (e.g., we want to sample
     % all contrast levels within the run).
     exp.priority_stim_manip = struct('name',{},'priority',{},'other',{});
@@ -288,7 +309,7 @@ else
     exp.priority_stim_manip(4).name     = {'obj'};
     exp.priority_stim_manip(4).priority = {'super_cat'};                   % First Priority manipulation
     exp.priority_stim_manip(4).other    = {'basic_cat','sub_cat'};
-    exp.priority_stim_manip(5).name     = {'ns'};i
+    exp.priority_stim_manip(5).name     = {'ns'};
     exp.priority_stim_manip(5).priority = {'super_cat'};                   % First Priority manipulation
     exp.priority_stim_manip(5).other    = {'basic_cat','sub_cat'}; 
     

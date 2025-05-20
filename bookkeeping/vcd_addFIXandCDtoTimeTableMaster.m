@@ -43,11 +43,18 @@ for ses = 1:length(session_nrs)
                 % check if the last event is a post-blank
                 assert(strcmp(this_run.event_name(end),'post-blank'))
                 
-                % get run duration (in frames)
+%                 if this_run.event_end(end) > params.exp.run.total_run_dur_BEHAVIOR
+%                     trim_me = this_run.event_end(end)-params.exp.run.total_run_dur_BEHAVIOR;
+%                     this_run.event_end(end) = this_run.event_end(end) - trim_me;
+%                     this_run.event_dur(end) = this_run.event_dur(end) - trim_me;
+%                 end
+                
+                 % get run duration (in frames)
                 run_dur = this_run.event_end(end)+1;
                 
                 % ensure a run is of reasonable length, and is not longer than 10 min
                 assert((run_dur*params.stim.presentationrate_hz)/3600 < 600)
+                
                 
                 % %%%%% GENERATE FIXATION SEQUENCE %%%%%
                 % every subject will get the same order.
@@ -105,10 +112,10 @@ for ses = 1:length(session_nrs)
                 all_events = []; all_cued = []; all_catch = []; all_crossings = [];
                 for jj = 1:length(this_run.event_id)
                     if ~isnan(this_run.event_dur(jj)) && this_run.event_dur(jj)~=0
-                        all_events = cat(1, all_events, repmat(this_run.event_id(jj), round(this_run.event_dur(jj)),1));
-                        all_cued  = cat(1, all_cued,  repmat(this_run.is_cued(jj),   round(this_run.event_dur(jj)),1));
-                        all_catch = cat(1, all_catch, repmat(this_run.is_catch(jj), round(this_run.event_dur(jj)),1));
-                        all_crossings = cat(1, all_crossings, repmat(this_run.crossing_nr(jj), round(this_run.event_dur(jj)),1));
+                        all_events = cat(1, all_events, repmat(this_run.event_id(jj), this_run.event_dur(jj),1));
+                        all_cued  = cat(1, all_cued,  repmat(this_run.is_cued(jj),   this_run.event_dur(jj),1));
+                        all_catch = cat(1, all_catch, repmat(this_run.is_catch(jj), this_run.event_dur(jj),1));
+                        all_crossings = cat(1, all_crossings, repmat(this_run.crossing_nr(jj), this_run.event_dur(jj),1));
                     end
                 end
                 run_frames.frame_event_nr = single(all_events); clear all_events

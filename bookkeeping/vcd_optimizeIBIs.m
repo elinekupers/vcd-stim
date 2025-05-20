@@ -35,10 +35,20 @@ if dur_to_optimize > max_possible_IBI_dur
 else
     postblank_to_add = 0;
 end
+
+if mod(dur_to_optimize,30)>0 % want IBIs to be in increments of 0.5 sec
+    frames_to_add = 30 - mod(dur_to_optimize,30);
+    dur_to_optimize = dur_to_optimize + frames_to_add;
+end
     
 % Find a distributed combination of possible IBIs
 % inputrs: totalamt,validoptions,numbins,mode,numlookback
-f = distributewithconstraints(dur_to_optimize,ibis,nr_blocks-1,0, 100);
+% if nr_blocks == 7
+%     distribution_mode = 1; % start with smallest bins
+% else
+    distribution_mode = 1; % start with uniformly sampled bins
+% end
+f = distributewithconstraints(dur_to_optimize,ibis,nr_blocks-1,distribution_mode, 100);
 
 if isempty(f)
     error('[%s]: Cannot find a combination of IBIs that works!!')

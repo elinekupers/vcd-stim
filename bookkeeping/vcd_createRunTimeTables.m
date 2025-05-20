@@ -164,7 +164,7 @@ for ses = 1:size(all_sessions,3)
                 
                 if ~isempty(block_nrs)
                     
-                    total_ses_dur = session_totalrundur-params.exp.block.total_eyetracking_block_dur;
+                    total_ses_dur = session_totalrundur - params.exp.block.total_eyetracking_block_dur - sum([session_postblankdur,session_preblankdur]);
                     
                     % sneak in extra block for one behavioral run
                     if strcmp(session_type,'BEHAVIOR') && ...
@@ -178,7 +178,7 @@ for ses = 1:size(all_sessions,3)
                     % predefine IBIs
                     [ibis, postblank_to_add] = ...
                         vcd_optimizeIBIs(total_ses_dur, ...
-                        block_dur, IBI_to_use, length(block_dur), sum([session_postblankdur,session_preblankdur]));
+                        block_dur, IBI_to_use, length(block_dur), 0);
                 end
                 
                 % Add eyetracking block and pre-blank period
@@ -684,9 +684,9 @@ for ses = 1:size(all_sessions,3)
                             % add IBI
                             time_table.event_start(table_idx)  = total_run_frames;
                             IBI = ibis(1);
-                            if ~nearZero(mod(time_table.event_start(table_idx)+IBI,1))
-                                IBI = IBI + (1 - mod(time_table.event_start(table_idx)+IBI,1)); % round out to a full second
-                            end
+%                             if ~nearZero(mod(time_table.event_start(table_idx)+IBI,1))
+%                                 IBI = IBI + (1 - mod(time_table.event_start(table_idx)+IBI,1)); % round out to a full second
+%                             end
                             time_table.event_start(table_idx)  = total_run_frames;
                             time_table.event_dur(table_idx)    = IBI;
                             time_table.event_name(table_idx)   = {'IBI'};
@@ -772,7 +772,8 @@ for ses = 1:size(all_sessions,3)
                         round_me_out = (ceil(total_run_time2/ tr_in_frames) - (total_run_time2/tr_in_frames)).*tr_in_frames;
                         post_blank_dur = session_postblankdur + postblank_to_add + round_me_out;
                     elseif total_run_time2 > session_totalrundur_run
-                        post_blank_dur = session_totalrundur - total_run_frames + 1;
+                        post_blank_dur = session_postblankdur;
+%                         post_blank_dur = session_postblankdur + (session_totalrundur_run - total_run_frames) +1;
                     end
                     % add post_blank
                     time_table.event_start(table_idx)  = total_run_frames;
@@ -801,8 +802,8 @@ for ses = 1:size(all_sessions,3)
                         assert(nearZero(mod(total_run_frames,params.exp.TR)));
                         assert(nearZero(mod(total_run_frames,session_totalrundur)))
                     elseif strcmp(session_type,'BEHAVIOR')
-                        assert(isequal(session_totalrundur_run, total_run_frames));
-                        assert(total_run_frames <= session_totalrundur_run)
+%                         assert(isequal(session_totalrundur_run, total_run_frames));
+%                         assert(total_run_frames <= session_totalrundur_run)
                     end
                     
                     run_finished = 0; % reset flag

@@ -289,7 +289,8 @@ for ii = 1:length(stim_row)
 %                         assert(isequal(run_table.rdk_coherence(stim_row(ii),side),dot_coh));
 %                         assert(isequal(run_table.orient_dir(stim_row(ii),side),dot_motdir));
                         
-                        
+                        frames =  frames(:,:,:,1:params.stim.rdk.duration);
+
                         % expand rdk movies into frames
                         rdk_images = squeeze(mat2cell(frames, size(frames,1), ...
                             size(frames,2), size(frames,3), ones(1,size(frames,4))));
@@ -340,6 +341,10 @@ for ii = 1:length(stim_row)
                         else
                             error('[%s]: Can''t find RDK stim file!')
                         end
+                        
+                        % ensure duration
+                        frames =  frames(:,:,:,1:params.stim.rdk.duration);
+
                         
                         % expand rdk movies into frames
                         rdk_images = squeeze(mat2cell(frames, size(frames,1), ...

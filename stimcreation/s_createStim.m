@@ -47,7 +47,7 @@ if ~exist(saveFigsFolder,'dir'); mkdir(saveFigsFolder); end
 % "stim_<dispname>_*.mat" in fullfile(vcd_rootPath,'workspaces','info').
 % When storing generated parameters, we save the parameters as a .mat file
 % in "stim_<dispname>_YYYYMMDDTHHMMSS.mat" in fullfile(vcd_rootPath,'workspaces','info').
-params.load_params  = true;  % if true, we load from file. if false, define params.
+params.load_params  = false;  % if true, we load from file. if false, define params.
 params.store_params = true;  % if false, we don't store params. if true, we store mat file in fullfile(vcd_rootPath,'workspaces','info')
                                        
 % Reset random number generator with arbitrary number (based on system
@@ -103,7 +103,7 @@ params.exp    = vcd_getSessionParams('disp_name', params.disp.name, ...
 % * bckgrnd_im  : (uint8) background images, height in pixels x width in pixels x 3 (rbg) x number of images (int) 
 %                 BOLDscreen dimensions are: height (1080 pixels) x width (1920 pixels)
 
-gaptype     = 'comb';
+gaptype     = 'circle';
 borderwidth = 'fat';
 if strcmp(dispname,'PPROOM_EIZOFLEXSCAN')
     % 14 runs * 1 session x 2 session type ("BEHAVIOR001")
@@ -188,7 +188,7 @@ vcd_createEyeTrackingBlockTargets(params)
 %                  8 motion directions x 3 coherence levels x 5 motion direction offsets (0, -15, -5, +5, +15 deg). 
 %                  Each cell contains movie frames (uint8):
 %                  For BOLDscreen:
-%                   height (548 pixels) x width (548 pixels for BOLDscreen) 
+%                   height (548 pixels) x width (548 pixels for BOLDscreen, 400 pixels for EIZOflexscan) 
 %                   x 3 (rgb) x 30 frames (total of 2 s, 33 ms per frame).
 % * masks       : (cell) 3D cell with alpha transparency masks:
 %                   8 motion directions x 3 coherence levels x 5 motion direction offsets (0, -15, -5, +5, +15 deg). 
