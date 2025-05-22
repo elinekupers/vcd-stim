@@ -119,8 +119,8 @@ addpath(genpath(pwd));
 % addpath(genpath(strrep(which('runvcdcore'),'runvcdcore.m','knkutils')));
 % stimulusdir = strrep(which('runvcdcore'),'runvcdcore.m','stimulusfiles');
 
-% how do we map subject ID to subject numbers 1-50?
-subjfun = @(x) find(ismember([1:50],x));
+% how do we map subject ID to subject numbers 1-999?
+subjfun = @(x) find(ismember([1:999],x));
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% DON'T EDIT BELOW
 
@@ -149,7 +149,7 @@ if ismember(ses_nr,[1,27])
 end
 
 if ~exist('run_nr','var') || isempty(run_nr)
-    run_nr = input('What run number (1-12)? ')
+    run_nr = input('What run number (1-15)? ')
 end
 
 % give some hints to the operator
@@ -202,24 +202,11 @@ end
     
 
 % Experiment-specific stuff
-switch ses_nr
-    
-    case num2cell(1:40)
-        
-        assert(~isempty(subjfun(subj_nr)));
-        assert(subjfun(subj_nr)>=1 && subjfun(subj_nr)<=50);
-        assert(ses_type>=1 && ses_type<=2);
-        assert(ses_nr>=1 && ses_nr<=27);
-        assert(run_nr>=1 && run_nr<=10);
-        
-        setnum = [131 subjfun(subj_nr) ses_nr ses_type run_nr];
-        
-    otherwise
-        error(sprintf('%d is a bad experiment number!!!',expnum));
-        
-end
-
-
+assert(~isempty(subjfun(subj_nr)));
+assert(subjfun(subj_nr)>=1 && subjfun(subj_nr)<=999);
+assert(ses_type>=1 && ses_type<=2);
+assert(ses_nr>=1 && ses_nr<=27);
+assert(run_nr>=1 && run_nr<=15);
 
 % Deal with debug mode
 if debugmode
@@ -230,9 +217,10 @@ end
 scan = struct();
 
 %% run experiment
+% for optional inputs use: 'var',<val>
 [data, params, getoutearly] = vcd_singleRun(subj_nr, ses_nr, ses_type, run_nr, ... % mandatory inputs
     'debugmode',debugmode, ...
-    'behaviorfile',behavioralfilename, ... % optional inputs use: 'var',<val>
+    'behaviorfile',behavioralfilename, ...
     'eyelinkfile',eyelinkfilename, ...
     'savedatadir', savedatadir, ...
     'wanteyetracking', wanteyetracking, ...
@@ -246,5 +234,3 @@ scan = struct();
     'savestim', savestim, ...
     'loadstimfromrunfile', loadstimfromrunfile); 
 
-% analyze dat
-% runvcdbehavioralanalysis(behaviorfile,3000,[299.8 300.2],[stimulusdir filesep 'vcd_expdesign.mat']);

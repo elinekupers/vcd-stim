@@ -341,8 +341,8 @@ displayname = p0.Results.displayname;
 requested_info = {};
 for ivar = 1:length(p0.Parameters)
     if ~ismember(p0.Parameters(ivar),p0.UsingDefaults)
-        requested_info{length(requested_info)+1} = p0.Parameters{ivar}; 
-        requested_info{length(requested_info)+1} = p0.Results.(p0.Parameters{ivar});
+        requested_info{length(requested_info)+1} = p0.Parameters{ivar};  %#ok<AGROW>
+        requested_info{length(requested_info)+1} = p0.Results.(p0.Parameters{ivar}); %#ok<AGROW>
     end
 end
  
@@ -371,7 +371,7 @@ if isempty(vcd_info) || ~exist('vcd_info','var')
 end
 
 % If we haven't done so already, create a vector of stimulus class numbers or names for each unique image nr
-if ~exist('all_core_im_stimclassnumbers','var') || isempty(all_core_im_stimclassnumbers)
+if ~exist('all_core_im_stimclassnumbers','var') || isempty(all_core_im_stimclassnumbers) %#ok<NODEF>
     all_core_im_stimclassnumbers       = ...
         cat(2, ones(1, numel(stim.gabor.unique_im_nrs_core)), 2*ones(1, numel(stim.rdk.unique_im_nrs_core)), ...
         3*ones(1, numel(stim.dot.unique_im_nrs_core)), 4*ones(1, numel(stim.obj.unique_im_nrs_core)), ...
@@ -925,7 +925,7 @@ for ii = 1:2:length(requested_info)
                 cond_nr = info_val;
             elseif iscell(info_val)  % if user provides cell, turn into vector
                 if ischar(info_val{1})
-                    cond_nr = str2double(str2mat(info_val))';
+                    cond_nr = str2double(char2mat(info_val))';
                 else
                     cond_nr = info_val{:};
                 end

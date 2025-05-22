@@ -196,6 +196,7 @@ end
 
 %% %%%%%%%%% IMAGE XY CENTER OFFSET
 im_IDs = NaN(size(stim.im,1),2);
+
 if ~exist('scan','var') || ~isfield(scan, 'rects') || isempty(scan.rects)
     
     % recenter x,y-center coordinates if needed
@@ -266,10 +267,11 @@ if ~exist('scan','var') || ~isfield(scan, 'rects') || isempty(scan.rects)
                     elseif isnan(run_frames.frame_im_nr(nn,side)) || (run_frames.frame_im_nr(nn,side)==0)
                         centers{nn,side} = [NaN, NaN];
                     end
+
                     
                     if ismember(run_frames.frame_im_nr(nn,side), [params.stim.rdk.unique_im_nrs_core,params.stim.rdk.unique_im_nrs_wm_test])
                         im_IDs(nn,side) = nn;
-                    else
+                    elseif isnan(im_IDs(nn-1,side))
                         % Repeat im_ID, aperture size and centers if we only have a static image.
                         im_IDs(nn:(nn+params.stim.stimdur_frames-1),side) = nn;
                     end
@@ -306,7 +308,7 @@ end
 
 for nn = 1:size(stim.im,1)
     
-    numSides = find(run_frames.frame_im_nr(nn,:)~=0);
+    numSides = find(~cellfun(@isempty, stim.im(nn,:)));
         
     for side = numSides
         if isempty(apsize{nn,side})
@@ -449,18 +451,21 @@ for nn = 1:length(taskIDs)
     taskscript{nn} = fullfile(d.folder,d.name);
 end
 
+%% EK HACK START ---
 
 %% %%%%%%%%%%%%% INIT SCREEN %%%%%%%%%%%%%
-Screen('Preference', 'SyncTestSettings', 0.0004); %.0004
-oldCLUT = pton(ptonparams{:});
+% Screen('Preference', 'SyncTestSettings', 0.0004); %.0004
+% oldCLUT = pton(ptonparams{:});
+% 
+% win  = firstel(Screen('Windows'));
+% oldPriority = Priority(MaxPriority(win));
+% 
+% rect = Screen('Rect',win); % what is the total rect    % alternatively: rect = CenterRect(round([0 0 rect(3)*winsize rect(4)*winsize]),rect);
+% 
+rect = [1 1 1240 1400];
+win = 0;
 
-win  = firstel(Screen('Windows'));
-oldPriority = Priority(MaxPriority(win));
-
-rect = Screen('Rect',win); % what is the total rect
-% rect = CenterRect(round([0 0 rect(3)*winsize rect(4)*winsize]),rect);
-
-
+%% EK HACK END ---
 
 %% %%%%%%%%%%%%% Eyelink stuff %%%%%%%%%%%%%
 % ANON EYE FUN for SYNC TIME
@@ -528,7 +533,7 @@ if params.wanteyetracking && ~isempty(params.eyelinkfile)
     % color)
     Eyelink('command','screen_pixel_coords = %ld %ld %ld %ld',0,0,wwidth-1,wheight-1); % X,Y coordinates left/top/right/bottom of display area
     Eyelink('message','DISPLAY_COORDS %ld %ld %ld %ld',0,0,wwidth-1,wheight-1);
-    % IF WE DON"T WANT CUSTOM DOT POSITIONS: Set number of calibration/validation dots and spread: horizontal-only(H) or horizontal-vertical(HV) as H3, HV3, HV5, HV9 or HV13
+    % IF YOU DON'T WANT CUSTOM DOT POSITIONS: Set number of calibration/validation dots and spread: horizontal-only(H) or horizontal-vertical(HV) as H3, HV3, HV5, HV9 or HV13
     Eyelink('command','calibration_type = HV5'); % horizontal-vertical 5-points.
     Eyelink('command','generate_default_targets = NO');
     Eyelink('command','calibration_samples  = 6');
@@ -595,6 +600,17 @@ end
 % call ptviewmovie
 timeofshowstimcall = datestr(now,30);
 
+% Create filename where behavioral and timing data will be stored
+if isempty(params.savedatadir)
+    params.savedatadir = fullfile(vcd_rootPath,'data', ...
+        sprintf('%s_vcd_subj%d_ses%02d',timeofshowstimcall,params.subj_nr, params.ses_nr));
+end
+if ~exist('params.savedatadir','dir'), mkdir(params.savedatadir); end
+if ~isfield(params,'behaviorfile') || isempty(params.behaviorfile)
+    params.behaviorfile = sprintf('%s_vcd_subj%d_ses%02d_run%02d.mat', ...
+        timeofshowstimcall,params.subj_nr,params.ses_nr,params.run_nr);
+end
+
 % GO!
 [data,getoutearly] = vcd_showStimulus(...
     win, rect, params, ...
@@ -639,53 +655,5 @@ if params.wanteyetracking
     end
 end
 
-% Create folder where data will be stored
-if isempty(params.savedatadir)
-    params.savedatadir = fullfile(vcd_rootPath,'data', ...
-        sprintf('%s_vcd_subj%d_ses%02d',...
-        timeofshowstimcall,params.subj_nr, params.ses_nr));
-end
-
-if ~exist('params.savedatadir','dir'), mkdir(params.savedatadir); end
-
-% Create filename where behavioral and timing data will be stored
-if ~isfield(params,'behaviorfile') || isempty(params.behaviorfile)
-    params.behaviorfile = sprintf('%s_vcd_subj%d_ses%02d_run%02d.mat', ...
-        timeofshowstimcall,params.subj_nr,params.ses_nr,params.run_nr);
-end
-
-% figure out names of all variables except 'stim', 'fix', and
-% 'bckground'
-vars = whos;
-vars = {vars.name};
-vars = vars(cellfun(@(x) ~isequal(x,'fix_im','bckground','stim','eye_im'),vars));
-
-
-% Save data (button presses, params, etc)
-save(fullfile(params.savedatadir,params.behaviorfile),vars{:}, '-v7.3');
-
-
-% check the timing
-fprintf('Experiment duration was %4.3f.\n',data.timing.endtime);
-slack = [-0.0004, 0.0004]; % (seconds) as much as we allow PTB SyncTime to vary
-expectedduration = (length(data.timing.timeframes)/params.disp.refresh_hz) + slack;
-if data.timing.endtime > expectedduration(1) && data.timing.endtime < expectedduration(2)
-    fprintf('Timing was ok and within [%d - %d] sec slack\n',slack(1),slack(2));
-else
-    fprintf('ERROR !!! Timing was OFF!!! Difference between expected and recorded is %3.2f seconds\n', expectedduration-data.timing.endtime);
-end
-
-% Visualize timing
-vcd_checkMonitorTiming(data)
-
-if exist(fullfile(params.savedatadir,params.behaviorfile),'file')
-    d = dir(fullfile(vcd_rootPath,'data','tmp_data*.mat'));
-    if ~isempty(d)
-        delete(fullfile(d(end).folder,d(end).name))
-        fprintf('Deleted tmp file because we stored the complete behavioral file.');
-    end
-end
-
-
-
-
+%% CHECK MONITOR TIMING
+fH = vcd_checkMonitorTiming(data);
