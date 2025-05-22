@@ -14,12 +14,17 @@ function results = vcdbehavioralanalysis(filename);
 %   <totaldur> is the total empirical duration of the experiment in seconds.
 %     if partial data, this will be less than what is desired.
 %   <glitchcnt> is the number of glitches during the presentation
+%   <droppedcnt> is the number of dropped frames during the presentation
 %   <matlabnowtime> is the absolute time corresponding to the first frame
 %   <mristarttime> is the time in seconds (relative to the first frame) 
 %     that the trigger was detected ('trigger' in timekeys)
 %   <donetime> is the time in seconds (relative to the first frame) 
 %     corresponding to the completion of the last frame ('done' in timekeys).
 %     if partial data, <donetime> will be returned as NaN.
+%   <timeframes> is a vector of times indicating the presentation time of
+%     each stimulus frame. time=0 corresponds to the onset of the first frame.
+%     this version (in contrast to what is in the raw .mat file) has undergone
+%     linear interpolation to fix dropped frames (which are originally coded as NaN).
 %   <triggertimes> is a vector of times that we detected the trigger
 %   <userkeys> is a cell vector of possible user keys
 %   <userkeycounts> is a vector of number of times that the keys were pressed.
@@ -137,21 +142,17 @@ presentationrate_hz = a1.params.stim.presentationrate_hz;  % experiment is inten
 refresh_hz = a1.params.disp.refresh_hz;                    % the idealized display refresh rate, e.g. 60 Hz or 120 Hz
 glitchcnt = a1.data.timing.glitchcnt;                      % number of timing glitches
 
+% check for dropped frames
+droppedcnt = sum(isnan(timeframes));                       % number of dropped frames
+
 % check that the mean frame-to-frame difference is sane (it should differ from the idealized rate by less than 1 ms)
-if any(isnan(timeframes))
-  warning('*** There are NaNs in timeframes! This must be partial data??? BEWARE! ***');
-end
 mdtf = nanmean(diff(timeframes));
 assert(abs(mdtf*1000 - 1000/presentationrate_hz) < 1,'frame-to-frame differences are OFF!!');
 
 % calc total empirical duration of the experiment (this includes the full completion of the last frame).
-% if partial data, we calculate up to the first NaN in timeframes. 
-ix = find(isnan(timeframes));
-if isempty(ix)
-  actualnum = length(timeframes);
-else
-  actualnum = ix(1)-1;
-end
+% in the case of partial data (run stopped early), we calculate duration up through the last valid recorded timeframe 
+ix = find(~isnan(timeframes));
+actualnum = ix(end);  % use the last valid recorded timeframe
 totaldur = mdtf * actualnum;
 
 % check that the "DONE" time (recorded after last frame) is close to the official total duration (within 50 ms)
@@ -168,14 +169,26 @@ end
 fprintf('==============================================================\n');
 fprintf('Stimulus fps is %d frames per sec; display refresh rate is %d Hz.\n',presentationrate_hz,refresh_hz);
 fprintf('Experiment duration (empirical / ideal) was %.3f / %.3f.\n',totaldur,length(timeframes)/presentationrate_hz);
-fprintf('Frames per sec (empirical / ideal) was %.6f / %.6f.\n',actualnum/totaldur,presentationrate_hz);
+fprintf('Frames per sec (empirical / ideal) was %.6f / %.6f.\n',1/mdtf,presentationrate_hz);
 fprintf('Number of glitches: %d.\n',glitchcnt);
+fprintf('Number of dropped frames: %d.\n',droppedcnt);
 fprintf('==============================================================\n');
 
 % record
 results.totaldur = totaldur;
 results.glitchcnt = glitchcnt;
+results.droppedcnt = droppedcnt;
 results.donetime = donetime;
+
+%% Deal with dropped frames
+
+% use linear interpolation to fill in the NaNs
+ii0 = find(~isnan(timeframes));
+ii1 = find(isnan(timeframes));
+timeframes(ii1) = interp1(ii0,timeframes(ii0),ii1,'linear','extrap');
+
+% record
+results.timeframes = timeframes;  % user must use this version from behavioral analysis and not the version in the raw data!!
 
 %% Deal with terrible button pre-processing stuff
 
