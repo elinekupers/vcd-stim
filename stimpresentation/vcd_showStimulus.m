@@ -262,13 +262,15 @@ timekeys = [timekeys; {GetSecs 'trigger'}];
 
 %% DRAW THE TEXTURES
 framecnt = 0;
-for frame = 1:size(frameorder,2)+1 % we add 1 to log end
+%for frame = 1:size(frameorder,2)+1 % we add 1 to log end
+frame = 1;
+while 1
     
-    framecnt = framecnt +1;
+    framecnt = framecnt +1;    % NOTE: framecnt seems to track frame
     frame0 = floor(framecnt);
     
     % we have to wait until the last frame of the run sequence is done.
-    if frame0 == size(frameorder,2)+1        
+    if frame0 >= size(frameorder,2)+1        % Note that it is >= instead of == because it is possible that glitches push us too far
         while 1
             if GetSecs >= whendesired
                 getoutearly = 1;
@@ -342,6 +344,30 @@ for frame = 1:size(frameorder,2)+1 % we add 1 to log end
     % here, deal with making the stimulus frame / texture / stuff
     % read input until we have to do the flip
     while 1
+
+        % try to read input (instantaneous)
+        if detectinput
+            [keyIsDown,secs,keyCode,~] = KbCheck(deviceNr);  % previously -3 listen to all devices
+            if keyIsDown
+                
+                % get the name of the key and record it
+                kn = KbName(keyCode);
+                timekeys = [timekeys; {secs kn}];
+                
+                % check if ESCAPE was pressed
+                if isequal(kn,'ESCAPE')
+                    fprintf('Escape key detected.  Exiting prematurely.\n');
+                    getoutearly = 1;
+                    break;
+                end
+                
+                % force a glitch?
+                if allowforceglitch(1) && isequal(kn,'p')
+                    WaitSecs(allowforceglitch(2));
+                end
+                
+            end
+        end
         
         % if we are in the initial case OR if we have hit the when time, then display the frame
         if when == 0 || GetSecs >= when
@@ -365,32 +391,9 @@ for frame = 1:size(frameorder,2)+1 % we add 1 to log end
             
             % get out of this loop
             break;
-            
-            % otherwise, try to read input
-        else
-            if detectinput
-                [keyIsDown,secs,keyCode,~] = KbCheck(deviceNr);  % previously -3 listen to all devices
-                if keyIsDown
-                    
-                    % get the name of the key and record it
-                    kn = KbName(keyCode);
-                    timekeys = [timekeys; {secs kn}];
-                    
-                    % check if ESCAPE was pressed
-                    if isequal(kn,'ESCAPE')
-                        fprintf('Escape key detected.  Exiting prematurely.\n');
-                        getoutearly = 1;
-                        break;
-                    end
-                    
-                    % force a glitch?
-                    if allowforceglitch(1) && isequal(kn,'p')
-                        WaitSecs(allowforceglitch(2));
-                    end
-                    
-                end
-            end
+
         end
+            
      end   
         
      
@@ -410,6 +413,19 @@ for frame = 1:size(frameorder,2)+1 % we add 1 to log end
          % notice that the accuracy of the mfi is strongly assumed here.
          whendesired = whendesired + mfi * frameduration;
          when = whendesired - mfi * (9/10); %#ok<*NASGU>    % RZ code: when = (when + mfi / 2) + mfi * frameduration - mfi / 2;
+
+         % if the current time is already past whendesired, we are doomed,
+         % and so we have to drop a frame. here, we do it repeatedly until
+         % we are in the clear. this gives us at least a chance of getting
+         % back on track, but it is NOT guaranteed. ultimately, the user needs
+         % do some checking of NaNs in timeframes to check for dropped frames.
+         while GetSecs >= whendesired
+           frame = frame + 1;
+           framecnt = framecnt + 1;
+           whendesired = whendesired + mfi * frameduration;
+           when = whendesired - mfi * (9/10);
+        end
+         
      else
          % if there were no glitches, just proceed from the last recorded time
          % and set the when time to 9/10 a frame before the desired time.
@@ -419,6 +435,8 @@ for frame = 1:size(frameorder,2)+1 % we add 1 to log end
          when = whendesired - mfi * (9/10);  % should we be less aggressive??    % RZ code: %     when = VBLTimestamp + mfi * frameduration - mfi / 2;  % should we be less aggressive??
          
      end
+     
+     frame = frame + 1;
      
 end
 
@@ -437,6 +455,7 @@ timekeys = [{absnowtime 'absolutetimefor0'}; timekeys];
 
 % report basic timing information to stdout
 fprintf('we had %d glitches!\n',glitchcnt);
+fprintf('we had %d dropped frames!\n',sum(isnan(timeframes)));
 dur = (timeframes(end)-timeframes(1)) * (length(timeframes)/(length(timeframes)-1));
 fprintf('projected total run duration: %.10f\n',dur);
 fprintf('frames per second: %.10f\n',length(timeframes)/dur);
