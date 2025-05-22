@@ -458,8 +458,7 @@ data.timing.empiricalfps    = length(timeframes)/dur;
 data.timing.frameduration   = frameduration;
 data.digitrecord            = digitrecord;
 
-% figure out names of all variables except uint8 images ('stim', 'fix_im',
-% 'eye_im' and 'bckground')
+% figure out names of all variables except uint8 images
 vars = whos;
 vars = {vars.name};
 vars = vars(cellfun(@(x) ~isequal(x,'fix_im','bckground','stim','eye_im'),vars));
@@ -471,7 +470,7 @@ save(fullfile(params.savedatadir,params.behaviorfile),vars{:}, '-v7.3');
 performance = vcdbehavioralanalysis(filename);
 
 % Get feedback display text
-[fb_txt, fbtext_rect] = vcd_getFeedbackDisplay(params, rect, behavioral_results,taskscript);
+[fb_txt, fbtext_rect] = vcd_getFeedbackDisplay(params, rect, performance,taskscript);
 
 % draw text on gray background
 Screen('FillRect', win, ones(3,1)*params.stim.bckground_grayval, rect);
