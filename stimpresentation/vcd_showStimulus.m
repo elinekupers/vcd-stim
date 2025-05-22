@@ -458,29 +458,25 @@ data.timing.empiricalfps    = length(timeframes)/dur;
 data.timing.frameduration   = frameduration;
 data.digitrecord            = digitrecord;
 
-if getoutearly
-    % Save a quick version of the data in case something fails...
-    vars = whos;
-    vars = {vars.name};
-    vars = vars(cellfun(@(x) ~isequal(x,'stim','fix_im','fix','eye_im','bckground'),vars));
-    save(fullfile(vcd_rootPath,'data',sprintf('tmp_data_%s.mat',datestr(now,30))),vars{:});
-end
- 
+% figure out names of all variables except uint8 images ('stim', 'fix_im',
+% 'eye_im' and 'bckground')
+vars = whos;
+vars = {vars.name};
+vars = vars(cellfun(@(x) ~isequal(x,'fix_im','bckground','stim','eye_im'),vars));
 
-if ~getoutearly
-%    performance = vcd_getBehavioralPerformance(params, data, subj_run_table.correct_response);
-%    [instrtext, txt_rect, params] = vcd_getMotivationText(params, performance.hitrate);
+% Save data (button presses, params, etc)
+save(fullfile(params.savedatadir,params.behaviorfile),vars{:}, '-v7.3');
 
-%    % draw background and central fixation dot
-%    Screen('DrawTextures',win, cell2mat(im_tex{1}),[],im_rect{1}',[0;0],[],[1;1],framecolor{1}');
-%    
-%    % draw text
-%    % inputs are winptr, tstring, sx, sy, color, wrapat, flipHorizontal, flipVertical, vSpacing, righttoleft, winRect)
-%    DrawFormattedText(win, instrtext, 'center', (txt_rect{frame}(4)/2)-25,0,75,[],[],[],[],txt_rect{1});
-%    
-%    waitSecs(4);
-end
+% Get behavioral performance
+performance = vcdbehavioralanalysis(filename);
 
+% Get feedback display text
+[fb_txt, fbtext_rect] = vcd_getFeedbackDisplay(params, rect, behavioral_results,taskscript);
+
+% draw text on gray background
+Screen('FillRect', win, ones(3,1)*params.stim.bckground_grayval, rect);
+DrawFormattedText(win, fb_txt, 'center', (fbtext_rect(4)/2)-25,0,75,[],[],[],[],fbtext_rect); % inputs are winptr, tstring, sx, sy, color, wrapat, flipHorizontal, flipVertical, vSpacing, righttoleft, winRect)
+waitSecs(8);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% PT CLEANUP STUFF
 Screen('Close',win);
@@ -489,7 +485,6 @@ ptoff();
 % restore priority and cursor
 Priority(oldPriority);
 ShowCursor;
-
 
 
 
