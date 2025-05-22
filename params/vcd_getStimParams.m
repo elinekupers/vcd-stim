@@ -150,7 +150,7 @@ else
     stim.fix.infofile               = fullfile(vcd_rootPath,'workspaces','info',sprintf('fix_info_%s',disp_params.name)); % csv file
     
     % TEMPORAL
-    stim.fix.dotmeanchange          = 1*stim.presentationrate_hz;           % nr 16.67ms frames, dot changes occur every 1.4 seconds
+    stim.fix.dotmeanchange          = 1.4*stim.presentationrate_hz;         % nr 16.67ms frames, dot changes occur every 1.4 seconds
     stim.fix.dotchangeplusminus     = 0*stim.presentationrate_hz;           % nr 16.67ms frames, earliest and latests time that dot changes occur. 2 seconds means [-1:1] from meanchange
     stim.fix.dres                   = [];                                   % rescale factor as a fraction between 0-1  
         
@@ -345,7 +345,7 @@ else
                 p.dots_lifetime   = 0.05 * stim.presentationrate_hz;              % 3 frames / 0.05 seconds   
                 
                 % TEMPORAL -- manipulated params
-                p.dots_coherence  = [0.1, 0.55, 1.0];                              % fraction of coherent moving dots. Kiani lab uses usually one of these [0 0.032 0.064 0.128 0.256 0.512]
+                p.dots_coherence  = [0.3, 0.65, 1.0];                             % fraction of coherent moving dots. Kiani lab uses usually one of these [0 0.032 0.064 0.128 0.256 0.512]
                 
                 % SPATIAL -- fixed params
                 p.img_sz_deg      = parafov_circle_diam_deg;                      % stimulus aperture diameter (deg)
@@ -367,7 +367,7 @@ else
 
                 
                 % WORKING MEMORY: motion direction deltas for test images
-                p.delta_from_ref   = [-15, -5, 5, 15];                            % how much should stim iso-eccen loc deviate from reference (WM: double epochs)
+                p.delta_from_ref        = [-15, -5, 5, 15];                       % How much should stim iso-eccen loc deviate from reference (WM: double epochs)
                 p.unique_im_nrs_wm_test = [207:302];                              % Unique image nrs associated with the 96 WM RDK test stimuli
  
                 % check if all test images for WM have unique orientations
