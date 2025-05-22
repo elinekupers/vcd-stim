@@ -11,14 +11,20 @@ function results = vcdbehavioralanalysis(filename);
 %
 % The <results> struct contains the following:
 %   <trialinfo> is a table (documented below)
-%   <totaldur> is the total empirical duration of the experiment in seconds
+%   <totaldur> is the total empirical duration of the experiment in seconds.
+%     if partial data, this will be less than what is desired.
 %   <glitchcnt> is the number of glitches during the presentation
 %   <matlabnowtime> is the absolute time corresponding to the first frame
 %   <mristarttime> is the time in seconds (relative to the first frame) 
-%     that the trigger was detected
+%     that the trigger was detected ('trigger' in timekeys)
+%   <donetime> is the time in seconds (relative to the first frame) 
+%     corresponding to the completion of the last frame ('done' in timekeys).
+%     if partial data, <donetime> will be returned as NaN.
 %   <triggertimes> is a vector of times that we detected the trigger
 %   <userkeys> is a cell vector of possible user keys
-%   <userkeycounts> is a vector of number of times that the keys were pressed
+%   <userkeycounts> is a vector of number of times that the keys were pressed.
+%     note that this is inclusive of everything that happened in the run.
+%     (it isn't restricted to the response windows.)
 %   === the following are included if we have at least 5 detected triggers:
 %   <expectedtriggers> is the total number of TRs (triggers) that are expected
 %   <mdf> is the median diff trigger-time, indicating our best estimate of the empirical TR
@@ -41,7 +47,7 @@ function results = vcdbehavioralanalysis(filename);
 %   onset_start - frame time corresponding to stimulus onset. (this is either
 %                 stim1 or stim2 where appropriate, and for the special FIX dot change
 %                 events, stimulus onset refers to the change in the dot luminance.)
-%   onset_abstime - stimulus onset time as a MATLAB serial date number (units are days)
+%   onset_abstime - stimulus onset time as a MATLAB serial date number (units are days).
 %   correct_response - 1 through 4 indicating the correct response
 %   change_mind - 0/1 indicating whether the subject pressed more than one unique button.
 %                 in the case of FIX dot change events, subjects are not allowed to change
@@ -58,6 +64,9 @@ function results = vcdbehavioralanalysis(filename);
 %     following are set to NaN:
 %       change_mind, button_pressed, rt
 %
+%   * If partial data, onset_abstime will be NaN for trials not conducted. In addition,
+%     these trials not conducted will be scored as if subjects did not press a button.
+%
 % <results.summary> is a table with B rows, where B is the number of blocks in the run.
 %   block_nr - only positive integer cases
 %   crossing_nr - only positive integer cases
@@ -67,17 +76,17 @@ function results = vcdbehavioralanalysis(filename);
 %               no button was pressed)
 %
 % Approach to handling all tasks other than fixation task:
+% - We extract buttons in a response window that extends 0 to 4000 ms after
+%   a given stimulus onset. We ignore any button that is not one of the choice buttons.
 % - We process only the final button pressed (if there is more than one).
 % - We identify the first instance of a button (if there is a series).
-% - We extract buttons in a response window that extends 0 to 4000 ms after
-%   a given stimulus onset.
 %
 % Approach to handling fixation task:
 % - We consider fixation circle frames starting from post-task-ITI and going
 %   through the end of the block.
 % - Each dot change is treated as if it is a trial.
 % - We extract buttons in a response window that extends 0 to 1400 ms after
-%   a given dot change event.
+%   a given dot change event. We ignore any button that is not one of the choice buttons.
 % - We process the first button pressed within the response window.
 % - We do not allow the subject to change their mind.
 % - The initial dot color is not treated as a change event.
@@ -129,27 +138,44 @@ refresh_hz = a1.params.disp.refresh_hz;                    % the idealized displ
 glitchcnt = a1.data.timing.glitchcnt;                      % number of timing glitches
 
 % check that the mean frame-to-frame difference is sane (it should differ from the idealized rate by less than 1 ms)
-mdtf = mean(diff(timeframes));
+if any(isnan(timeframes))
+  warning('*** There are NaNs in timeframes! This must be partial data??? BEWARE! ***');
+end
+mdtf = nanmean(diff(timeframes));
 assert(abs(mdtf*1000 - 1000/presentationrate_hz) < 1,'frame-to-frame differences are OFF!!');
 
-% calc total empirical duration of the experiment (this includes the full completion of the last frame)
-totaldur = mdtf * length(timeframes);
+% calc total empirical duration of the experiment (this includes the full completion of the last frame).
+% if partial data, we calculate up to the first NaN in timeframes. 
+ix = find(isnan(timeframes));
+if isempty(ix)
+  actualnum = length(timeframes);
+else
+  actualnum = ix(1)-1;
+end
+totaldur = mdtf * actualnum;
 
 % check that the "DONE" time (recorded after last frame) is close to the official total duration (within 50 ms)
-donetime = timekeysB{find(ismember(timekeysB(:,2),'DONE')),1};
-assert(abs(donetime-totaldur) < 0.050,'the DONE time is mismatched!!');
+ix = find(ismember(timekeysB(:,2),'DONE'));
+if isempty(ix)
+  warning('*** Did not find DONE in timekeys. This must be partial data??? BEWARE! ***');
+  donetime = NaN;
+else
+  donetime = timekeysB{ix,1};
+  assert(abs(donetime-totaldur) < 0.050,'the DONE time is mismatched!!');
+end
 
 % report to the command window
 fprintf('==============================================================\n');
 fprintf('Stimulus fps is %d frames per sec; display refresh rate is %d Hz.\n',presentationrate_hz,refresh_hz);
 fprintf('Experiment duration (empirical / ideal) was %.3f / %.3f.\n',totaldur,length(timeframes)/presentationrate_hz);
-fprintf('Frames per sec (empirical / ideal) was %.6f / %.6f.\n',length(timeframes)/totaldur,presentationrate_hz);
+fprintf('Frames per sec (empirical / ideal) was %.6f / %.6f.\n',actualnum/totaldur,presentationrate_hz);
 fprintf('Number of glitches: %d.\n',glitchcnt);
 fprintf('==============================================================\n');
 
 % record
 results.totaldur = totaldur;
 results.glitchcnt = glitchcnt;
+results.donetime = donetime;
 
 %% Deal with terrible button pre-processing stuff
 
@@ -244,16 +270,11 @@ results.triggertimes = triggertimes;
 
 %% Do some basic counts of buttons and triggers
 
-% report buttons and triggers to the screen
-fprintf('Number of pressed buttons:\n');
+% count buttons
 userkeycounts = [];
 for pp=1:length(userkeys)
   userkeycounts(pp) = sum(ismember(buttonpressed,userkeys{pp}));
-  fprintf('%s: %d\n',userkeys{pp},userkeycounts(pp));
 end
-fprintf('\n');
-fprintf('Number of triggers: %d\n',length(triggertimes));
-fprintf('==============================================================\n');
 
 % record
 results.userkeys = userkeys;
@@ -273,7 +294,7 @@ if totaln < 5
 else
 
   % calc
-  expectedtriggers = ceil(totaldur/a1.params.exp.TR);  % total number of TRs expected
+  expectedtriggers = ceil((length(timeframes)/presentationrate_hz)/a1.params.exp.TR);  % total number of TRs expected
   mdf = median(diff(triggertimes));                    % typical empirical TR diff
   
   % check that the mdf and the intended TR are within 50 ms
@@ -551,6 +572,19 @@ while 1
 
 end
 warning(prevwarn.state,'MATLAB:table:RowsAddedExistingVars');
+
+%% Report counts of buttons and triggers
+
+fprintf('Number of pressed buttons [expected number in brackets]:\n');
+for pp=1:length(userkeys)
+  fprintf('%s: % 5d   [% 5d]\n', ...
+          userkeys{pp}, ...
+          userkeycounts(pp), ...
+          sum(results.trialinfo.correct_response == str2double(userkeys{pp})));  % NOTE: str2double is NaN for rygb
+end
+fprintf('\n');
+fprintf('Number of triggers: %d\n',length(triggertimes));
+fprintf('==============================================================\n');
 
 %% Summarize behavioral performance
 
