@@ -1,6 +1,5 @@
-function [data,getoutearly,run_frames,run_table,scan] = vcd_showStimulus(...
+function [data,getoutearly,run_frames,run_table] = vcd_showStimulus(...
     win, rect, params, ...
-    scan, ...
     bckground, ...
     fix, ...
     eye_im, ...
@@ -12,8 +11,11 @@ function [data,getoutearly,run_frames,run_table,scan] = vcd_showStimulus(...
     tfunEYE, ...
     deviceNr, ...
     oldCLUT,...
-    oldPriority)
+    oldPriority, ...
+    eyetempfile)
 
+
+%% Set flags and counters
 getoutearly    = 0;
 glitchcnt      = 0;
 when           = 0;
@@ -41,9 +43,8 @@ if wantframefiles
     if ~exist('tmpDir','dir'), mkdir(tmpDir); end
 end
 
-%% ptb stuff
-
-mfi            = Screen('GetFlipInterval',win);
+%% PTB stuff
+mfi            = Screen('GetFlipInterval',win);     % empirical refresh rate determined when we "opened" the ptb window pointer
 frameduration  = round(params.stim.framedur_s/mfi); % 30 Hz presentation, 2 frames for office/psph monitors (60 Hz), 4 frames for BOLDscreen (120 Hz);
 
 Screen('BlendFunction', win, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -93,7 +94,6 @@ et_texture{size(eye_im.sac_im,4)+1} = Screen('MakeTexture',win,eye_im.pupil_im_b
 et_texture{size(eye_im.sac_im,4)+2} = Screen('MakeTexture',win,eye_im.pupil_im_white);
 
 %% Prepare background and fixation texture vector outside the flip loop
-
 fix_tex    = cell(length(stim.im),1);
 fix_rect   = fix_tex;
 im_tex     = fix_tex;
@@ -101,10 +101,6 @@ im_rect    = fix_tex;
 framecolor = fix_tex;
 txt_tex    = fix_tex;
 txt_rect   = fix_tex;
-
-% run_frames.frame_event_nr = run_frames.frame_event_nr(1:end-1);
-% run_frames.is_catch = run_frames.is_catch(1:end-1);
-% run_frames.crossingIDs = run_frames.crossingIDs(1:end-1);
 
 for nn = 1:size(run_frames.frame_event_nr,1)
     
@@ -168,9 +164,10 @@ for nn = 1:size(run_frames.frame_event_nr,1)
             % * TexturePointers  need to be: n vector (where n is the number of textures)
             % * DestinationRects need to be: 4 row x n columns (where n is the number of textures)
             
-            im_tex{nn}  = cat(1, bckrgound_texture, fix_tex(nn));
-            im_rect{nn} = cat(1, bckground_rect, fix_rect{nn});
-            framecolor{nn} = 255*ones(2,3); % <framecolor> can also be size(<frameorder>,2) x 1 with values in [0,1] indicating an alpha change.
+            im_tex{nn}  = fix_tex(nn); %cat(1, bckrgound_texture, fix_tex(nn));
+            im_rect{nn} = fix_rect{nn}; %cat(1, bckground_rect, fix_rect{nn});
+            
+            framecolor{nn} = 255*ones(1,3); %255*ones(2,3); % <framecolor> can also be size(<frameorder>,2) x 1 with values in [0,1] indicating an alpha change.
             
             
         case 90 % task_cue_ID
@@ -179,8 +176,8 @@ for nn = 1:size(run_frames.frame_event_nr,1)
                 regexp(taskscript,sprintf('%02d',run_frames.crossingIDs(nn)),'match'))};
             [task_instr, task_rect] = vcd_getInstructionText(params, script, rect);
             
-            im_tex{nn}  = bckrgound_texture;
-            im_rect{nn} = bckground_rect;
+%             im_tex{nn}  = bckrgound_texture;
+%             im_rect{nn} = bckground_rect;
             
             txt_tex{nn}  = task_instr;
             txt_rect{nn} = task_rect;
@@ -231,10 +228,10 @@ clear frame;
 % Get pre-run intructions
 [instrtext, prerun_text_rect] = vcd_getInstructionText(params, introscript, rect);
 
-% Draw background + dot
-% windowPointer, texturePointer(s), [sourceRect], destRects, rotAngles, filterModes, globalAlphas, modulateColors, textureShader, specialFlags, auxParameters]);
-Screen('DrawTexture',win, bckrgound_texture,[], bckground_rect,[], 0, 1, 255*ones(1,3));
-    
+% Draw background
+% Screen('DrawTexture',win, bckrgound_texture,[], bckground_rect,[], 0, 1, 255*ones(1,3)); % INPUTS TO DRAWTEXTURE: windowPointer, texturePointer(s), [sourceRect], destRects, rotAngles, filterModes, globalAlphas, modulateColors, textureShader, specialFlags, auxParameters]);
+Screen('FillRect',win,params.stim.bckground_grayval,rect);
+  
 % Draw text
 DrawFormattedText(win, instrtext, 'center', (prerun_text_rect(4)/2)-50, 0, 75,[],[],[],[],prerun_text_rect);
 Screen('Flip',win);
@@ -245,7 +242,7 @@ fprintf('Instructions are on screen, waiting for trigger...\n');
 %% CORE EXP CODE!
 
 fprintf('Press trigger key to begin the movie. (consider turning off network, energy saver, software updates.)\n');
-% safemode = 0;
+
 while 1
     [~,keyCode,~] = KbWait(deviceNr,2); % previously deviceNr = -3; outputs: secs,keyCode,deltaSecs
     temp = KbName(keyCode);
@@ -257,7 +254,7 @@ end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%% log the start!
 
-feval(tfunEYE); %fprintf('EXP START'); % SEND Eyelink('Message','SYNCTIME'));
+feval(tfunEYE); %tfunEYE does two things at once: fprintf('EXP START'); % SEND Eyelink('Message','SYNCTIME'));
 timekeys = [timekeys; {GetSecs 'trigger'}];
 
 %% DRAW THE TEXTURES
@@ -289,6 +286,9 @@ while 1
         break;
     end
     
+    % Get gray background
+    Screen('FillRect',win,params.stim.bckground_grayval,rect);
+    
     switch run_frames.frame_event_nr(framecnt)
         
         % 0  : pre/post blank
@@ -309,8 +309,9 @@ while 1
 
         % Draw background + fix circle (thin or thick) on top
         case {0, 91, 92, 93, 96, 97, 98, 99}
+            Screen('DrawTexture',win,im_tex{frame},[],im_rect{frame},0,[],1,framecolor{frame});
             % draw background and dot textures
-            Screen('DrawTextures',win,cell2mat(im_tex{frame}),[],im_rect{frame}',[0;0],[],[1;1],framecolor{frame}');
+%             Screen('DrawTextures',win,cell2mat(im_tex{frame}),[],im_rect{frame}',[0;0],[],[1;1],framecolor{frame}');
             
         case 90 % task_cue_ID
             
@@ -323,17 +324,17 @@ while 1
             
         case {94, 95} % stim IDs
             % Draw stimulus textures
-            Screen('DrawTexture',win, bckrgound_texture,[], bckground_rect, 0, [], 1, 255*ones(1,3));...
+%             Screen('DrawTexture',win, bckrgound_texture,[], bckground_rect, 0, [], 1, 255*ones(1,3));...
         
             % stim.im is a cell with dims: frames x 2, where each cell has a uint8 image (1:l, 2:r)
             for side = 1:length(find(~cellfun(@isempty, stim.im(run_frames.im_IDs(frame,1),choose(find(~isnan(run_frames.im_IDs(frame,:)))==1,1,[1,2])))))
                 stim_texture = Screen('MakeTexture',win, stim.im{run_frames.im_IDs(frame,side),side});
                 Screen('DrawTexture',win,stim_texture,[], stim.rects{run_frames.im_IDs(frame,side),side}, 0,[],1, 255*ones(1,3));
+                Screen('Close',stim_texture);
             end
 
             % Draw fix dot on top
             Screen('DrawTexture',win,fix_tex{frame},[], fix_rect{frame}, 0,[],1, 255*ones(1,3));
-            Screen('Close',stim_texture);
     end
 
     % give hint to PT that we're done drawing
@@ -419,7 +420,7 @@ while 1
          % we are in the clear. this gives us at least a chance of getting
          % back on track, but it is NOT guaranteed. ultimately, the user needs
          % do some checking of NaNs in timeframes to check for dropped frames.
-         while GetSecs >= whendesired
+         while GetSecs >= whendesired - mfi*(9/10)
            frame = frame + 1;
            framecnt = framecnt + 1;
            whendesired = whendesired + mfi * frameduration;
@@ -433,17 +434,47 @@ while 1
          % since we keep resetting to the empirical VBLTimestamp.
          whendesired = VBLTimestamp + mfi * frameduration;
          when = whendesired - mfi * (9/10);  % should we be less aggressive??    % RZ code: %     when = VBLTimestamp + mfi * frameduration - mfi / 2;  % should we be less aggressive??
-         
      end
      
      frame = frame + 1;
-     
 end
+
+fprintf('RUN ENDED: %4.4f.\n',GetSecs);
+
 
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% BUTTON LOGGING CLEAN UP STUFF %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% EYELINK SAVE DATA %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Close out eyelink
+if params.wanteyetracking
+    if ~isempty(eyetempfile)
+        
+        % Close eyelink and record end
+        Eyelink('StopRecording');
+        Eyelink('message', sprintf('EXP END %d',GetSecs));
+        Eyelink('CloseFile');
+        status = Eyelink('ReceiveFile',eyetempfile, params.savedatadir, 1);
+        fprintf('ReceiveFile status %d\n', status);
+        
+        % RENAME DOWNLOADED FILE TO THE FINAL FILENAME
+        mycmd=['mv ' params.savedatadir '/' eyetempfile ' ' params.savedatadir '/' params.eyelinkfile];
+        system(mycmd);
+        if status <= 0, fprintf('\n\nProblem receiving edf file\n\n');
+        else
+            fprintf('Data file ''%s'' can be found in ''%s''\n', params.eyelinkfile, pwd);
+        end
+        Eyelink('ShutDown'); % "Shut down" means close the TCP/IP link, not actually shutting down the OS on the machine
+        
+    end
+end
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% BUTTON LOGGING  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 % adjust the times in timeframes and timekeys to be relative to the first time recorded.
 % thus, time==0 corresponds to the showing of the first frame.
 starttime = timeframes(1);
@@ -463,6 +494,7 @@ fprintf('frames per second: %.10f\n',length(timeframes)/dur);
 % prepare output
 digitrecord = {digitrecord digitframe digitpolarity};
 
+% Store behavioral and monitor results
 data = struct();
 data.wantframefiles         = wantframefiles;
 data.detectinput            = detectinput;
@@ -480,25 +512,35 @@ data.digitrecord            = digitrecord;
 % figure out names of all variables except uint8 images
 vars = whos;
 vars = {vars.name};
-vars = vars(cellfun(@(x) ~isequal(x,'fix_im','bckground','stim','eye_im'),vars));
+vars = vars(cellfun(@(x) ~isequal(x,'fix_im','bckground','stim','eye_im'),vars)); % ---- EK CHECK ME! DO WE ACTUALLY DELETE IMAGES?!
 
 % Save data (button presses, params, etc)
 save(fullfile(params.savedatadir,params.behaviorfile),vars{:}, '-v7.3');
 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%% PERFORMANCE CHECKS %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 % Get behavioral performance
 performance = vcdbehavioralanalysis(filename);
 
-% Get feedback display text
-[fb_txt, fbtext_rect] = vcd_getFeedbackDisplay(params, rect, performance,taskscript);
+% check monitor timing
+ptviewmoviecheck(data.timing.timeframes,data.timeKeys,[],'t');
 
-% draw text on gray background
-Screen('FillRect', win, ones(3,1)*params.stim.bckground_grayval, rect);
+% check eyetracking data
+eyeresults = vcdeyetrackingpreprocessing(params.eyelinkfile,params.behavioralfile, performance);
+
+% Get feedback display text
+[fb_txt, fbtext_rect] = vcd_getFeedbackDisplay(params, rect, performance, taskscript);
+
+% Show performance to subject (draw text on gray background)
+Screen('FillRect', win, params.stim.bckground_grayval, rect);
 DrawFormattedText(win, fb_txt, 'center', (fbtext_rect(4)/2)-25,0,75,[],[],[],[],fbtext_rect); % inputs are winptr, tstring, sx, sy, color, wrapat, flipHorizontal, flipVertical, vSpacing, righttoleft, winRect)
 waitSecs(8);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% PT CLEANUP STUFF
 Screen('Close',win);
-ptoff();
+ptoff(oldCLUT);
 
 % restore priority and cursor
 Priority(oldPriority);

@@ -102,6 +102,10 @@ end
 % Create the stimulus elements, take the union of the elements to create the cutout
 switch gaptype
     
+    case 'none'
+        % do nothing, keep it gray
+        bckground_mask = [];
+        
     case 'circle'
         
         % Create the circle mask.
@@ -188,12 +192,17 @@ end
 
 % Reshape back into an image with a gap
 tmp = reshape(im1,size(im1,1)*size(im1,2),[]);
-tmp(bckground_mask(:),:) = params.stim.bckgrnd_grayval;
-tmp = uint8(tmp);
 
-bckgrnd_im = reshape(tmp, size(bckground_mask,1),size(bckground_mask,2),num);
-bckgrnd_im = repmat(bckgrnd_im, [1 1 1 3]);
-bckgrnd_im = permute(bckgrnd_im, [1 2 4 3]);
+if isempty(bckground_mask)
+    tmp(:) = params.stim.bckgrnd_grayval;
+    tmp    = uint8(tmp);
+else
+    tmp(bckground_mask(:),:) = params.stim.bckgrnd_grayval;
+    tmp = uint8(tmp);
+    bckgrnd_im = reshape(tmp, size(bckground_mask,1),size(bckground_mask,2),num);
+    bckgrnd_im = repmat(bckgrnd_im, [1 1 1 3]);
+    bckgrnd_im = permute(bckgrnd_im, [1 2 4 3]);
+end
 
 % Store images if requested
 if params.stim.store_imgs
@@ -215,7 +224,7 @@ if params.stim.store_imgs
     end
 end
 
-if params.verbose
+if params.verbose && ~strcmp(gaptype,'none')
     vcd_visualizeBackground(params, bckgrnd_im, [], gaptype, borderwidth)
 end
 

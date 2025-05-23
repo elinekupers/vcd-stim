@@ -119,36 +119,36 @@ else
 
     %% %%%% SESSION PARAMS %%%%
     
-    exp.TR                             = 1.6;                               % repetiton time of the MRI pulse sequence in seconds
-    exp.total_subjects                 = 3;                                 % 3 subjects for now.. EK: we probably want to separate wide and deep subjects
+    exp.TR                                              = 1.6;              % repetiton time of the MRI pulse sequence in seconds
+    exp.total_subjects                                  = 1;                % 1 subjects for now.. EVERYONE SHARES THE SAME EXPERIMENTAL RUNS
     
     % %%%% SESSION %%%%
     
     % BEHAVIORAL
-    exp.session.behavior.session_nrs        = 1;                            % Sessions dedicated to behavioral experiment
-    exp.session.behavior.session_types      = 1;                            % Only 1 BEHAVIOR session type (no A/B)
-    exp.session.behavior.n_runs_per_session = 15;                           % there are 15x ~5 min runs per session
+    exp.session.behavior.session_nrs                    = 1;                % Sessions dedicated to behavioral experiment
+    exp.session.behavior.session_types                  = 1;                % Only 1 BEHAVIOR session type (no A/B)
+    exp.session.behavior.n_runs_per_session             = 15;               % there are 15x ~5 min runs per session
 
     % WIDE
-    exp.session.mri.wide.session_nrs        = [1,1];                        % Session nr, wide subject sampling
-    exp.session.mri.wide.session_types      = [1,2];                        % Refers to WIDE 1A and WIDE 1B
-    exp.session.mri.wide.n_runs_per_session = [10,10];                      % WIDE session 1A and 1B both have 10x 6.05 min runs per session
+    exp.session.mri.wide.session_nrs                    = [1,1];            % Session nr, wide subject sampling
+    exp.session.mri.wide.session_types                  = [1,2];            % Refers to WIDE 1A and WIDE 1B
+    exp.session.mri.wide.n_runs_per_session             = [10,10];          % WIDE session 1A and 1B both have 10x 6.05 min runs per session
 
     % DEEP
-    exp.session.mri.deep.session_nrs                   = [1:26];                       %#ok<*NBRAK> % Session nr, deep subject sampling
-    exp.session.mri.deep.session_types                 = NaN(26,2);                    % Refers to regular DEEP001 to DEEP025, DEEP26A and DEEP26B
-    exp.session.mri.deep.session_types(:,1)            = 1;
-    exp.session.mri.deep.session_types(end,2)          = 2;
-    exp.session.mri.deep.n_runs_per_session            = NaN(26,2);                  % there are 10x 6.05 min runs for DEEP sessions 1-25, 26A and 26B have 4 runs each
-    exp.session.mri.deep.n_runs_per_session(1:end-1,1) = 10; 
-    exp.session.mri.deep.n_runs_per_session(end,:)     = [4,4];
-    exp.session.mri.deep.baseline_sessions             = 1:4;                          % Deep sessions dedicated to establish baseline, prior to introducing LTM/IMG
+    exp.session.mri.deep.session_nrs                    = [1:26];           %#ok<*NBRAK> % Session nr, deep subject sampling
+    exp.session.mri.deep.session_types                  = NaN(26,2);        % Refers to regular DEEP001 to DEEP025, DEEP26A and DEEP26B
+    exp.session.mri.deep.session_types(:,1)             = 1;
+    exp.session.mri.deep.session_types(end,2)           = 2;
+    exp.session.mri.deep.n_runs_per_session             = NaN(26,2);        % there are 10x 6.05 min runs for DEEP sessions 1-25, 26A and 26B have 4 runs each
+    exp.session.mri.deep.n_runs_per_session(1:end-1,1)  = 10; 
+    exp.session.mri.deep.n_runs_per_session(end,:)      = [4,4];
+    exp.session.mri.deep.baseline_sessions              = 1:4;              % Deep sessions dedicated to establish baseline, prior to introducing LTM/IMG
 
     % General
     exp.session.n_behavioral_sessions       = unique(exp.session.behavior.session_nrs);
     exp.session.n_deep_sessions             = unique(exp.session.mri.deep.session_nrs);
     exp.session.n_wide_sessions             = unique(exp.session.mri.wide.session_nrs);  
-    exp.session.n_mri_sessions              = exp.session.n_deep_sessions + exp.session.n_wide_sessions;
+    exp.session.n_mri_sessions              = [exp.session.n_wide_sessions,exp.session.n_deep_sessions];
     
     % What session do we introduce/start sampling the tasks?
     exp.session.behavior.task_start    = [1,1,1,1,1,99,99,1,1,1];           % Everything but LTM/IMG in BEHAVIOR 01

@@ -43,33 +43,37 @@ for ses = 1:length(session_nrs)
                 % check if the last event is a post-blank
                 assert(strcmp(this_run.event_name(end),'post-blank'))
                 
-%                 if this_run.event_end(end) > params.exp.run.total_run_dur_BEHAVIOR
-%                     trim_me = this_run.event_end(end)-params.exp.run.total_run_dur_BEHAVIOR;
-%                     this_run.event_end(end) = this_run.event_end(end) - trim_me;
-%                     this_run.event_dur(end) = this_run.event_dur(end) - trim_me;
-%                 end
-                
                  % get run duration (in frames)
                 run_dur = this_run.event_end(end)+1;
                 
                 % ensure a run is of reasonable length, and is not longer than 10 min
                 assert((run_dur*params.stim.presentationrate_hz)/3600 < 600)
                 
+                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                %%%%%%%%%%% GENERATE FIXATION SEQUENCE %%%%%%%%%%%%%%%
+                %
+                % Note 1: every subject will get the same order.
+                % Note 2: We freeze the fixation twinkle during rest periods.
                 
-                % %%%%% GENERATE FIXATION SEQUENCE %%%%%
-                % every subject will get the same order.
-                blank_onset  = this_run.event_start(this_run.block_nr==0);
-                blank_onset(1) = 1; % include eyetracking block
-                blank_offset = this_run.event_end(this_run.block_nr==0); % includes postblank period 
+                % Get rest / blank periods to know when to freeze the
+                % fixation luminance sequence.
+                blank_onset       = this_run.event_start(this_run.block_nr==0); 
+                blank_onset(1)    = 1; % include eyetracking block
+                blank_offset      = this_run.event_end(this_run.block_nr==0); % includes postblank period 
                 blank_offset(end) = blank_offset(end) + 1;
-                fix_matrix = vcd_createFixationSequence(params,fixsoafun, run_dur, blank_onset,blank_offset);
+                
+                % Get fixation sequence
+                % fix_matrix is a matrix with dims: time frames x 4, where 
+                % Column 1: time points (in frames)
+                % Column 2: absolute luminance values (between 0 and 255)
+                % Column 3: relative change in luminance values compared to the previous time point
+                % Column 4: correct button press associated with the relative luminance change (1=brighter, 2=dimmer).
+                fix_matrix = vcd_createFixationSequence(params,fixsoafun, run_dur, blank_onset,blank_offset); 
                 
                 % remove button responses from frozen fixation periods;
-                for ii = 1:length(blank_onset)
-                    fix_matrix(blank_onset(ii):blank_offset(ii),4) = 0;
-                end
-                
-                
+                fix_matrix(fix_matrix(:,4)==0,4) = NaN;
+
+                % add fixation sequence to run_frames table
                 run_frames = table();
                 run_frames.session_nr           = repmat(ses,run_dur,1);
                 run_frames.session_type         = repmat(session_types(ses,st),run_dur,1);
@@ -105,10 +109,10 @@ for ses = 1:length(session_nrs)
                 end
                 
                 
-                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-                %% Expand subject run time table
-                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-                
+                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                %%%%%%%%%%%%% Expand run frames table %%%%%%%%%%%%%%%%%%
+                % this makes it easier to loop through the frames when we
+                % start flipping the screen
                 all_events = []; all_cued = []; all_catch = []; all_crossings = [];
                 for jj = 1:length(this_run.event_id)
                     if ~isnan(this_run.event_dur(jj)) && this_run.event_dur(jj)~=0
@@ -118,22 +122,23 @@ for ses = 1:length(session_nrs)
                         all_crossings = cat(1, all_crossings, repmat(this_run.crossing_nr(jj), this_run.event_dur(jj),1));
                     end
                 end
-                run_frames.frame_event_nr = single(all_events); clear all_events
-                run_frames.is_cued  = single(all_cued); clear all_cued;
-                run_frames.is_catch = logical(all_catch); clear all_catch;
-                run_frames.crossingIDs = single(all_crossings); clear all_crossings
+                run_frames.frame_event_nr = single([all_events; 0]);      clear all_events
+                run_frames.is_cued        = single([all_cued; 0]);      clear all_cued;
+                run_frames.is_catch       = logical([all_catch; false]);  clear all_catch;
+                run_frames.crossingIDs    = single([all_crossings; 0]);   clear all_crossings
                 
                 stim_idx    = ismember(this_run.event_id, [params.exp.block.stim_epoch1_ID, params.exp.block.stim_epoch2_ID, ...
-                    params.exp.block.eye_gaze_fix_ID, params.exp.block.eye_gaze_sac_target_ID, ...
-                    params.exp.block.eye_gaze_pupil_black_ID, params.exp.block.eye_gaze_pupil_white_ID]);
+                                params.exp.block.eye_gaze_fix_ID, params.exp.block.eye_gaze_sac_target_ID, ...
+                                params.exp.block.eye_gaze_pupil_black_ID, params.exp.block.eye_gaze_pupil_white_ID]);
+                
                 stim_events = this_run.event_id(stim_idx);
                 stim_row    = find(stim_idx);
                 
-                %% Index stim cell vector with monotonic counter
-                this_run.nr_of_fix_changes = zeros(size(this_run,1),1,'single');
-
-                run_frames.frame_im_nr    = zeros(run_dur,2,'single');
-                run_frames.contrast       = ones(run_dur,2,'single');
+                % Preallocate space for nr of fixation changes, frame nrs,
+                % contrast levels, button_response related to contrast dip
+                this_run.nr_of_fix_changes    = zeros(size(this_run,1),1,'single');
+                run_frames.frame_im_nr        = zeros(run_dur,2,'single');
+                run_frames.contrast           = ones(run_dur,2,'single');
                 run_frames.button_response_cd = zeros(run_dur,1,'single');
                 
                 for ii = 1:length(stim_row)
@@ -206,10 +211,10 @@ for ses = 1:length(session_nrs)
                     % (42 frames) or 2.8 s (84 frames) in case we happen to
                     % sample the same luminance twice when restarting the
                     % sampling process of 5 lum values.
-                    %                 assert(isequal(unique(diff(find(diff(run.fix_correct_response)>0)))', [params.stim.fix.dotmeanchange, 2*params.stim.fix.dotmeanchange]));
+                    % assert(isequal(unique(diff(find(diff(run.fix_correct_response)>0)))', [params.stim.fix.dotmeanchange, 2*params.stim.fix.dotmeanchange]));
                     
-                    fix_block_nrs = unique(this_run.block_nr(fix_events,:))'; % should be 1 or 2 or 3 blocks per rum
-                    fix_update_idx = (run_frames.fix_correct_response>0); % 1 x 20592 --> 234 fixation changes per run
+                    fix_block_nrs  = unique(this_run.block_nr(fix_events,:))';        % should be 1 or 2 or 3 blocks per rum
+                    fix_update_idx = (run_frames.fix_correct_response>0);             % 1 x 20592 --> 234 fixation changes per run
                     [~,fix_block_frames] = ismember(this_run.block_nr,fix_block_nrs); % 40 trial events per block
                     fix_block_change_direction = run_frames.fix_correct_response(fix_update_idx); % 1=brighter, 2=dimmer
                     fix_block_abs_lum = run_frames.fix_abs_lum(fix_update_idx); %

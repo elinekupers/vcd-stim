@@ -302,6 +302,7 @@ for ses = 1:size(all_sessions,3)
                 runtype2 = cat(1,params.exp.session.wide.nr_of_type2_runs,params.exp.session.deep.nr_of_type2_runs);
                 runtype3 = cat(1,params.exp.session.wide.nr_of_type3_runs,params.exp.session.deep.nr_of_type3_runs);
                 runtype4 = cat(1,params.exp.session.wide.nr_of_type4_runs,params.exp.session.deep.nr_of_type4_runs);
+                
             elseif strcmp(session_type,'BEHAVIOR')
                 runtype1 = params.exp.session.behavior.nr_of_type1_runs;
                 runtype2 = params.exp.session.behavior.nr_of_type2_runs;
@@ -387,6 +388,9 @@ for ses = 1:size(all_sessions,3)
             % reset counters
             bb_s = 0; bb_d = 0;
             
+            assert(unique(unique_trialtypes(s_blocks_shuffled))==1)
+            assert(unique(unique_trialtypes(d_blocks_shuffled))==2)
+            
             % Double check if we have at least two double-epoch trial types per run
             for rr = 1:length(runs_to_fill)
                 
@@ -395,6 +399,9 @@ for ses = 1:size(all_sessions,3)
                 s_block_idx = (bb_s+1):(bb_s+blocks_to_fill(1));
                 d_block_idx = (bb_d+1):(bb_d+blocks_to_fill(2));
                 
+                assert(length(s_block_idx)==blocks_to_fill(1))
+                assert(length(d_block_idx)==blocks_to_fill(2))
+
                 % if we can still index blocks
                 if all(s_block_idx <= length(s_blocks_shuffled)) && all(d_block_idx <= length(d_blocks_shuffled))
                     
@@ -441,49 +448,71 @@ for ses = 1:size(all_sessions,3)
             end
             
             if strcmp(session_type,'BEHAVIOR')
+                special_s_run_flag = false; special_d_run_flag = false;
                 if length(s_blocks_shuffled) > s_block_idx(end)
                     empty_slot = find(curr_runs(end,:)==0);
                     empty_slot_idx = find(curr_runs(:,empty_slot(1))==0);
+                    assert(isequal(setdiff(s_blocks_shuffled,curr_runs(:)),s_blocks_shuffled(end)));
                     curr_runs(empty_slot_idx(1), empty_slot(1)) = s_blocks_shuffled(end);
+                    special_s_run_flag = true;
                 end
                 
                 if length(d_blocks_shuffled) > d_block_idx(end)
                     empty_slot = find(curr_runs(end,:)==0);
                     empty_slot_idx = find(curr_runs(:,empty_slot(1))==0);
+                    assert(isequal(setdiff(d_blocks_shuffled,curr_runs(:)),d_blocks_shuffled(end)));
                     curr_runs(empty_slot_idx(1), empty_slot(1)) = d_blocks_shuffled(end);
+                    special_d_run_flag = true;
                 end
             end
             
-            %% Shuffle run order (runs x blocks)
-            clear curr_runs_shuffled;
-            for rr = 1:size(curr_runs,1)
-                tmp_run_blocks =  curr_runs(rr,curr_runs(rr,:)>0);
-                curr_runs_shuffled(rr,1:length(tmp_run_blocks)) = shuffle_concat(tmp_run_blocks,1);
-            end
+            % check if we get the correct single/double stim block allocations given the
+            % specific run types
+            for run_idx = 1:size(curr_runs,1)
+                curr_run_type = block_type_allocation(:,runs_to_fill(run_idx));
+                curr_blocks = curr_runs(run_idx,:);
+                curr_blocks = curr_blocks(curr_blocks>0);
+                curr_trial_types = unique_trialtypes(curr_blocks);
+                nr_singleblocks = sum(curr_trial_types==1);
+                nr_doubleblocks = sum(curr_trial_types==2);
+
+                if nr_singleblocks == curr_run_type(1) &&  nr_doubleblocks == curr_run_type(2)
+                    assert( any(sum(curr_trial_types==1) == curr_run_type(1)))
+                    assert( any(sum(curr_trial_types==2) == curr_run_type(2)))
+                elseif special_s_run_flag
+                    assert( any(sum(curr_trial_types==1) == curr_run_type(1)+1))
+                    assert( any(sum(curr_trial_types==2) == curr_run_type(2)))
+                elseif special_d_run_flag
+                    assert( any(sum(curr_trial_types==1) == curr_run_type(1)))
+                    assert( any(sum(curr_trial_types==2) == curr_run_type(2)+1))
+                end
             
-            run_shuffle = shuffle_concat(1:size(curr_runs_shuffled,1),1);
             
-            for run_idx = 1:length(run_shuffle)
-                %
-                block_in_this_run = curr_runs_shuffled(run_shuffle(run_idx),:);
-                block_in_this_run = block_in_this_run(block_in_this_run>0);
+                % Shuffle run order (runs x blocks)
+                clear curr_runs_shuffled;
+                curr_blocks_shuffle_idx = randperm(length(curr_blocks),length(curr_blocks));
+                curr_blocks = curr_blocks(curr_blocks_shuffle_idx);
+                curr_run_type = curr_trial_types(curr_blocks_shuffle_idx);
                 
+                curr_runs(run_idx,1:length(curr_blocks)) = curr_blocks;
+
                 fprintf('[%s]: Run %02d, block order for all subjects:',mfilename, run_idx)
-                disp(block_in_this_run)
-                
-                for iii = 1:length(block_in_this_run)
+                disp(curr_runs(run_idx,:))
+             
+                for iii = 1:length(curr_blocks)
                     
                     global_block_counter = global_block_counter + 1;
                     
                     % find the OG trials that correspond to the block from the shuffled list
-                    idx0 = find(ses_blocks==block_in_this_run(iii));
+                    idx0 = find(ses_blocks==curr_blocks(iii));
                     idx1 = ses_sub(idx0);
                     
                     nr_trials = length(idx1);
                     
                     % get the new row nr for these trials
                     condition_master.subj_block_nr(idx1) = iii;
-                    condition_master.run_nr(idx1)   = run_idx;
+                    condition_master.run_nr(idx1)        = run_idx;
+                    assert(isequal(unique(condition_master.trial_type(idx1)),curr_run_type(iii)))
                     
                     % add global trial and block nr
                     condition_master.global_trial_nr(idx1)   = global_trial_counter + (1:nr_trials);
@@ -504,8 +533,8 @@ for ses = 1:size(all_sessions,3)
             
             all_trial_idx = find(condition_master.session_nr==ses & condition_master.session_type==st);
 
-            for zz = 1:length(unique(condition_master.run_nr(all_trial_idx)))
-                run_block_idx = condition_master.run_nr(all_trial_idx) == zz;
+            for run_idx = 1:length(unique(condition_master.run_nr(all_trial_idx)))
+                run_block_idx = condition_master.run_nr(all_trial_idx) == run_idx;
                 single_run_blocks = condition_master.subj_block_nr(all_trial_idx(run_block_idx));
                 [~,sort_idx1]     = sort(single_run_blocks);
                 tmp_idx = all_trial_idx(run_block_idx);
@@ -600,7 +629,7 @@ if params.verbose
         [~,new_run_line] = unique(yy,'stable');
         dataToPlot = [ses_data.session_nr(x3), ...
             ses_data.run_nr(x3), ...
-            ses_data.subj_block_nr(x3,:)]';
+            ses_data.block_nr(x3)]';
         imagesc(dataToPlot);
         cb = colorbar;
         cmap = cmapturbo(max(dataToPlot(:))+1);
@@ -610,8 +639,8 @@ if params.verbose
         for ff = 1:length(new_run_line)
             plot([new_run_line(ff),new_run_line(ff)],[0,6],'k','linewidth',4)
         end
-        for ii = 1:params.exp.total_subjects, label{ii} = sprintf('subj %d',ii); end
-        set(gca,'YTick',[1:params.exp.total_subjects+2],'YTickLabel',{'session nr','run nr', label{:}});
+       
+        set(gca,'YTick',[1:params.exp.total_subjects+2],'YTickLabel',{'session nr','run nr', 'block nr'});
         title(sprintf('SESSION %02d OVERVIEW',ses),'FontSize',20);
         xlabel('BLOCK NR')
         

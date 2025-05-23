@@ -25,7 +25,7 @@ switch block_name
                 button_response = 2; % button 2: no there was a change (apply to all time points in the block)
             end
         else
-            button_response = 0;
+            button_response = NaN;
         end
         
     case {'cd-ns'}
@@ -38,7 +38,7 @@ switch block_name
                 button_response = 2; % button 2: no there was a change (apply to all time points in the block)
             end
         else
-            button_response = 0;
+            button_response = NaN;
         end
         
     case {'scc-all','scc-gabor','scc-rdk','scc-dot','scc-obj','scc-ns'}
@@ -93,7 +93,7 @@ switch block_name
         % 
         % 1-INDEX  = YES
         % 2-MIDDLE = NO
-        button_response = 0;
+        button_response = NaN;
         
 %         if table_row.is_cued <= 2
 %             idx = table_row.is_cued;

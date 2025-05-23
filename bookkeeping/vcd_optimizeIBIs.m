@@ -43,12 +43,9 @@ end
     
 % Find a distributed combination of possible IBIs
 % inputrs: totalamt,validoptions,numbins,mode,numlookback
-% if nr_blocks == 7
-%     distribution_mode = 1; % start with smallest bins
-% else
-    distribution_mode = 1; % start with uniformly sampled bins
-% end
-f = distributewithconstraints(dur_to_optimize,ibis,nr_blocks-1,distribution_mode, 100);
+distribution_mode = 1; % uniformly sampled bins
+n_iterations      = 100; % when do we decide to give up before we find a solution
+f = distributewithconstraints(dur_to_optimize, ibis, nr_blocks-1, distribution_mode, n_iterations);
 
 if isempty(f)
     error('[%s]: Cannot find a combination of IBIs that works!!')
@@ -56,6 +53,7 @@ else
     % shuffle the order of the possible iti combinations
     optimized_IBIs = shuffle_concat(f,1);
 end
+
 
 
 return

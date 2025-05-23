@@ -26,7 +26,7 @@ p0.addRequired('ses_type'           , @isnumeric);
 p0.addRequired('run_nr'             , @isnumeric);
 p0.addParameter('images'      , []  , @isstruct);
 p0.addParameter('store_params', true, @islogical);
-p0.addParameter('session_env', 'MRI', @(x) ismember(x,{'MRI','BEHAVIOR'}));
+p0.addParameter('session_env', 'MRI', @(x) ismember(x,{'MRI','BEHAVIOR','TEST'}));
 
 % Parse inputs
 p0.parse(params, time_table_master, all_run_frames, subj_nr, ses_nr, ses_type, run_nr, varargin{:});
@@ -48,12 +48,19 @@ end
 
 % Check if ses nr is member of all sessions
 if strcmp(session_env, 'MRI')
-    ses_ok = ismember([1:params.exp.session.n_total_sessions],ses_nr);
-    run_ok = ismember([1:params.exp.session.deep.n_runs_per_session],run_nr);
-    
+    if ses_nr == 1
+        ses_ok = ismember([params.exp.session.n_wide_sessions],ses_nr);
+        run_ok = ismember([1:params.exp.session.mri.wide.n_runs_per_session(ses_nr,ses_type)],run_nr); 
+    else
+        ses_ok = ismember([params.exp.session.n_deep_sessions],ses_nr);
+        run_ok = ismember([1:params.exp.session.mri.deep.n_runs_per_session(ses_nr,ses_type)],run_nr); 
+    end
 elseif strcmp(session_env, 'BEHAVIOR')
     ses_ok = ismember([1:params.exp.session.n_behavioral_sessions],ses_nr);
     run_ok = ismember([1:params.exp.session.behavior.n_runs_per_session],run_nr);
+elseif strcmp(session_env, 'TEST')
+    ses_ok = ismember([1:max([params.exp.session.n_behavioral_sessions,params.exp.session.n_mri_sessions])],ses_nr);
+    run_ok = ismember([1:max([params.exp.session.behavior.n_runs_per_session,params.exp.session.n_deep_sessions])],run_nr);
 end
 
 if isempty(ses_ok)
@@ -122,10 +129,11 @@ run_images      = cell(size(run_frames.frame_im_nr)); % second dim represent lef
 run_alpha_masks = run_images;
 
 % Get stimulus rows in time table
-stim_events = run_table.event_id(ismember(run_table.event_id, [params.exp.block.stim_epoch1_ID, params.exp.block.stim_epoch2_ID, ...
-                    params.exp.block.eye_gaze_fix_ID, params.exp.block.eye_gaze_sac_target_ID, ...
-                    params.exp.block.eye_gaze_pupil_black_ID, params.exp.block.eye_gaze_pupil_white_ID]));
-stim_row = find(ismember(run_table.event_id, [params.exp.block.stim_epoch1_ID, params.exp.block.stim_epoch2_ID, ...
+% stim_events = run_table.event_id(ismember(run_table.event_id, [params.exp.block.stim_epoch1_ID, params.exp.block.stim_epoch2_ID, ...
+%                     params.exp.block.eye_gaze_fix_ID, params.exp.block.eye_gaze_sac_target_ID, ...
+%                     params.exp.block.eye_gaze_pupil_black_ID, params.exp.block.eye_gaze_pupil_white_ID]));
+                
+stim_row    = find(ismember(run_table.event_id, [params.exp.block.stim_epoch1_ID, params.exp.block.stim_epoch2_ID, ...
                     params.exp.block.eye_gaze_fix_ID, params.exp.block.eye_gaze_sac_target_ID, ...
                     params.exp.block.eye_gaze_pupil_black_ID, params.exp.block.eye_gaze_pupil_white_ID]));
 
@@ -178,6 +186,7 @@ for ii = 1:length(stim_row)
                         gbr_phase    = images.info.gabor.phase_deg(idx0);
                         ori_idx      = images.info.gabor.orient_i(idx0);
                         con_idx      = images.info.gabor.contrast_i(idx0);
+                        
                         % check if stim params match
                         assert(isequal( run_table.orient_dir(stim_row(ii),side) , gbr_ori));
                         assert(isequal( run_table.contrast(stim_row(ii),side), gbr_contrast));
@@ -251,12 +260,6 @@ for ii = 1:length(stim_row)
                     if strcmp(run_table.event_name(stim_row(ii)),'stim1') && run_table.is_catch(stim_row(ii)) == 0
                         
                         % RDKs: 130 mat files: 8 directions x 3 coherence levels x 5 deltas (0 + 4 deltas)
-                        %                                     stimDir = dir(fullfile(sprintf('%s*',params.stim.rdk.stimfile)));
-                        %                                     filename = sprintf('%04d_vcd_rdk_ori%02d_coh%02d_delta%02d',...
-                        %                                         unique_im, ...
-                        %                                         find(run_table_table.orient_dir(stim_row(ii),side) == params.stim.rdk.dots_direction), ...
-                        %                                         find(run_table_table.rdk_coherence(stim_row(ii),side) == params.stim.rdk.dots_coherence), ...
-                        %                                         0);
                         stimDir = dir(fullfile(sprintf('%s*',params.stim.rdk.stimfile)));
                         filename = sprintf('%04d_vcd_rdk_ori%02d_coh%02d_delta%02d',...
                             unique_im, ...
@@ -270,24 +273,13 @@ for ii = 1:length(stim_row)
                         else
                             error('[%s]: Can''t find RDK stim file!')
                         end
-                        
-                        
-                        %                                     if ~isfield(images,'info') || ~isfield(images.info,'rdk')
-                        %                                         infofile = dir(fullfile(sprintf('%s*',params.stim.rdk.infofile)));
-                        %                                         if ~isempty(infofile)
-                        %                                             images.info.rdk = readtable(fullfile(infofile(end).folder,infofile(end).name));
-                        %                                         else
-                        %                                             error('[%s]: Can''t find RDK info file!')
-                        %                                         end
-                        %                                     end
-                        
-                        
+
                         % check if stim description matches
-%                         idx0 = find(rdk_info.unique_im == unique_im);
-%                         dot_motdir = rdk_info.dot_motdir_deg(idx0);
-%                         dot_coh    = rdk_info.dot_coh(idx0);
-%                         assert(isequal(run_table.rdk_coherence(stim_row(ii),side),dot_coh));
-%                         assert(isequal(run_table.orient_dir(stim_row(ii),side),dot_motdir));
+                        idx0 = find(rdk_info.unique_im == unique_im);
+                        dot_motdir = rdk_info.dot_motdir_deg(idx0);
+                        dot_coh    = rdk_info.dot_coh(idx0);
+                        assert(isequal(run_table.rdk_coherence(stim_row(ii),side),dot_coh));
+                        assert(isequal(run_table.orient_dir(stim_row(ii),side),dot_motdir));
                         
                         frames =  frames(:,:,:,1:params.stim.rdk.duration);
 
@@ -324,8 +316,8 @@ for ii = 1:length(stim_row)
                         og_ori     = updated_ori-delta_test;
                         
                         % check if stim description matches
-%                         assert(isequal(rdk_info.dot_coh(corresponding_unique_im_idx), run_table.rdk_coherence(stim_row(ii),side)));
-%                         assert(isequal(rdk_info.dot_motdir_deg(corresponding_unique_im_idx), og_ori));
+                        assert(isequal(rdk_info.dot_coh(corresponding_unique_im_idx), run_table.rdk_coherence(stim_row(ii),side)));
+                        assert(isequal(rdk_info.dot_motdir_deg(corresponding_unique_im_idx), og_ori));
                         
                         % RDKs: 130 mat files: 8 directions x 3 coherence levels x 5 deltas (0 + 4 deltas)
                         stimDir = dir(fullfile(sprintf('%s*',params.stim.rdk.stimfile)));
@@ -595,15 +587,15 @@ for ii = 1:length(stim_row)
                     end
             end % stim class
             
-            % APPLY CONTRAST DECREMENT
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            %%%%%%%%%%%%%%% APPLY CONTRAST DECREMENT %%%%%%%%%%%%%%%%%%%%%%%%%%
             if strcmp(run_table.task_class_name(stim_row(ii)),'cd')
                 % 50% change we will actually apply the contrast
-                % decrement change to stimulus
-  
+                % decrement change to stimulus (this probability is already
+                % determined by vcd_addFIXandCDtoTimeTableMaster.m).
                 if run_table.cd_start(stim_row(ii),side)~=0
                     stmclass = run_table.stim_class_name{stim_row(ii),side};
                     rel_onset = run_table.cd_start(stim_row(ii),side) - run_table.event_start(stim_row(ii)) + 1;
-                    
                     if strcmp(stmclass,'rdk')
                         f_im_cd = vcd_applyContrastDecrement(params, rel_onset, stmclass, run_images(curr_frames,side)); % give all frames
                     else

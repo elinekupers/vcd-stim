@@ -264,7 +264,7 @@ else % Recreate conditions and blocks and trials
     button_response = NaN(size(condition_master,1),1);
     for ii = 1:size(condition_master,1)
         if  condition_master.is_catch(ii)
-            button_response(ii) = 0;
+            button_response(ii) = NaN;
         else
             button_response(ii) = vcd_getCorrectButtonResponse(p, condition_master(ii,:));
         end

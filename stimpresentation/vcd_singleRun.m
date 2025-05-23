@@ -7,15 +7,12 @@ p.addRequired('subj_nr'         , @isnumeric); % subject number
 p.addRequired('ses_nr'          , @isnumeric); % session number
 p.addRequired('ses_type'        , @isnumeric); % session type
 p.addRequired('run_nr'          , @isnumeric); % nun number
-p.addParameter('scan'           , struct()  , @isstruct);                    % struct with exp im rects, centers,  and sizes for ptb
+p.addParameter('env_type'       , []        , @(x) ismember(x, {'MRI','BEHAVIOR', 'TEST'})); % are we running the behavioral or MRI version of the VCD core experiment?
 p.addParameter('savedatadir'    , []        , @ischar);                      % place to store data with today's date
 p.addParameter('behaviorfile'   , []        , @ischar);                      % filename to store behavioral data with today's date
 p.addParameter('eyelinkfile'    , []        , @ischar);                      % where the eyelink edf file can be obtained
 p.addParameter('loadparams'     , true      , @islogical)                    % whether load stim/condition params or regenerate
 p.addParameter('storeparams'    , true      , @islogical)                    % whether to store stimulus params
-p.addParameter('infofolder'     , fullfile(vcd_rootPath,'workspaces','info'), @ischar);     % where the *_info.csv file is
-p.addParameter('stimfolder'     , fullfile(vcd_rootPath,'workspaces','stimuli'), @ischar);  % where the images can be obtained
-p.addParameter('instrtextdir'   , fullfile(vcd_rootPath,'workspaces','instructions'), @ischar); % where the task instructions can be obtained
 p.addParameter('laptopkey'      , -3        , @isnumeric);                   % listen to all keyboards/boxes (is this similar to k=-3;?)
 p.addParameter('wanteyetracking', false     , @islogical);                   % whether to try to hook up to the eyetracker
 p.addParameter('deviceNr'       , []        , @isnumeric);                   % kbWait/Check input device number
@@ -25,10 +22,13 @@ p.addParameter('triggerkeyname' , '''5'' or ''t''', @isstring)               % f
 p.addParameter('offsetpix'      , [0 0]     , @isnumeric);                   % offset of screen in pixels [10 20] means move 10-px right, 20-px down
 p.addParameter('movieflip'      , [0 0]     , @isnumeric)                    % whether to flip up-down, whether to flip left-right
 p.addParameter('debugmode'      , false     , @islogical)                    % whether to use debug mode (no BOLDscreen, no eyelink)
-p.addParameter('dispName'       , '7TAS_BOLDSCREEN32' , @ischar)             % display params: 7TAS_BOLDSCREEN32, KKOFFICE_AOCQ3277, PPROOM_EIZOFLEXSCAN, 'EKHOME_ASUSVE247'
 p.addParameter('savestim'       , false     , @islogical)                    % whether we want to store temp file with stimuli and timing
-p.addParameter('loadstimfromrunfile', false , @islogical)                % whether we want to load stim from run file
+p.addParameter('loadstimfromrunfile', false , @islogical)                    % whether we want to load stim from run file
 p.addParameter('ptbMaxVBLstd'   , 0.0004    , @isnumeric)                    % what standard deviation for screen flip duration do we allow?
+p.addParameter('infofolder'     , fullfile(vcd_rootPath,'workspaces','info')        , @ischar); % where the *_info.csv file is
+p.addParameter('stimfolder'     , fullfile(vcd_rootPath,'workspaces','stimuli')     , @ischar); % where the images can be obtained
+p.addParameter('instrtextdir'   , fullfile(vcd_rootPath,'workspaces','instructions'), @ischar); % where the task instructions can be obtained
+p.addParameter('dispName'       , '7TAS_BOLDSCREEN32', @(x) ismember(x,{'7TAS_BOLDSCREEN32','KKOFFICE_AOCQ3277', 'PPROOM_EIZOFLEXSCAN','EKHOME_ASUSVE247'})) % display name to get the right display params. Choose from: 7TAS_BOLDSCREEN32, KKOFFICE_AOCQ3277, PPROOM_EIZOFLEXSCAN, 'EKHOME_ASUSVE247'
 
 % Parse inputs
 p.parse(subj_nr, ses_nr, ses_type, run_nr, varargin{:});
@@ -42,8 +42,6 @@ for ff = 1:length(rename_me)
 end
 clear rename_me ff p
 
-% release scan and timing var
-scan = params.scan; rmfield(params,'scan');
 
 % deal with movieflip
 if params.movieflip(1) && params.movieflip(2)
@@ -72,7 +70,6 @@ end
 % Get device nr for KbCheck
 deviceNr = vcd_checkDevices(params.deviceNr, params.device_check);
 
-
 % Nova1x32 coil with BOLDscreen and big eye mirrors
 % expected to be {[1920 1080 120 24],[], 0, 0}
 % 1: [width, height, framerate, bitdepth]
@@ -95,21 +92,20 @@ params.rng.randn = randn;
 
 %% %%%%%%%%%%%%% STIM PARAMS %%%%%%%%%%%%%
 
-% Infer session type
-if strcmp(params.disp.name, '7TAS_BOLDSCREEN32')
-    session_env = 'MRI';
-    
-    % Buttonbox / keyboard
-    params.ignorekeys = KbName({params.triggerkey});  % dont record TR triggers as subject response
-    
-elseif strcmp(params.disp.name,'PPROOM_EIZOFLEXSCAN')
-    session_env = 'BEHAVIOR';
-else
-    session_env = 'MRI';
+% Change disp name to load stimuli
+if strcmp(params.env_type,'TEST')
+    params.disp.name = 'PPROOM_EIZOFLEXSCAN';
 end
 
 
-% Stimulus params
+% Buttonbox / keyboard
+if strcmp(params.env_type, 'MRI')
+    params.ignorekeys = KbName({params.triggerkey});  % dont record TR triggers as subject response
+else
+    params.ignorekeys = [];
+end
+
+% Get stimulus params
 if ~isfield(params, 'stim') || isempty(params.stim)
     if params.loadparams
         d = dir(fullfile(params.infofolder,sprintf('stim_%s*.mat',params.disp.name)));
@@ -130,7 +126,7 @@ if ~isfield(params, 'stim') || isempty(params.stim)
     end
 end
 
-% Session params
+% Get session params
 if ~isfield(params, 'exp') ||  isempty(params.exp)
     if params.loadparams
         d = dir(fullfile(params.infofolder,'exp*.mat'));
@@ -145,7 +141,7 @@ if ~isfield(params, 'exp') ||  isempty(params.exp)
     end
 end
 
-% TIME TABLE MASTER
+% Get time table master
 if ~exist('time_table_master','var') ||  isempty(params.exp)
     if params.loadparams
         d = dir(fullfile(params.infofolder,'time_table_master_complete*.mat'));
@@ -160,7 +156,7 @@ end
 
 %% %%%%%%%%% LOAD IMAGES & ORDER
 
-if ~exist('scan','var') || ~isfield(scan,'exp_im') || isempty(scan.exp_im)
+if ~exist('stim','var') || ~isfield(scan,'im') || isempty(stim.im)
     
     if params.loadstimfromrunfile
         
@@ -175,22 +171,23 @@ if ~exist('scan','var') || ~isfield(scan,'exp_im') || isempty(scan.exp_im)
         clear a d;
         
     else
-        
         [images, masks] = vcd_getImageOrderSingleRun(params, ...
             time_table_master, all_run_frames, params.subj_nr, params.ses_nr, params.ses_type, params.run_nr, ...
-            'store_params', false,'session_env', session_env);
+            'store_params', false,'session_env', params.env_type);
     end
     
+    % subselect the run frames and table from bigger tables
     run_frames = all_run_frames(all_run_frames.session_nr == params.ses_nr & ...
                                 all_run_frames.session_type == params.ses_type & ...
-                            all_run_frames.run_nr ==params.run_nr,:);
-    run_table = time_table_master(time_table_master.session_nr==params.ses_nr ... 
-        & time_table_master.session_type==params.ses_type ... 
-        & time_table_master.run_nr==params.run_nr,:);
+                                all_run_frames.run_nr ==params.run_nr,:);
+                            
+    run_table = time_table_master(time_table_master.session_nr==params.ses_nr & ... 
+                     time_table_master.session_type==params.ses_type &... 
+                     time_table_master.run_nr==params.run_nr,:);
     
     stim.im    = images;
     stim.masks = masks;
-    clear images masks
+    clear images masks time_table_master all_run_frames
     
 end
 
@@ -236,7 +233,6 @@ if ~exist('scan','var') || ~isfield(scan, 'rects') || isempty(scan.rects)
                     elseif ismember(run_frames.frame_im_nr(nn,side), [params.stim.rdk.unique_im_nrs_core,params.stim.rdk.unique_im_nrs_wm_test])
                         centers{nn,side} = [params.stim.rdk.x0_pix(side) + params.stim.xc, ...
                             params.stim.rdk.y0_pix(side) + params.stim.yc];
-%                         disp([nn run_frames.frame_im_nr(nn,side) centers{nn,side}]);
                     elseif ismember(run_frames.frame_im_nr(nn,side), [params.stim.dot.unique_im_nrs_core,params.stim.dot.unique_im_nrs_wm_test])
                         
                         % deal with dot pol2cart
@@ -276,7 +272,6 @@ if ~exist('scan','var') || ~isfield(scan, 'rects') || isempty(scan.rects)
                         im_IDs(nn:(nn+params.stim.stimdur_frames-1),side) = nn;
                     end
                     
-                    % EK START HERE
                     if isnan(run_frames.frame_im_nr(nn,side))
                         apsize{nn,side}  = [NaN, NaN];
                     else
@@ -287,10 +282,7 @@ if ~exist('scan','var') || ~isfield(scan, 'rects') || isempty(scan.rects)
                             apsize{nn,side}  = [size(stim.im{nn,side},2), size(stim.im{nn,side},1)];
                        end
                     end
-                    
-                    
-%                      disp([nn run_frames.frame_im_nr(nn,side) im_IDs(nn, side) centers{nn,side} apsize{nn,side}]);
-                    
+          
                     % COMBINE IMAGE AND MASKS, FLIP IM IF REQUESTED
                     if isempty(stim.masks{nn,side})
                         stim.im{nn,side} = feval(flipfun, stim.im{nn,side});
@@ -320,9 +312,8 @@ for nn = 1:size(stim.im,1)
     
 end
 
-
+% add info to run tables
 run_frames.im_IDs = im_IDs; clear im_ID
-
 stim.centers = centers; clear centers;
 stim.apsize  = apsize; clear apsize;
 
@@ -338,7 +329,7 @@ for side = [1,2]
     apsize_shortlist  = stim.apsize(nonemptycenters,side);
     
     rects_shortlist   = ...
-        cellfun(@(stimsize,stimcenter) ...
+        cellfun(@(stimsize,stimcenter) ... width, height, x0, y0
         CenterRectOnPoint([0 0 stimsize(1) stimsize(2)], stimcenter(1), stimcenter(2)), ...
         apsize_shortlist,centers_shortlist, 'UniformOutput', false);
 
@@ -360,18 +351,18 @@ clear rects_shortlist centers_shortlist apsize_shortlist
 % input 5: offset of center in pixels [x,y]
 % create background image that adjusts for shifted background if needed
 
-if ~exist('bckground','var') || isempty(bckground)
-    d = dir(fullfile(params.stimfolder,params.disp.name, sprintf('bckgrnd_%s*.mat',params.disp.name)));
-    a = load(fullfile(d(end).folder, d(end).name),'bckgrnd_im');
-    bckground = a.bckgrnd_im(:,:,:,params.run_nr);
-    clear a d
-end
+% if ~exist('bckground','var') || isempty(bckground)
+%     d = dir(fullfile(params.stimfolder,params.disp.name, sprintf('bckgrnd_%s*.mat',params.disp.name)));
+%     a = load(fullfile(d(end).folder, d(end).name),'bckgrnd_im');
+%     bckground = a.bckgrnd_im(:,:,:,params.run_nr);
+%     clear a d
+% end
+% 
+% if any(params.offsetpix~=[0,0])
+%     bckground = vcd_pinknoisebackground(params, 'none', 'fat', 1, params.offsetpix);
+% end
 
-if any(params.offsetpix~=[0,0])
-    bckground = vcd_pinknoisebackground(params, 'comb', 'fat', 1, params.offsetpix);
-end
-
-bckground = feval(flipfun,bckground);
+% bckground = feval(flipfun,bckground);
 
 %% %%%%%%%%%%%%% ET IM %%%%%%%%%%%%%
 %  ET TARGETS: 4D array: [x,y, 3, type]
@@ -451,21 +442,14 @@ for nn = 1:length(taskIDs)
     taskscript{nn} = fullfile(d.folder,d.name);
 end
 
-%% EK HACK START ---
 
 %% %%%%%%%%%%%%% INIT SCREEN %%%%%%%%%%%%%
-% Screen('Preference', 'SyncTestSettings', 0.0004); %.0004
-% oldCLUT = pton(ptonparams{:});
-% 
-% win  = firstel(Screen('Windows'));
-% oldPriority = Priority(MaxPriority(win));
-% 
-% rect = Screen('Rect',win); % what is the total rect    % alternatively: rect = CenterRect(round([0 0 rect(3)*winsize rect(4)*winsize]),rect);
-% 
-rect = [1 1 1240 1400];
-win = 0;
+Screen('Preference', 'SyncTestSettings', ptbMaxVBLstd); % what deviation from empirical monitor refresh rate do we allow before calling it a missed flip?
+oldCLUT     = pton(ptonparams{:});
+win         = firstel(Screen('Windows'));
+oldPriority = Priority(MaxPriority(win));
+rect        = Screen('Rect',win); % get total screen rect   % alternatively: rect = CenterRect(round([0 0 rect(3)*winsize rect(4)*winsize]),rect);
 
-%% EK HACK END ---
 
 %% %%%%%%%%%%%%% Eyelink stuff %%%%%%%%%%%%%
 % ANON EYE FUN for SYNC TIME
@@ -478,8 +462,6 @@ if params.wanteyetracking
 else
     tfunEYE = @() fprintf('EXP STARTS.\n');
 end
-
-
 
 % INIT/CALIBRATION/VALIDATION
 if params.wanteyetracking && ~isempty(params.eyelinkfile)
@@ -587,17 +569,16 @@ if params.wanteyetracking && ~isempty(params.eyelinkfile)
         fprintf('Please perform calibration. When done, press the output/record button.\n');
         EyelinkDoTrackerSetup(el);
     end
-    
-    
+
     % Start recording
     Eyelink('StartRecording');
-    
+else
+    eyetempfile = [];
+    params.eyelinkfile = [];
 end
 
 
-%% START EXPERIMENT
-
-% call ptviewmovie
+% Get time of stim call
 timeofshowstimcall = datestr(now,30);
 
 % Create filename where behavioral and timing data will be stored
@@ -611,10 +592,9 @@ if ~isfield(params,'behaviorfile') || isempty(params.behaviorfile)
         timeofshowstimcall,params.subj_nr,params.ses_nr,params.run_nr);
 end
 
-% GO!
+%% START EXPERIMENT!
 [data,getoutearly] = vcd_showStimulus(...
     win, rect, params, ...
-    scan, ...
     bckground, ...
     fix_im, ...
     eye_im, ...
@@ -626,34 +606,10 @@ end
     tfunEYE, ...
     deviceNr, ...
     oldCLUT,...
-    oldPriority);
+    oldPriority, ...
+    eyetempfile);
 
-%% CLEAN UP AND SAVE
 
-fprintf('RUN ENDED: %4.4f.\n',GetSecs);
 
-% Close out eyelink
-if params.wanteyetracking
-    if ~isempty(eyetempfile)
-        
-        % Close eyelink and record end
-        Eyelink('StopRecording');
-        Eyelink('message', sprintf('EXP END %d',GetSecs));
-        Eyelink('CloseFile');
-        status = Eyelink('ReceiveFile',eyetempfile, params.savedatadir, 1);
-        fprintf('ReceiveFile status %d\n', status);
-        
-        % RENAME DOWNLOADED FILE TO THE FINAL FILENAME
-        mycmd=['mv ' params.savedatadir '/' eyetempfile ' ' params.savedatadir '/' params.eyelinkfile];
-        system(mycmd);
-        if status <= 0, fprintf('\n\nProblem receiving edf file\n\n');
-        else
-            fprintf('Data file ''%s'' can be found in ''%s''\n', params.eyelinkfile, pwd);
-        end
-        Eyelink('ShutDown'); % Do we need to shut down???
-        
-    end
-end
 
-%% CHECK MONITOR TIMING
-fH = vcd_checkMonitorTiming(data);
+

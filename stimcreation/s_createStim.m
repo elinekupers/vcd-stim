@@ -87,13 +87,19 @@ params.exp    = vcd_getSessionParams('disp_name', params.disp.name, ...
 %
 % INPUTS:
 % * params      : parameter struct (requires display and stimulus parameters)
-% * cutout_type : what stimulus apertures to use to create cutout shape, choose from:
-%   - 'puzzle'    (union of center square and 2 parafoveal stimulus apertures in 2-stimulus array)
-%   - 'dotring'   (iso-eccentric ring that the single dot lives on) 
-%   - 'comb'      (union of puzzle and dotring)
-% * rim width   : what rim do you want, choose from: 
-%   - 'skinny'    (no additional "buffer zone" between  and pink noise background
+%
+% * gaptype     : what stimulus apertures to use to create cutout shape, choose from:
+%   - 'none'        : gray mean luminance background, no pink noise
+%   - 'circle'      : circular shape 
+%   - 'puzzle'      : union of center square and 2 parafoveal stimulus apertures in 2-stimulus array)
+%   - 'dotring'     : iso-eccentric ring that the single dot lives on.
+%   - 'comb'        : union of puzzle and dotring)
+%
+% * borderwidth : how much buffer zone do you want between stimulus edge and pink noise, choose from: 
+%   - 'skinny'    (no additional "buffer zone" between and pink noise background
 %   - 'fat'       (with additional "buffer zone": 1 degree added on each side of the cutout 
+%   if gaptype = 'none', borderwidth will be ignored.
+%
 % * num         : number of unique noise images (should be an integer, default is 1)
 % * pixoffset   : relative offset of [x,y] center in pixels from the native 
 %                 center of the monitor (BOLDscreen width 540 x height 960
@@ -103,14 +109,16 @@ params.exp    = vcd_getSessionParams('disp_name', params.disp.name, ...
 % * bckgrnd_im  : (uint8) background images, height in pixels x width in pixels x 3 (rbg) x number of images (int) 
 %                 BOLDscreen dimensions are: height (1080 pixels) x width (1920 pixels)
 
-gaptype     = 'circle';
-borderwidth = 'fat';
+% Define inputs
+gaptype     = 'none';
+borderwidth = 'none';
+
 if strcmp(dispname,'PPROOM_EIZOFLEXSCAN')
     % 14 runs * 1 session x 2 session type ("BEHAVIOR001")
-    num = sum(params.exp.session.behavior.n_runs_per_session); 
+    num = 1; %sum(params.exp.session.behavior.n_runs_per_session); 
 elseif strcmp(dispname,'7TAS_BOLDSCREEN32')
     % 258 MRI runs: 10 runs x 2 (WIDE01A + WIDE01B) + 10 runs x 25 sessions (DEEP001-0025) + 4 runs x 2 sessions (DEEP26A/26Bp)
-    num = sum(params.exp.session.mri.wide.n_runs_per_session) + sum(params.exp.session.mri.deep.n_runs_per_session);
+    num = 1; %sum(params.exp.session.mri.wide.n_runs_per_session) + sum(params.exp.session.mri.deep.n_runs_per_session);
 else
     num = 1;
 end
