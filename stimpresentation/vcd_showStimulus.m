@@ -1,6 +1,5 @@
 function [data,getoutearly,run_frames,run_table] = vcd_showStimulus(...
     win, rect, params, ...
-    bckground, ...
     fix, ...
     eye_im, ...
     stim, ...
@@ -45,7 +44,7 @@ end
 
 %% PTB stuff
 mfi            = Screen('GetFlipInterval',win);     % empirical refresh rate determined when we "opened" the ptb window pointer
-frameduration  = round(params.stim.framedur_s/mfi); % 30 Hz presentation, 2 frames for office/psph monitors (60 Hz), 4 frames for BOLDscreen (120 Hz);
+frameduration  = round(params.stim.framedur_s/mfi); % 60 Hz presentation, 1 time frame for office/psph monitors (60 Hz), 2 time frames for BOLDscreen (120 Hz);
 
 Screen('BlendFunction', win, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 Screen('Preference','TextRenderer',1);
@@ -69,7 +68,7 @@ fprintf('');
 
 %% Create background and fixation textures prior to exp onset (as we need them throughout the experiment)
 bckground_rect    = rect; %CenterRect([0 0 round(size(bckground,1)) round(size(bckground,2))],rect);
-bckrgound_texture = Screen('MakeTexture', win, bckground);
+% bckrgound_texture = Screen('MakeTexture', win, bckground);
 
 % make fixation dot texture
 fix_texture_thin_full   = cell(1,size(fix.fix_thin_full,2));
@@ -164,7 +163,7 @@ for nn = 1:size(run_frames.frame_event_nr,1)
             % * TexturePointers  need to be: n vector (where n is the number of textures)
             % * DestinationRects need to be: 4 row x n columns (where n is the number of textures)
             
-            im_tex{nn}  = fix_tex(nn); %cat(1, bckrgound_texture, fix_tex(nn));
+            im_tex{nn}  = fix_tex{nn}; %cat(1, bckrgound_texture, fix_tex(nn));
             im_rect{nn} = fix_rect{nn}; %cat(1, bckground_rect, fix_rect{nn});
             
             framecolor{nn} = 255*ones(1,3); %255*ones(2,3); % <framecolor> can also be size(<frameorder>,2) x 1 with values in [0,1] indicating an alpha change.
@@ -185,7 +184,7 @@ for nn = 1:size(run_frames.frame_event_nr,1)
             framecolor{nn} = 255*ones(1,3); % <framecolor> can also be size(<frameorder>,2) x 1 with values in [0,1] indicating an alpha change.
 
         % Draw background with eyetracking target
-        case {990,991} % eye_gaze_fix_ID = 990.991; % central fixation "rest" and "target"
+        case {990,991} % eye_gaze_fix_ID = 990,991; % central fixation "rest" and "target"
             im_tex{nn}  = et_texture{1};
             im_rect{nn} = et_rect;
             framecolor{nn} = 255*ones(1,3);
@@ -230,7 +229,7 @@ clear frame;
 
 % Draw background
 % Screen('DrawTexture',win, bckrgound_texture,[], bckground_rect,[], 0, 1, 255*ones(1,3)); % INPUTS TO DRAWTEXTURE: windowPointer, texturePointer(s), [sourceRect], destRects, rotAngles, filterModes, globalAlphas, modulateColors, textureShader, specialFlags, auxParameters]);
-Screen('FillRect',win,params.stim.bckground_grayval,rect);
+Screen('FillRect',win,params.stim.bckgrnd_grayval,rect);
   
 % Draw text
 DrawFormattedText(win, instrtext, 'center', (prerun_text_rect(4)/2)-50, 0, 75,[],[],[],[],prerun_text_rect);
@@ -287,7 +286,7 @@ while 1
     end
     
     % Get gray background
-    Screen('FillRect',win,params.stim.bckground_grayval,rect);
+    Screen('FillRect',win,params.stim.bckgrnd_grayval,rect);
     
     switch run_frames.frame_event_nr(framecnt)
         
@@ -315,8 +314,10 @@ while 1
             
         case 90 % task_cue_ID
             
-            % draw background and left/right cuing dot textures
-            Screen('DrawTexture',win, im_tex{frame},[],im_rect{frame},0,[],1,framecolor{frame});
+            % draw background and background textures -- We do not plot a
+            % fixation circle such that subjects are encouraged to read the
+            % tak instructions
+%             Screen('DrawTexture',win, im_tex{frame},[],im_rect{frame},0,[],1,framecolor{frame});
             
             % draw text
             % inputs are winptr, tstring, sx, sy, color, wrapat, flipHorizontal, flipVertical, vSpacing, righttoleft, winRect)
@@ -528,13 +529,15 @@ performance = vcdbehavioralanalysis(filename);
 ptviewmoviecheck(data.timing.timeframes,data.timeKeys,[],'t');
 
 % check eyetracking data
-eyeresults = vcdeyetrackingpreprocessing(params.eyelinkfile,params.behavioralfile, performance);
+if params.wanteyetracking
+    eyeresults = vcdeyetrackingpreprocessing(params.eyelinkfile,params.behavioralfile, performance);
+end
 
 % Get feedback display text
 [fb_txt, fbtext_rect] = vcd_getFeedbackDisplay(params, rect, performance, taskscript);
 
 % Show performance to subject (draw text on gray background)
-Screen('FillRect', win, params.stim.bckground_grayval, rect);
+Screen('FillRect', win, params.stim.bckgrnd_grayval, rect);
 DrawFormattedText(win, fb_txt, 'center', (fbtext_rect(4)/2)-25,0,75,[],[],[],[],fbtext_rect); % inputs are winptr, tstring, sx, sy, color, wrapat, flipHorizontal, flipVertical, vSpacing, righttoleft, winRect)
 waitSecs(8);
 
