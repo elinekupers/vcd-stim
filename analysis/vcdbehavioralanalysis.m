@@ -347,7 +347,6 @@ end
 % - 1st frame in timeframes is presented (onset) at t=0.
 % - duration is 60 means the end of the 60th frame is t=60.
 % - the next event also starts at t=60.
-% - event_end is just the onset time of the last frame of the event.
 
 % check that the total duration of all events is exactly the number of timeframes
 assert(sum(a1.run_table.event_dur)==length(timeframes));
