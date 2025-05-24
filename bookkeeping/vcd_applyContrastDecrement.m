@@ -82,6 +82,8 @@ for tt = 1:length(params.stim.cd.t_gauss)
         tmp_im = tmp_im(:,:,1:3);
     end
     
+    tmp_im = double(tmp_im);
+    
     if strcmp(stim_class, 'ns')
         % SCENES are in color, where RGB channels range between values of 0-255.
         tmp_im_g = rgb2gray(tmp_im);  % rgb to gray
@@ -98,19 +100,19 @@ for tt = 1:length(params.stim.cd.t_gauss)
         tmp_im_c = ((tmp_im-1)./254).^2;                                % convert luminance range [0 1]
         tmp_im_c = tmp_im_c-0.5;                                        % center around 0, min/max range [-0.5 0.5]
         tmp_im_c = tmp_im_c.*params.stim.cd.t_gauss(tt);                % scale contrast
-        tmp_im_c = uint8(254.*sqrt(tmp_im_c))+1;                        % bring back to 1-255
+        tmp_im_c = uint8(254.*sqrt(tmp_im_c+0.5))+1;                        % bring back to 1-255
         % resize to 3D
         tmp_im_c = reshape(tmp_im_c,sz0);
         
     else % Gabors, RDKs, Dots
         tmp_im_c = (tmp_im./255)-0.5;                                   % center around 0, range [-0.5 0.5]
         tmp_im_c = tmp_im_c.*params.stim.cd.t_gauss(tt);                % scale contrast
-        tmp_im_c = uint8( bsxfun(@plus, (255.*tmp_im_c), double(params.stim.bckgrnd_grayval))); % bring back to 1-255
+        tmp_im_c = uint8( bsxfun(@plus, (255.*(tmp_im_c+0.5)), double(params.stim.bckgrnd_grayval))); % bring back to 1-255
         % resize to 3D
         tmp_im_c = reshape(tmp_im_c,sz0);
     end
     
     % accumulate contrast modulated image
-    output_im{c_onset+tt-1} = tmp_im_c;
+    output_im{c_onset+tt-1} = uint8(tmp_im_c);
     
 end % tt
