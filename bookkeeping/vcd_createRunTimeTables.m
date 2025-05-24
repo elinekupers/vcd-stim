@@ -897,7 +897,7 @@ for ses = 1:size(all_sessions,3)
                 set(gca,'YTick',[1:4],'YTickLabel',{'run nr','block nr', 'trial nr', 'crossing nr'})
                 colormap(cmapturbo(max([session_time_table.block_nr',session_time_table.run_nr'])))
                 colorbar
-                set(gca,'CLim', [0 110]);
+                set(gca,'CLim', [0 32]);
                 xlabel('events (in time)')
                 sgtitle(sprintf('Session %02d %s',ses, choose(unique(session_time_table.session_type),'A','B')))
                 
