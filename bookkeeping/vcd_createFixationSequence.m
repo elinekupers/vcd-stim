@@ -15,110 +15,114 @@ function fix_matrix = vcd_createFixationSequence(params,fixsoafun,run_dur,blank_
 %                       relative luminance change (1=brighter, 2=dimmer).
 
 % %%%% Get fixation timing
-fix_seq = []; f_fix = 0;
-while f_fix(end) < run_dur
-    fix_seq = [fix_seq, fixsoafun()];
-    f_fix = cumsum(fix_seq);
+% fix_seq = [0]; f_fix = 0;
+% while f_fix(end) < run_dur
+%     fix_seq = [fix_seq, fixsoafun()];
+%     f_fix = cumsum(fix_seq);
+% end
+
+% % trim in case we accidentally went overtime
+% f_fix = f_fix(f_fix<run_dur);
+% 
+% % fill up fixation sequence until run dur
+% if f_fix(end)~=run_dur
+%     f_fix(end+1) = run_dur;
+%     fix_seq(end+1) = f_fix(end) - f_fix(end-1);
+% end
+
+
+% Determine frozen periods
+blank_onset(1)    = 1; % add 1 because we can't zero index 
+blank_offset(end) = blank_offset(end)+1;
+
+freeze_me = zeros(run_dur,1);
+for ii = 1:length(blank_onset)
+    freeze_me(blank_onset(ii):(blank_offset(ii)-1)) = 1;
 end
 
-% trim in case we accidentally went overtime
-f_fix = f_fix(f_fix<run_dur);
-
-% fill up fixation sequence until run dur
-if f_fix(end)~=run_dur
-    f_fix(end+1) = run_dur;
-    fix_seq(end+1) = f_fix(end) - f_fix(end-1);
-end
-
-f_fix = [0, f_fix];
-blank_onset(1) = 0;
+freeze_me(end) = 1;
 
 % Ignore 128 lum value (that's for IBI and black periods only)
 lum_vals = setdiff(params.stim.fix.dotlum,128);
 
-% Update luminance of fixation dot randomly (WITHOUT replacement)
-lum_shuffled_vec = [];
-for kk = 1:(1+ceil(length(f_fix)/length(lum_vals)))
-    lum_sample = datasample(double(lum_vals),length(lum_vals),'Replace',false);
-    if kk > 1 && (lum_sample(1) == lum_shuffled_vec(end)) % if we happen to sample the same luminance for the first of this series and the last of previous series, we swap first and second lum values
-        lum_sample([1,2]) = lum_sample([2,1]);
-    end
-    lum_shuffled_vec = cat(2,lum_shuffled_vec, lum_sample);
-end
-lum_shuffled_vec = lum_shuffled_vec(1:length(f_fix));
+fix_interval = fixsoafun()-1;
 
-assert(isequal(sort(unique(lum_shuffled_vec)),lum_vals)); % no mid gray level!
-assert(all(diff(lum_shuffled_vec)~=0)) % no repeats!
-
-blank_offset(end) =  f_fix(end);
-
-% Expand luminance values to time frames
-fix_abs_lum = [];
-for ff = 1:length(lum_shuffled_vec)
-    curr_time_frames = f_fix(ff):(f_fix(ff)+fix_seq(ff)-1);
-    clear ia0 ib0
-    ia = []; ib = [];
-    for ii = 1:length(blank_onset)
-        freeze_me = blank_onset(ii):blank_offset(ii);
-        [~,ia0] = intersect(curr_time_frames,freeze_me);
-        [~,ib0] = setdiff(curr_time_frames,freeze_me);
-        ia = cat(1,ia,ia0);
-        ib = cat(1,ib,ib0);
+while 1
+    % create sequence of shuffled luminance values (so randomly selecting WITHOUT replacement)
+    lum_vec = shuffle_concat(lum_vals,(ceil(run_dur/fix_interval)/length(lum_vals)));
+    repeat_lum = find(diff(lum_vec)==0);
+    lum0 = lum_vec(repeat_lum);
+    
+    % if we happen to sample the same luminance in a row
+    for ii = 1:length(lum0)
+        % we check neighoring values
+        lum_next0  = lum_vec(repeat_lum(ii)-1);
+        lum_next2  = lum_vec(repeat_lum(ii)+2);
+        lum_next3  = lum_vec(repeat_lum(ii)+3);
+        % and swap them if we can
+        if lum0(ii) ~= lum_next0
+            tmp1 = lum0(ii);
+            tmp2 = lum_next0;
+            lum_vec(repeat_lum(ii)) = tmp2;
+            lum_vec(repeat_lum(ii)-1) = tmp1;
+        elseif lum0(ii) ~= lum_next2
+            tmp1 = lum0(ii);
+            tmp2 = lum_next2;
+            lum_vec(repeat_lum(ii)) = tmp2;
+            lum_vec(repeat_lum(ii)+2) = tmp1;
+        elseif lum0(ii) ~= lum_next3
+            tmp1 = lum0(ii);
+            tmp2 = lum_next3;
+            lum_vec(repeat_lum(ii)) = tmp2;
+            lum_vec(repeat_lum(ii)+3) = tmp1;
+        end
     end
     
-    curr_fix = [];
-    if length(fix_abs_lum)+fix_seq(ff) >= run_dur
-       fix_abs_lum = cat(1,fix_abs_lum,128*ones(run_dur-length(fix_abs_lum),1));
-    else
-        if ~isempty(ia)
-            % freeze fixation lum during IBI/pre/post blank periods
-            curr_fix(ia) = 128*ones(length(ia),1); % mean luminance gray
 
-            if ia(1) == 1 && (ia(end) < length(curr_time_frames)) % if we start with frozen fix, but not finish with it, we continue counting the same luminance
-                curr_fix(ib(1):(ib(1)+length(curr_time_frames)-1)) = Expand(lum_shuffled_vec(ff), 1, length(curr_time_frames));
+    % if we are good, we break out of the loop
+    if sum(diff(lum_vec)==0)==0
+        break;
+    end
+    % otherwise we start over
+end
 
-                % and push the onset of all the other luminance changes forward
-                f_fix((ff+1):end) = f_fix((ff+1):end)+ib(1);
-
-                future_time_frames =  f_fix(ff+1):(f_fix(ff+1)+fix_seq(ff+1)-1);
-                [~,ic] = intersect(future_time_frames,freeze_me);
-                assert(isempty(ic));
-
-            elseif ia(1) > 1 && (ia(end) == length(curr_time_frames)) % if we finish on frozen fix
-                curr_fix(ib) = Expand(lum_shuffled_vec(ff), 1, length(ib));
-            end
-        else
-            curr_fix = Expand(lum_shuffled_vec(ff), 1, length(curr_time_frames));
-        end
-        if size(curr_fix,1) < size(curr_fix,2)
-            curr_fix = curr_fix';
-        end
-        fix_abs_lum = cat(1, fix_abs_lum, curr_fix);
-        if length(fix_abs_lum) > run_dur
-            fix_abs_lum = fix_abs_lum(1:run_dur); % trim the end
-            break;
-        end
+fix_abs_lum = NaN(run_dur,1);
+for kk = 1:run_dur
+    
+    if freeze_me(kk) == 1 % we freeze luminance value at mid-gray level (128)
+       fix_abs_lum(kk) = 128;
+       counter = 0;
+    elseif freeze_me(kk) == 0 % add luminance value
+       if kk > 1 && (fix_abs_lum(kk-1) == 128)
+           % if we just had a frozen time frame
+           % then we want a new luminance sample
+           lum_sample      = lum_vec(1);
+           fix_abs_lum(kk) = lum_sample;
+           lum_vec(1)      = []; % and toss it out 
+       elseif counter==fix_interval
+           % if reached our update rate, we move on the the luminance sample
+           % and reset the counter
+           counter          = 0;
+           lum_sample       = lum_vec(1);
+           lum_vec(1)       = [];
+           fix_abs_lum(kk)  = lum_sample;
+       else % if we are in a stable state, we continue with the same 
+           % luminance sample
+           fix_abs_lum(kk)  = lum_sample;
+       end
+       counter = counter + 1;
     end
 end
 
 % figure out when dot is brighter, dimmer or the same
 % relative to previous time point
-dimmer   = find(diff([0, fix_abs_lum'])<0);
-nochange = find(diff([0, fix_abs_lum'])==0);
-brighter = find(diff([0, fix_abs_lum'])>0);
-
-[r_sort,r_ai] = sort([dimmer, nochange,brighter]);
-response_fix_vex = [-1.*ones(size(dimmer)), zeros(size(nochange)),1.*ones(size(brighter))];
-response_fix_vex = response_fix_vex(r_ai);
-response_fix_vex(1) = 0; % set first lum to no response;
-
 fix_timing  = [0:(run_dur-1)]';
 fix_rel_lum = [0; diff(fix_abs_lum)];
 
 % translate changes in luminance into button responses
-button_response_fix = response_fix_vex';
-button_response_fix(response_fix_vex==1)  = 1; % brighter
-button_response_fix(response_fix_vex==-1) = 2; % dimmer
+button_response_fix = NaN(run_dur,1);
+button_response_fix(fix_rel_lum>0) = 1; % brighter
+button_response_fix(fix_rel_lum<0) = 2; % dimmer
 
 fix_matrix = [fix_timing,fix_abs_lum,fix_rel_lum,button_response_fix];
 fix_matrix = fix_matrix(1:run_dur,:);
