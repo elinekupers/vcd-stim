@@ -57,10 +57,8 @@ for ses = 1:length(session_nrs)
                 
                 % Get rest / blank periods to know when to freeze the
                 % fixation luminance sequence.
-                blank_onset       = this_run.event_start(this_run.block_nr==0); 
-                blank_onset(1)    = 1; % include eyetracking block
-                blank_offset      = this_run.event_end(this_run.block_nr==0); % includes postblank period 
-                blank_offset(end) = blank_offset(end) + 1;
+                blank_onset       = this_run.event_start(this_run.block_nr==999 | this_run.block_nr==0 | this_run.event_id==90); 
+                blank_offset      = this_run.event_end(this_run.block_nr==999 | this_run.block_nr==0 | this_run.event_id==90); % includes postblank period 
                 
                 % Get fixation sequence
                 % fix_matrix is a matrix with dims: time frames x 4, where 
