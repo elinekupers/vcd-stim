@@ -1,4 +1,4 @@
-function runme_vcdcore(subj_nr,ses_nr,ses_type,run_nr, varargin)
+function [data, params] = runme_vcdcore(subj_nr,ses_nr,ses_type,run_nr, varargin)
 % Main wrapper function to run the core VCD experiment. This function can 
 % run both behavioral and functional MRI.
 %
@@ -83,7 +83,10 @@ function runme_vcdcore(subj_nr,ses_nr,ses_type,run_nr, varargin)
 %                        Default: false;
 %
 % OUTPUTS:
-%  None
+%   data              : struct with behavioral button presses and monitor
+%                        refresh rate timing, as well as other parameters.
+%   params            : struct with experimental and stimulus parameters
+%                        used for this particular run.
 %
 % EXAMPLES:
 %  runme_vcdcore(1, 1, 1,1, 'debugmode', true)
@@ -108,8 +111,6 @@ function runme_vcdcore(subj_nr,ses_nr,ses_type,run_nr, varargin)
 %  - 2018/12/25 - initial runnsd version 
 %  - 2024/11/06 - initial vcd version with some stuff adopted from runnsd
 %  - 2024/12/01 - first version committed to github 
-% 
-%  
 
 close all; clc;
 
