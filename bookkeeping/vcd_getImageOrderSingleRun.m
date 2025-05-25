@@ -125,14 +125,10 @@ run_frames = all_run_frames((all_run_frames.session_nr==ses_nr ...
     & all_run_frames.run_nr==run_nr),:);
 
 %% Predefine cell arrays for stimuli
-run_images      = cell(size(run_frames.frame_im_nr)); % second dim represent left and right side stimuli
+run_images      = cell(size(run_frames.frame_im_nr)); % time frames x stim loc (1:left and 2:right side stimuli)
 run_alpha_masks = run_images;
 
-% Get stimulus rows in time table
-% stim_events = run_table.event_id(ismember(run_table.event_id, [params.exp.block.stim_epoch1_ID, params.exp.block.stim_epoch2_ID, ...
-%                     params.exp.block.eye_gaze_fix_ID, params.exp.block.eye_gaze_sac_target_ID, ...
-%                     params.exp.block.eye_gaze_pupil_black_ID, params.exp.block.eye_gaze_pupil_white_ID]));
-                
+% Get stimulus rows in time table                
 stim_row    = find(ismember(run_table.event_id, [params.exp.block.stim_epoch1_ID, params.exp.block.stim_epoch2_ID, ...
                     params.exp.block.eye_gaze_fix_ID, params.exp.block.eye_gaze_sac_target_ID, ...
                     params.exp.block.eye_gaze_pupil_black_ID, params.exp.block.eye_gaze_pupil_white_ID]));
@@ -597,9 +593,9 @@ for ii = 1:length(stim_row)
                     stmclass = run_table.stim_class_name{stim_row(ii),side};
                     rel_onset = run_table.cd_start(stim_row(ii),side) - run_table.event_start(stim_row(ii)) + 1;
                     if strcmp(stmclass,'rdk')
-                        f_im_cd = vcd_applyContrastDecrement(params, rel_onset, stmclass, run_images(curr_frames,side)); % give all frames
+                        [f_im_cd, f_mask_cd] = vcd_applyContrastDecrement(params, rel_onset, stmclass, run_images(curr_frames,side), 'input_mask', run_alpha_masks(curr_frames,side)); % give all frames
                     else
-                        f_im_cd = vcd_applyContrastDecrement(params, rel_onset, stmclass, run_images(curr_frames(1),side)); % give first (and only frame)
+                        [f_im_cd, f_mask_cd] = vcd_applyContrastDecrement(params, rel_onset, stmclass, run_images(curr_frames(1),side), 'input_mask', run_alpha_masks(curr_frames(1),side)); % give first (and only frame)
                     end
                     run_images(curr_frames,side) = f_im_cd;
                     
@@ -611,13 +607,8 @@ for ii = 1:length(stim_row)
     end % side
 end % stim idx
 
-% delete empty rows
-%             empty_rows = cellfun(@isempty, run_images(:,1),'UniformOutput',false);
-%             delete_me = logical(cell2mat(empty_rows));
-%             run_images(delete_me,:) = [];
-%             run_alpha_masks(delete_me,:) = [];
 
-% Store structs if requested
+% Store stimuli and masks if requested
 if store_params
     fprintf('[%s]: Storing trial data..\n',mfilename)
     saveDir = fullfile(vcd_rootPath,'workspaces','info',sprintf('subj%03d',subj_nr));
@@ -628,9 +619,9 @@ if store_params
         'run_images','run_alpha_masks','-v7.3')
 end
 
+% tell the user we are done and report time it took to load images
 fprintf('Done! ');  toc;
 fprintf('\n');
-% end % load params
 
 
 return
