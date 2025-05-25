@@ -373,6 +373,9 @@ if ~exist('scan','var') || ~isfield(scan, 'rects') || isempty(scan.rects)
                     % If we have RDKs, then we have a new image every time frame so we can just use the counter
                     if ismember(run_frames.frame_im_nr(nn,side), [params.stim.rdk.unique_im_nrs_core,params.stim.rdk.unique_im_nrs_wm_test])
                         im_IDs(nn,side) = nn;
+                    % if we deal with CD tasks..
+                    elseif ismember(run_frames.crossingIDs,find(~cellfun(@isempty, regexp(params.exp.crossingnames,'cd-*'))))
+                        im_IDs(nn,side) = nn;
                     elseif isnan(im_IDs(nn-1,side))
                         % If we only have a static image, repeat im_ID
                         im_IDs(nn:(nn+params.stim.stimdur_frames-1),side) = nn;

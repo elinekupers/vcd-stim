@@ -70,26 +70,26 @@ bckground_rect    = rect; %CenterRect([0 0 round(size(bckground,1)) round(size(b
 % bckrgound_texture = Screen('MakeTexture', win, bckground);
 
 % make fixation dot texture
-fix_texture_thin_full   = cell(1,size(fix.fix_thin_full,2));
-fix_texture_thick_full  = cell(1,size(fix.fix_thin_full,2));
-fix_texture_thick_left  = cell(1,size(fix.fix_thin_full,2));
-fix_texture_thick_right = cell(1,size(fix.fix_thin_full,2));
-fix_texture_thick_both  = cell(1,size(fix.fix_thin_full,2));
+fix_texture.thin_full   = cell(1,size(fix.fix_thin_full,2));
+fix_texture.thick_full  = cell(1,size(fix.fix_thin_full,2));
+fix_texture.thick_left  = cell(1,size(fix.fix_thin_full,2));
+fix_texture.thick_right = cell(1,size(fix.fix_thin_full,2));
+fix_texture.thick_both  = cell(1,size(fix.fix_thin_full,2));
 for ll = 1:size(fix.fix_thin_full,2) % loop over luminance values
-    fix_texture_thin_full{ll}   = Screen('MakeTexture',win,fix.fix_thin_full{ll});
-    fix_texture_thick_full{ll}  = Screen('MakeTexture',win,fix.fix_thick_full{ll});
-    fix_texture_thick_left{ll}  = Screen('MakeTexture',win,fix.fix_thick_left{ll});
-    fix_texture_thick_right{ll} = Screen('MakeTexture',win,fix.fix_thick_right{ll});
-    fix_texture_thick_both{ll}  = Screen('MakeTexture',win,fix.fix_thick_both{ll});
+    fix_texture.thin_full{ll}   = Screen('MakeTexture',win,fix.fix_thin_full{ll});
+    fix_texture.thick_full{ll}  = Screen('MakeTexture',win,fix.fix_thick_full{ll});
+    fix_texture.thick_left{ll}  = Screen('MakeTexture',win,fix.fix_thick_left{ll});
+    fix_texture.thick_right{ll} = Screen('MakeTexture',win,fix.fix_thick_right{ll});
+    fix_texture.thick_both{ll}  = Screen('MakeTexture',win,fix.fix_thick_both{ll});
 end
 
 %% create eyetracking targets
-et_rect = rect; et_texture = {};
-for sac = 1:size(eye_im.sac_im,4)
-    et_texture{sac} = Screen('MakeTexture',win,eye_im.sac_im(:,:,:,sac));
-end
-et_texture{size(eye_im.sac_im,4)+1} = Screen('MakeTexture',win,eye_im.pupil_im_black);
-et_texture{size(eye_im.sac_im,4)+2} = Screen('MakeTexture',win,eye_im.pupil_im_white);
+% et_rect = rect; et_texture = {};
+% for sac = 1:size(eye_im.sac_im,4)
+%     et_texture{sac} = Screen('MakeTexture',win,eye_im.sac_im(:,:,:,sac));
+% end
+% et_texture{size(eye_im.sac_im,4)+1} = Screen('MakeTexture',win,eye_im.pupil_im_black);
+% et_texture{size(eye_im.sac_im,4)+2} = Screen('MakeTexture',win,eye_im.pupil_im_white);
 
 %% Prepare background and fixation texture vector outside the flip loop
 fix_tex    = cell(length(stim.im),1);
@@ -112,32 +112,29 @@ for nn = 1:size(run_frames.frame_event_nr,1)
     
     if eventID==92 % SPATIAL CUE
         if run_frames.is_cued(nn)==1
-            fix_tex(nn)  = fix_texture_thick_left(lum_idx);
+            fix_tex(nn)  = fix_texture.thick_left(lum_idx);
             fix_rect(nn) = fix.fix_thick_rect;
         elseif run_frames.is_cued(nn)==2
-            fix_tex(nn)  = fix_texture_thick_right(lum_idx);
+            fix_tex(nn)  = fix_texture.thick_right(lum_idx);
             fix_rect(nn) = fix.fix_thick_rect;
         elseif run_frames.is_cued(nn)==3
-            fix_tex(nn)  = fix_texture_thick_both(lum_idx);
+            fix_tex(nn)  = fix_texture.thick_both(lum_idx);
             fix_rect(nn) = fix.fix_thick_rect;
         end
-    elseif ismember(eventID,[90]) % TASK CUE -- NOTE: no fixation circle!
+    elseif ismember(eventID,90) % TASK CUE -- NOTE: no fixation circle!
         fix_tex(nn)  = [];
         fix_rect(nn) = [];
-    elseif ismember(eventID,[91,93,94,95,96,97,98]) % ALL TRIAL EVENTS + ITI
-        fix_tex(nn)  = fix_texture_thick_full(lum_idx);
+    elseif ismember(eventID,[91,93,94,95,96,97,98]) % ALL STIMULUS EVENTS + ITI
+        fix_tex(nn)  = fix_texture.thick_full(lum_idx);
         fix_rect(nn) = fix.fix_thick_rect;
     elseif ismember(eventID,99) % IBI
-        fix_tex(nn)  = fix_texture_thin_full(lum_idx);
+        fix_tex(nn)  = fix_texture.thin_full(lum_idx);
         fix_rect(nn) = fix.fix_thin_rect;
-    elseif (eventID > 0) || (eventID < 90) % STIMULUS EVENTS
-        fix_tex(nn) = fix_texture_thick_full(lum_idx);
-        fix_rect(nn) = fix.fix_thick_rect;
     elseif eventID >= 990 % eyetracking targets / pupil black/white displays
         fix_tex(nn) = [];
         fix_rect(nn) = []; 
     elseif eventID == 0 % pre/post blank
-        fix_tex(nn)  = fix_texture_thin_full(lum_idx);
+        fix_tex(nn)  = fix_texture.thin_full(lum_idx);
         fix_rect(nn) = fix.fix_thin_rect;
     end
     
@@ -180,38 +177,38 @@ for nn = 1:size(run_frames.frame_event_nr,1)
 
         % Draw background with eyetracking target
         case {990,991} % eye_gaze_fix_ID = 990,991; % central fixation "rest" and "target"
-            im_tex{nn}  = et_texture{1};
-            im_rect{nn} = et_rect;
+            im_tex{nn}  = Screen('MakeTexture',win,eye_im.sac_im(:,:,:,1));
+            im_rect{nn} = rect;
             framecolor{nn} = 255*ones(1,3);
             
         case 992 % eye_gaze_sac_target_ID  = left
-            im_tex{nn}  = et_texture{2};
-            im_rect{nn} = et_rect;
+            im_tex{nn}  = Screen('MakeTexture',win,eye_im.sac_im(:,:,:,2));
+            im_rect{nn} = rect;
             framecolor{nn} = 255*ones(1,3);
             
         case 993 % eye_gaze_sac_target_ID  = right
-            im_tex{nn}  = et_texture{3};
-            im_rect{nn} = et_rect;
+            im_tex{nn}  = Screen('MakeTexture',win,eye_im.sac_im(:,:,:,3));
+            im_rect{nn} = rect;
             framecolor{nn} = 255*ones(1,3);
             
         case 994 % eye_gaze_sac_target_ID  = up
-            im_tex{nn}  = et_texture{4};
-            im_rect{nn} = et_rect;
+            im_tex{nn}  = Screen('MakeTexture',win,eye_im.sac_im(:,:,:,4));
+            im_rect{nn} = rect;
             framecolor{nn} = 255*ones(1,3);
             
         case 995 % eye_gaze_sac_target_ID  = down
-            im_tex{nn}  = et_texture{5};
-            im_rect{nn} = et_rect;
+            im_tex{nn}  = Screen('MakeTexture',win,eye_im.sac_im(:,:,:,5));
+            im_rect{nn} = rect;
             framecolor{nn} = 255*ones(1,3);
             
         case 996 % eye_gaze_pupil_ID is black
-            im_tex{nn}  = et_texture{6};
-            im_rect{nn} = et_rect;
+            im_tex{nn}  = Screen('MakeTexture',win,eye_im.pupil_im_black);
+            im_rect{nn} = rect;
             framecolor{nn} = 255*ones(1,3);
                          
         case 997 % eye_gaze_pupil_ID is white
-            im_tex{nn}  = et_texture{7};
-            im_rect{nn} = et_rect;
+            im_tex{nn}  = Screen('MakeTexture',win,eye_im.pupil_im_white);
+            im_rect{nn} = rect;
             framecolor{nn} = 255*ones(1,3);
     end
 end
@@ -504,7 +501,7 @@ data.digitrecord            = digitrecord;
 % figure out names of all variables except uint8 images
 vars = whos;
 vars = {vars.name};
-vars = vars(cellfun(@(x) ~isequal(x,'fix_im','bckground','stim','eye_im'),vars)); % ---- EK CHECK ME! DO WE ACTUALLY DELETE IMAGES?!
+vars = vars(cellfun(@(x) ~ismember(x,{'fix_im','bckground','stim','eye_im'}),vars)); 
 
 % Save data (button presses, params, etc)
 save(fullfile(params.savedatadir,params.behaviorfile),vars{:}, '-v7.3');
@@ -513,15 +510,19 @@ save(fullfile(params.savedatadir,params.behaviorfile),vars{:}, '-v7.3');
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%% PERFORMANCE CHECKS %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
 % Get behavioral performance
-performance = vcdbehavioralanalysis(filename);
+performance = vcdbehavioralanalysis(fullfile(params.savedatadir,params.behaviorfile));
 
 % Check monitor timing
 ptviewmoviecheck(data.timing.timeframes,data.timeKeys,[],'t');
 
 % Check eyetracking data
 if params.wanteyetracking
-    eyeresults = vcdeyetrackingpreprocessing(params.eyelinkfile,params.behavioralfile, performance);
+    eyeresults = vcdeyetrackingpreprocessing( ...
+        fullfile(params.savedatadir,params.eyelinkfile), ...
+        fullfile(params.savedatadir,params.behavioralfile), performance);
 end
 
 % Get feedback display text
