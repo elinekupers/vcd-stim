@@ -542,7 +542,6 @@ WaitSecs(8);
 ptoff(oldCLUT);
 Priority(oldPriority);
 ShowCursor;
-Screen('Close','All');
 
 return
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
