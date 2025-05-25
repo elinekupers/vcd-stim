@@ -13,7 +13,11 @@ devices = PsychHID('Devices');
 for vv = 1:length(devices)
     if strcmp(devices(vv).usageName,'Keyboard') && ~isempty(regexp(devices(vv).product,'\w*Internal Keyboard\w*'))
         deviceNr_all.internal = vv;
+    elseif strcmp(devices(vv).usageName,'Keyboard') && ~isempty(regexp(devices(vv).product,'\w*Apple Keyboard\w*'))
+        deviceNr_all.internal = vv;
     elseif strcmp(devices(vv).usageName,'Keyboard') && ~isempty(regexp(devices(vv).product,'\w*USB\w*'))
+        deviceNr_all.external = vv;
+    elseif strcmp(devices(vv).usageName,'Keyboard') && ~isempty(regexp(devices(vv).product,'\w*Trainer\w*'))
         deviceNr_all.external = vv;
     end
 end
