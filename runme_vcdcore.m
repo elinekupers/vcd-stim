@@ -113,6 +113,7 @@ function [data, params] = runme_vcdcore(subj_nr,ses_nr,ses_type,run_nr, varargin
 %  - 2024/12/01 - first version committed to github 
 
 close all; clc;
+vcd_startup;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% DON'T EDIT BELOW
 
@@ -128,12 +129,13 @@ p.addParameter('loadparams'     , true, @islogical);
 p.addParameter('storeparams'    , true, @islogical);
 p.addParameter('savestim'       , false, @islogical);
 p.addParameter('loadstimfromrunfile', false, @islogical);
-p.addParameter('offsetpix'      , [0 0], @isnumerical); % [x,y]
-p.addParameter('movieflip'      , [0 0], @isnumerical); % up/down, left/right
+p.addParameter('offsetpix'      , [0 0], @isnumeric); % [x,y]
+p.addParameter('movieflip'      , [0 0], @isnumeric); % up/down, left/right
 p.addParameter('stimDir'        , fullfile(vcd_rootPath,'workspaces','info'), @ischar);
 p.addParameter('savedatadir'    , [], @ischar);
 p.addParameter('subjfilename'   , [], @ischar);
 p.addParameter('wanteyetracking', false, @islogical);
+p.addParameter('ptbMaxVBLstd'   , [], @isnumeric);
 
 % Parse inputs
 p.parse(subj_nr, ses_nr, ses_type, run_nr, varargin{:});
@@ -266,5 +268,6 @@ end
     'movieflip', movieflip, ...
     'instrtextdir',instructionsDir, ...
     'savestim', savestim, ...
-    'loadstimfromrunfile', loadstimfromrunfile); 
+    'loadstimfromrunfile', loadstimfromrunfile, ...
+    'ptbMaxVBLstd', ptbMaxVBLstd); 
 
