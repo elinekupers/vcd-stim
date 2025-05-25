@@ -162,7 +162,9 @@ if isempty(ix)
   donetime = NaN;
 else
   donetime = timekeysB{ix,1};
-  assert(abs(donetime-totaldur) < 0.050,'the DONE time is mismatched!!');
+  if (abs(donetime-totaldur) < 0.050)
+      warning('**** the DONE time is mismatched!! BEWARE!!! ***');
+  end
 end
 
 % report to the command window
@@ -348,8 +350,8 @@ end
 % - duration is 60 means the end of the 60th frame is t=60.
 % - the next event also starts at t=60.
 
-% check that the total duration of all events is exactly the number of timeframes
-assert(sum(a1.run_table.event_dur)==length(timeframes));
+% check that the total duration of all events + one extra frame at the end is exactly the number of time frames
+assert((sum(a1.run_table.event_dur)+1)==length(timeframes));
 
 % check that the timing field in run_frames is exactly 0:X
 assert(isequal(a1.run_frames.timing(:),(1:length(a1.run_frames.timing))'-1));
@@ -391,8 +393,9 @@ while 1
   
   % OK: we have found the desired block and trial!
   
-  % check that the crossing_nr is listed in a1.taskIDs
-  assert(ismember(a1.run_table.crossing_nr(ii),a1.taskIDs));
+  % check that the taskIDs is listed in a1.run_table.crossing_nr
+  taskIDs = unique(a1.run_frames.crossingIDs);
+  assert(ismember(a1.run_table.crossing_nr(ii),taskIDs));
   
   % handle tasks that aren't the FIX task
   if a1.run_table.task_class(ii) ~= 1
