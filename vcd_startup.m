@@ -21,7 +21,7 @@ switch exp_env
         
     case 2 % psychophysics room
         vcdcode_dir  = '/Users/psphuser/Desktop/cvnlab/VCD/vcd-stim';
-        knkutils_dir = '/Users/psphuser/Desktop/cvnlab/kendrick/knkutils';
+        knkutils_dir = '/Users/psphuser/Desktop/cvnlab/VCD/knkutils';
         ptb_dir      = '/Applications/Psychtoolbox';
         
     case 3 % other
@@ -42,8 +42,8 @@ addpath(genpath(vcdcode_dir))
 addpath(genpath(knkutils_dir))
 
 fprintf('The following folders have been added to the path: \n')
-fprintf('%s:\n',vcdcode_dir)
-fprintf('%s:\n',knkutils_dir)
+fprintf('%s\n',vcdcode_dir)
+fprintf('%s\n',knkutils_dir)
 
 % Check PTB toolbox
 if ~exist('Screen','file')
