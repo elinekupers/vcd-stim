@@ -480,7 +480,9 @@ oldCLUT     = pton(ptonparams{:});
 win         = firstel(Screen('Windows'));
 oldPriority = Priority(MaxPriority(win));
 rect        = Screen('Rect',win); % get total screen rect   % alternatively: rect = CenterRect(round([0 0 rect(3)*winsize rect(4)*winsize]),rect);
-
+% [handle, portHandle] = BitsPlusPlus('OpenBits#')
+% [win, winRect] = BitsPlusPlus('OpenWindowBits++', 1)
+% BitsPlusPlus('SwitchToBits++')
 
 
 
