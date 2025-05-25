@@ -530,8 +530,9 @@ end
 
 % Show performance to subject (draw text on gray background)
 Screen('FillRect', win, params.stim.bckgrnd_grayval, rect);
-DrawFormattedText(win, fb_txt, 'center', (fbtext_rect(4)/2)-25,0,75,[],[],[],[],fbtext_rect); % inputs are winptr, tstring, sx, sy, color, wrapat, flipHorizontal, flipVertical, vSpacing, righttoleft, winRect)
-waitSecs(8);
+DrawFormattedText(win, fb_txt, (fbtext_rect(3)/2)-120, (fbtext_rect(4)/2)-25,0,75,[],[],[],[],fbtext_rect); % inputs are winptr, tstring, sx, sy, color, wrapat, flipHorizontal, flipVertical, vSpacing, righttoleft, winRect)
+Screen('Flip',win,0);
+WaitSecs(8);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%% PT CLEANUP STUFF %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
