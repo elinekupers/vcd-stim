@@ -64,7 +64,7 @@ if ~isfield(params, 'disp') || isempty(params.disp)
     params.disp = vcd_getDisplayParams(params.dispName); % BOLDSCREEN is default
 end
 
-if params.debugmode 
+if params.debugmode
     skipsync = 1; % if debugmode = true, we skip the synctest
 else
     skipsync = 0; % if debugmode = false, we run the synctest
@@ -117,16 +117,16 @@ if ~isfield(params, 'stim') || isempty(params.stim)
         if  isempty(d)
             warning('[%s]: Can''t find stim params for %s, will reload params without overwriting params',mfilename,params.disp.name);
             params.stim = vcd_getStimParams('disp_name', params.disp.name, ...
-                                            'load_params',false, ...
-                                            'store_params', params.storeparams);
+                'load_params',false, ...
+                'store_params', params.storeparams);
         else
             load(fullfile(d(end).folder,d(end).name),'stim');
             params.stim = stim; clear stim;
         end
     else
         params.stim  = vcd_getStimParams('disp_name', params.disp.name, ...
-                                         'load_params',params.loadparams, ....
-                                         'store_params', params.storeparams);
+            'load_params',params.loadparams, ....
+            'store_params', params.storeparams);
     end
 end
 
@@ -139,13 +139,13 @@ if ~isfield(params, 'exp') ||  isempty(params.exp)
             params.exp = exp; clear exp;
         else
             params.exp = vcd_getSessionParams('disp_name', params.disp.name, ...
-                                              'load_params', false,...
-                                              'store_params', params.storeparams);
+                'load_params', false,...
+                'store_params', params.storeparams);
         end
     else
         params.exp = vcd_getSessionParams('disp_name', params.disp.name,...
-                                          'load_params', false, ...
-                                          'store_params', params.storeparams);
+            'load_params', false, ...
+            'store_params', params.storeparams);
     end
 end
 
@@ -172,7 +172,7 @@ end
 if ~exist('stim','var') || ~isfield(scan,'im') || isempty(stim.im)
     
     % we want to load stimuli from file
-    if params.loadstimfromrunfile 
+    if params.loadstimfromrunfile
         % Images are in the format of:
         % subj001_ses01_A_run01_images_PPROOM_EIZOFLEXSCAN_20250505T184109.mat
         d = dir(fullfile(params.infofolder,sprintf('subj%03d',params.subj_nr),  ...
@@ -212,7 +212,7 @@ end
 %     bckground = a.bckgrnd_im(:,:,:,params.run_nr);
 %     clear a d
 % end
-% 
+%
 % if any(params.offsetpix~=[0,0])
 %     bckground = vcd_pinknoisebackground(params, 'none', 'fat', 1, params.offsetpix);
 % end
@@ -228,7 +228,7 @@ if ~exist('eye_im','var') || isempty(eye_im)
     % FIX: 5D array: [x,y, 3, 5 lum, 2 widths]
     d = dir(sprintf('%s*.mat', params.stim.el.stimfile));
     a = load(fullfile(d(end).folder,d(end).name), 'sac_im','pupil_im_white','pupil_im_black');
-    eye_im.sac_im          = a.sac_im; 
+    eye_im.sac_im          = a.sac_im;
     eye_im.pupil_im_white  = a.pupil_im_white;
     eye_im.pupil_im_black  = a.pupil_im_black;
     clear a d;
@@ -311,7 +311,7 @@ if ~exist('scan','var') || ~isfield(scan, 'rects') || isempty(scan.rects)
         params.stim.yc = (ptonparams{1}(2)/2);
     end
     
-    % To get stim rects, we need to get [x,y]-center in pixels of 
+    % To get stim rects, we need to get [x,y]-center in pixels of
     % stimuli given display size, stimulus size, and fixation offset.
     centers = cell(size(stim.im,1),2);
     apsize  = cell(size(stim.im,1),2);
@@ -335,12 +335,13 @@ if ~exist('scan','var') || ~isfield(scan, 'rects') || isempty(scan.rects)
                     if ismember(run_frames.frame_im_nr(nn,side), [params.stim.gabor.unique_im_nrs_core,params.stim.gabor.unique_im_nrs_wm_test])
                         centers{nn,side} = [params.stim.gabor.x0_pix(side) + params.stim.xc, ... % x-coord (pixels)
                             params.stim.gabor.y0_pix(side) + params.stim.yc]; % y-coord (pixels)
-                    % If it is an RDK..    
+                        
+                        % If it is an RDK..
                     elseif ismember(run_frames.frame_im_nr(nn,side), [params.stim.rdk.unique_im_nrs_core,params.stim.rdk.unique_im_nrs_wm_test])
                         centers{nn,side} = [params.stim.rdk.x0_pix(side) + params.stim.xc, ...
                             params.stim.rdk.y0_pix(side) + params.stim.yc];
-                    
-                    % If it is an single dot..  
+                        
+                        % If it is an single dot..
                     elseif ismember(run_frames.frame_im_nr(nn,side), [params.stim.dot.unique_im_nrs_core,params.stim.dot.unique_im_nrs_wm_test])
                         % deal with dot pol2cart
                         if ismember(run_frames.frame_im_nr(nn,side), params.stim.dot.unique_im_nrs_wm_test)
@@ -348,52 +349,62 @@ if ~exist('scan','var') || ~isfield(scan, 'rects') || isempty(scan.rects)
                             [~,test_im_idx] = ismember(run_frames.frame_im_nr(nn,side), test_im2D);
                             [x,y] = ind2sub([size(test_im2D,1),size(test_im2D,2)],test_im_idx);
                             dot_x = params.stim.dot.x0_pix_delta(x,y);
-                            dot_y = params.stim.dot.y0_pix_delta(x,y);   
+                            dot_y = params.stim.dot.y0_pix_delta(x,y);
                         elseif ismember(run_frames.frame_im_nr(nn,side), params.stim.dot.unique_im_nrs_core)
                             [~,core_im_idx] = ismember(run_frames.frame_im_nr(nn,side), params.stim.dot.unique_im_nrs_core);
                             dot_x = params.stim.dot.x0_pix(core_im_idx);
                             dot_y = params.stim.dot.y0_pix(core_im_idx);
                         end
                         centers{nn,side} = [dot_x,dot_y];
-                    
-                    % If it is an object..    
+                        
+                        % If it is an object..
                     elseif ismember(run_frames.frame_im_nr(nn,side), [params.stim.obj.unique_im_nrs_core,params.stim.obj.unique_im_nrs_wm_test])
                         centers{nn,side} = [params.stim.obj.x0_pix(side) + params.stim.xc, ...
                             params.stim.obj.y0_pix(side) + params.stim.yc];
-                    % If it is an natural scene..    
+                        
+                        % If it is an natural scene..
                     elseif ismember(run_frames.frame_im_nr(nn,side), ...
                             [params.stim.ns.unique_im_nrs_core,params.stim.ns.unique_im_nrs_wm_test,params.stim.ns.unique_im_nrs_wm_test,params.stim.ns.unique_im_nrs_ltm_lures])
                         centers{nn,side} = [params.stim.ns.x0_pix + params.stim.xc, params.stim.ns.y0_pix + params.stim.yc];
-                    % If it is a catch trial    
+                        
+                        % If it is a catch trial
                     elseif isnan(run_frames.frame_im_nr(nn,side)) || (run_frames.frame_im_nr(nn,side)==0)
                         centers{nn,side} = [NaN, NaN];
-                    end
-
-                    % ADD IMAGE ID
-                    % If we have RDKs, then we have a new image every time frame so we can just use the counter
-                    if ismember(run_frames.frame_im_nr(nn,side), [params.stim.rdk.unique_im_nrs_core,params.stim.rdk.unique_im_nrs_wm_test])
-                        im_IDs(nn,side) = nn;
-                    % if we deal with CD tasks..
-                    elseif ismember(run_frames.crossingIDs,find(~cellfun(@isempty, regexp(params.exp.crossingnames,'cd-*'))))
-                        im_IDs(nn,side) = nn;
-                    elseif isnan(im_IDs(nn-1,side))
-                        % If we only have a static image, repeat im_ID
-                        im_IDs(nn:(nn+params.stim.stimdur_frames-1),side) = nn;
                     end
                     
                     % ADD STIMULUS SIZE
                     if isnan(run_frames.frame_im_nr(nn,side))
-                        % If it is a catch trial  
+                        % If it is a catch trial
                         apsize{nn,side}  = [NaN, NaN];
-                    else
+                        
+                    else % ADD IMAGE ID, copy size/im_ID/center if we deal with static stim.
+
+                        % If we have RDKs, then we have a new image every time frame so we can just use the counter
                         if ismember(run_frames.frame_im_nr(nn,side), [params.stim.rdk.unique_im_nrs_core,params.stim.rdk.unique_im_nrs_wm_test])
+                            
+                            % Add image ID
+                            im_IDs(nn,side) = nn;
+                            
                             % apsize 1: image width -- second dim (pixels), apsize 2: image height -- first dim (pixels)
-                            apsize{nn,side}  = [size(stim.im{nn,side},2), size(stim.im{nn,side},1)];
-                        else
-                            apsize{nn,side}  = [size(stim.im{nn,side},2), size(stim.im{nn,side},1)];
-                       end
+                            apsize{nn,side} = [size(stim.im{nn,side},2), size(stim.im{nn,side},1)];
+                            
+                        % if we deal with CD tasks..
+                        elseif ismember(run_frames.crossingIDs,find(~cellfun(@isempty, regexp(params.exp.crossingnames,'cd-*'))))
+                            % Add image ID
+                            im_IDs(nn,side) = nn;
+                            
+                            % Add aperture size
+                            apsize{nn,side} = [size(stim.im{nn,side},2), size(stim.im{nn,side},1)];
+                        
+                        % If we only have a static image, repeat im_ID,
+                        % centers and aperture size for upcoming frames
+                        elseif isnan(im_IDs(nn-1,side))
+                            im_IDs(nn:(nn+params.stim.stimdur_frames-1),side)  = nn;
+                            centers(nn:(nn+params.stim.stimdur_frames-1),side) = mat2cell(centers{im_IDs(nn,side),side},1,2);
+                            apsize(nn:(nn+params.stim.stimdur_frames-1),side)  = mat2cell([size(stim.im{im_IDs(nn,side),side},2), size(stim.im{im_IDs(nn,side),side},1)],1,2);
+                        end
                     end
-          
+                    
                     % COMBINE IMAGES AND MASKS, FLIP IMAGES IF REQUESTED
                     if isempty(stim.masks{nn,side})
                         stim.im{nn,side} = feval(flipfun, stim.im{nn,side});
@@ -401,22 +412,22 @@ if ~exist('scan','var') || ~isfield(scan, 'rects') || isempty(scan.rects)
                         stim.im{nn,side} = feval(flipfun, cat(3, stim.im{nn,side}, stim.masks{nn,side}));
                         stim.masks{nn,side} = [];
                     end
-                end
-            end
-        end
-    end
-end
+                end % numSides
+            end % isempty numSides
+        end % is stim event
+    end % nn time frame loop
+end % if scan struct exists
 
-% If we only have a static image, repeat size and centers.
-for nn = 1:size(stim.im,1)
-    numSides = find(~cellfun(@isempty, stim.im(nn,:)));
-    for side = numSides
-        if isempty(apsize{nn,side})
-            apsize(nn,side)  = mat2cell([size(stim.im{im_IDs(nn,side),side},2), size(stim.im{im_IDs(nn,side),side},1)],1,2);
-            centers(nn,side) = mat2cell(centers{im_IDs(nn,side),side},1,2);
-        end
-    end
-end
+% % If we only have a static image, repeat size and centers.
+% for nn = 1:size(stim.im,1)
+%     numSides = find(~cellfun(@isempty, stim.im(nn,:)));
+%     for side = numSides
+%         if isempty(apsize{nn,side})
+%             apsize(nn,side)  = mat2cell([size(stim.im{im_IDs(nn,side),side},2), size(stim.im{im_IDs(nn,side),side},1)],1,2);
+%             centers(nn,side) = mat2cell(centers{im_IDs(nn,side),side},1,2);
+%         end
+%     end
+% end
 
 % Add info to run frames and stim struct
 run_frames.im_IDs = im_IDs;  clear im_ID
@@ -428,11 +439,11 @@ stim.apsize       = apsize;  clear apsize;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 stim.rects = cell(size(stim.centers));
 for side = [1,2]
-        
+    
     nonemptycenters   = ~cellfun(@isempty, stim.centers(:,side));
     nonemptysizes     = ~cellfun(@isempty, stim.apsize(:,side));
     assert(isequal(nonemptycenters,nonemptysizes)); clear nonemptysizes
-      
+    
     centers_shortlist = stim.centers(nonemptycenters,side);
     apsize_shortlist  = stim.apsize(nonemptycenters,side);
     
@@ -440,7 +451,7 @@ for side = [1,2]
         cellfun(@(stimsize,stimcenter) ... width, height, x0, y0
         CenterRectOnPoint([0 0 stimsize(1) stimsize(2)], stimcenter(1), stimcenter(2)), ...
         apsize_shortlist,centers_shortlist, 'UniformOutput', false);
-
+    
     stim.rects(nonemptycenters,side) = rects_shortlist;
     
 end
@@ -506,7 +517,7 @@ elseif params.wanteyetracking
     if ~isfield(params,'eyelinkfile') || isempty(params.eyelinkfile)
         params.eyelinkfile = fullfile(sprintf('eye_%s_vcd_subj-%s_run-%d.edf',datestr(now,30),params.subj_nr,params.run_nr));
     end
-
+    
     % initialize
     assert(EyelinkInit()==1);
     
@@ -608,7 +619,7 @@ elseif params.wanteyetracking
         fprintf('Please perform calibration. When done, press the output/record button.\n');
         EyelinkDoTrackerSetup(el);
     end
-
+    
     % Start recording
     Eyelink('StartRecording');
 end
