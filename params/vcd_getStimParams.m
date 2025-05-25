@@ -183,35 +183,45 @@ else
         stim.fix.dotcenterdiam_pix,stim.fix.dotthinborderdiam_pix,stim.fix.dotthickborderdiam_pix);
     end
     
-    %% CONTRAST DECREMENT -- INVERTED GAUSSIAN TEMPORAL WINDOW
+    %% CONTRAST DECREMENT -- TEMPORAL MODULATION FUNCTION
+    % For the CD task crossings, we make the stimulus dip in its contrast 
+    % using an inverted Gaussian temporal contrast modulation function.
+    %
+    % * UNITS: the temporal function is in units of time frames, where each
+    % time point has a duration of 16.67 ms (see presentationrate_hz).
     % We treat timepoint t=0 as the onset time of a frame flip, and t=1 is
     % the offset of the first frame flip and the onset of the second frame
-    % flip (so in between flips). Each time point has a duration of 16.67
-    % ms (see framedur_s). For the contrast decrement, we implement an
+    % flip (so in between flips). 
+    % 
+    % * DURATION: For the contrast decrement, we implement an
     % temporal contrast modulation function in the shape of an inverted
-    % gaussian. Gaussian support is 39 time points, where each time point
-    % is 16.67 ms. First and last timepoints have a value of 0.9958. Total
-    % temporal modulation duration is 39*(1/60) = 650 ms. Given that the
-    % stimulus duration is 1 second, the modulation affects about 2/3 of
-    % the total image duration. How quickly the contrast decrement change
-    % occurs is determined by the std. Here, we pick std = 7 time points
-    % (or 9*16.67 ms = 116.67 ms). The full-width half max is 17 time
-    % points, or 283.33 ms.
+    % gaussian. Gaussian support is 39 time frames [0-38]. First (t=0) and   
+    % last (t=38) time frames have a contrast modulation value of 0.9938.
+    % The temporal modulation duration is 39*(1/60) = 650 ms.
+    % Given that the current stimulus duration is 1 second, the modulation 
+    % affects about 2/3 of the total image duration. 
+    % 
+    % * MODULATION: How quickly the contrast decrement change occurs is 
+    % determined by the std and the % modulation. Current Gaussian std = 7 
+    % time frames (or 7*16.67 ms = 116.67 ms) and desired modulation is 30% 
+    % from the mean luminance. As a result, the full-width half max is 16  
+    % time frames or 266.67 ms (time between t=11 (0.2 s) and t=27 (0.467 s).
     % The Gaussian temporal window is symmetric, where the peak contrast 
-    % decrement occurs at t=20 or 333.33 ms after the onset of the 
-    % temporal modulation function.
-    stim.cd.t_gausswin_N            = 39;                                   % number of presentation frames (16.67 ms) for gaussian time window (contrast decrement)
-    stim.cd.t_gausswin_std          = 7;                                    % standard devation of gaussian window in time (presentation frames)
-    stim.cd.meanchange              = stim.presentationrate_hz * 0.2;       % mean of gaussian window in time (30 frames = 0.2 sec)  
-    stim.cd.changeplusminus         = (0.1/stim.framedur_s)-1;              % plus or minus this amount (14 frames = 0.46 sec)  
-    stim.cd.max_cd                  = 0.2;                                  % stimulus contrast is reduced by 20% of mean luminance at lowest point of temporal gaussian window (note: this corresponds to subtracting a contrast fraction of 10.^(log10(c)-0.1))
+    % decrement occurs at time frame t=19 or 333.33 ms after the onset of 
+    % the temporal modulation function (t=0).
+    stim.cd.t_gausswin_N            = 39;                                   % support of temporal modulatin function in number of time frames (one time frame = 16.67 ms)
+    stim.cd.t_gausswin_std          = 7;                                    % Standard devation of gaussian temporal modulation function in time frames (7 time frames = 116.67 ms)
+    stim.cd.meanchange              = stim.presentationrate_hz * 0.2;       % mean onset of temporal modulation function in time frames (200 ms = 12 time frames)  
+    stim.cd.changeplusminus         = (0.1/stim.framedur_s)-1;              % range of onsets: mean ± 100 ms (or 6 time frames))  
+    stim.cd.max_cd                  = 0.3;                                  % stimulus contrast is reduced by 30% of mean luminance at lowest point of temporal gaussian window (note: this corresponds to subtracting a contrast fraction of 10.^(log10(c)-0.1))
     stim.cd.prob                    = 0.5;                                  % 50% probability that a trial will have a luminance change
     
     % Create 1D gaussian
     t_support                       = linspace(-stim.cd.t_gausswin_N / 2, stim.cd.t_gausswin_N / 2, stim.cd.t_gausswin_N);  % [-9.5:1:9.5] in units of presentation 16.67 ms frames
     t_gauss                         = exp(-t_support .^ 2 / (2 * stim.cd.t_gausswin_std ^ 2)); % 1D gaussian with a sd of 3 presentation frames
+    
     % Scale max height of the Gaussian, then invert Gaussian time window.
-    t_gauss                         = 1-(t_gauss*stim.cd.max_cd); % inverted gaussian, we start from 0.9958, then dip to 0.8 and go back to 0.9958. 
+    t_gauss                         = 1-(t_gauss*stim.cd.max_cd); % inverted gaussian, we start from 0.9938, then dip to 0.7 and go back to 0.9938. 
     stim.cd.t_gauss                 = t_gauss; 
 
     %% EYETRACKING BLOCK PARAMS
