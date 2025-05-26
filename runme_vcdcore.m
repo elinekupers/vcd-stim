@@ -63,11 +63,9 @@ function [data, params] = runme_vcdcore(subj_nr,ses_nr,ses_type,run_nr, varargin
 %                        Default: true
 %   [storeparams]     : if true, store created parameter values. 
 %                        Default: true
-%   [loadstimtiming]  : if true, load temporary stimulus file that was store right before ptb flipping (to save time and rerun the same run) 
-%                        Default: true
-%   [savestimtiming]  : if true, store temporary stimulus file prior to ptb flipping (to save time and rerun the same run) 
-%                        Default: true
-%   [savestim]        : if true, store stimuli and timing in temporary file prior to ptb flipping. File is ~1.5 GB!
+%   [savestim]        : if true, store stimuli in matlab file prior to ptb flipping. File is ~25-50 MB!
+%                        Default: false
+%   [loadstimfromrunfile]  : if true, load subject single run file with stimuli (to save time a minute and rerun the same run) 
 %                        Default: false
 %   [offsetpix]       : offset of center [x,y]-coordinate in pixels. 
 %                        Default: No offset [0,0]
@@ -81,6 +79,9 @@ function [data, params] = runme_vcdcore(subj_nr,ses_nr,ses_type,run_nr, varargin
 %                        Default: [], which will turn into: sprintf('%s_vcd_subj%03d_ses%02d_run%02d.mat',ts0,subj_nr,sesID,run_nr);
 %   [wanteyetracking] : if true, we will initialize eyetracking. 
 %                        Default: false;
+%   [ptbMaxVBLstd]    : allowable error (std in seconds) in the 50 VBL time stamp measurements taken by PTB during the synctest. 
+%                       If the measurement error is larger than the desired monitor refresh rate, psychtoolbox throws an error during the synctest.
+%                        Default: 0.0004 s. Larger standard deviations are more forgiving and less likely for psychtoolbox to throw an error.
 %
 % OUTPUTS:
 %   data              : struct with behavioral button presses and monitor
@@ -89,10 +90,13 @@ function [data, params] = runme_vcdcore(subj_nr,ses_nr,ses_type,run_nr, varargin
 %                        used for this particular run.
 %
 % EXAMPLES:
-%  runme_vcdcore(1, 1, 1,1, 'debugmode', true)
-%  runme_vcdcore(1, 1, 1,1, 'debugmode', true, 'dispName','KKOFFICE_AOCQ3277')
-%  runme_vcdcore(1, 1, 1,1, 'debugmode', true, 'dispName','KKOFFICE_AOCQ3277', 'savetempstimuli', true)
-%  runme_vcdcore(1, 1, 1,1, 'debugmode', true, 'dispName','EKHOME_ASUSVE247', 'savetempstimuli', true)
+%  runme_vcdcore(1, 1, 1, 1); % default is '7TAS_BOLDSCREEN32' display
+%  runme_vcdcore(1, 1, 1, 1, 'dispName', 'PPROOM_EIZOFLEXSCAN'); % default is no debugmode and no eyetracking
+%  runme_vcdcore(1, 1, 1, 1, 'debugmode', true,  'dispName','PPROOM_EIZOFLEXSCAN'); % debugmode=true means skipsync test and no eyetracking
+%  runme_vcdcore(1, 1, 1, 1, 'debugmode', true,  'dispName','PPROOM_EIZOFLEXSCAN', 'wanteyetracking', true); % skipsync test and but we want eyetracking
+%  runme_vcdcore(1, 1, 1, 1, 'debugmode', false, 'dispName','7TAS_BOLDSCREEN32')
+%  runme_vcdcore(1, 1, 1, 1, 'debugmode', true,  'dispName','KKOFFICE_AOCQ3277')
+%  runme_vcdcore(1, 1, 1, 1, 'debugmode', true,  'dispName','EKHOME_ASUSVE247', 'ptbMaxVBLstd', 0.0006)
 %
 % DEPENDENCIES:
 %  * Psychtoolbox-3 (https://github.com/Psychtoolbox/Psychtoolbox-3) 
@@ -123,19 +127,19 @@ p.addRequired ('subj_nr'        , @isnumeric); % subject number
 p.addRequired ('ses_nr'         , @isnumeric); % session number 
 p.addRequired ('ses_type'       , @isnumeric); % session type (1=A or 2=B) 
 p.addRequired ('run_nr'         , @isnumeric); % nun number
-p.addParameter('dispName'       , '7TAS_BOLDSCREEN32' , @(x) any(strcmp(x, {'7TAS_BOLDSCREEN32','KKOFFICE_AOCQ3277','PPROOM_EIZOFLEXSCAN','EKHOME_ASUSVE247'})))
-p.addParameter('debugmode'      , false, @islogical);
-p.addParameter('loadparams'     , true, @islogical);
-p.addParameter('storeparams'    , true, @islogical);
-p.addParameter('savestim'       , false, @islogical);
+p.addParameter('dispName'           , '7TAS_BOLDSCREEN32' , @(x) any(strcmp(x, {'7TAS_BOLDSCREEN32','KKOFFICE_AOCQ3277','PPROOM_EIZOFLEXSCAN','EKHOME_ASUSVE247'})))
+p.addParameter('debugmode'          , false, @islogical);
+p.addParameter('loadparams'         , true, @islogical);
+p.addParameter('storeparams'        , true, @islogical);
+p.addParameter('savestim'           , false, @islogical);
 p.addParameter('loadstimfromrunfile', false, @islogical);
-p.addParameter('offsetpix'      , [0 0], @isnumeric); % [x,y]
-p.addParameter('movieflip'      , [0 0], @isnumeric); % up/down, left/right
-p.addParameter('stimDir'        , fullfile(vcd_rootPath,'workspaces','info'), @ischar);
-p.addParameter('savedatadir'    , [], @ischar);
-p.addParameter('subjfilename'   , [], @ischar);
-p.addParameter('wanteyetracking', false, @islogical);
-p.addParameter('ptbMaxVBLstd'   , [], @isnumeric);
+p.addParameter('offsetpix'          , [0 0], @isnumeric); % [x,y]
+p.addParameter('movieflip'          , [0 0], @isnumeric); % up/down, left/right
+p.addParameter('stimDir'            , fullfile(vcd_rootPath,'workspaces','info'), @ischar);
+p.addParameter('savedatadir'        , [], @ischar);
+p.addParameter('subjfilename'       , [], @ischar);
+p.addParameter('wanteyetracking'    , false, @islogical);
+p.addParameter('ptbMaxVBLstd'       , [], @isnumeric);
 
 % Parse inputs
 p.parse(subj_nr, ses_nr, ses_type, run_nr, varargin{:});
