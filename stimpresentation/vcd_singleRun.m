@@ -5,22 +5,22 @@ function [data, params, getoutearly] = vcd_singleRun(subj_nr, ses_nr, ses_type, 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 p = inputParser;
 % MANDATORY INPUTS
-p.addRequired('subj_nr'         , @isnumeric); % subject number
-p.addRequired('ses_nr'          , @isnumeric); % session number
-p.addRequired('ses_type'        , @isnumeric); % session type
-p.addRequired('run_nr'          , @isnumeric); % run number
+p.addRequired('subj_nr'         , @isnumeric); % subject number (integral number between 1-999)
+p.addRequired('ses_nr'          , @isnumeric); % session number (integral number between 1-27)
+p.addRequired('ses_type'        , @isnumeric); % session type (either 1 for version A, 2 for version B)
+p.addRequired('run_nr'          , @isnumeric); % run number (integral number between 1-15)
 % OPTIONAL INPUTS
 p.addParameter('savedatadir'    , []        , @ischar);                      % place to store data with today's date
-p.addParameter('behaviorfile'   , []        , @ischar);                      % filename to store behavioral data with today's date
-p.addParameter('eyelinkfile'    , []        , @ischar);                      % where the eyelink edf file can be obtained
-p.addParameter('stim'           , []        , @isstruct);                    % stimulus images and masks
-p.addParameter('loadparams'     , true      , @islogical)                    % whether load stim/condition params or regenerate
+p.addParameter('behaviorfile'   , []        , @ischar);                      % filename used for stored matlab file with behavioral data (name will add today's date)
+p.addParameter('eyelinkfile'    , []        , @ischar);                      % filename used for stored eyelink edf file with eyetracking data (name will add today's date)
+p.addParameter('stim'           , []        , @isstruct);                    % if you don't want to reload stimuli, you need stim.im to containing uint8 images (time frames x 2 cell array). 
+p.addParameter('loadparams'     , true      , @islogical)                    % (boolean) whether load stim/condition params or regenerate
 p.addParameter('storeparams'    , true      , @islogical)                    % whether to store stimulus params
 p.addParameter('laptopkey'      , -3        , @isnumeric);                   % listen to all keyboards/boxes (is this similar to k=-3;?)
 p.addParameter('wanteyetracking', false     , @islogical);                   % whether to try to hook up to the eyetracker
-p.addParameter('deviceNr'       , []        , @isnumeric);                   % kbWait/Check input device number
+p.addParameter('deviceNr'       , []        , @isnumeric);                   % kbWait/kbCheck input device number to listen to
 p.addParameter('device_check'   , 'both'    , @char);                        % what type of devices do we want to check for button presses: 'external','internal', or 'both'
-p.addParameter('triggerkey'     , {'5%','t'}, @(x) iscell(x) || isstring(x)) % key that starts the experiment
+p.addParameter('triggerkey'     , {'5%','t'}, @(x) iscell(x) || isstring(x)) % key(s) that starts the experiment
 p.addParameter('triggerkeyname' , '''5'' or ''t''', @isstring)               % for display only
 p.addParameter('offsetpix'      , [0 0]     , @isnumeric);                   % offset of screen in pixels [10 20] means move 10-px right, 20-px down
 p.addParameter('movieflip'      , [0 0]     , @isnumeric)                    % whether to flip up-down, whether to flip left-right
@@ -28,10 +28,10 @@ p.addParameter('debugmode'      , false     , @islogical)                    % w
 p.addParameter('savestim'       , false     , @islogical)                    % whether we want to store temp file with stimuli and timing
 p.addParameter('loadstimfromrunfile', false , @islogical)                    % whether we want to load stim from run file
 p.addParameter('ptbMaxVBLstd'   , 0.0004    , @isnumeric)                    % what standard deviation for screen flip duration do we allow?
-p.addParameter('env_type'       , []        , @(x) ismember(x, {'MRI','BEHAVIOR', 'TEST'})); % are we running the behavioral or MRI version of the VCD core experiment?
-p.addParameter('infofolder'     , fullfile(vcd_rootPath,'workspaces','info')        , @ischar); % where the *_info.csv file is
-p.addParameter('stimfolder'     , fullfile(vcd_rootPath,'workspaces','stimuli')     , @ischar); % where the images can be obtained
-p.addParameter('instrtextdir'   , fullfile(vcd_rootPath,'workspaces','instructions'), @ischar); % where the task instructions can be obtained
+p.addParameter('env_type'       , []        , @(x) ismember(x, {'MRI','BEHAVIOR', 'TEST'})); % are we running the behavioral (PProom), MRI (7TAS), or a TEST (office monitors) version of the VCD core experiment?
+p.addParameter('infofolder'     , fullfile(vcd_rootPath,'workspaces','info')        , @ischar); % where are the *_info.csv file(s)?
+p.addParameter('stimfolder'     , fullfile(vcd_rootPath,'workspaces','stimuli')     , @ischar); % where are the mat-files with store stimuli?
+p.addParameter('instrtextdir'   , fullfile(vcd_rootPath,'workspaces','instructions'), @ischar); % where are the txt-files with task instructions?
 p.addParameter('dispName'       , '7TAS_BOLDSCREEN32', @(x) ismember(x,{'7TAS_BOLDSCREEN32','KKOFFICE_AOCQ3277','PPROOM_EIZOFLEXSCAN','EKHOME_ASUSVE247'})) % display name to get the right display params. Choose from: 7TAS_BOLDSCREEN32, KKOFFICE_AOCQ3277, PPROOM_EIZOFLEXSCAN, 'EKHOME_ASUSVE247'
 
 % Parse inputs
@@ -70,21 +70,21 @@ else
     skipsync = 0; % if debugmode = false, we run the synctest
 end
 
-% Get device nr for KbCheck
-deviceNr = vcd_checkDevices(params.deviceNr, params.device_check);
+% Listen to all devices for KbCheck
+deviceNr = -3; %vcd_checkDevices(params.deviceNr, params.device_check);
 
-% Nova1x32 coil with BOLDscreen and big eye mirrors
-% expected to be {[1920 1080 120 24],[], 0, 0}
 % pton input arguments are:
 % 1: [width, height, framerate, bitdepth]
 % 2: winsize (fraction: default is full extent)
 % 3: clutfile -- 0 for linear CLUT (-2 for squaring CLUT for BOLDSCREEN to simulate normal monitors --> NOTE: we do this manually!)
-% 4: skipsync (bool: 0 is false, 1 is true)
+% 4: skipsync (bool: 0 is false -- do not skip the text, 1 is true -- skip the test)
 % 5: wantstereo (bool: default is false)
 if strcmp(params.disp.name, 'PPROOM_EIZOFLEXSCAN')
     % apparently PP room monitor native refresh rate shows up as 0 (but is actually 60 Hz)
+    % PProom EIZOFLEXScan screen ptonparams are expected to be {[1920 1200 0 24],[], 0, 0}
     ptonparams = {[params.disp.w_pix params.disp.h_pix 0 24],[],params.disp.clut, skipsync};
 else
+    % Nova1x32 coil with BOLDscreen and big eye mirrors ptonparams are expected to be {[1920 1080 120 24],[], 0, 0}
     ptonparams = {[params.disp.w_pix params.disp.h_pix params.disp.refresh_hz 24],[],params.disp.clut, skipsync};
 end
 
@@ -149,7 +149,9 @@ if ~isfield(params, 'exp') ||  isempty(params.exp)
     end
 end
 
-% Get time table master
+%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%% LOAD TIME TABLE MASTER %%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 if ~exist('time_table_master','var') ||  isempty(params.exp)
     if params.loadparams
         d = dir(fullfile(params.infofolder,'time_table_master_complete*.mat'));
