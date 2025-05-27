@@ -100,7 +100,8 @@ t0 = maketempdir;
 unix_wrapper(sprintf('edf2asc -y -p %s -miss NaN %s',t0,filename),[],0);  % -y = overwrite; -vel ?
 
 % load in the .asc file and clean up
-tempascfile = fullfile(t0,[stripext(filename) '.asc']);
+[~,tmpfile] = fileparts(stripext(filename));
+tempascfile = fullfile(t0,[tmpfile '.asc']);
 b1 = read_eyelink_asc_v3(tempascfile);
 rmdirquiet(t0);
 
