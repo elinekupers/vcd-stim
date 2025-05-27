@@ -103,8 +103,8 @@ validkeys = {'1!' '2@' '3#' '4$' '5%' 'r' 'y' 'g' 'b' 't' 'absolutetimefor0' 'tr
 userkeys = {'1' '2' '3' '4' 'r' 'y' 'g' 'b'};  % user-driven buttons
 choicebuttons = {'1' '2' '3' '4'};  % the official buttons we expect subjects to press
 triggerkeys = {'5' 't'};  % this indicates buttons that are interpreted as a trigger
-responsewindow_reg = [0 4000];  % we accept buttons in this range of milliseconds after stimulus onset (for all tasks other than fixation)
-responsewindow_fix = [0 1400];  % for the fixation task, we accept buttons in this range of milliseconds after each dot change
+responsewindow_reg = [100 3500];  % we accept buttons in this range of milliseconds after stimulus onset (for all tasks other than fixation)
+responsewindow_fix = [100 1500];  % for the fixation task, we accept buttons in this range of milliseconds after each dot change
 
 %% Setup
 
