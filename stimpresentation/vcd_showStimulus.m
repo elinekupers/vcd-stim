@@ -522,7 +522,7 @@ ptviewmoviecheck(data.timing.timeframes,data.timeKeys,[],'t');
 if params.wanteyetracking
     eyeresults = vcdeyetrackingpreprocessing( ...
         fullfile(params.savedatadir,params.eyelinkfile), ...
-        fullfile(params.savedatadir,params.behavioralfile), performance);
+        fullfile(params.savedatadir,params.behaviorfile), performance);
 end
 
 % Get feedback display text
