@@ -52,24 +52,37 @@ fprintf('The following folders have been added to the path: \n')
 if ~exist('pton','file')
     addpath(genpath(knkutils_dir))
     fprintf('%s\n',knkutils_dir)
+else
+    fprintf('%s already is added to paths\n',knkutils_dir)
 end
 
 % Add vcd-stim toolbox
 if ~exist('vcd_rootPath','file')
     addpath(genpath(vcdcode_dir))
     fprintf('%s\n',vcdcode_dir)
+else
+    fprintf('%s already is added to paths\n',vcdcode_dir)
 end
 
 % Add PTB toolbox
 if ~exist('Screen','file')
     addpath(genpath(ptb_dir))
     fprintf('%s\n',ptb_dir)
+else
+    fprintf('%s already is added to paths\n',ptb_dir)
 end
 
 % Add location of edf2asc converter 
 if ~exist('edf2asc','file') && ~isempty(edf2asc_func)
     pth = strcat([edf2asc_func ':/usr/bin/:/bin:/usr/sbin:/sbin']);
-    setenv('PATH',pth);
+    if ~isequal(getenv('PATH'),pth)
+        setenv('PATH',pth);
+        fprintf('%s\n',edf2asc_func)
+    else
+        fprintf('%s already is added to paths\n',pth)
+    end
+else
+    fprintf('%s already is added to paths\n',edf2asc_func)
 end
     
     
