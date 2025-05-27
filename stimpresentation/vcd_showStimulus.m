@@ -539,9 +539,9 @@ WaitSecs(8);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % Restore priority and cursor
+ShowCursor;
 ptoff(oldCLUT);
 Priority(oldPriority);
-ShowCursor;
 
 return
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

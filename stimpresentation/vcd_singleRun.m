@@ -29,7 +29,7 @@ p.addParameter('movieflip'      , [0 0]     , @isnumeric)                    % w
 p.addParameter('debugmode'      , false     , @islogical)                    % whether to use debug mode (no BOLDscreen, no eyelink)
 p.addParameter('savestim'       , false     , @islogical)                    % whether we want to store temp file with stimuli and timing
 p.addParameter('loadstimfromrunfile', false , @islogical)                    % whether we want to load stim from run file
-p.addParameter('ptbMaxVBLstd'   , 0.0004    , @isnumeric)                    % what standard deviation for screen flip duration do we allow?
+p.addParameter('ptbMaxVBLstd'   , 0.0008    , @isnumeric)                    % what standard deviation for screen flip duration do we allow?
 p.addParameter('env_type'       , []        , @(x) ismember(x, {'MRI','BEHAVIOR', 'TEST'})); % are we running the behavioral (PProom), MRI (7TAS), or a TEST (office monitors) version of the VCD core experiment?
 p.addParameter('infofolder'     , fullfile(vcd_rootPath,'workspaces','info')        , @ischar); % where are the *_info.csv file(s)?
 p.addParameter('stimfolder'     , fullfile(vcd_rootPath,'workspaces','stimuli')     , @ischar); % where are the mat-files with store stimuli?
