@@ -1,14 +1,16 @@
-function [data, params, getoutearly] = vcd_singleRun(subj_nr, ses_nr, ses_type, run_nr, varargin)
+function [data, params, getoutearly] = vcd_singleRun(subj_nr, ses_nr, ses_type, run_nr, dispName, varargin)
 
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%% PARSE INPUTS %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 p = inputParser;
 % MANDATORY INPUTS
-p.addRequired('subj_nr'         , @isnumeric); % subject number (integral number between 1-999)
-p.addRequired('ses_nr'          , @isnumeric); % session number (integral number between 1-27)
-p.addRequired('ses_type'        , @isnumeric); % session type (either 1 for version A, 2 for version B)
-p.addRequired('run_nr'          , @isnumeric); % run number (integral number between 1-15)
+p.addRequired('subj_nr' , @isnumeric); % subject number (integral number between 1-999)
+p.addRequired('ses_nr'  , @isnumeric); % session number (integral number between 1-27)
+p.addRequired('ses_type', @isnumeric); % session type (either 1 for version A, 2 for version B)
+p.addRequired('run_nr'  , @isnumeric); % run number (integral number between 1-15)
+p.addRequired('dispName', @(x) ismember(x,{'7TAS_BOLDSCREEN32','KKOFFICE_AOCQ3277','PPROOM_EIZOFLEXSCAN','EKHOME_ASUSVE247'})) % display name to get the right display params. Choose from: 7TAS_BOLDSCREEN32, KKOFFICE_AOCQ3277, PPROOM_EIZOFLEXSCAN, 'EKHOME_ASUSVE247'
+
 % OPTIONAL INPUTS
 p.addParameter('savedatadir'    , []        , @ischar);                      % place to store data with today's date
 p.addParameter('behaviorfile'   , []        , @ischar);                      % filename used for stored matlab file with behavioral data (name will add today's date)
@@ -20,7 +22,7 @@ p.addParameter('laptopkey'      , -3        , @isnumeric);                   % l
 p.addParameter('wanteyetracking', false     , @islogical);                   % whether to try to hook up to the eyetracker
 p.addParameter('deviceNr'       , []        , @isnumeric);                   % kbWait/kbCheck input device number to listen to
 p.addParameter('device_check'   , 'both'    , @char);                        % what type of devices do we want to check for button presses: 'external','internal', or 'both'
-p.addParameter('triggerkey'     , {'5%','t'}, @(x) iscell(x) || isstring(x)) % key(s) that starts the experiment
+p.addParameter('triggerkey'     , {'5','t'}, @(x) iscell(x) || isstring(x)) % key(s) that starts the experiment
 p.addParameter('triggerkeyname' , '''5'' or ''t''', @isstring)               % for display only
 p.addParameter('offsetpix'      , [0 0]     , @isnumeric);                   % offset of screen in pixels [10 20] means move 10-px right, 20-px down
 p.addParameter('movieflip'      , [0 0]     , @isnumeric)                    % whether to flip up-down, whether to flip left-right
@@ -32,10 +34,9 @@ p.addParameter('env_type'       , []        , @(x) ismember(x, {'MRI','BEHAVIOR'
 p.addParameter('infofolder'     , fullfile(vcd_rootPath,'workspaces','info')        , @ischar); % where are the *_info.csv file(s)?
 p.addParameter('stimfolder'     , fullfile(vcd_rootPath,'workspaces','stimuli')     , @ischar); % where are the mat-files with store stimuli?
 p.addParameter('instrtextdir'   , fullfile(vcd_rootPath,'workspaces','instructions'), @ischar); % where are the txt-files with task instructions?
-p.addParameter('dispName'       , '7TAS_BOLDSCREEN32', @(x) ismember(x,{'7TAS_BOLDSCREEN32','KKOFFICE_AOCQ3277','PPROOM_EIZOFLEXSCAN','EKHOME_ASUSVE247'})) % display name to get the right display params. Choose from: 7TAS_BOLDSCREEN32, KKOFFICE_AOCQ3277, PPROOM_EIZOFLEXSCAN, 'EKHOME_ASUSVE247'
 
 % Parse inputs
-p.parse(subj_nr, ses_nr, ses_type, run_nr, varargin{:});
+p.parse(subj_nr, ses_nr, ses_type, run_nr,dispName, varargin{:});
 
 % Rename variables into general params struct
 rename_me = fieldnames(p.Results);

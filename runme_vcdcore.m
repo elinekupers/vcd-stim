@@ -1,8 +1,8 @@
-function [data, params] = runme_vcdcore(subj_nr,ses_nr,ses_type,run_nr, varargin)
+function [data, params] = runme_vcdcore(subj_nr,ses_nr,ses_type,run_nr, dispName, varargin)
 % Main wrapper function to run the core VCD experiment. This function can 
 % run both behavioral and functional MRI.
 %
-%     runme_vcdcore(subj_nr,ses_nr,ses_type,run_nr, varargin)
+%     runme_vcdcore(subj_nr,ses_nr,ses_type,run_nr,dispName, varargin)
 %
 % PURPOSE: 
 % Execute a single 6.5-min run (behavioral or fMRI) of the core
@@ -47,15 +47,14 @@ function [data, params] = runme_vcdcore(subj_nr,ses_nr,ses_type,run_nr, varargin
 %  undefined. To define optional input arguments, use: 'vararg', <val>.
 %
 %   subj_nr           : subject number 
-%   ses_nr            : session number (numeric integer between 1-27)
+%   ses_nr            : session number  (numeric integer between 1-27)
 %   ses_type          : session type number (numeric integer: 1=A and 2=B)
-%   run_nr            : run number     (numeric integer between 1-10)
-%   [dispName]        : name of display (string), this affects stimulus size
-%                       Choose: '7TAS_BOLDSCREEN32' - BOLD screen at the 7TAS MRI scanner
-%                               'KKOFFICE_AOSQ3277' - external monitor in kendrick's CMRR office
-%                               'EKHOME_ASUSVE247'  - external monitor at Eline's home
-%                               'PPROOM_EIZOFLEXSCAN' - CMRR's Psychophysics room monitor 
-%                        Default: '7TAS_BOLDSCREEN32'                      
+%   run_nr            : run number      (numeric integer between 1-10)
+%   dispName          : name of display (string), this affects what stimuli and time_table_master are loaded
+%                       Choose: '7TAS_BOLDSCREEN32'   - BOLD screen at the 7TAS MRI scanner
+%                               'KKOFFICE_AOSQ3277'   - external monitor in kendrick's CMRR office
+%                               'EKHOME_ASUSVE247'    - external monitor at Eline's home
+%                               'PPROOM_EIZOFLEXSCAN' - CMRR's Psychophysics room monitor                      
 %   [debugmode]       : if true, there is no eyetracking, no waiting for external
 %                       trigger from scanner, no monitor synctest. 
 %                        Default: false
@@ -90,17 +89,17 @@ function [data, params] = runme_vcdcore(subj_nr,ses_nr,ses_type,run_nr, varargin
 %                        used for this particular run.
 %
 % EXAMPLES:
-%  runme_vcdcore(1, 1, 1, 1); % default is '7TAS_BOLDSCREEN32' display
-%  runme_vcdcore(1, 1, 1, 1, 'dispName', 'PPROOM_EIZOFLEXSCAN'); % default is no debugmode and no eyetracking
-%  runme_vcdcore(1, 1, 1, 1, 'debugmode', true,  'dispName','PPROOM_EIZOFLEXSCAN'); % debugmode=true means skipsync test and no eyetracking
-%  runme_vcdcore(1, 1, 1, 1, 'debugmode', true,  'dispName','PPROOM_EIZOFLEXSCAN', 'wanteyetracking', true); % skipsync test and but we want eyetracking
-%  runme_vcdcore(1, 1, 1, 1, 'debugmode', false, 'dispName','7TAS_BOLDSCREEN32')
-%  runme_vcdcore(1, 1, 1, 1, 'debugmode', true,  'dispName','KKOFFICE_AOCQ3277')
-%  runme_vcdcore(1, 1, 1, 1, 'debugmode', true,  'dispName','EKHOME_ASUSVE247', 'ptbMaxVBLstd', 0.0006)
+%  runme_vcdcore(1, 1, 1, 1, '7TAS_BOLDSCREEN32'); 
+%  runme_vcdcore(1, 1, 1, 1, 'PPROOM_EIZOFLEXSCAN'); % default is no debugmode and no eyetracking
+%  runme_vcdcore(1, 1, 1, 1, 'PPROOM_EIZOFLEXSCAN', 'debugmode', true);  % debugmode=true means skipsync test and no eyetracking
+%  runme_vcdcore(1, 1, 1, 1, 'PPROOM_EIZOFLEXSCAN', 'debugmode', true, 'wanteyetracking', true); % skipsync test and but we want eyetracking
+%  runme_vcdcore(1, 1, 1, 1, '7TAS_BOLDSCREEN32'  , 'debugmode', false)
+%  runme_vcdcore(1, 1, 1, 1, 'KKOFFICE_AOCQ3277'  , 'debugmode', true)
+%  runme_vcdcore(1, 1, 1, 1, 'EKHOME_ASUSVE247'   , 'debugmode', true, 'ptbMaxVBLstd', 0.0006)
 %
 % DEPENDENCIES:
 %  * Psychtoolbox-3 (https://github.com/Psychtoolbox/Psychtoolbox-3) 
-%  7TAS: v. 3.0.16? or lower?.
+%  7TAS: v. 3.0.14
 %      commit ef093cbf296115badddb995fa06452e34c8c7d02 (origin/master)
 %      Date:   Tue Nov 17 19:46:08 2020 +0100
 %  PP room: v. 3.0.14 — build date 0ct 3, 2017
@@ -258,7 +257,7 @@ end
 
 %% run experiment
 % for optional inputs use: 'var',<val>
-[data, params, getoutearly] = vcd_singleRun(subj_nr, ses_nr, ses_type, run_nr, ... % mandatory inputs
+[data, params, getoutearly] = vcd_singleRun(subj_nr, ses_nr, ses_type, run_nr, dispName, ... % mandatory inputs
     'env_type', env_type, ...
     'debugmode',debugmode, ...
     'behaviorfile',behavioralfilename, ...
@@ -267,7 +266,6 @@ end
     'wanteyetracking', wanteyetracking, ...
     'loadparams', loadparams, ...
     'storeparams', storeparams, ...
-    'dispName', dispName, ... 
     'offsetpix', offsetpix, ...
     'movieflip', movieflip, ...
     'instrtextdir',instructionsDir, ...
