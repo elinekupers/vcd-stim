@@ -126,7 +126,7 @@ p.addRequired ('subj_nr'        , @isnumeric); % subject number
 p.addRequired ('ses_nr'         , @isnumeric); % session number 
 p.addRequired ('ses_type'       , @isnumeric); % session type (1=A or 2=B) 
 p.addRequired ('run_nr'         , @isnumeric); % nun number
-p.addParameter('dispName'           , '7TAS_BOLDSCREEN32' , @(x) any(strcmp(x, {'7TAS_BOLDSCREEN32','KKOFFICE_AOCQ3277','PPROOM_EIZOFLEXSCAN','EKHOME_ASUSVE247'})))
+p.addRequired('dispName'        , @(x) any(strcmp(x, {'7TAS_BOLDSCREEN32','KKOFFICE_AOCQ3277','PPROOM_EIZOFLEXSCAN','EKHOME_ASUSVE247'})))
 p.addParameter('debugmode'          , false, @islogical);
 p.addParameter('loadparams'         , true, @islogical);
 p.addParameter('storeparams'        , true, @islogical);
@@ -141,7 +141,7 @@ p.addParameter('wanteyetracking'    , false, @islogical);
 p.addParameter('ptbMaxVBLstd'       , [], @isnumeric);
 
 % Parse inputs
-p.parse(subj_nr, ses_nr, ses_type, run_nr, varargin{:});
+p.parse(subj_nr, ses_nr, ses_type, run_nr, dispName, varargin{:});
 
 % Rename variables into general params struct
 rename_me = fieldnames(p.Results);
