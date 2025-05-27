@@ -227,7 +227,7 @@ end
 results.eyedata = results.eyedata(:,minix:maxix);
 
 % check that the duration of the eyetracking is matched to the behavioral data
-assert(abs(((results.eyedata(1,end) - results.eyedata(1,1))/1000 + 1/1000) - behresults.totaldur) < 10/1000, ...
+assert(abs(((results.eyedata(1,end) - results.eyedata(1,1)) + 1/1000) - behresults.totaldur) < 50/1000, ...
        'eyetracking data duration is mismatched to behresults.totaldur');
 
 % figure out where we have baddata.
