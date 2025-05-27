@@ -114,11 +114,21 @@ rmdirquiet(t0);
 %     {'MSG'}    {'4145359'}    {'SYNCTIME '                                                                                }
 results.messages = {};
   % get the last one of CAL CALIBRATION:
-ok = b1.msg(cellfun(@(x) ~isempty(regexp(x,'!CAL CALIBRATION')),b1.msg(:,3)),3); assert(length(ok)>=1);
-results.messages{1} = ok{end};
+ok = b1.msg(cellfun(@(x) ~isempty(regexp(x,'!CAL CALIBRATION')),b1.msg(:,3)),3);
+if isempty(ok)
+  warning('*** No CAL CALIBRATION found!! ***');
+  results.messages{1} = [];
+else
+  results.messages{1} = ok{end};
+end
   % get the last one of CAL VALIDATION:
-ok = b1.msg(cellfun(@(x) ~isempty(regexp(x,'!CAL VALIDATION')),b1.msg(:,3)),3); assert(length(ok)>=1);
-results.messages{2} = ok{end};
+ok = b1.msg(cellfun(@(x) ~isempty(regexp(x,'!CAL VALIDATION')),b1.msg(:,3)),3);
+if isempty(ok)
+  warning('*** No CAL VALIDATION found!! ***');
+  results.messages{2} = [];
+else
+  results.messages{2} = ok{end};
+end
   % get the GAZE_COORDS
 ok = b1.msg(cellfun(@(x) ~isempty(regexp(x,'GAZE_COORDS')),b1.msg(:,3)),3); assert(length(ok)==1);
 results.messages{3} = ok{1};
