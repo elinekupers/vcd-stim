@@ -96,13 +96,13 @@ a1 = load(behfilename);
 
 % use edf2asc to convert the .edf file. note that this edf2asc call 
 % includes metadata including events/messages.
-t0 = tempdir;
+t0 = maketempdir;
 unix_wrapper(sprintf('edf2asc -y -p %s -miss NaN %s',t0,filename),[],0);  % -y = overwrite; -vel ?
 
 % load in the .asc file and clean up
 tempascfile = fullfile(t0,[stripext(filename) '.asc']);
 b1 = read_eyelink_asc_v3(tempascfile);
-delete(tempascfile);
+rmdirquiet(t0);
 
 % extract some critical messages
 %     {'MSG'}    {'3681821'}    {'!CAL CALIBRATION HV5 L LEFT GOOD  '                                                       }
