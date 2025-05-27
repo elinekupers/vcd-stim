@@ -1,4 +1,4 @@
-function asc = read_eyelink_asc(filename)
+function asc = read_eyelink_asc_v3(filename)
 
 % READ_EYELINK_ASC reads the header information, input triggers, messages
 % and all data points from an Eyelink *.asc file. The output events are
