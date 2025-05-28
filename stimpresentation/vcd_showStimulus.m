@@ -518,7 +518,6 @@ performance = vcdbehavioralanalysis(fullfile(params.savedatadir,params.behaviorf
 Screen('FillRect', win, params.stim.bckgrnd_grayval, rect);
 DrawFormattedText(win, fb_txt, (fbtext_rect(3)/2)-120, (fbtext_rect(4)/2)-25,0,75,[],[],[],[],fbtext_rect); % inputs are winptr, tstring, sx, sy, color, wrapat, flipHorizontal, flipVertical, vSpacing, righttoleft, winRect)
 Screen('Flip',win,0);
-WaitSecs(4);
 
 % Check monitor timing
 ptviewmoviecheck(data.timing.timeframes,data.timeKeys,[],{'5' 't'});
@@ -528,6 +527,17 @@ if params.wanteyetracking
     eyeresults = vcdeyetrackingpreprocessing( ...
         fullfile(params.savedatadir,params.eyelinkfile), ...
         fullfile(params.savedatadir,params.behaviorfile), performance);
+end
+
+% Let the user decide when to end the experiment
+fprintf('PRESS SPACE BAR TO END RUN.\n');
+while 1
+    [~,keyCode,~] = KbWait(deviceNr,2); % deviceNr = -3; KbWait outputs are secs,keyCode,deltaSecs
+    kn = KbName(keyCode);
+    if isequal(kn,'space')
+        fprintf('SPACE key detected.  Ending run.\n');
+        break;
+    end
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
