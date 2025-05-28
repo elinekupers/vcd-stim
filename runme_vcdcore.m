@@ -26,20 +26,58 @@ function data = runme_vcdcore(subj_nr,ses_nr,ses_type,run_nr, dispName, varargin
 % same version (session_type = 1). The last fMRI session (session_nr = 27)
 % has two versions split across subjects Half of the subjetcs will see
 % version 27A (use session_type = 1), the other half of the subjects will
-% see version 27B (use session_type = 2).
+% see version 27B (use session_type = 2). MRI runs range from 1-10.
 % 
-% The wrapper will store 2 files in ./data/[BEHAVIOR or MRI]/[subjXXX_sesXX]
-% * behavioral mat file: key presses and PTB VBL monitor refresh flip
-% timing. 
-% * eyetracking edf file: raw time series of xy-position, pupil
-% size, eye velocity, and sync messages)
+% The wrapper will store 2 files in a subject specific data folder for the 
+% session that was run:  ./data/<environment>/subj###_ses##
 %
-% %% EK CHECK --- Setup display resolution:
-% Conservative estimate of what subject can see is h: 800 px, w: 1024 pix.
-% This results in atan(800/1024*37.9/2/(5.5+96.1))/pi*180*2 = 16.58 deg 
-% total (jointly across two eyes). In the vertical dimension, 
-% atan(500/768*28.5/2/(5.5+96.1))/pi*180*2 = 10.43 deg total.
-% Note: nsdheightdeg = 12.70 in degrees (BOLDscreen vertical, Nova1x32)
+% * behavioral .mat file containing triggers, subject's key presses and 
+%   VBL monitor refresh timing: 
+%   'behavior_<datetime>_vcd_subj<subject_nr>_ses<session_nr>_<session_type>_run<run_nr>.mat'
+%   
+% * eyetracking .edf file containing raw time series of gaze xy-position, 
+%   pupil size, eye velocity, and sync messages:
+%   'eye_<datetime>_vcd_subj<subject_nr>_ses<session_nr>_<session_type>_run<run_nr>.edf'
+%
+% <environment> is either:
+%  * 'MRI' (when using dispname = '7TAS_BOLDSCREEN32'), 
+%  * 'BEHAVIOR' (when using dispname = 'PPROOM_EIZOFLEXSCAN'), 
+%  * 'TEST' (when using dispname = 'KKOFFICE_AOCQ3277' or 'EKHOME_ASUSVE247' 
+% <subject_nr> is a zero-padded integral number ranging from 1 to 999
+% <session_nr> is a zero-padded integral number ranging from 1 to 27
+% <session_type> is either  "A" for session_type=1 or "B" for session_type=2
+%   Note: most sessions only have session_type=1. The only sessions with 
+%   two session types are MRI session 1 (the one and only wide session) 
+%   and MRI session 27 (the last deep session). 
+% <run_nr> is a zero-padded integral number ranging from 1 to 15.
+%
+% Setup display resolution:
+% 7TAS_BOLDSCREEN32: (BOLDscreen + Nova1x32 headcoil + large mirror)
+%  * viewing distance 183.5 cm; 
+%  * monitor size (h x w): 39.29 x 69.84 cm; 
+%  * monitor resolution (h x w): 1080 x 1920 pixels; 
+%  * monitor refresh rate: 120 Hz. 
+% PPROOM_EIZOFLEXSCAN: (EizoFlexScan + Bits#)
+%  * viewing distance 99.0 cm; 
+%  * monitor size (h x w): 32.5 x 52.0 cm; 
+%  * monitor resolution (h x w): 1200 x 1920 pixels; 
+%  * monitor refresh rate: 60 Hz. 
+% 
+% DVA conversion:  
+% BOLDscreen height: atan( (39.29 / 2) / 183.5) / pi*180*2 = 12.22 deg 
+% BOLDscreen width: atan( (69.84 / 2) / 183.5) / pi*180*2 = 21.55 deg 
+% BOLDscreen pixels per deg: 88.3702666667131 [precise]
+% EIZOFlexscan height: atan( (32.5 / 2) / 99.0) / pi*180*2 = 18.64 deg 
+% EIZOFlexscan width: atan( (52.0 / 2) / 99.0) / pi*180*2 = 29.43 deg 
+% EIZOFlexscan pixels per deg: 64.3673991642835 [precise]
+%
+% For 7TAS BOLDscreen, a conservative estimate of what subject can see is 
+% height: 1080 px, width: 1152 pix.
+% For the width/horizontal dimension, this results in a total (jointly across two eyes):
+%   atan(1152/1920 * (69.84 / 2) /183.5) / pi*180*2 = 13.03 deg
+% For the height/vertical dimension, this results in a total (jointly across two eyes):
+%   atan(1080/1080 * (39.29 / 2) /183.5) / pi*180*2 = 12.2 deg
+% For reference: nsdheightdeg = 12.70 in degrees (BOLDscreen vertical, Nova1x32)
 % 
 % INPUTS
 %  Input parser requires first three inputs (subj_nr, sesID, run_nr).
@@ -85,8 +123,6 @@ function data = runme_vcdcore(subj_nr,ses_nr,ses_type,run_nr, dispName, varargin
 % OUTPUTS:
 %   data              : struct with behavioral button presses and monitor
 %                        refresh rate timing, as well as other parameters.
-%   params            : struct with experimental and stimulus parameters
-%                        used for this particular run.
 %
 % EXAMPLES:
 %  runme_vcdcore(1, 1, 1, 1, '7TAS_BOLDSCREEN32'); 
@@ -201,6 +237,13 @@ elseif ischar(dispName)
     end
 end
       
+% Deal with debug mode
+if debugmode && wanteyetracking % let wanteyetracking override debug mode
+    wanteyetracking = true;
+else
+    wanteyetracking = false;
+end
+
 % Give some hints to the operator
 if isempty(savedatadir) %#ok<NODEF>
     savedatadir = fullfile(vcd_rootPath,'data',env_type,sprintf('vcd_subj%03d_ses%02d',subj_nr, ses_nr));
@@ -250,10 +293,6 @@ assert(ses_type>=1 && ses_type<=2);
 assert(ses_nr>=1 && ses_nr<=27);
 assert(run_nr>=1 && run_nr<=15);
 
-% Deal with debug mode
-if debugmode
-    wanteyetracking = false;
-end
 
 %% run experiment
 % for optional inputs use: 'var',<val>

@@ -100,12 +100,12 @@ if strcmp(params.env_type,'TEST')
     params.disp.name = 'PPROOM_EIZOFLEXSCAN';
 end
 
-% Buttonbox / keyboard
-if strcmp(params.env_type, 'MRI')
-    params.ignorekeys = KbName({params.triggerkey});  % dont record TR triggers as subject response
-else
-    params.ignorekeys = [];
-end
+% % Buttonbox / keyboard
+% if strcmp(params.env_type, 'MRI')
+%     params.ignorekeys = KbName({params.triggerkey});  % dont record TR triggers as subject response
+% else
+%     params.ignorekeys = [];
+% end
 
 
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
