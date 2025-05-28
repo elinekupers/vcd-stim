@@ -5,7 +5,7 @@ MATLAB code repository to create and present the stimuli of the Visual Cognition
 
 ## Goal
 
-Create and run the 39 different types of visual experiments of the Visual Cognition Dataset across 30 MRI sessions. Visual experiments are based on crossings of 5 stimulus classes and 9 task classes.
+Create and run the 32 different types of visual experiments of the Visual Cognition Dataset across 27 MRI sessions. Visual experiments are based on crossings of 5 stimulus classes and 9 task classes.
 
 Stimulus classes:
 * **Gabors:** Gratings in a gaussian window
