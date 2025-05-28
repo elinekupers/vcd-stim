@@ -68,14 +68,14 @@ if (nargin ==2 && ~exist(session_type,'var')) || isempty(session_type)
 elseif strcmp(session_type,'MRI')
     % Concatenate wide and deep sessions
     all_sessions     = cat(3, params.exp.session.wide.ses_blocks, params.exp.session.deep.ses_blocks);
-    runs_per_session = cat(2, params.exp.session.mri.wide.n_runs_per_session,params.exp.session.mri.deep.n_runs_per_session);
-    session_types    = cat(2, params.exp.session.mri.wide.session_types,params.exp.session.mri.deep.session_types);
+    runs_per_session = cat(1, params.exp.session.mri.wide.n_runs_per_session,params.exp.session.mri.deep.n_runs_per_session);
+    session_types    = cat(1, params.exp.session.mri.wide.session_types,params.exp.session.mri.deep.session_types);
     
     % Use longer plank periods
     session_preblankdur  = params.exp.run.pre_blank_dur_MRI;
     session_postblankdur = params.exp.run.post_blank_dur_MRI;
     session_totalrundur  = params.exp.run.total_run_dur_MRI;
-    IBI_to_use = params.exp.block.IBI_MRI;
+    IBI_to_use           = params.exp.block.IBI_MRI;
     
     
 elseif strcmp(session_type,'BEHAVIOR')

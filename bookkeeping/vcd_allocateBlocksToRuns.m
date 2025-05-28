@@ -168,7 +168,7 @@ for ses = 1:size(all_sessions,3)
                                             cue_label = {sprintf('%s 0000 X LCUED %s',stim_class_tmp_name,task_class_abbr{tc}), ...
                                                 sprintf('%s 0000 X LCUED %s',stim_class_tmp_name,task_class_abbr{tc})};
                                         elseif condition_master.is_cued(sub_idx(tt))==2
-                                            cue_label = {sprintf('%s 000 X RCUED %s',stim_class_tmp_name,task_class_abbr{tc}), ...
+                                            cue_label = {sprintf('%s 0000 X RCUED %s',stim_class_tmp_name,task_class_abbr{tc}), ...
                                                 sprintf('%s 0000 X RCUED %s',stim_class_tmp_name,task_class_abbr{tc})};
                                         elseif condition_master.is_cued(sub_idx(tt))==3
                                             if strcmp(stim_class_tmp_name,'NS')
@@ -280,16 +280,12 @@ for ses = 1:size(all_sessions,3)
             %     end
             
             %% SHUFFLE RUN AND BLOCK ORDER WITHIN RUNS
-            
-            block_vec        = condition_master.block_nr;
-            trialtype_vec    = condition_master.trial_type;
-            crossing_vec     = condition_master.crossing_nr;
-            ses_idx          = (condition_master.session_nr==ses);
-            ses_sub          = find(ses_idx);
-            ses_blocks       = block_vec(ses_idx);
-            ses_trialtype    = trialtype_vec(ses_idx);
-            ses_crossing_vec = crossing_vec(ses_idx);
-            
+            ses_idx           = (condition_master.session_nr==ses & condition_master.session_type==st);
+            ses_sub           = find(ses_idx);
+            ses_blocks        = condition_master.block_nr(ses_idx);
+            ses_trialtype     = condition_master.trial_type(ses_idx);
+            ses_crossing_vec  = condition_master.crossing_nr(ses_idx);
+
             % get unique block nrs and associated trial types
             [unique_blocks, ia] = unique(ses_blocks);
             crossings_unique_blocks  = ses_crossing_vec(ia);
@@ -314,7 +310,9 @@ for ses = 1:size(all_sessions,3)
             ses_run_types          = [runtype1(ses,st),runtype2(ses,st),runtype3(ses,st),runtype4(ses,st)];
             nr_blocks_per_run_type = ses_run_types * block_type_allocation';
 
-            assert(isequal(unique_blocks,[1:length(unique_blocks)]'))
+            if (st~=2)
+                assert(isequal(sort(unique_blocks),[1:length(unique_blocks)]'))
+            end
             if strcmp(session_type,'MRI')
                 if ses==27
                     assert(length(unique_blocks) < sum(nr_blocks_per_run_type))
@@ -367,7 +365,7 @@ for ses = 1:size(all_sessions,3)
                 if shuffle_ok
                     for nn = 1:4:length(shuffled_d_block_crossings)
                         if (nn+3) <= length(shuffled_d_block_crossings)
-                            tmp_blocks = shuffled_s_block_crossings(nn:(nn+3));
+                            tmp_blocks = shuffled_d_block_crossings(nn:(nn+3));
                             
                             if length(unique(tmp_blocks)) >= 2
                                 shuffle_ok = true;
@@ -464,6 +462,9 @@ for ses = 1:size(all_sessions,3)
                     curr_runs(empty_slot_idx(1), empty_slot(1)) = d_blocks_shuffled(end);
                     special_d_run_flag = true;
                 end
+            else
+                special_s_run_flag =  false;
+                special_d_run_flag =  false;
             end
             
             % check if we get the correct single/double stim block allocations given the
@@ -616,41 +617,47 @@ if params.store_params
 end
 
 % Visualize results
-if params.verbose
-    close all; makeprettyfigures
-    for ses = 1:size(all_sessions,3)
-        % visualize blocks and trials, now after shuffle
-        figure; set(gcf,'Position',[1 1 1200 600]);
-        ses_data = condition_master(~isnan(condition_master.session_nr),:);
-        x1 = (ses_data.session_nr==ses);
-        [yy,x2] = sort(ses_data.run_nr(x1));
-        x3 = find(x1);
-        x3 = x3(x2);
-        [~,new_run_line] = unique(yy,'stable');
-        dataToPlot = [ses_data.session_nr(x3), ...
-            ses_data.run_nr(x3), ...
-            ses_data.block_nr(x3)]';
-        imagesc(dataToPlot);
-        cb = colorbar;
-        cmap = cmapturbo(max(dataToPlot(:))+1);
-        colormap(cmap);
-        set(gca,'CLim',[min(dataToPlot(:)) max(dataToPlot(:))])
-        hold on;
-        for ff = 1:length(new_run_line)
-            plot([new_run_line(ff),new_run_line(ff)],[0,6],'k','linewidth',4)
-        end
-       
-        set(gca,'YTick',[1:params.exp.total_subjects+2],'YTickLabel',{'session nr','run nr', 'block nr'});
-        title(sprintf('SESSION %02d OVERVIEW',ses),'FontSize',20);
-        xlabel('BLOCK NR')
-        
-        
-        if params.store_imgs
-            saveFigsFolder = fullfile(vcd_rootPath,'figs',sprintf('condition_master1_%s',session_type));
-            if ~exist(saveFigsFolder,'dir'); mkdir(saveFigsFolder);end
-            filename = sprintf('vcd_session%02d_subjblocks_post_shuffle.png',ses);
-            print(gcf,'-dpng','-r300',fullfile(saveFigsFolder,filename));
-        end
-    end
-end
+% if params.verbose
+%     close all; makeprettyfigures
+%     for ses = 1:size(all_sessions,3)
+%         for st = 1:size(all_sessions,4) % session types
+%             
+%             if ~isnan(session_types(ses,st))
+%                 
+%                 % visualize blocks and trials, now after shuffle
+%                 figure; set(gcf,'Position',[1 1 1200 600]);
+%                 ses_idx = (condition_master.session_nr==ses & condition_master.session_type==st);
+%                 ses_data = condition_master(ses_idx,:);
+%                 ses_data = condition_master(~isnan(ses_data.session_nr),:);
+%                 [yy,x2]  = sort(ses_data.run_nr);
+%                 x3 = find(x2);
+%                 [~,new_run_line] = unique(yy,'stable');
+%                 dataToPlot = [ses_data.session_nr(x3), ...
+%                     ses_data.run_nr(x3), ...
+%                     ses_data.block_nr(x3)]';
+%                 imagesc(dataToPlot);
+%                 cb = colorbar;
+%                 cmap = cmapturbo(max(dataToPlot(:))+1);
+%                 colormap(cmap);
+%                 set(gca,'CLim',[min(dataToPlot(:)) max(dataToPlot(:))])
+%                 hold on;
+%                 for ff = 1:length(new_run_line)
+%                     plot([new_run_line(ff),new_run_line(ff)],[0,6],'k','linewidth',4)
+%                 end
+%                 
+%                 set(gca,'YTick',[1:params.exp.total_subjects+2],'YTickLabel',{'session nr','run nr', 'block nr'});
+%                 title(sprintf('SESSION %02d OVERVIEW',ses),'FontSize',20);
+%                 xlabel('BLOCK NR')
+%                 
+%                 
+%                 if params.store_imgs
+%                     saveFigsFolder = fullfile(vcd_rootPath,'figs',sprintf('condition_master1_%s',session_type));
+%                     if ~exist(saveFigsFolder,'dir'); mkdir(saveFigsFolder);end
+%                     filename = sprintf('vcd_session%02d_subjblocks_post_shuffle.png',ses);
+%                     print(gcf,'-dpng','-r300',fullfile(saveFigsFolder,filename));
+%                 end
+%             end
+%         end
+%     end
+% end
 return
