@@ -93,8 +93,7 @@ function data = runme_vcdcore(subj_nr,ses_nr,ses_type,run_nr, dispName, varargin
 %                               'KKOFFICE_AOSQ3277'   - external monitor in kendrick's CMRR office
 %                               'EKHOME_ASUSVE247'    - external monitor at Eline's home
 %                               'PPROOM_EIZOFLEXSCAN' - CMRR's Psychophysics room monitor                      
-%   [debugmode]       : if true, there is no eyetracking, no waiting for external
-%                       trigger from scanner, no monitor synctest. 
+%   [wantsynctest]    : if true, we do the PTB monitor sync test. 
 %                        Default: false
 %   [loadparams]      : if true, load stored parameter values. 
 %                        Default: true
@@ -126,12 +125,12 @@ function data = runme_vcdcore(subj_nr,ses_nr,ses_type,run_nr, dispName, varargin
 %
 % EXAMPLES:
 %  runme_vcdcore(1, 1, 1, 1, '7TAS_BOLDSCREEN32'); 
-%  runme_vcdcore(1, 1, 1, 1, 'PPROOM_EIZOFLEXSCAN'); % default is no debugmode and no eyetracking
-%  runme_vcdcore(1, 1, 1, 1, 'PPROOM_EIZOFLEXSCAN', 'debugmode', true);  % debugmode=true means skipsync test and no eyetracking
-%  runme_vcdcore(1, 1, 1, 1, 'PPROOM_EIZOFLEXSCAN', 'debugmode', true, 'wanteyetracking', true); % skipsync test and but we want eyetracking
-%  runme_vcdcore(1, 1, 1, 1, '7TAS_BOLDSCREEN32'  , 'debugmode', false)
-%  runme_vcdcore(1, 1, 1, 1, 'KKOFFICE_AOCQ3277'  , 'debugmode', true)
-%  runme_vcdcore(1, 1, 1, 1, 'EKHOME_ASUSVE247'   , 'debugmode', true, 'ptbMaxVBLstd', 0.0006)
+%  runme_vcdcore(1, 1, 1, 1, 'PPROOM_EIZOFLEXSCAN'); % default is with sync test and no eyetracking
+%  runme_vcdcore(1, 1, 1, 1, 'PPROOM_EIZOFLEXSCAN', 'wantsynctest', true); 
+%  runme_vcdcore(1, 1, 1, 1, 'PPROOM_EIZOFLEXSCAN', 'wantsynctest', true, 'wanteyetracking', true); % sync test + eyetracking
+%  runme_vcdcore(1, 1, 1, 1, '7TAS_BOLDSCREEN32'  , 'wantsynctest', false)
+%  runme_vcdcore(1, 1, 1, 1, 'KKOFFICE_AOCQ3277'  , 'wantsynctest', true)
+%  runme_vcdcore(1, 1, 1, 1, 'EKHOME_ASUSVE247'   , 'wantsynctest', true, 'ptbMaxVBLstd', 0.0006)
 %
 % DEPENDENCIES:
 %  * Psychtoolbox-3 (https://github.com/Psychtoolbox/Psychtoolbox-3) 
@@ -163,7 +162,7 @@ p.addRequired ('ses_nr'         , @isnumeric); % session number
 p.addRequired ('ses_type'       , @isnumeric); % session type (1=A or 2=B) 
 p.addRequired ('run_nr'         , @isnumeric); % nun number
 p.addRequired('dispName'        , @(x) any(strcmp(x, {'7TAS_BOLDSCREEN32','KKOFFICE_AOCQ3277','PPROOM_EIZOFLEXSCAN','EKHOME_ASUSVE247'})))
-p.addParameter('debugmode'          , false, @islogical);
+p.addParameter('wantsynctest'       , true, @islogical);
 p.addParameter('loadparams'         , true, @islogical);
 p.addParameter('storeparams'        , true, @islogical);
 p.addParameter('savestim'           , false, @islogical);
@@ -237,12 +236,6 @@ elseif ischar(dispName)
     end
 end
       
-% Deal with debug mode
-if debugmode && wanteyetracking % let wanteyetracking override debug mode
-    wanteyetracking = true;
-else
-    wanteyetracking = false;
-end
 
 % Give some hints to the operator
 if isempty(savedatadir) %#ok<NODEF>
@@ -298,7 +291,7 @@ assert(run_nr>=1 && run_nr<=15);
 % for optional inputs use: 'var',<val>
 data = vcd_singleRun(subj_nr, ses_nr, ses_type, run_nr, dispName, ... % mandatory inputs
     'env_type', env_type, ...
-    'debugmode',debugmode, ...
+    'wantsynctest',wantsynctest, ...
     'behaviorfile',behavioralfilename, ...
     'eyelinkfile',eyelinkfilename, ...
     'savedatadir', savedatadir, ...

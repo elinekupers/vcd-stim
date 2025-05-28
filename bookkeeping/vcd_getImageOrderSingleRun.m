@@ -310,11 +310,7 @@ for ii = 1:length(stim_row)
                         updated_ori = run_table.stim2_orient_dir(stim_row(ii),side);
                         delta_test = run_table.stim2_delta(stim_row(ii),side);
                         og_ori     = updated_ori-delta_test;
-                        
-                        % check if stim description matches
-                        assert(isequal(rdk_info.dot_coh(corresponding_unique_im_idx), run_table.rdk_coherence(stim_row(ii),side)));
-                        assert(isequal(rdk_info.dot_motdir_deg(corresponding_unique_im_idx), og_ori));
-                        
+
                         % RDKs: 130 mat files: 8 directions x 3 coherence levels x 5 deltas (0 + 4 deltas)
                         stimDir = dir(fullfile(sprintf('%s*',params.stim.rdk.stimfile)));
                         filename = sprintf('%04d_vcd_rdk_ori%02d_coh%02d_delta%02d',...
@@ -325,10 +321,15 @@ for ii = 1:length(stim_row)
                         
                         stimfile = fullfile(stimDir(1).folder,stimDir(1).name,sprintf('%s.mat', filename));
                         if exist(stimfile,'file')
-                            load(stimfile, 'frames','mask');
+                            load(stimfile, 'frames','mask','rdk_info');
                         else
                             error('[%s]: Can''t find RDK stim file!')
                         end
+                        
+                        
+                        % check if stim description matches
+                        assert(isequal(rdk_info.dot_coh, run_table.rdk_coherence(stim_row(ii),side)));
+                        assert(isequal(rdk_info.dot_motdir_deg, updated_ori));
                         
                         % ensure duration
                         frames =  frames(:,:,:,1:params.stim.rdk.duration);

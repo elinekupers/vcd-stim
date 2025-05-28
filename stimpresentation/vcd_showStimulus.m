@@ -52,12 +52,7 @@ Screen('TextSize', win, params.disp.fontsize);
 Screen('TextStyle', win, 0);
 
 Priority(9);
-
-if ~params.debugmode
-    HideCursor;
-else
-    ShowCursor;
-end
+HideCursor;
 
 % run functions as first time running them always takes more time
 GetSecs;

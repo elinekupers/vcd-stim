@@ -26,7 +26,7 @@ p.addParameter('triggerkey'     , {'5','t'}, @(x) iscell(x) || isstring(x)) % ke
 p.addParameter('triggerkeyname' , '''5'' or ''t''', @isstring)               % for display only
 p.addParameter('offsetpix'      , [0 0]     , @isnumeric);                   % offset of screen in pixels [10 20] means move 10-px right, 20-px down
 p.addParameter('movieflip'      , [0 0]     , @isnumeric)                    % whether to flip up-down, whether to flip left-right
-p.addParameter('debugmode'      , false     , @islogical)                    % whether to use debug mode (no BOLDscreen, no eyelink)
+p.addParameter('wantsynctest'   , true      , @islogical)                    % whether we want to run the PTB sync test or not
 p.addParameter('savestim'       , false     , @islogical)                    % whether we want to store temp file with stimuli and timing
 p.addParameter('loadstimfromrunfile', false , @islogical)                    % whether we want to load stim from run file
 p.addParameter('ptbMaxVBLstd'   , 0.0008    , @isnumeric)                    % what standard deviation for screen flip duration do we allow?
@@ -65,10 +65,10 @@ if ~isfield(params, 'disp') || isempty(params.disp)
     params.disp = vcd_getDisplayParams(params.dispName); % BOLDSCREEN is default
 end
 
-if params.debugmode
-    skipsync = 1; % if debugmode = true, we skip the synctest
+if params.wantsynctest
+    skipsync = 0; % if wantsynctest = true, we do the synctest
 else
-    skipsync = 0; % if debugmode = false, we run the synctest
+    skipsync = 1; % if wantsynctest = false, we skip the synctest
 end
 
 % Listen to all devices for KbCheck
