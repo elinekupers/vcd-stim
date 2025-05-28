@@ -502,7 +502,9 @@ data.digitrecord            = digitrecord;
 % figure out names of all variables except uint8 images
 vars = whos;
 vars = {vars.name};
-vars = vars(cellfun(@(x) ~ismember(x,{'fix_im','bckground','stim','eye_im'}),vars)); 
+vars = vars(cellfun(@(x) ~ismember(x,{'fix_im','bckground','stim','eye_im' ...
+  'wantframefiles' 'detectinput' 'forceglitch' 'timekeys' 'mfi' 'glitchcnt' ...
+  'timeframes' 'starttime' 'dur' 'frameduration' 'digitrecord'}),vars)); 
 
 % Save data (button presses, params, etc)
 save(fullfile(params.savedatadir,params.behaviorfile),vars{:}, '-v7.3');
