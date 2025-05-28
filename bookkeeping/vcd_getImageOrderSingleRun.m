@@ -598,8 +598,8 @@ for ii = 1:length(stim_row)
                         [f_im_cd, f_mask_cd] = vcd_applyContrastDecrement(params, rel_onset, stmclass, run_images(curr_frames(1),side), 'input_mask', run_alpha_masks(curr_frames(1),side)); % give first (and only frame)
                     end
                     run_images(curr_frames,side) = f_im_cd;
-                    
-                    clear f_im_cd;
+                    run_alpha_masks(curr_frames,side) = f_mask_cd;
+                    clear f_im_cd f_mask_cd;
                 end
             end
             
