@@ -456,7 +456,8 @@ for spi=1:10
       tix = find(results.eyedata(1,:) >= tt(p)+(onsetwindow(1)-100)/1000 & results.eyedata(1,:) < tt(p)+(onsetwindow(2)+100)/1000);
       time0 = round(1000*(results.eyedata(1,tix)-tt(p)))/1000;  % round to nearest millisecond
       ok = ismember(time0,finaltime0);
-      ally = [ally; zeromean(results.eyedata(4,tix(ok)))];
+      ally(end+1,1:sum(ok)) = zeromean(results.eyedata(4,tix(ok)));  % tricky business: there might be partial data
+      ally(end,sum(ok)+1:end) = NaN;
     case 2
       tix = results.eyedata(1,:) >= tt(p)+onsetwindow(1)/1000 & results.eyedata(1,:) < tt(p)+onsetwindow(2)/1000;
       allx = [allx results.eyedata(2,tix)];
