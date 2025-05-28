@@ -188,7 +188,7 @@ if ~exist('stim','var') || ~isfield(scan,'im') || isempty(stim.im)
     else % we want to load stimuli on the fly (takes 15-60 seconds depending on the run)
         [images, masks] = vcd_getImageOrderSingleRun(params, ...
             time_table_master, all_run_frames, params.subj_nr, params.ses_nr, params.ses_type, params.run_nr, ...
-            'store_params', false,'session_env', params.env_type); %#ok<NODEF>
+            'store_params', false,'session_env', params.env_type); 
     end
     
     % Insert images and mask into stim struct
@@ -300,7 +300,7 @@ clear time_table_master all_run_frames
 %%%%%%%%%%%%%%%%%% IMAGE XY CENTER, SIZE, OFFSET %%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-im_IDs = NaN(size(stim.im,1),2);
+
 if ~exist('scan','var') || ~isfield(scan, 'rects') || isempty(scan.rects)
     % recenter x,y-center coordinates if needed
     if any(params.offsetpix~=0) || isempty(params.offsetpix)
@@ -314,14 +314,26 @@ if ~exist('scan','var') || ~isfield(scan, 'rects') || isempty(scan.rects)
         params.stim.yc = (ptonparams{1}(2)/2);
     end
     
-    % To get stim rects, we need to get [x,y]-center in pixels of
-    % stimuli given display size, stimulus size, and fixation offset.
+    % To calculate stim rects, we need stim [x,y]-center in pixels, taking
+    % display size, stimulus aperture size, and fixation offset into account.
     centers = cell(size(stim.im,1),2);
     apsize  = cell(size(stim.im,1),2);
     
+    % To avoid making multiple copies of the same static image, we create a
+    % matrix called "im_IDs" which will refer to the static images stored 
+    % in stim.im for every run frames. (We will do the same for centers and
+    % aperture sizes..
+    im_IDs = NaN(size(stim.im,1),2);
+
+    % Check which stimulus sides (left/right) are empty or not for each run
+    % time frame.
     stim_frames = (~cellfun(@isempty, stim.im));
+    
+    % Now loop over stimuli
     for nn = 1:size(stim.im,1)
-        % We only do this for stimulus (or eye tracking) events..
+        
+        % We only do get centers/sizes for stimulus events or images in the
+        % eye tracking block
         if ismember(run_frames.frame_event_nr(nn), ...
                 [params.exp.block.stim_epoch1_ID, params.exp.block.stim_epoch2_ID, ...
                 params.exp.block.eye_gaze_fix_ID,params.exp.block.eye_gaze_pupil_white_ID, ...
@@ -331,8 +343,7 @@ if ~exist('scan','var') || ~isfield(scan, 'rects') || isempty(scan.rects)
             % one central stimulus location..
             numSides = find(stim_frames(nn,:));
             if ~isempty(numSides)
-                
-                for side = numSides
+                for side = numSides % 1:left/2:right
                     
                     % If it is a gabor..
                     if ismember(run_frames.frame_im_nr(nn,side), [params.stim.gabor.unique_im_nrs_core,params.stim.gabor.unique_im_nrs_wm_test])
@@ -344,7 +355,7 @@ if ~exist('scan','var') || ~isfield(scan, 'rects') || isempty(scan.rects)
                         centers{nn,side} = [params.stim.rdk.x0_pix(side) + params.stim.xc, ...
                             params.stim.rdk.y0_pix(side) + params.stim.yc];
                         
-                        % If it is an single dot..
+                    % If it is an single dot..
                     elseif ismember(run_frames.frame_im_nr(nn,side), [params.stim.dot.unique_im_nrs_core,params.stim.dot.unique_im_nrs_wm_test])
                         % deal with dot pol2cart
                         if ismember(run_frames.frame_im_nr(nn,side), params.stim.dot.unique_im_nrs_wm_test)
@@ -360,17 +371,17 @@ if ~exist('scan','var') || ~isfield(scan, 'rects') || isempty(scan.rects)
                         end
                         centers{nn,side} = [dot_x,dot_y];
                         
-                        % If it is an object..
+                    % If it is an object..
                     elseif ismember(run_frames.frame_im_nr(nn,side), [params.stim.obj.unique_im_nrs_core,params.stim.obj.unique_im_nrs_wm_test])
                         centers{nn,side} = [params.stim.obj.x0_pix(side) + params.stim.xc, ...
                             params.stim.obj.y0_pix(side) + params.stim.yc];
                         
-                        % If it is an natural scene..
+                    % If it is a natural scene..
                     elseif ismember(run_frames.frame_im_nr(nn,side), ...
                             [params.stim.ns.unique_im_nrs_core,params.stim.ns.unique_im_nrs_wm_test,params.stim.ns.unique_im_nrs_wm_test,params.stim.ns.unique_im_nrs_ltm_lures])
                         centers{nn,side} = [params.stim.ns.x0_pix + params.stim.xc, params.stim.ns.y0_pix + params.stim.yc];
                         
-                        % If it is a catch trial
+                    % If it is a catch trial
                     elseif isnan(run_frames.frame_im_nr(nn,side)) || (run_frames.frame_im_nr(nn,side)==0)
                         centers{nn,side} = [NaN, NaN];
                     end
@@ -411,6 +422,7 @@ if ~exist('scan','var') || ~isfield(scan, 'rects') || isempty(scan.rects)
                                 centers(nn:(nn+params.stim.stimdur_frames-1),side) = mat2cell(centers{im_IDs(nn,side),side},1,2);
                                 apsize(nn:(nn+params.stim.stimdur_frames-1),side)  = mat2cell([size(stim.im{im_IDs(nn,side),side},2), size(stim.im{im_IDs(nn,side),side},1)],1,2);
                             end
+                            
                         % If we only have a static image, repeat im_ID,
                         % centers and aperture size for upcoming frames
                         elseif isnan(im_IDs(nn-1,side))
@@ -444,23 +456,25 @@ stim.apsize       = apsize;  clear apsize;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 stim.rects = cell(size(stim.centers));
 for side = [1,2]
-    
+    % Find the non-empty center and size cells for each stimulus side
     nonemptycenters   = ~cellfun(@isempty, stim.centers(:,side));
     nonemptysizes     = ~cellfun(@isempty, stim.apsize(:,side));
+    % We expect centers and sizes to have the same nr of empty cells..
     assert(isequal(nonemptycenters,nonemptysizes)); clear nonemptysizes
-    
+    % Now only select the nonempty centers and sizes
     centers_shortlist = stim.centers(nonemptycenters,side);
     apsize_shortlist  = stim.apsize(nonemptycenters,side);
-    
+    % Create stimulus "rects" for PTB. CenterRectOnPoint cannot handle
+    % empty cells or NaNs
     rects_shortlist   = ...
         cellfun(@(stimsize,stimcenter) ... width, height, x0, y0
         CenterRectOnPoint([0 0 stimsize(1) stimsize(2)], stimcenter(1), stimcenter(2)), ...
         apsize_shortlist,centers_shortlist, 'UniformOutput', false);
-    
+    % Insert the "rects" into the struct
     stim.rects(nonemptycenters,side) = rects_shortlist;
     
 end
-
+% Clear some memory
 clear rects_shortlist centers_shortlist apsize_shortlist
 
 
@@ -472,26 +486,27 @@ introscript = fullfile(params.instrtextdir,'00_runvcdcore_subjectinstructions.tx
 if ~exist(introscript,'file')
     error('[%s]: Can''t find instructions text file!',mfilename')
 end
-
+% Find the crossing_nrs for each stimulus block
 taskIDs = unique(run_table.crossing_nr);
 taskIDs = taskIDs(~isnan(taskIDs));
 taskIDs = taskIDs(taskIDs~=0); % black periods
 taskIDs = taskIDs(taskIDs~=999); % eyetracking block events
 taskNames = params.exp.crossingnames(taskIDs);
-
+% Now load the task instructions from file.
 taskscript = cell(1,length(taskIDs));
 for nn = 1:length(taskIDs)
     taskName = strrep(taskNames{nn},'-','_');
     d = dir(fullfile(params.instrtextdir,sprintf('%02d_runvcdcore_%s.txt', taskIDs(nn),taskName)));
     taskscript{nn} = fullfile(d.folder,d.name);
 end
-
+% Clear some memory
+clear taskIDs taskNames d taskName
 
 
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%   INIT SCREEN %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-Screen('Preference', 'SyncTestSettings', params.ptbMaxVBLstd); % what deviation from empirical monitor refresh rate do we allow before calling it a missed flip?
+Screen('Preference', 'SyncTestSettings', params.ptbMaxVBLstd); % params.ptbMaxVBLstd defines what deviation from empirical monitor refresh rate do we allow before calling it a missed flip (and throwing an error)
 oldCLUT     = pton(ptonparams{:});
 win         = firstel(Screen('Windows'));
 oldPriority = Priority(MaxPriority(win));
@@ -504,9 +519,8 @@ HideCursor(win);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 if ~params.wanteyetracking
     
-    % No need for EYE fun
-    tfunEYE = @() ('\n');
-    
+    % No need for EYE fun, eyelink files
+    tfunEYE            = @() ('\n');
     eyetempfile        = [];
     params.eyelinkfile = [];
     
@@ -514,12 +528,13 @@ elseif params.wanteyetracking
     
     % ANON EYE FUN for SYNC TIME
     tfunEYE     = @() Eyelink('Message','SYNCTIME');
-    
+
+    % Create eyelink file if user didn't define one yet.
     if ~isfield(params,'eyelinkfile') || isempty(params.eyelinkfile)
         params.eyelinkfile = fullfile(sprintf('eye_%s_vcd_subj-%s_run-%d.edf',datestr(now,30),params.subj_nr,params.run_nr));
     end
     
-    % initialize
+    % Initialize Eyelink
     et_ok = EyelinkInit;
     assert(et_ok==1);
     
@@ -530,13 +545,13 @@ elseif params.wanteyetracking
     %         Eyelink('SetAddress','100.1.1.1') %% <--- CHECK THIS
     %     end
     
-    % Get eyelink default params
+    % Get Eyelink default params
     el = EyelinkInitDefaults(win);
     if ~isempty(el.callback)
         PsychEyelinkDispatchCallback(el);
     end
     
-    % Update default EYELINK params with VCD needs
+    % Update default Eyelink params with VCD needs
     el = vcd_setEyelinkParams(el);
     EyelinkUpdateDefaults(el);
     
@@ -549,11 +564,11 @@ elseif params.wanteyetracking
     assert(isequal(round(wwidth/2),params.disp.xc))
     assert(isequal(round(wheight/2),params.disp.yc))
     
-    % Tell the experimentor
+    % Tell the user
     fprintf('Pixel size of window is width: %d, height: %d.\n',wwidth,wheight);
     fprintf('Pixel center offset of window is [x,y]=[%d,%d].\n',params.offsetpix(1),params.offsetpix(2));
     
-    % recenter EL coordinates if needed (
+    % Recenter EL coordinates if needed
     % EK: should we just use updated params.stim.xc/yc??
     if any(params.offsetpix~=[0,0]) || isempty(params.offsetpix)
         xc_off = round(wwidth/2) + params.offsetpix(1);
@@ -605,7 +620,7 @@ elseif params.wanteyetracking
     % samples available for real time:
     Eyelink('command','link_sample_data = LEFT,RIGHT,GAZE,GAZERES,PUPIL,AREA,STATUS');
     
-    % make temp name and open
+    % make temp file name and open
     eyetempfile = sprintf('%s.edf', datestr(now, 'HHMMSS')); %less than 8 digits!
     fprintf('Saving eyetracking data to %s.\n',eyetempfile);
     Eyelink('Openfile',eyetempfile);  % NOTE THIS TEMPORARY FILENAME. REMEMBER THAT EYELINK REQUIRES SHORT FILENAME!
@@ -630,12 +645,17 @@ end
 % Get time of stim call
 timeofshowstimcall = datestr(now,30);
 
-% Create filename where behavioral and timing data will be stored
+% Create subj###_ses## folder where behavioral, VBL timing, and eyetracking
+% data will be stored
 if isempty(params.savedatadir)
     params.savedatadir = fullfile(vcd_rootPath,'data', ...
         sprintf('%s_vcd_subj%d_ses%02d',timeofshowstimcall,params.subj_nr, params.ses_nr));
 end
+% Create subj###_ses## folder if it doesn't exist
 if ~exist(params.savedatadir,'dir'), mkdir(params.savedatadir); end
+
+% Create behavioral matlab file name if user didn't define it yet (we do
+% this at the end because we want to use the "timeofshowstimcall")
 if ~isfield(params,'behaviorfile') || isempty(params.behaviorfile)
     params.behaviorfile = sprintf('%s_vcd_subj%d_ses%02d_run%02d.mat', ...
         timeofshowstimcall,params.subj_nr,params.ses_nr,params.run_nr);
