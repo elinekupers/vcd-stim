@@ -36,7 +36,7 @@ Task classes:
 * **WHERE:** Object localization task
 * **HOW:** Scene/object affordance task
 
-![vcd_master_table]([VCD_experiment_master_table.pdf](https://github.com/user-attachments/files/20496080/VCD_experiment_master_table.pdf))
+![vcd_master_table](https://github.com/user-attachments/assets/1ba2149c-88b1-4150-a71a-a7d7abee2303)
 
 
 ## Dependencies
@@ -58,7 +58,7 @@ The content of the `workspaces` folder is ignored, as the files are too big. You
 
 ## Code and folder overview
 Base functions:
-* `runme_vcdcore.m` : This is the main function to run the core experiment of VCD.
+* `runme_vcdcore.m` : This is the main function to run the core experiment of VCD, mandatory inputs are: subject number, session number, session type (1: version A; 2: version B, only for MRI session 1 and 27), run_nr (1-10 for MRI, 1-15 for behavior), display name ('7TAS_BOLDSCREEN32' for BOLDscreen monitor in the 7TAS, 'PPROOM_EIZOFLEXSCAN' for Eizo Flexscan monitor in the psychophysics room)
 * `vcd_rootPath.m` : Function to set the rootpath to relative to the base of this folder.
 * `vcd.m` : Function to get basic info about the stimulus classes, task classes, and stimuli used in VCD.
 
@@ -99,21 +99,25 @@ Example 2: Create experimental design
 
 
 
-Example 3: Present run 01 of session 01 for subject 001:
+Example 3: For subject 001, present MRI session 01 (wide), session type A, run 01, with eye tracking:
   
-`runme_vcdcore(1,1,1)`
+`runme_vcdcore(1,1,1,1,'7TAS_BOLDSCREEN32','wanteyetracking', true)`
 
 
 
-Example 4: Present run 01 of session 01 for subject 001 in debug mode:
+Example 4: For subject 001, present MRI session 01 (wide), session type B, run 01, with eye tracking:
   
-`runme_vcdcore(1,1,1, 'debugmode', true)`
+`runme_vcdcore(1,1,2,1,'7TAS_BOLDSCREEN32','wanteyetracking', true)`
 
 
 
-Example 5: Present run 01 of session 01 for subject 001 in debug mode using the psychophysics room monitor:
+Example 5: For subject 001, present behavioral session 01, session type A, run 02, without eye tracking (note: there is only type A for behavior):
   
-`runme_vcdcore(1,1,1, 'dispName','PPROOM_EIZOFLEXSCAN')`
+`runme_vcdcore(1,1,1,2,'PPROOM_EIZOFLEXSCAN')`
+
+Example 6: For subject 002, present MRI session 07 (deep), session type A, run 01, without eye tracking (note: there is only type A for MRI session 2-26):
+  
+`runme_vcdcore(2,7,1,5,'7TAS_BOLDSCREEN32')`
 
 
 
