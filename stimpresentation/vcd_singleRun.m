@@ -1,4 +1,4 @@
-function [data, params, getoutearly] = vcd_singleRun(subj_nr, ses_nr, ses_type, run_nr, dispName, varargin)
+function data = vcd_singleRun(subj_nr, ses_nr, ses_type, run_nr, dispName, varargin)
 
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%% PARSE INPUTS %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -122,7 +122,7 @@ if ~isfield(params, 'stim') || isempty(params.stim)
                 'store_params', params.storeparams);
         else
             load(fullfile(d(end).folder,d(end).name),'stim');
-            params.stim = stim; clear stim;
+            params.stim = stim; clear stim; %#ok<NODEF>
         end
     else
         params.stim  = vcd_getStimParams('disp_name', params.disp.name, ...
@@ -188,7 +188,7 @@ if ~exist('stim','var') || ~isfield(scan,'im') || isempty(stim.im)
     else % we want to load stimuli on the fly (takes 15-60 seconds depending on the run)
         [images, masks] = vcd_getImageOrderSingleRun(params, ...
             time_table_master, all_run_frames, params.subj_nr, params.ses_nr, params.ses_type, params.run_nr, ...
-            'store_params', false,'session_env', params.env_type);
+            'store_params', false,'session_env', params.env_type); %#ok<NODEF>
     end
     
     % Insert images and mask into stim struct
@@ -225,7 +225,7 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%% EYETRACKING BLOCK STIM %%%%%%%%%%%%%%%%%%%%%%%%%%
 %  ET TARGETS: 4D array: [x,y, 3, type]
 % Load stored eyetracking block target images if needed
-if ~exist('eye_im','var') || isempty(eye_im)
+if ~exist('eye_im','var') || isempty(eye_im) %#ok<NODEF>
     fprintf('[%s]: Loading eyetracking target images..\n',mfilename);
     
     % FIX: 5D array: [x,y, 3, 5 lum, 2 widths]
@@ -339,7 +339,7 @@ if ~exist('scan','var') || ~isfield(scan, 'rects') || isempty(scan.rects)
                         centers{nn,side} = [params.stim.gabor.x0_pix(side) + params.stim.xc, ... % x-coord (pixels)
                             params.stim.gabor.y0_pix(side) + params.stim.yc]; % y-coord (pixels)
                         
-                        % If it is an RDK..
+                    % If it is an RDK..
                     elseif ismember(run_frames.frame_im_nr(nn,side), [params.stim.rdk.unique_im_nrs_core,params.stim.rdk.unique_im_nrs_wm_test])
                         centers{nn,side} = [params.stim.rdk.x0_pix(side) + params.stim.xc, ...
                             params.stim.rdk.y0_pix(side) + params.stim.yc];
@@ -392,13 +392,25 @@ if ~exist('scan','var') || ~isfield(scan, 'rects') || isempty(scan.rects)
                             apsize{nn,side} = [size(stim.im{nn,side},2), size(stim.im{nn,side},1)];
                             
                         % if we deal with CD tasks..
-                        elseif ismember(run_frames.crossingIDs,find(~cellfun(@isempty, regexp(params.exp.crossingnames,'cd-*'))))
-                            % Add image ID
-                            im_IDs(nn,side) = nn;
+                        elseif ismember(run_frames.crossingIDs(nn),find(~cellfun(@isempty, regexp(params.exp.crossingnames,'cd-*'))))
+                            if ~isempty(stim.im(nn,side))
+                                
+                                % Add image ID
+                                im_IDs(nn,side) = nn;
                             
-                            % Add aperture size
-                            apsize{nn,side} = [size(stim.im{nn,side},2), size(stim.im{nn,side},1)];
-                        
+                                % Add aperture size
+                                apsize{nn,side} = [size(stim.im{nn,side},2), size(stim.im{nn,side},1)];
+                            
+                               if isempty(stim.im{nn+1,side})
+                                   im_IDs(nn:(nn+params.stim.stimdur_frames-1),side)  = nn;
+                                   centers(nn:(nn+params.stim.stimdur_frames-1),side) = mat2cell(centers{im_IDs(nn,side),side},1,2);
+                                   apsize(nn:(nn+params.stim.stimdur_frames-1),side)  = mat2cell([size(stim.im{im_IDs(nn,side),side},2), size(stim.im{im_IDs(nn,side),side},1)],1,2);
+                               end
+                            else
+                                im_IDs(nn:(nn+params.stim.stimdur_frames-1),side)  = nn;
+                                centers(nn:(nn+params.stim.stimdur_frames-1),side) = mat2cell(centers{im_IDs(nn,side),side},1,2);
+                                apsize(nn:(nn+params.stim.stimdur_frames-1),side)  = mat2cell([size(stim.im{im_IDs(nn,side),side},2), size(stim.im{im_IDs(nn,side),side},1)],1,2);
+                            end
                         % If we only have a static image, repeat im_ID,
                         % centers and aperture size for upcoming frames
                         elseif isnan(im_IDs(nn-1,side))
@@ -506,8 +518,8 @@ rect        = Screen('Rect',win); % get total screen rect   % alternatively: rec
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 if ~params.wanteyetracking
     
-    % ANON EYE FUN for SYNC TIME
-    tfunEYE = @() fprintf('EXP STARTS.\n');
+    % No need for EYE fun
+    tfunEYE = @() ('\n');
     
     eyetempfile        = [];
     params.eyelinkfile = [];
@@ -522,7 +534,8 @@ elseif params.wanteyetracking
     end
     
     % initialize
-    assert(EyelinkInit()==1);
+    et_ok = EyelinkInit;
+    assert(et_ok==1);
     
     %     % Check TCP/IP address
     %     if strcmp(dispName,'7TAS_BOLDSCREEN32')
@@ -589,11 +602,11 @@ elseif params.wanteyetracking
         xc_off, yc_off - params.stim.el.point2point_distance_pix); %  vert shift up
     
     Eyelink('command','active_eye = LEFT');
-    Eyelink('command','binocular_enabled','NO')
+    Eyelink('command','binocular_enabled','NO');
     Eyelink('command','enable_automatic_calibration','NO'); % force manual calibration sequencing, if yes, provide Eyelink('command','automatic_calibration_pacing=1500');
     Eyelink('command','recording_parse_type = GAZE'); %from manual (default)
     Eyelink('command','sample_rate = %d', 1000); % hz
-    Eyelink('driftcorrect_cr_disable','YES'); % yes to disable drift correction -- we don't want that!
+    Eyelink('command','driftcorrect_cr_disable = YES'); % yes to disable drift correction -- we don't want that!
     %  EyelinkDoDriftCorrection(el); % No drift correction.
     % other ways of drawing things in EL:     Eyelink('Command','draw_box %d %d %d %d %d',xPos-boundary,yPos-boundary,xPos+boundary,yPos+boundary,colorFrm);
     
@@ -636,7 +649,7 @@ if isempty(params.savedatadir)
     params.savedatadir = fullfile(vcd_rootPath,'data', ...
         sprintf('%s_vcd_subj%d_ses%02d',timeofshowstimcall,params.subj_nr, params.ses_nr));
 end
-if ~exist('params.savedatadir','dir'), mkdir(params.savedatadir); end
+if ~exist(params.savedatadir,'dir'), mkdir(params.savedatadir); end
 if ~isfield(params,'behaviorfile') || isempty(params.behaviorfile)
     params.behaviorfile = sprintf('%s_vcd_subj%d_ses%02d_run%02d.mat', ...
         timeofshowstimcall,params.subj_nr,params.ses_nr,params.run_nr);
@@ -645,7 +658,7 @@ end
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% START EXPERIMENT! %%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-[data,getoutearly] = vcd_showStimulus(...
+[data,~] = vcd_showStimulus(...
     win, rect, params, ...
     fix_im, ...
     eye_im, ...
