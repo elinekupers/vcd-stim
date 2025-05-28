@@ -5,6 +5,9 @@
 
 vcd_startup
 
+% IMPORTANT to ensure proper functioning
+clear PsychHID; clear KbCheck;
+
 devices = PsychHID('Devices');
 getoutearly = 0;
 timekeys = {};

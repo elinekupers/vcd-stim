@@ -65,6 +65,10 @@ now;
 ceil(1);
 fprintf('');
 
+% IMPORTANT to ensure proper functioning (flush caches, etc.)
+clear PsychHID;
+clear KbCheck;
+
 %% Create background and fixation textures prior to exp onset (as we need them throughout the experiment)
 bckground_rect    = rect; %CenterRect([0 0 round(size(bckground,1)) round(size(bckground,2))],rect);
 % bckrgound_texture = Screen('MakeTexture', win, bckground);
