@@ -3,7 +3,7 @@ function [txt, text_rect] = vcd_getFeedbackDisplay(params, rect, behavioral_resu
 block_accuracy = round(behavioral_results.summary.pct_correct);
 mean_accuracy  = mean(behavioral_results.summary.pct_correct,'omitnan');
 phrase_of_the_run = vcd_getMotivationText(mean_accuracy);
-txt = sprintf('        %s       \n',phrase_of_the_run);
+txt = sprintf('%s\n',phrase_of_the_run);
 
 for nn = 1:length(behavioral_results.summary.crossing_nr)
     
