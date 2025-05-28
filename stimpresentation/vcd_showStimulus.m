@@ -511,7 +511,7 @@ vars = vars(cellfun(@(x) ~ismember(x,{'fix_im','bckground','stim','eye_im' ...
   'timeframes' 'starttime' 'dur' 'frameduration' 'digitrecord'}),vars)); 
 
 % Save data (button presses, params, etc)
-save(fullfile(params.savedatadir,params.behaviorfile),vars{:}, '-v7.3');
+save(fullfile(params.savedatadir,params.behaviorfile),vars{:});  % '-v7.3'
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
