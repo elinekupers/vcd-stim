@@ -11,7 +11,7 @@ end
 
 % Ask the user what environment we are in
 if isempty(exp_env)
-   exp_env = input('Where are we running the core VCD experiment?  1: 7TAS   2: psychophysics room   3: other \n')
+   exp_env = input('Where are we running the core VCD experiment?  1: 7TAS   2: psychophysics room   3: other \n');
 elseif ~isempty(exp_env) 
     % Check if inputs are either 1, 2, or 3
     assert(isequal(length(exp_env),1))
