@@ -145,15 +145,17 @@ glitchcnt = a1.data.timing.glitchcnt;                      % number of timing gl
 % check for dropped frames
 droppedcnt = sum(isnan(timeframes));                       % number of dropped frames
 
+% determine last valid recorded timeframe
+ix = find(~isnan(timeframes));
+actualnum = ix(end);
+
 % check that the mean frame-to-frame difference is sane (it should differ from the idealized rate by less than 1 ms)
   % mdtf = mean(diff(timeframes)); <-- this is the usual version with no NaNs
-mdtf = sum(diff(filterout(timeframes,NaN,0))) / (length(timeframes)-1);
+mdtf = sum(diff(filterout(timeframes,NaN,0))) / (actualnum-1);
 assert(abs(mdtf*1000 - 1000/presentationrate_hz) < 1,'frame-to-frame differences are OFF!!');
 
 % calc total empirical duration of the experiment (this includes the full completion of the last frame).
 % in the case of partial data (run stopped early), we calculate duration up through the last valid recorded timeframe 
-ix = find(~isnan(timeframes));
-actualnum = ix(end);  % use the last valid recorded timeframe
 totaldur = mdtf * actualnum;
 
 % check that the "DONE" time (recorded after last frame) is close to the official total duration (within 50 ms)
