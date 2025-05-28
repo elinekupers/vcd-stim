@@ -1,8 +1,8 @@
-function [data, params] = runme_vcdcore(subj_nr,ses_nr,ses_type,run_nr, dispName, varargin)
+function data = runme_vcdcore(subj_nr,ses_nr,ses_type,run_nr, dispName, varargin)
 % Main wrapper function to run the core VCD experiment. This function can 
 % run both behavioral and functional MRI.
 %
-%     runme_vcdcore(subj_nr,ses_nr,ses_type,run_nr,dispName, varargin)
+%     data = runme_vcdcore(subj_nr,ses_nr,ses_type,run_nr,dispName, varargin)
 %
 % PURPOSE: 
 % Execute a single 6.5-min run (behavioral or fMRI) of the core
@@ -146,7 +146,7 @@ p.parse(subj_nr, ses_nr, ses_type, run_nr, dispName, varargin{:});
 % Rename variables into general params struct
 rename_me = fieldnames(p.Results);
 for ff = 1:length(rename_me)
-    eval([sprintf('%s = p.Results.%s;', rename_me{ff},rename_me{ff})]);
+    eval([sprintf('%s = p.Results.%s;', rename_me{ff},rename_me{ff})]); %#ok<NBRAK>
 end
 clear rename_me ff p
 
@@ -154,12 +154,12 @@ cd(vcd_rootPath);
 addpath(genpath(pwd));
 
 % Subject anon function
-subjfun = @(x) find(ismember([1:999],x)); % EK Question: how do we map subject ID to subject numbers 1-999?
+subjfun = @(x) find(ismember([1:999],x)); %#ok<NBRAK> % EK Question: how do we map subject ID to subject numbers 1-999?
 
 %%%%%%%%%%%%%%%% need to get info from user
 % ask the user what to run
 if ~exist('subj_nr','var') || isempty(subj_nr)
-  subj_nr = input('What is the subj number? ')
+  subj_nr = input('What is the subj number? ');
 end
 
 if ~exist('ses_nr','var') || isempty(ses_nr)
@@ -175,11 +175,11 @@ if ismember(ses_nr,[1,27])
 end
 
 if ~exist('run_nr','var') || isempty(run_nr)
-    run_nr = input('What run number (1-15)? ')
+    run_nr = input('What run number (1-15)? ');
 end
 
 if ~exist('dispName','var')
-    dispName = input('What monitor are you using? (press 1 for 7TAS, 2 for Psychophysics room, 3 for Office) ')
+    dispName = input('What monitor are you using? (press 1 for 7TAS, 2 for Psychophysics room, 3 for Office) ');
 end
 
 % Check environment: are we running the behavioral or MRI experiment?
@@ -202,18 +202,18 @@ elseif ischar(dispName)
 end
       
 % Give some hints to the operator
-if isempty(savedatadir)
+if isempty(savedatadir) %#ok<NODEF>
     savedatadir = fullfile(vcd_rootPath,'data',env_type,sprintf('vcd_subj%03d_ses%02d',subj_nr, ses_nr));
 end
 if ~exist(savedatadir, 'dir'); mkdir(savedatadir); end
 
 tempfiles = matchfiles(fullfile(savedatadir,sprintf('*_vcd_subj%03d_ses%02d_%s_run%02d.mat',subj_nr, ses_nr, choose(ses_type==1,'A','B'), run_nr)));
 fprintf('\nIt appears you have completed the following runs already:\n');
-tempfiles
+tempfiles %#ok<NOPRT>
 
 
 if ~exist('wanteyetracking','var')
-    wanteyetracking  = input('Do you want to use eyetracking? (press 1 for yes, 0 for no) ')
+    wanteyetracking  = input('Do you want to use eyetracking? (press 1 for yes, 0 for no) ');
 end
 
 % Tell operator what experiment are running
@@ -257,7 +257,7 @@ end
 
 %% run experiment
 % for optional inputs use: 'var',<val>
-[data, params, getoutearly] = vcd_singleRun(subj_nr, ses_nr, ses_type, run_nr, dispName, ... % mandatory inputs
+data = vcd_singleRun(subj_nr, ses_nr, ses_type, run_nr, dispName, ... % mandatory inputs
     'env_type', env_type, ...
     'debugmode',debugmode, ...
     'behaviorfile',behavioralfilename, ...
