@@ -32,19 +32,6 @@ switch exp_env
         knkutils_dir = '/Users/psphuser/Desktop/cvnlab/VCD/knkutils';
         ptb_dir      = '/Applications/Psychtoolbox';
         edf2asc_func = '/Applications/Eyelink/EDF_Access_API/Example';
-        
-        % deal with setting Bits Sharp settings
-        smatch = matchfiles('/dev/tty.usbmodem*');
-        assert(length(smatch)==1);
-        s1 = serial(smatch{1}); fopen(s1);
-        fprintf(s1,['$BitsPlusPlus' 13]);
-        fprintf(s1,['$enableGammaCorrection=[invGammaLUT.txt]' 13]);
-        %fprintf(s1,['$monoPlusPlus' 13]);
-        %fprintf(s1,['$enableGammaCorrection=[13bitLinearLUT.txt]' 13]);
-        %fprintf(s1,['$Help' 13]);
-        %output=fscanf(s1)
-        fclose(s1); delete(s1); clear smatch s1;
-
     case 3 % other
         if exist('vcd_rootPath','file')
             vcdcode_dir = vcd_rootPath;
@@ -96,8 +83,23 @@ if ~exist('edf2asc','file') && ~isempty(edf2asc_func)
 else
     fprintf('%s already is added to paths\n',edf2asc_func)
 end
-    
-    
+ 
+
+% deal with setting Bits Sharp settings
+if exp_env == 2 % psychophysics room
+    smatch = matchfiles('/dev/tty.usbmodem*');
+    assert(length(smatch)==1);
+    s1 = serial(smatch{1}); fopen(s1);
+    fprintf(s1,['$BitsPlusPlus' 13]);
+    fprintf(s1,['$enableGammaCorrection=[invGammaLUT.txt]' 13]);
+    % MONO PLUS MODE FOR REFERENCE
+    %fprintf(s1,['$monoPlusPlus' 13]);
+    %fprintf(s1,['$enableGammaCorrection=[13bitLinearLUT.txt]' 13]);
+    %fprintf(s1,['$Help' 13]);
+    %output=fscanf(s1)
+    fclose(s1); delete(s1); clear smatch s1;
+end
+
 % Go to root of vcd-stim folder
 cd(vcdcode_dir)
 
