@@ -72,7 +72,7 @@ else
 end
 
 % Listen to all devices for KbCheck
-deviceNr = -3; %vcd_checkDevices(params.deviceNr, params.device_check);
+deviceNr = -3; % previously: vcd_checkDevices(params.deviceNr, params.device_check);
 
 % pton input arguments are:
 % 1: [width, height, framerate, bitdepth]
@@ -433,16 +433,6 @@ if ~exist('scan','var') || ~isfield(scan, 'rects') || isempty(scan.rects)
     end % nn time frame loop
 end % if scan struct exists
 
-% % If we only have a static image, repeat size and centers.
-% for nn = 1:size(stim.im,1)
-%     numSides = find(~cellfun(@isempty, stim.im(nn,:)));
-%     for side = numSides
-%         if isempty(apsize{nn,side})
-%             apsize(nn,side)  = mat2cell([size(stim.im{im_IDs(nn,side),side},2), size(stim.im{im_IDs(nn,side),side},1)],1,2);
-%             centers(nn,side) = mat2cell(centers{im_IDs(nn,side),side},1,2);
-%         end
-%     end
-% end
 
 % Add info to run frames and stim struct
 run_frames.im_IDs = im_IDs;  clear im_ID
@@ -507,13 +497,6 @@ win         = firstel(Screen('Windows'));
 oldPriority = Priority(MaxPriority(win));
 rect        = Screen('Rect',win); % get total screen rect   % alternatively: rect = CenterRect(round([0 0 rect(3)*winsize rect(4)*winsize]),rect);
 HideCursor(win); 
-
-
-% [handle, portHandle] = BitsPlusPlus('OpenBits#')
-% [win, winRect] = BitsPlusPlus('OpenWindowBits++', 1)
-% BitsPlusPlus('SwitchToBits++')
-
-
 
 
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
