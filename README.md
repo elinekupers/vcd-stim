@@ -36,7 +36,7 @@ Task classes:
 * **WHERE:** Object localization task
 * **HOW:** Scene/object affordance task
 
-![vcd_master_table](https://github.com/user-attachments/assets/87e1f9ff-ce71-4c62-9548-f9325a09a5c2)
+![vcd_master_table]([VCD_experiment_master_table.pdf](https://github.com/user-attachments/files/20496080/VCD_experiment_master_table.pdf))
 
 
 ## Dependencies
@@ -159,20 +159,20 @@ Example 5: Present run 01 of session 01 for subject 001 in debug mode using the 
 * `Fixation circle` consists of two parts: an inner part (the part that changes luminance, 0.14 degrees in diameter) and a rim. During ITIs or IBIs, the rim is thin (~0.20 degrees diameter). During a trial, the rim is thick (~0.25 degrees diameter). The fixation circle is presented on top the background (or natural scene) and is 50% transparent.
 * `Alpha transparency masks` are applied to each element of the display to obscure the edges of each stimulus' support (e.g., a circular gabor lives on a rectangular support). One exception is scenes, which do not require an alpha mask.
   	  
-![Gabor stimulus display for 7TAS BOLDScreen (same for RDK)](https://github.com/user-attachments/assets/088fe7b2-a583-4d9e-af22-f54ba2ecc2b5)
+![Gabor stimulus display for 7TAS BOLDScreen (same for RDK)](https://github.com/user-attachments/assets/dd822b0b-ec01-49e5-b27e-a745d9b36ef7)
 
-![Object stimulus display for 7TAS BOLDScreen](https://github.com/user-attachments/assets/ca3b6bdd-d4b9-4391-99a9-c04208390b7e)
+![Object stimulus display for 7TAS BOLDScreen](https://github.com/user-attachments/assets/5b5dcec0-75da-44fc-b3f4-8fca9e55435a)
 
-![Single dot stimulus display for 7TAS BOLDScreen](https://github.com/user-attachments/assets/86950a17-e335-4a00-9a81-0da6b0ce068b)
+![Single dot stimulus display for 7TAS BOLDScreen](https://github.com/user-attachments/assets/7d5c8672-d7d1-4f4c-a630-68f52c8ced24)
 
-![Natural scenes stimulus display for 7TAS BOLDScreen](https://github.com/user-attachments/assets/7a6326b2-1b09-4bd2-adb1-66c81b39fcd6)
+![Natural scenes stimulus display for 7TAS BOLDScreen](https://github.com/user-attachments/assets/bcdbf59c-0b6c-4e26-b739-d765a6874aca)
 
 
 
 
 ## MIT License
 
-Copyright (c) 2024 Eline R. Kupers
+Copyright (c) 2025 Eline R. Kupers
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
