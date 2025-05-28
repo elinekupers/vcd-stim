@@ -39,7 +39,7 @@ timeframes = NaN(1, floor(size(frameorder,2)-1)+1);
 if wantframefiles
     tmpDir = '~/Desktop/tmp/'; %#ok<UNRCH>
     framefiles = {'~/Desktop/tmp/frame%05d.png', []};
-    if ~exist('tmpDir','dir'), mkdir(tmpDir); end
+    if ~exist(tmpDir,'dir'), mkdir(tmpDir); end
 end
 
 %% PTB stuff
@@ -244,8 +244,9 @@ end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%% log the start!
 
-feval(tfunEYE); %tfunEYE does two things at once: fprintf('EXP START'); % SEND Eyelink('Message','SYNCTIME'));
+feval(tfunEYE);
 timekeys = [timekeys; {GetSecs 'trigger'}];
+fprintf('EXP START.\n'); 
 
 %% DRAW THE TEXTURES
 framecnt = 0;
@@ -259,11 +260,11 @@ while 1
         while 1
             if GetSecs >= whendesired
                 getoutearly = 1;
-                % Log the end
-                if ~isempty(tfunEYE)
+                % Log the end in eyelink
+                if ~isempty(tfunEYE) % SEND Eyelink('Message','SYNCTIME'));
                     feval(tfunEYE);
-                    timekeys = [timekeys; {GetSecs 'DONE'}];
                 end
+                    timekeys = [timekeys; {GetSecs 'DONE'}]; %#ok<AGROW>
                 break;
             end
         end
@@ -318,7 +319,7 @@ while 1
 %             Screen('DrawTexture',win, bckrgound_texture,[], bckground_rect, 0, [], 1, 255*ones(1,3));...
         
             % stim.im is a cell with dims: frames x 2, where each cell has a uint8 image (1:l, 2:r)
-            for side = 1:length(find(~cellfun(@isempty, stim.im(run_frames.im_IDs(framecnt,1),choose(find(~isnan(run_frames.im_IDs(framecnt,:)))==1,1,[1,2])))))
+            for side = 1:length(run_frames.im_IDs(framecnt,~isnan(run_frames.im_IDs(framecnt,:))))
                 stim_texture = Screen('MakeTexture',win, stim.im{run_frames.im_IDs(framecnt,side),side});
                 Screen('DrawTexture',win,stim_texture,[], stim.rects{run_frames.im_IDs(framecnt,side),side}, 0,[],1, 255*ones(1,3));
                 Screen('Close',stim_texture);
@@ -343,7 +344,7 @@ while 1
                 
                 % get the name of the key and record it
                 kn = KbName(keyCode);
-                timekeys = [timekeys; {secs kn}];
+                timekeys = [timekeys; {secs kn}]; %#ok<AGROW>
                 
                 % check if ESCAPE was pressed
                 if isequal(kn,'ESCAPE')
@@ -426,14 +427,13 @@ while 1
 
 end
 
-fprintf('RUN ENDED: %4.4f.\n',GetSecs);
-
-
+fprintf('RUN ENDED.\n');
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%% SAVE EYELINK DATA %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 if params.wanteyetracking
     if ~isempty(eyetempfile)
         % Close eyelink and record end
@@ -461,6 +461,7 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%% BUTTON LOGGING  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 % adjust the times in timeframes and timekeys to be relative to the first time recorded.
 % thus, time==0 corresponds to the showing of the first frame.
 starttime = timeframes(1);

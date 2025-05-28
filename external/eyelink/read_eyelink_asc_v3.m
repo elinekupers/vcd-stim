@@ -1,11 +1,11 @@
-function asc = read_eyelink_asc(filename)
+function asc = read_eyelink_asc_v3(filename)
 
 % READ_EYELINK_ASC reads the header information, input triggers, messages
 % and all data points from an Eyelink *.asc file. The output events are
 % represented as matlab tables (after Aug 2022)
 %
 % Use as
-%   asc = read_eyelink_asc(filename)
+%   asc = read_eyelink_asc_v3(filename)
 
 % Copyright (C) 2010-2015, Robert Oostenveld
 % Copyright (C) 2022, Jan-Mathijs Schoffelen

@@ -167,24 +167,32 @@ for tt = 1:length(params.stim.cd.t_gauss)
     if ndims(tmp_im)==3 && size(tmp_im,3)==4
         tmp_im = tmp_im(:,:,1:3);
         if isempty(tmp_mask)
-           tmp_mask = tmp_im(:,:,4);
+           tmp_mask = double(tmp_im(:,:,4));
         end
     end
     
     % apply alpha transparency mask
     if exist('tmp_mask','var') && ~isempty(tmp_mask) 
-        tmp_mask = repmat(double(tmp_mask), 1,1,3);
-        mask_idx = (tmp_mask>0);
-        tmp_im0  = tmp_im(mask_idx);
+        
+        if strcmp(stim_class,'obj')
+            mask_idx = (double(tmp_mask)./255)>0.5; % note simple hack
+        else
+            mask_idx = (double(tmp_mask)./255)>0;
+        end
+        if ndims(mask_idx)==2 && ndims(tmp_im)==3
+            mask_idx = repmat(mask_idx, 1,1,3);
+        end
+        tmp_im0   = double(tmp_im);
+        tmp_im0  = tmp_im0(mask_idx);
     else
-        tmp_im0  = tmp_im;
+        tmp_im0  = double(tmp_im);
     end
     
     if strcmp(stim_class, 'ns')
         % SCENES are in color, where RGB channels range between values of 0-255.
         tmp_im_g        = rgb2gray(tmp_im0);                                % convert rgb to gray
-        tmp_im_g_norm   = (double(tmp_im_g)./255).^2;                       % convert grayscale image range from [0-255] to [0-1] (normalized image)
-        tmp_im_norm     = (double(tmp_im0)./255).^2;                        % convert color image range from [0-255] to [0-1] (normalized image)
+        tmp_im_g_norm   = (tmp_im_g./255).^2;                       % convert grayscale image range from [0-255] to [0-1] (normalized image)
+        tmp_im_norm     = (tmp_im0./255).^2;                        % convert color image range from [0-255] to [0-1] (normalized image)
         mn_im           = mean(tmp_im_g_norm(:));                           % compute the mean of grayscale image
         % subtract the mean luminance of this scene from the normalized
         % color image, then scale contrast for the given time frame in the
@@ -194,7 +202,6 @@ for tt = 1:length(params.stim.cd.t_gauss)
         
     elseif strcmp(stim_class,'obj')
         % Objects are grayscale, where RGB channels range between luminance values [1-255]   
-        tmp_im0         = double(tmp_im0);                                  % convert uint8 to double 
         tmp_im_norm     = ((tmp_im0-1)./254).^2;                            % convert image luminance range [0-1]
         mn_im           = mean(tmp_im_norm(:));                             % compute the mean of image
         % center around mean, scale contrast for the given time frame in 
@@ -203,17 +210,14 @@ for tt = 1:length(params.stim.cd.t_gauss)
         tmp_im_c        = ( (254.*sqrt(tmp_im1)) +1 );                      % bring min/max range back to [1-255]
         
     else % Gabors, RDKs, Dots are gray scale, where RGB channels range between luminance values [1-255], and mean luminance is 128
-        tmp_im0     = double(tmp_im0);                                         % convert uint8 to double
         tmp_im_norm = (tmp_im0./255)-0.5;                                      % center around 0, range [-0.5 0.5]
         tmp_im1     = tmp_im_norm.*params.stim.cd.t_gauss(tt);                    % scale contrast for the given time frame in the contrast modulation function
         tmp_im_c    = ( (255.*(tmp_im1+0.5)) );                               % bring back to 1-255
-
-        %         tmp_im_c = uint8( bsxfun(@plus, (255.*(tmp_im_c+0.5)), double(params.stim.bckgrnd_grayval))); % bring back to 1-255
     end
     
     % Create full uint8 image
     if exist('tmp_mask','var') && ~isempty(tmp_mask) 
-        tmp_im_full = tmp_im; 
+        tmp_im_full = tmp_im;                           % No need to resize
         tmp_im_full(mask_idx) = uint8(tmp_im_c);        % Convert from double to uint8
     else
         tmp_im_c    = reshape(tmp_im_c,sz0);            % Resize to 2D (or 3D)
@@ -221,7 +225,7 @@ for tt = 1:length(params.stim.cd.t_gauss)
     end
 
     % accumulate contrast modulated image
-    output_im{c_onset+tt-1} = uint8(tmp_im_full);
+    output_im{c_onset+tt-1} = tmp_im_full;
     
     
     

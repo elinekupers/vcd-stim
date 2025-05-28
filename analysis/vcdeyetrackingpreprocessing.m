@@ -40,7 +40,8 @@ function results = vcdeyetrackingpreprocessing(filename,behfilename,behresults,w
 %                      is exactly 1000 Hz. The first sample is the one that is right 
 %                      before the onset of the first stimulus frame. The last sample 
 %                      is the one that is right after completion of the data 
-%                      (according to behresults.totaldur).
+%                      (according to behresults.totaldur) if it exists, but if not,
+%                      the last sample is whatever the last recorded sample is.
 %               x    - The x-coordinate of gaze position in degrees of visual angle
 %               y    - The y-coordinate of gaze position in degrees of visual angle
 %               pupilsize - Pupil size (in units provided by Eyelink)
@@ -85,6 +86,9 @@ end
 if ~exist('maxpolydeg','var') || isempty(maxpolydeg)
   maxpolydeg = [];
 end
+if isempty(maxpolydeg)
+  maxpolydeg = round(behresults.totaldur/60/2);
+end
 
 % init
 clear results;
@@ -96,13 +100,14 @@ a1 = load(behfilename);
 
 % use edf2asc to convert the .edf file. note that this edf2asc call 
 % includes metadata including events/messages.
-t0 = tempdir;
+t0 = maketempdir;
 unix_wrapper(sprintf('edf2asc -y -p %s -miss NaN %s',t0,filename),[],0);  % -y = overwrite; -vel ?
 
 % load in the .asc file and clean up
-tempascfile = fullfile(t0,[stripext(filename) '.asc']);
+[~,tmpfile] = fileparts(stripext(filename));
+tempascfile = fullfile(t0,[tmpfile '.asc']);
 b1 = read_eyelink_asc_v3(tempascfile);
-delete(tempascfile);
+rmdirquiet(t0);
 
 % extract some critical messages
 %     {'MSG'}    {'3681821'}    {'!CAL CALIBRATION HV5 L LEFT GOOD  '                                                       }
@@ -113,11 +118,21 @@ delete(tempascfile);
 %     {'MSG'}    {'4145359'}    {'SYNCTIME '                                                                                }
 results.messages = {};
   % get the last one of CAL CALIBRATION:
-ok = b1.msg(cellfun(@(x) ~isempty(regexp(x,'!CAL CALIBRATION')),b1.msg(:,3)),3); assert(length(ok)>=1);
-results.messages{1} = ok{end};
+ok = b1.msg(cellfun(@(x) ~isempty(regexp(x,'!CAL CALIBRATION')),b1.msg(:,3)),3);
+if isempty(ok)
+  warning('*** No CAL CALIBRATION found!! ***');
+  results.messages{1} = [];
+else
+  results.messages{1} = ok{end};
+end
   % get the last one of CAL VALIDATION:
-ok = b1.msg(cellfun(@(x) ~isempty(regexp(x,'!CAL VALIDATION')),b1.msg(:,3)),3); assert(length(ok)>=1);
-results.messages{2} = ok{end};
+ok = b1.msg(cellfun(@(x) ~isempty(regexp(x,'!CAL VALIDATION')),b1.msg(:,3)),3);
+if isempty(ok)
+  warning('*** No CAL VALIDATION found!! ***');
+  results.messages{2} = [];
+else
+  results.messages{2} = ok{end};
+end
   % get the GAZE_COORDS
 ok = b1.msg(cellfun(@(x) ~isempty(regexp(x,'GAZE_COORDS')),b1.msg(:,3)),3); assert(length(ok)==1);
 results.messages{3} = ok{1};
@@ -168,6 +183,14 @@ origeyedata = results.eyedata;  % MARK: raw eyetracking data
 % check that the time row consists of increasing integers (presumably reflecting milliseconds)
 assert(isequal(results.eyedata(1,:),(1:size(results.eyedata,2)) + (results.eyedata(1,1)-1)));
 
+%% Check for catastrophic failure
+
+% this can happen if there is never an eyeball tracked (i think??)
+if size(results.eyedata,1) ~= 4
+  warning('*** Did not find 4 rows in eyedata!! Aborting processing and no figures will be made. ***');
+  return;
+end  
+
 %% Do a bunch of preprocessing (convert to dva, remove blinks, synchronize and time-crop, detrend, median-center)
 
 % convert to degrees of visual angle
@@ -195,8 +218,17 @@ results.eyedata(1,:) = (results.eyedata(1,:) - results.synctimes(1))/1000 + behr
 
 % time-crop the data according to behresults.totaldur (note: partial data may result in shorter totaldur)
 minix = firstel(find(results.eyedata(1,:)>0))-1;                  % first sample is right before first frame
-maxix = firstel(find(results.eyedata(1,:)>behresults.totaldur));  % last sample is right after completion of last frame
+temp = find(results.eyedata(1,:)>behresults.totaldur);
+if ~isempty(temp)
+  maxix = firstel(temp);                 % last sample is right after completion of last frame
+else
+  maxix = length(results.eyedata(1,:));  % last sample is just the last frame recorded
+end
 results.eyedata = results.eyedata(:,minix:maxix);
+
+% check that the duration of the eyetracking is matched to the behavioral data
+assert(abs(((results.eyedata(1,end) - results.eyedata(1,1)) + 1/1000) - behresults.totaldur) < 50/1000, ...
+       'eyetracking data duration is mismatched to behresults.totaldur');
 
 % figure out where we have baddata.
 % check that the data are finite everywhere else.
@@ -205,9 +237,6 @@ assert(all(isfinite(flatten(results.eyedata(2:4,~baddata)))));
 
 % detrend x and y by fitting low-order polynomials and subtracting
 origeyedata2 = results.eyedata;  % MARK: prior to detrending
-if isempty(maxpolydeg)
-  maxpolydeg = round(behresults.totaldur/60/2);
-end
 polymatrix = constructpolynomialmatrix(size(results.eyedata,2),0:maxpolydeg);  % samples x polys
 X = polymatrix(~baddata,:);  % samples x polys
 h = olsmatrix(X)*results.eyedata(2:3,~baddata)';  % weights x different-timeseries
