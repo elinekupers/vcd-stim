@@ -24,6 +24,8 @@ el.msgfontcolour                    = [0 0 0]; % black
 el.calibrationtargetsize            = 2.0;     % size of calibration target as percentage of screen. 7TAS height is 1080, 2% = 22 pixels. (el default is 2.5).
 el.calibrationtargetwidth           = 0.92;    % width of calibration target's border as percentage of screen. 7TAS height is 1080, 0.92% = 8 pixels. (el default is 1)
 el.calibrationtargetcolor           = [0 0 0]; % black
+el.repeatFirstPoint                 = 1;       % repeat the first point (center fixation).
+el.enableManualValidationPositions  = 1;       % enable manual accept of calibration/validation points
 
 % What about these parameters mentioned by Experiment Builder Manual???
 % .outerSize -- Target Outer Size (Integer): The standard calibration and
