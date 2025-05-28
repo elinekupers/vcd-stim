@@ -523,7 +523,7 @@ save(fullfile(params.savedatadir,params.behaviorfile),vars{:});  % '-v7.3'
 performance = vcdbehavioralanalysis(fullfile(params.savedatadir,params.behaviorfile));
 
 % Check monitor timing
-ptviewmoviecheck(data.timing.timeframes,data.timeKeys,[],'t');
+ptviewmoviecheck(data.timing.timeframes,data.timeKeys,[],{'5' 't'});
 
 % Check eyetracking data
 if params.wanteyetracking
