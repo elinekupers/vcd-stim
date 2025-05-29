@@ -14,7 +14,7 @@ function [data,getoutearly,run_frames,run_table] = vcd_showStimulus(...
     eyetempfile)
 
 %% internal constants
-fliplead = 5/1000;  % min amount of time to allocate prior to flip
+fliplead = 10/1000;  % min amount of time to allocate prior to flip
 
 %% Set flags and counters
 getoutearly    = 0;
