@@ -5,7 +5,7 @@ MATLAB code repository to create and present the stimuli of the Visual Cognition
 
 ## Goal
 
-Create and run the 39 different types of visual experiments of the Visual Cognition Dataset across 30 MRI sessions. Visual experiments are based on crossings of 5 stimulus classes and 9 task classes.
+Create and run the 32 different types of visual experiments of the Visual Cognition Dataset across 27 MRI sessions. Visual experiments are based on crossings of 5 stimulus classes and 9 task classes.
 
 Stimulus classes:
 * **Gabors:** Gratings in a gaussian window
@@ -36,7 +36,7 @@ Task classes:
 * **WHERE:** Object localization task
 * **HOW:** Scene/object affordance task
 
-![vcd_master_table](https://github.com/user-attachments/assets/87e1f9ff-ce71-4c62-9548-f9325a09a5c2)
+![vcd_master_table](https://github.com/user-attachments/assets/1ba2149c-88b1-4150-a71a-a7d7abee2303)
 
 
 ## Dependencies
@@ -58,7 +58,7 @@ The content of the `workspaces` folder is ignored, as the files are too big. You
 
 ## Code and folder overview
 Base functions:
-* `runme_vcdcore.m` : This is the main function to run the core experiment of VCD.
+* `runme_vcdcore.m` : This is the main function to run the core experiment of VCD, mandatory inputs are: subject number, session number, session type (1: version A; 2: version B, only for MRI session 1 and 27), run_nr (1-10 for MRI, 1-15 for behavior), display name ('7TAS_BOLDSCREEN32' for BOLDscreen monitor in the 7TAS, 'PPROOM_EIZOFLEXSCAN' for Eizo Flexscan monitor in the psychophysics room)
 * `vcd_rootPath.m` : Function to set the rootpath to relative to the base of this folder.
 * `vcd.m` : Function to get basic info about the stimulus classes, task classes, and stimuli used in VCD.
 
@@ -99,21 +99,25 @@ Example 2: Create experimental design
 
 
 
-Example 3: Present run 01 of session 01 for subject 001:
+Example 3: For subject 001, present MRI session 01 (wide), session type A, run 01, with eye tracking:
   
-`runme_vcdcore(1,1,1)`
+`runme_vcdcore(1,1,1,1,'7TAS_BOLDSCREEN32','wanteyetracking', true)`
 
 
 
-Example 4: Present run 01 of session 01 for subject 001 in debug mode:
+Example 4: For subject 001, present MRI session 01 (wide), session type B, run 01, with eye tracking:
   
-`runme_vcdcore(1,1,1, 'debugmode', true)`
+`runme_vcdcore(1,1,2,1,'7TAS_BOLDSCREEN32','wanteyetracking', true)`
 
 
 
-Example 5: Present run 01 of session 01 for subject 001 in debug mode using the psychophysics room monitor:
+Example 5: For subject 001, present behavioral session 01, session type A, run 02, without eye tracking (note: there is only type A for behavior):
   
-`runme_vcdcore(1,1,1, 'dispName','PPROOM_EIZOFLEXSCAN')`
+`runme_vcdcore(1,1,1,2,'PPROOM_EIZOFLEXSCAN')`
+
+Example 6: For subject 002, present MRI session 07 (deep), session type A, run 01, without eye tracking (note: there is only type A for MRI session 2-26):
+  
+`runme_vcdcore(2,7,1,5,'7TAS_BOLDSCREEN32')`
 
 
 
@@ -159,20 +163,20 @@ Example 5: Present run 01 of session 01 for subject 001 in debug mode using the 
 * `Fixation circle` consists of two parts: an inner part (the part that changes luminance, 0.14 degrees in diameter) and a rim. During ITIs or IBIs, the rim is thin (~0.20 degrees diameter). During a trial, the rim is thick (~0.25 degrees diameter). The fixation circle is presented on top the background (or natural scene) and is 50% transparent.
 * `Alpha transparency masks` are applied to each element of the display to obscure the edges of each stimulus' support (e.g., a circular gabor lives on a rectangular support). One exception is scenes, which do not require an alpha mask.
   	  
-![Gabor stimulus display for 7TAS BOLDScreen (same for RDK)](https://github.com/user-attachments/assets/088fe7b2-a583-4d9e-af22-f54ba2ecc2b5)
+![Gabor stimulus display for 7TAS BOLDScreen (same for RDK)](https://github.com/user-attachments/assets/dd822b0b-ec01-49e5-b27e-a745d9b36ef7)
 
-![Object stimulus display for 7TAS BOLDScreen](https://github.com/user-attachments/assets/ca3b6bdd-d4b9-4391-99a9-c04208390b7e)
+![Object stimulus display for 7TAS BOLDScreen](https://github.com/user-attachments/assets/5b5dcec0-75da-44fc-b3f4-8fca9e55435a)
 
-![Single dot stimulus display for 7TAS BOLDScreen](https://github.com/user-attachments/assets/86950a17-e335-4a00-9a81-0da6b0ce068b)
+![Single dot stimulus display for 7TAS BOLDScreen](https://github.com/user-attachments/assets/7d5c8672-d7d1-4f4c-a630-68f52c8ced24)
 
-![Natural scenes stimulus display for 7TAS BOLDScreen](https://github.com/user-attachments/assets/7a6326b2-1b09-4bd2-adb1-66c81b39fcd6)
+![Natural scenes stimulus display for 7TAS BOLDScreen](https://github.com/user-attachments/assets/bcdbf59c-0b6c-4e26-b739-d765a6874aca)
 
 
 
 
 ## MIT License
 
-Copyright (c) 2024 Eline R. Kupers
+Copyright (c) 2025 Eline R. Kupers
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
