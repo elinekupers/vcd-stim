@@ -100,8 +100,9 @@ a1 = load(behfilename);
 
 % use edf2asc to convert the .edf file. note that this edf2asc call 
 % includes metadata including events/messages.
+% DO NOT REPORT TO COMMAND WINDOW.
 t0 = maketempdir;
-unix_wrapper(sprintf('edf2asc -y -p "%s" -miss NaN "%s"',t0,filename),[],0);  % -y = overwrite; -vel ?
+unix_wrapper(sprintf('edf2asc -y -p "%s" -miss NaN "%s"',t0,filename),0,0);  % -y = overwrite; -vel ?
 
 % load in the .asc file and clean up
 [~,tmpfile] = fileparts(stripext(filename));
@@ -286,7 +287,8 @@ plot(origeyedata2(1,:),origeyedata2(2,:),'r-');
 plot(origeyedata2(1,:),origeyedata2(3,:),'b-');
 ylabel('Degrees');
 xlim([0-5 behresults.totaldur+5]);
-mx = 1.5*prctile(abs(flatten(origeyedata2(2:3,:))),99);
+%mx = 1.5*prctile(abs(flatten(origeyedata2(2:3,:))),99);
+mx = 4;
 ylim([-mx mx]);
 uistack(straightline(0,'h','k-'),'bottom');
 yyaxis right;
