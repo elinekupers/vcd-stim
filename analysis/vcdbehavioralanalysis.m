@@ -165,7 +165,7 @@ if isempty(ix)
   donetime = NaN;
 else
   donetime = timekeysB{ix,1};
-  if (abs(donetime-totaldur) < 0.050)
+  if abs(donetime-totaldur) > 0.050
       warning('**** the DONE time is mismatched!! BEWARE!!! ***');
   end
 end
