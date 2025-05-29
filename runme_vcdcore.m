@@ -1,6 +1,6 @@
 function data = runme_vcdcore(subj_nr,ses_nr,ses_type,run_nr, dispName, varargin)
 % Main wrapper function to run the core VCD experiment. This function can 
-% run both behavioral and functional MRI.
+% run both behavioral and functional MRI versions of the VCD experiment.
 %
 %     data = runme_vcdcore(subj_nr,ses_nr,ses_type,run_nr,dispName, varargin)
 %
@@ -40,9 +40,9 @@ function data = runme_vcdcore(subj_nr,ses_nr,ses_type,run_nr, dispName, varargin
 %   'eye_<datetime>_vcd_subj<subject_nr>_ses<session_nr>_<session_type>_run<run_nr>.edf'
 %
 % <environment> is either:
-%  * 'MRI' (when using dispname = '7TAS_BOLDSCREEN32'), 
-%  * 'BEHAVIOR' (when using dispname = 'PPROOM_EIZOFLEXSCAN'), 
-%  * 'TEST' (when using dispname = 'KKOFFICE_AOCQ3277' or 'EKHOME_ASUSVE247' 
+%  * 'MRI'      (when using dispName = '7TAS_BOLDSCREEN32'), 
+%  * 'BEHAVIOR' (when using dispName = 'PPROOM_EIZOFLEXSCAN'), 
+%  * 'TEST'     (when using dispName = 'KKOFFICE_AOCQ3277' or 'EKHOME_ASUSVE247')
 % <subject_nr> is a zero-padded integral number ranging from 1 to 999
 % <session_nr> is a zero-padded integral number ranging from 1 to 27
 % <session_type> is either  "A" for session_type=1 or "B" for session_type=2
@@ -63,12 +63,12 @@ function data = runme_vcdcore(subj_nr,ses_nr,ses_type,run_nr, dispName, varargin
 %  * monitor resolution (h x w): 1200 x 1920 pixels; 
 %  * monitor refresh rate: 60 Hz. 
 % 
-% DVA conversion:  
-% BOLDscreen height: atan( (39.29 / 2) / 183.5) / pi*180*2 = 12.22 deg 
-% BOLDscreen width: atan( (69.84 / 2) / 183.5) / pi*180*2 = 21.55 deg 
+% From resolution to degrees visual angle (DVA):  
+% BOLDscreen height   : atan( (39.29 / 2) / 183.5) / pi*180*2 = 12.22 deg 
+% BOLDscreen width    : atan( (69.84 / 2) / 183.5) / pi*180*2 = 21.55 deg 
 % BOLDscreen pixels per deg: 88.3702666667131 [precise]
-% EIZOFlexscan height: atan( (32.5 / 2) / 99.0) / pi*180*2 = 18.64 deg 
-% EIZOFlexscan width: atan( (52.0 / 2) / 99.0) / pi*180*2 = 29.43 deg 
+% EIZOFlexscan height : atan( (32.5 / 2) / 99.0) / pi*180*2 = 18.64 deg 
+% EIZOFlexscan width  : atan( (52.0 / 2) / 99.0) / pi*180*2 = 29.43 deg 
 % EIZOFlexscan pixels per deg: 64.3673991642835 [precise]
 %
 % For 7TAS BOLDscreen, a conservative estimate of what subject can see is 
@@ -217,7 +217,8 @@ if ~exist('dispName','var')
     dispName = input('What monitor are you using? (press 1 for 7TAS, 2 for Psychophysics room, 3 for Office) ');
 end
 
-% Check environment: are we running the behavioral or MRI experiment?
+% Check environment: are we running the behavioral or MRI experiment? 
+% Or are we testing on a different/office monitor?
 if isnumeric(dispName)
     if isequal(dispName,1)
         env_type = 'MRI';
@@ -263,14 +264,14 @@ instructionsDir = fullfile(vcd_rootPath, 'workspaces','instructions');
 
 ts0 = gettimestring;
 if isempty(subjfilename)
-    behavioralfilename    = sprintf('behavior_%s_vcd_subj%03d_ses%02d_%s_run%02d.mat',ts0,subj_nr,ses_nr,choose(ses_type==1,'A','B'),run_nr);
+    behavioralfilename  = sprintf('behavior_%s_vcd_subj%03d_ses%02d_%s_run%02d.mat',ts0,subj_nr,ses_nr,choose(ses_type==1,'A','B'),run_nr);
     if wanteyetracking
         eyelinkfilename = sprintf('eye_%s_vcd_subj%03d_ses%02d_%s_run%02d.edf',ts0,subj_nr,ses_nr,choose(ses_type==1,'A','B'),run_nr);
     else
         eyelinkfilename = '';
     end
 else
-    behavioralfilename    = fullfile(savedatadir,sprintf('%s_%s.mat',ts0,subjfilename));
+    behavioralfilename  = fullfile(savedatadir,sprintf('%s_%s.mat',ts0,subjfilename));
     if wanteyetracking
         eyelinkfilename = fullfile(savedatadir,sprintf('%s_%s.edf',ts0,subjfilename));
     else
@@ -282,26 +283,34 @@ end
 % Do some checks, can we actually run this experiment?
 assert(~isempty(subjfun(subj_nr)));
 assert(subjfun(subj_nr)>=1 && subjfun(subj_nr)<=999);
-assert(ses_type>=1 && ses_type<=2);
-assert(ses_nr>=1 && ses_nr<=27);
-assert(run_nr>=1 && run_nr<=15);
+if strcmp(env_type,'BEHAVIOR')
+    assert(run_nr>=1 && run_nr<=15);
+    assert(isequal(ses_type,1));
+    assert(isequal(ses_nr,1));
+elseif strcmp(env_type,'MRI')
+    assert(ses_nr>=1 && ses_nr<=27);
+    if ismember(ses_nr, [1,27]), assert(ismember(ses_type, [1,2]));
+    else, assert(isequal(ses_type,1)); end
+    if ses_nr == 27, assert(run_nr>=1 && run_nr<=4);
+    else, assert(run_nr>=1 && run_nr<=10); end
+end
 
 
 %% run experiment
 % for optional inputs use: 'var',<val>
 data = vcd_singleRun(subj_nr, ses_nr, ses_type, run_nr, dispName, ... % mandatory inputs
-    'env_type', env_type, ...
-    'wantsynctest',wantsynctest, ...
-    'behaviorfile',behavioralfilename, ...
-    'eyelinkfile',eyelinkfilename, ...
-    'savedatadir', savedatadir, ...
+    'env_type',        env_type, ... % optional inputs
+    'wantsynctest',    wantsynctest, ...
+    'behaviorfile',    behavioralfilename, ...
+    'eyelinkfile',     eyelinkfilename, ...
+    'savedatadir',     savedatadir, ...
     'wanteyetracking', wanteyetracking, ...
-    'loadparams', loadparams, ...
-    'storeparams', storeparams, ...
-    'offsetpix', offsetpix, ...
-    'movieflip', movieflip, ...
-    'instrtextdir',instructionsDir, ...
-    'savestim', savestim, ...
+    'loadparams',      loadparams, ...
+    'storeparams',     storeparams, ...
+    'offsetpix',       offsetpix, ...
+    'movieflip',       movieflip, ...
+    'instrtextdir',    instructionsDir, ...
+    'savestim',        savestim, ...
     'loadstimfromrunfile', loadstimfromrunfile, ...
-    'ptbMaxVBLstd', ptbMaxVBLstd); 
+    'ptbMaxVBLstd',    ptbMaxVBLstd); 
 
