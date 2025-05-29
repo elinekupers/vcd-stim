@@ -13,6 +13,8 @@ function [data,getoutearly,run_frames,run_table] = vcd_showStimulus(...
     oldPriority, ...
     eyetempfile)
 
+%% internal constants
+fliplead = 5/1000;  % min amount of time to allocate prior to flip
 
 %% Set flags and counters
 getoutearly    = 0;
@@ -389,33 +391,36 @@ while 1
              imwrite(uint8(placematrix(zeros([framefiles{2} 3]),Screen('GetImage',win))),sprintf(framefiles{1},framestart));
          end
      end
+    
+     % calc
+     fliplead0 = min(fliplead,(9/10)*mfi);
      
      % update when
      if didglitch
          % if there were glitches, proceed from our earlier when time.
-         % set the when time to 9/10 a frame before the desired frame.
+         % set the when time to a little bit before the desired frame.
          % notice that the accuracy of the mfi is strongly assumed here.
          whendesired = whendesired + mfi * frameduration;
-         when = whendesired - mfi * (9/10); %#ok<*NASGU>  
+         when = whendesired - fliplead0; %#ok<*NASGU>  
 
          % if the current time is already past whendesired, we are doomed,
          % and so we have to drop a frame. here, we do it repeatedly until
          % we are in the clear. this gives us at least a chance of getting
          % back on track, but it is NOT guaranteed. ultimately, the user needs
          % do some checking of NaNs in timeframes to check for dropped frames.
-         while GetSecs >= whendesired - mfi*(9/10)
+         while GetSecs >= whendesired - fliplead0
            framecnt = framecnt + 1;
            whendesired = whendesired + mfi * frameduration;
-           when = whendesired - mfi * (9/10);
+           when = whendesired - fliplead0;
         end
          
      else
          % if there were no glitches, just proceed from the last recorded time
-         % and set the when time to 9/10 a frame before the desired time.
+         % and set the when time to a little bit before the desired time.
          % notice that the accuracy of the mfi is only weakly assumed here,
          % since we keep resetting to the empirical VBLTimestamp.
          whendesired = VBLTimestamp + mfi * frameduration;
-         when = whendesired - mfi * (9/10);  % should we be less aggressive??
+         when = whendesired - fliplead0;  % should we be less aggressive??
      end
 
 end
