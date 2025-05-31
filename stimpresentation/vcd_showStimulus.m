@@ -227,6 +227,19 @@ fprintf('Instructions are on screen, waiting for trigger...\n');
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%% CORE EXP CODE! %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+fprintf('Please have participant press a button to confirm they are ready.\n');
+
+while 1
+  [keyIsDown,secs,keyCode,~] = KbCheck(deviceNr);
+  if keyIsDown
+    temp = KbName(keyCode);
+    if any(strcmp(temp(1), params.userkeys))
+      fprintf(' ** PARTICIPANT BUTTON SUCCESSFULLY DETECTED! ** \n')
+      break;
+    end
+  end
+end
+
 fprintf('Press trigger key to begin the movie. (consider turning off network, energy saver, software updates.)\n');
 
 while 1

@@ -24,6 +24,7 @@ p.addParameter('deviceNr'       , []        , @isnumeric);                   % k
 p.addParameter('device_check'   , 'both'    , @char);                        % what type of devices do we want to check for button presses: 'external','internal', or 'both'
 p.addParameter('triggerkey'     , {'5','t'}, @(x) iscell(x) || isstring(x)) % key(s) that starts the experiment
 p.addParameter('triggerkeyname' , '''5'' or ''t''', @isstring)               % for display only
+p.addParameter('userkeys'       , {'1','2','3','4'}, @(x) iscell(x) || isstring(x)) % key(s) that participants are expected to push
 p.addParameter('offsetpix'      , [0 0]     , @isnumeric);                   % offset of screen in pixels [10 20] means move 10-px right, 20-px down
 p.addParameter('movieflip'      , [0 0]     , @isnumeric)                    % whether to flip up-down, whether to flip left-right
 p.addParameter('wantsynctest'   , true      , @islogical)                    % whether we want to run the PTB sync test or not
