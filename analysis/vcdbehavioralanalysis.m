@@ -51,6 +51,9 @@ function results = vcdbehavioralanalysis(filename);
 %   trial_nr - for tasks other than FIX, this is just the usual trial_nr.
 %              for the FIX task, this is set to NaN for each dot change event.
 %   is_catch - as usual. for the special FIX dot change events, this is set to 0.
+%   stim_cued - name of stimulus class being cued (e.g. 'rdk'). for the FIX task and
+%               for catch trials, this is set to NaN. stim_cued is useful for the special
+%               SCC and LTM tasks.
 %   onset_start - frame time corresponding to stimulus onset. (this is either
 %                 stim1 or stim2 where appropriate, and for the special FIX dot change
 %                 events, stimulus onset refers to the change in the dot luminance.)
@@ -447,13 +450,17 @@ while 1
     % if this is a catch trial
     if a1.run_table.is_catch(ii) == 1
     
-      results.trialinfo.change_mind(rii)       = NaN;
+      results.trialinfo.stim_cued{rii}        = NaN;
+      results.trialinfo.change_mind(rii)      = NaN;
       results.trialinfo.button_pressed(rii)   = NaN;
       results.trialinfo.is_correct(rii)       = NaN;
       results.trialinfo.rt(rii)               = NaN;
       
     else
-    
+
+      % deal with stim_cued    
+      results.trialinfo.stim_cued{rii} = a1.run_table.stim_class_name{ii,mod2(a1.run_table.is_cued(ii),2)};
+
       % find buttons within response window. we only want buttons that are one of the choice buttons.
       okok = find( buttontimes > windowstart & ...
                    buttontimes <= windowend & ...
@@ -544,7 +551,8 @@ while 1
       results.trialinfo.crossing_nr(rii) =  a1.run_table.crossing_nr(ii);
       results.trialinfo.trial_nr(rii) =     NaN;  % NOTE!
       results.trialinfo.is_catch(rii) =     0;    % NOTE!
-  
+      results.trialinfo.stim_cued{rii} =    NaN;  % NOTE!
+
       % calc some times
       stimonset = timeframes(fixstart-1+seq(p)+1);
       windowstart = stimonset + responsewindow_fix(1)/1000;
