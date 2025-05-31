@@ -36,7 +36,8 @@ Task classes:
 * **WHERE:** Object localization task
 * **HOW:** Scene/object affordance task
 
-![vcd_master_table](https://github.com/user-attachments/assets/1ba2149c-88b1-4150-a71a-a7d7abee2303)
+![vcd_master_table](https://github.com/user-attachments/assets/c50f7032-c08f-4271-ad5b-e5fa9a11a89d)
+
 
 
 ## Dependencies
