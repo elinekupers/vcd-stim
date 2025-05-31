@@ -13,6 +13,8 @@ function results = vcdbehavioralanalysis(filename);
 %   <trialinfo> is a table (documented below)
 %   <totaldur> is the total empirical duration of the experiment in seconds.
 %     if partial data, this will be less than what is desired.
+%   <idealdur> is the total ideal duration of the experiment in seconds
+%   <mdtf> is the mean empirical frame-to-frame difference in seconds
 %   <glitchcnt> is the number of glitches during the presentation
 %   <droppedcnt> is the number of dropped frames during the presentation
 %   <matlabnowtime> is the absolute time corresponding to the first frame
@@ -158,6 +160,9 @@ assert(abs(mdtf*1000 - 1000/presentationrate_hz) < 1,'frame-to-frame differences
 % in the case of partial data (run stopped early), we calculate duration up through the last valid recorded timeframe 
 totaldur = mdtf * actualnum;
 
+% calc ideal experiment duration
+idealdur = length(timeframes)/presentationrate_hz;
+
 % check that the "DONE" time (recorded after last frame) is close to the official total duration (within 50 ms)
 ix = find(ismember(timekeysB(:,2),'DONE'));
 if isempty(ix)
@@ -173,7 +178,7 @@ end
 % report to the command window
 fprintf('==============================================================\n');
 fprintf('Stimulus fps is %d frames per sec; display refresh rate is %d Hz.\n',presentationrate_hz,refresh_hz);
-fprintf('Experiment duration (empirical / ideal) was %.3f / %.3f.\n',totaldur,length(timeframes)/presentationrate_hz);
+fprintf('Experiment duration (empirical / ideal) was %.3f / %.3f.\n',totaldur,idealdur);
 fprintf('Frames per sec (empirical / ideal) was %.6f / %.6f.\n',1/mdtf,presentationrate_hz);
 fprintf('Number of glitches: %d.\n',glitchcnt);
 fprintf('Number of dropped frames: %d.\n',droppedcnt);
@@ -181,6 +186,8 @@ fprintf('==============================================================\n');
 
 % record
 results.totaldur = totaldur;
+results.idealdur = idealdur;
+results.mdtf = mdtf;
 results.glitchcnt = glitchcnt;
 results.droppedcnt = droppedcnt;
 results.donetime = donetime;
