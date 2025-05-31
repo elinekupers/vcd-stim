@@ -301,7 +301,7 @@ f_conditionname = @(x) all(vcd_conditionName2Number(x)~=0);
 
 % General
 p0.addParameter('verbose'               , true, @islogical);  
-p0.addParameter('displayname'           , '7TAS_BOLDSCREEN32', @(x) any(strcmp(x,{'7TAS_BOLDSCREEN32', 'KKOFFICE_AOCQ3277', 'PPROOM_EIZOFLEXSCAN', 'EKHOME_ASUSVE247'})));                   
+% p0.addParameter('displayname'           , '7TAS_BOLDSCREEN32', @(x) any(strcmp(x,{'7TAS_BOLDSCREEN32', 'KKOFFICE_AOCQ3277', 'PPROOM_EIZOFLEXSCAN', 'EKHOME_ASUSVE247'})));                   
 
 % Broad stimulus class & task class names and numbers
 p0.addParameter('stimulusclassnames'    , [], @(x) choose_isempty(x) || isstimclassnr(x));    
@@ -335,7 +335,7 @@ p0.addParameter('allimgteststimulusnumbers', [], @(x) choose_isempty(x) || f_sti
 % Parse inputs
 p0.parse(varargin{:});
 verbose     = p0.Results.verbose;
-displayname = p0.Results.displayname;
+% displayname = p0.Results.displayname;
 
 % Check which info was requested
 requested_info = {};
@@ -354,10 +354,10 @@ if isempty(vcd_info) || ~exist('vcd_info','var')
         error('[%s]: Please navigate to vcd-stim folder',mfilename)
     end
     
-    d = dir(fullfile(vcd_rootPath,'workspaces','info',sprintf('trials*%s*.mat',displayname)));
+    d = dir(fullfile(vcd_rootPath,'workspaces','info',sprintf('time_table_master_complete*.mat')));
     
     if isempty(d)
-        error('[%s]: Can''t find vcd_info! Looking for a file called: "vcd_rootPath/workspaces/info/time_table_master_complete*%s.mat"',mfilename,displayname)
+        error('[%s]: Can''t find vcd_info! Looking for a file called: "vcd_rootPath/workspaces/info/time_table_master_complete*.mat"',mfilename)
     else
         if verbose
         fprintf('[%s]: Found %d vcd info file(s)\n',mfilename,length(d));
