@@ -19,6 +19,8 @@ disp.name = dispname;
 % CenterRectOnPoint.m. This function relies on PTB RectCenter.m, which
 % rounds to the closest integer for a given [x,y] center coordinate.
 
+eccen_range = 4; % deg (what extent in dva do we want to calculate the pixel per degrees for?)
+
 switch dispname
     case '7TAS_BOLDSCREEN32'                    % MATLAB version 2016b, psychtoolbox version 3.0.14 December 30th 2016
         disp.w_cm        = 69.84;               % cm wide; note: beyond what subject can actaully see.
@@ -30,11 +32,30 @@ switch dispname
         disp.h_deg       = pix2deg(disp.h_pix,disp.h_pix,disp.h_cm,disp.dist_cm); % in degrees (BOLDscreen vertical, Nova1x32) should be 12.2 deg
         disp.w_deg       = pix2deg(disp.w_pix,disp.w_pix,disp.w_cm,disp.dist_cm); % in degrees (BOLDscreen vertical, Nova1x32) should be 21.5 deg
         disp.refresh_hz  = 120;                 % monitor native refreshrate in Hz
+        
+        tan(deg2rad(eccen_range));
+        
+        
         disp.ppd         = disp.h_pix/disp.h_deg; % pixels per degree
         disp.xc          = disp.w_pix/2;        % x-center relative to upper left corner (pixels)
         disp.yc          = disp.h_pix/2;        % y-center relative to upper left corner (pixels)
         disp.clut        = 0;                   % linear clut
         disp.fontsize    = 25;                  % fontsize of text
+    
+    case 'PPROOM_EIZOFLEXSCAN'                  % MATLAB version 2016b, psychtoolbox version 3.0.14 December 30th 2014
+        disp.w_cm        = 52;                  % width in cm
+        disp.h_cm        = 32.5;                % height in cm
+        disp.dist_cm     = 99.0;                % eye to screen viewing distance in cm
+        disp.h_pix       = 1200;                % height in pixels 
+        disp.w_pix       = 1920;                % width in pixels 
+        disp.h_deg       = pix2deg(disp.h_pix,disp.h_pix,disp.h_cm,disp.dist_cm); % in degrees 
+        disp.w_deg       = pix2deg(disp.w_pix,disp.w_pix,disp.w_cm,disp.dist_cm); % in degrees
+        disp.refresh_hz  = 60;                  % desired (native) refreshrate of monitor in Hz
+        disp.ppd         = disp.h_pix/disp.h_deg; % pixels per degree
+        disp.xc          = disp.w_pix/2;        % x-center relative to upper left corner (pixels)
+        disp.yc          = disp.h_pix/2;        % y-center relative to upper left corner (pixels)
+        disp.clut        = 0;                   % linear clut: amazingly, no lookup table needed!! when using user3 - gamma 2.2
+        disp.fontsize    = 18;                  % fontsize of text
         
     case 'KKOFFICE_AOCQ3277'                    % EK stimlaptop uses MATLAB version 2018b, psychtoolbox version ??? Nov 17 2020 (git commit ef093cbf296115badddb995fa06452e34c8c7d02)
         disp.w_cm        = 71;                  % cm wide; 
@@ -65,21 +86,6 @@ switch dispname
         disp.yc          = disp.h_pix/2;        % y-center relative to upper left corner (pixels)       
         disp.clut        = 0;                   % linear clut
         disp.fontsize    = 12;                  % fontsize of text
-
-    case 'PPROOM_EIZOFLEXSCAN'                  % MATLAB version 2016b, psychtoolbox version 3.0.14 December 30th 2014
-        disp.w_cm        = 52;                  % width in cm
-        disp.h_cm        = 32.5;                % height in cm
-        disp.dist_cm     = 99.0;                % eye to screen viewing distance in cm
-        disp.h_pix       = 1200;                % height in pixels 
-        disp.w_pix       = 1920;                % width in pixels 
-        disp.h_deg       = pix2deg(disp.h_pix,disp.h_pix,disp.h_cm,disp.dist_cm); % in degrees 
-        disp.w_deg       = pix2deg(disp.w_pix,disp.w_pix,disp.w_cm,disp.dist_cm); % in degrees
-        disp.refresh_hz  = 60;                  % desired (native) refreshrate of monitor in Hz
-        disp.ppd         = disp.h_pix/disp.h_deg; % pixels per degree
-        disp.xc          = disp.w_pix/2;        % x-center relative to upper left corner (pixels)
-        disp.yc          = disp.h_pix/2;        % y-center relative to upper left corner (pixels)
-        disp.clut        = 0;                   % linear clut: amazingly, no lookup table needed!! when using user3 - gamma 2.2
-        disp.fontsize    = 18;                  % fontsize of text
 end
 
 % assert xc and yc are integers
