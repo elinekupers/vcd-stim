@@ -1,8 +1,8 @@
-function data = runme_vcdcore(subj_nr,ses_nr,ses_type,run_nr, dispName, varargin)
+function [data,all_images] = runme_vcdcore(subj_nr,ses_nr,ses_type,run_nr, dispName, varargin)
 % Main wrapper function to run the core VCD experiment. This function can 
 % run both behavioral and functional MRI versions of the VCD experiment.
 %
-%     data = runme_vcdcore(subj_nr,ses_nr,ses_type,run_nr,dispName, varargin)
+%     [data,all_images] = runme_vcdcore(subj_nr,ses_nr,ses_type,run_nr,dispName, varargin)
 %
 % PURPOSE: 
 % Execute a single 6.5-min run (behavioral or fMRI) of the core
@@ -20,7 +20,7 @@ function data = runme_vcdcore(subj_nr,ses_nr,ses_type,run_nr, dispName, varargin
 %
 % The fMRI experiment has 27 sessions (1-27), each session has 10 runs (use
 % run_nr = 1-10). The first fMRI session is a wide session, and has two
-% versions. Half of the subjetcs will see version 1A (use session_type = 1),
+% versions. Half of the subjects will see version 1A (use session_type = 1),
 % the other half of the subjects will see version 1B (use session_type = 2).
 % fMRI session 2-26 are deep sessions, where every subject will see the
 % same version (session_type = 1). The last fMRI session (session_nr = 27)
@@ -66,10 +66,10 @@ function data = runme_vcdcore(subj_nr,ses_nr,ses_type,run_nr, dispName, varargin
 % From resolution to degrees visual angle (DVA):  
 % BOLDscreen height   : atan( (39.29 / 2) / 183.5) / pi*180*2 = 12.22 deg 
 % BOLDscreen width    : atan( (69.84 / 2) / 183.5) / pi*180*2 = 21.55 deg 
-% BOLDscreen pixels per deg: 88.3702666667131 [precise]
+% BOLDscreen pixels per deg:  88.178261586694418 [precise]
 % EIZOFlexscan height : atan( (32.5 / 2) / 99.0) / pi*180*2 = 18.64 deg 
 % EIZOFlexscan width  : atan( (52.0 / 2) / 99.0) / pi*180*2 = 29.43 deg 
-% EIZOFlexscan pixels per deg: 64.3673991642835 [precise]
+% EIZOFlexscan pixels per deg: 63.902348145300280 [precise]
 %
 % For 7TAS BOLDscreen, a conservative estimate of what subject can see is 
 % height: 1080 px, width: 1152 pix.
@@ -84,66 +84,71 @@ function data = runme_vcdcore(subj_nr,ses_nr,ses_type,run_nr, dispName, varargin
 %  The other input arguments are optional and will be set to default if 
 %  undefined. To define optional input arguments, use: 'vararg', <val>.
 %
-%   subj_nr           : subject number 
-%   ses_nr            : session number  (numeric integer between 1-27)
-%   ses_type          : session type number (numeric integer: 1=A and 2=B)
-%   run_nr            : run number      (numeric integer between 1-10)
-%   dispName          : name of display (string), this affects what stimuli and time_table_master are loaded
-%                       Choose: '7TAS_BOLDSCREEN32'   - BOLD screen at the 7TAS MRI scanner
-%                               'KKOFFICE_AOSQ3277'   - external monitor in kendrick's CMRR office
-%                               'EKHOME_ASUSVE247'    - external monitor at Eline's home
-%                               'PPROOM_EIZOFLEXSCAN' - CMRR's Psychophysics room monitor                      
-%   [wantsynctest]    : if true, we do the PTB monitor sync test. 
-%                        Default: false
-%   [loadparams]      : if true, load stored parameter values. 
-%                        Default: true
-%   [storeparams]     : if true, store created parameter values. 
-%                        Default: true
-%   [savestim]        : if true, store stimuli in matlab file prior to ptb flipping. File is ~25-50 MB!
-%                        Default: false
-%   [loadstimfromrunfile]  : if true, load subject single run file with stimuli (to save time a minute and rerun the same run) 
-%                        Default: false
-%   [offsetpix]       : offset of center [x,y]-coordinate in pixels. 
-%                        Default: No offset [0,0]
-%   [movieflip]       : flip presented stimulus display left-right (first argument) or up-down (second argument). 
-%                        Default: no flipping: [0,0].
-%   [stimdir]         : folder where pre-made stimuli are stored.
-%                        Default: fullfile(vcd_rootPath,'workspaces','info')
-%   [savedatadir]     : folder where subject's button presses and stim timing are stored. 
-%                        Default: [], which will turn into: sprintf('vcd_subj%03d_ses%02d',subj_nr,sesID);
-%   [subjfilename]    : pre-fix for behavioral mat-file. 
-%                        Default: [], which will turn into: sprintf('%s_vcd_subj%03d_ses%02d_run%02d.mat',ts0,subj_nr,sesID,run_nr);
-%   [wanteyetracking] : if true, we will initialize eyetracking. 
-%                        Default: false;
-%   [ptbMaxVBLstd]    : allowable error (std in seconds) in the 50 VBL time stamp measurements taken by PTB during the synctest. 
-%                       If the measurement error is larger than the desired monitor refresh rate, psychtoolbox throws an error during the synctest.
-%                        Default: 0.0004 s. Larger standard deviations are more forgiving and less likely for psychtoolbox to throw an error.
+%   subj_nr              : subject number 
+%   ses_nr               : session number  (numeric integer between 1-27)
+%   ses_type             : session type number (numeric integer: 1=A and 2=B)
+%   run_nr               : run number      (numeric integer between 1-10)
+%   dispName             : name of display (string), this affects what stimuli and time_table_master are loaded
+%                          Choose: '7TAS_BOLDSCREEN32'   - BOLD screen at the 7TAS MRI scanner
+%                                  'KKOFFICE_AOSQ3277'   - external monitor in kendrick's CMRR office
+%                                  'EKHOME_ASUSVE247'    - external monitor at Eline's home
+%                                  'PPROOM_EIZOFLEXSCAN' - CMRR's Psychophysics room monitor                      
+%   [wantsynctest]       : if true, we do the PTB monitor sync test. 
+%                          Default: false
+%   [loadparams]         : if true, load stored parameter values. 
+%                          Default: true
+%   [storeparams]        : if true, store created parameter values. 
+%                          Default: true
+%   [savestim]           : if true, store stimuli in matlab file prior to ptb flipping. File is ~25-50 MB!
+%                          Default: false
+%   [loadstimfromrunfile]: if true, load subject single run file with stimuli (to save time a minute and rerun the same run) 
+%                          Default: false
+%   [offsetpix]          : offset of center [x,y]-coordinate in pixels. 
+%                          Default: No offset [0,0]
+%   [movieflip]          : flip presented stimulus display left-right (first argument) or up-down (second argument). 
+%                          Default: no flipping: [0,0].
+%   [stimdir]            : folder where pre-made stimuli are stored.
+%                          Default: fullfile(vcd_rootPath,'workspaces','info')
+%   [instructionsDir]    : folder where the instruction txt files are stored.
+%                          Default: fullfile(vcd_rootPath,'workspaces','instructions')
+%   [savedatadir]        : folder where subject's button presses and stim timing are stored. 
+%                          Default: [], which will turn into: sprintf('vcd_subj%03d_ses%02d',subj_nr,sesID);
+%   [subjfilename]       : pre-fix for behavioral mat-file. 
+%                          Default: [], which will turn into: sprintf('%s_vcd_subj%03d_ses%02d_run%02d.mat',ts0,subj_nr,sesID,run_nr);
+%   [wanteyetracking]    : if true, we will initialize eyetracking. 
+%                          Default: false;
+%   [ptbMaxVBLstd]       : allowable error (std in seconds) in the 50 VBL time stamp measurements taken by PTB during the synctest. 
+%                          If the measurement error is larger than the desired monitor refresh rate, psychtoolbox throws an error during the synctest.
+%                          Default: 0.0004 s. Larger standard deviations are more forgiving and less likely for psychtoolbox to throw an error.
+%   [all_images]         : struct with all VCD images, to avoid extra load time.
+%   [randomization_file] : mat-file specifying the randomization block and run order for this subject's session.
+%                          Default: []. No file means that the runme_vcdcore code will generate a new randomization file on the fly.
 %
 % OUTPUTS:
-%   data              : struct with behavioral button presses and monitor
-%                        refresh rate timing, as well as other parameters.
+%   data                 : struct with behavioral button presses and monitor
+%                          refresh rate timing, as well as other parameters.
+%   all_images           : struct with all VCD images in uint8 pixels, to
+%                          avoid additional loading time when executing multiple runs.
 %
 % EXAMPLES:
-%  runme_vcdcore(1, 1, 1, 1, '7TAS_BOLDSCREEN32'); 
-%  runme_vcdcore(1, 1, 1, 1, 'PPROOM_EIZOFLEXSCAN'); % default is with sync test and no eyetracking
-%  runme_vcdcore(1, 1, 1, 1, 'PPROOM_EIZOFLEXSCAN', 'wantsynctest', true, 'ptbMaxVBLstd', 0.0006); 
-%  runme_vcdcore(1, 1, 1, 1, 'PPROOM_EIZOFLEXSCAN', 'wantsynctest', true, 'wanteyetracking', true); % sync test + eyetracking
-%  runme_vcdcore(1, 1, 1, 1, '7TAS_BOLDSCREEN32'  , 'wantsynctest', false);
-%  runme_vcdcore(1, 1, 1, 1, 'KKOFFICE_AOCQ3277'  , 'wantsynctest', true);
-%  runme_vcdcore(1, 1, 1, 1, 'EKHOME_ASUSVE247'   , 'wantsynctest', false);
+%  [data,all_images] = runme_vcdcore(1, 1, 1, 1, '7TAS_BOLDSCREEN32'); 
+%  [data,all_images] = runme_vcdcore(1, 1, 1, 1, 'PPROOM_EIZOFLEXSCAN'); % default is with sync test and no eyetracking
+%  [data,all_images] = runme_vcdcore(1, 1, 1, 1, 'PPROOM_EIZOFLEXSCAN', 'wantsynctest', true, 'ptbMaxVBLstd', 0.0006); 
+%  [data,all_images] = runme_vcdcore(1, 1, 1, 1, 'PPROOM_EIZOFLEXSCAN', 'wantsynctest', true, 'wanteyetracking', true); % sync test + eyetracking
+%  [data,all_images] = runme_vcdcore(1, 1, 1, 1, '7TAS_BOLDSCREEN32'  , 'wantsynctest', false);
+%  [data,all_images] = runme_vcdcore(1, 1, 1, 1, 'KKOFFICE_AOCQ3277'  , 'wantsynctest', true);
+%  [data,all_images] = runme_vcdcore(1, 1, 1, 1, 'EKHOME_ASUSVE247'   , 'wantsynctest', false);
 %
 % DEPENDENCIES:
 %  * Psychtoolbox-3 (https://github.com/Psychtoolbox/Psychtoolbox-3) 
-%  7TAS: v. 3.0.14
-%      commit ef093cbf296115badddb995fa06452e34c8c7d02 (origin/master)
-%      Date:   Tue Nov 17 19:46:08 2020 +0100
-%  PP room: v. 3.0.14 — build date 0ct 3, 2017
+%       7TAS   : v. 3.0.14 commit ef093cbf296115badddb995fa06452e34c8c7d02 (origin/master). build date Nov 17 19:46:08 2020 +0100
+%       PP room: v. 3.0.14 — build date 0ct 3, 2017
 %
 %  * knkutils (https://github.com/cvnlab/knkutils)
 %     commit 27dd66770edcf0ef3adbd73e1892678a275e2383 (origin/master)
 % 
 % AUTHOR:
-%  Written by Eline Kupers @ UMN (kupers@umn.edu)
+%  Written by Eline Kupers @ UMN (kupers@umn.edu) (2024,2025)
 %
 % HISTORY:
 %  - 2018/12/25 - initial runnsd version 
@@ -151,9 +156,7 @@ function data = runme_vcdcore(subj_nr,ses_nr,ses_type,run_nr, dispName, varargin
 %  - 2024/12/01 - first version committed to github 
 
 close all; clc;
-vcd_startup;
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% DON'T EDIT BELOW
+vcd_startup; % script will navigate to root of vcd-stim code folder
 
 %% %%%%%%%%%%%%% PARSE INPUTS %%%%%%%%%%%%%
 p = inputParser;
@@ -169,11 +172,14 @@ p.addParameter('savestim'           , false, @islogical);
 p.addParameter('loadstimfromrunfile', false, @islogical);
 p.addParameter('offsetpix'          , [0 0], @isnumeric); % [x,y]
 p.addParameter('movieflip'          , [0 0], @isnumeric); % up/down, left/right
-p.addParameter('stimDir'            , fullfile(vcd_rootPath,'workspaces','info'), @ischar);
+p.addParameter('stimDir'            , fullfile(vcd_rootPath,'workspaces','info'), @ischar); % Where do the stimulus mat files live?
+p.addParameter('instructionsDir'    , fullfile(vcd_rootPath, 'workspaces','instructions'), @ischar); % Where do the task instruction text files live?
 p.addParameter('savedatadir'        , [], @ischar);
 p.addParameter('subjfilename'       , [], @ischar);
 p.addParameter('wanteyetracking'    , false, @islogical);
 p.addParameter('ptbMaxVBLstd'       , [], @isnumeric);
+p.addParameter('all_images'         , [], @isstruct);
+p.addParameter('randomization_file' , [], @ischar);
 
 % Parse inputs
 p.parse(subj_nr, ses_nr, ses_type, run_nr, dispName, varargin{:});
@@ -185,40 +191,8 @@ for ff = 1:length(rename_me)
 end
 clear rename_me ff p
 
-cd(vcd_rootPath);
-addpath(genpath(pwd));
-
-% Subject anon function
-subjfun = @(x) find(ismember([1:999],x)); %#ok<NBRAK> % EK Question: how do we map subject ID to subject numbers 1-999?
-
-%%%%%%%%%%%%%%%% need to get info from user
-% ask the user what to run
-if ~exist('subj_nr','var') || isempty(subj_nr)
-  subj_nr = input('What is the subj number? ');
-end
-
-if ~exist('ses_nr','var') || isempty(ses_nr)
-    % ask the user more stuff
-    ses_nr  = input('What session nr (1-27)? ');
-end
-
-if ismember(ses_nr,[1,27])
-    if ~exist('ses_type','var') || isempty(ses_type)
-        % ask the user more stuff
-        ses_type  = input('What session type (1 = A and 2 = B)? ');
-    end
-end
-
-if ~exist('run_nr','var') || isempty(run_nr)
-    run_nr = input('What run number (1-15)? ');
-end
-
-if ~exist('dispName','var')
-    dispName = input('What monitor are you using? (press 1 for 7TAS, 2 for Psychophysics room, 3 for Office) ');
-end
-
-% Check environment: are we running the behavioral or MRI experiment? 
-% Or are we testing on a different/office monitor?
+%% Check environment and input parameters:
+% Are we running the behavioral or MRI experiment? Or are we testing on an office monitor?
 if isnumeric(dispName)
     if isequal(dispName,1)
         env_type = 'MRI';
@@ -237,31 +211,36 @@ elseif ischar(dispName)
     end
 end
       
+% Can we actually run this experiment?
+assert(~isempty(subjfun(subj_nr)));
+assert(subjfun(subj_nr)>=1 && subjfun(subj_nr)<=999);
+if strcmp(env_type,'BEHAVIOR')
+    assert(run_nr>=1 && run_nr<=15);
+    assert(isequal(ses_type,1));
+    assert(isequal(ses_nr,1));
+elseif strcmp(env_type,'MRI')
+    assert(ses_nr>=1 && ses_nr<=27);
+    if ismember(ses_nr, [1,27]), assert(ismember(ses_type, [1,2]));
+    else, assert(isequal(ses_type,1)); end
+    if ses_nr == 27, assert(run_nr>=1 && run_nr<=5);
+    else, assert(run_nr>=1 && run_nr<=10); end
+end
 
-% Give some hints to the operator
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% %%%%%%%%%%%%%%%%%%% Deal with folders and filenames %%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 if isempty(savedatadir) %#ok<NODEF>
     savedatadir = fullfile(vcd_rootPath,'data',env_type,sprintf('vcd_subj%03d_ses%02d',subj_nr, ses_nr));
 end
 if ~exist(savedatadir, 'dir'); mkdir(savedatadir); end
 
-tempfiles = matchfiles(fullfile(savedatadir,sprintf('*_vcd_subj%03d_ses%02d_%s_run%02d.mat',subj_nr, ses_nr, choose(ses_type==1,'A','B'), run_nr)));
-fprintf('\nIt appears you have completed the following runs already:\n');
-tempfiles %#ok<NOPRT>
+% We will not spit out tempfiles to avoid overcrowding command window 
+% tempfiles = matchfiles(fullfile(savedatadir,sprintf('*_vcd_subj%03d_ses%02d_%s_run%02d.mat',subj_nr, ses_nr, choose(ses_type==1,'A','B'), run_nr)));
+% fprintf('\nIt appears you have completed the following runs already:\n');
+% tempfiles %#ok<NOPRT>
 
-
-if ~exist('wanteyetracking','var')
-    wanteyetracking  = input('Do you want to use eyetracking? (press 1 for yes, 0 for no) ');
-end
-
-% Tell operator what experiment are running
-fprintf('[%s]: Running VCD core %s experiment: subj_nr %03d - session %02d %s - run %02d \n', mfilename, env_type, subj_nr,ses_nr,choose(ses_type==1,'A','B'),run_nr)
-fprintf('[%s]: %s eyetracking \n', mfilename, choose(wanteyetracking,'YES','NO'))
-fprintf('[%s]: Running experiment with images optimized for %s\n', mfilename, dispName)
-
-
-% Deal with folders and filenames
-instructionsDir = fullfile(vcd_rootPath, 'workspaces','instructions');
-
+% Where do we store behavioral and eyetracking data?
 ts0 = gettimestring;
 if isempty(subjfilename)
     behavioralfilename  = sprintf('behavior_%s_vcd_subj%03d_ses%02d_%s_run%02d.mat',ts0,subj_nr,ses_nr,choose(ses_type==1,'A','B'),run_nr);
@@ -280,25 +259,21 @@ else
 end
     
 
-% Do some checks, can we actually run this experiment?
-assert(~isempty(subjfun(subj_nr)));
-assert(subjfun(subj_nr)>=1 && subjfun(subj_nr)<=999);
-if strcmp(env_type,'BEHAVIOR')
-    assert(run_nr>=1 && run_nr<=15);
-    assert(isequal(ses_type,1));
-    assert(isequal(ses_nr,1));
-elseif strcmp(env_type,'MRI')
-    assert(ses_nr>=1 && ses_nr<=27);
-    if ismember(ses_nr, [1,27]), assert(ismember(ses_type, [1,2]));
-    else, assert(isequal(ses_type,1)); end
-    if ses_nr == 27, assert(run_nr>=1 && run_nr<=4);
-    else, assert(run_nr>=1 && run_nr<=10); end
-end
+%% %%%%%%%%%%%%%%%%%%%%%%%% DON'T EDIT BELOW %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% Tell operator what experiment are running
+fprintf('[%s]: Running VCD core %s experiment: subj_nr %03d - session %02d %s - run %02d \n', ...
+    mfilename, env_type, subj_nr,ses_nr,choose(ses_type==1,'A','B'),run_nr)
+fprintf('[%s]: %s eyetracking \n', mfilename, choose(wanteyetracking,'YES','NO'))
+fprintf('[%s]: Running experiment with images optimized for %s\n', mfilename, dispName)
 
 
-%% run experiment
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%% Run experiment %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 % for optional inputs use: 'var',<val>
-data = vcd_singleRun(subj_nr, ses_nr, ses_type, run_nr, dispName, ... % mandatory inputs
+[data, all_images] = vcd_singleRun(subj_nr, ses_nr, ses_type, run_nr, dispName, ... % mandatory inputs
     'env_type',        env_type, ... % optional inputs
     'wantsynctest',    wantsynctest, ...
     'behaviorfile',    behavioralfilename, ...
