@@ -1,43 +1,42 @@
 function [data,getoutearly,run_frames,run_table] = vcd_showStimulus(...
-    win, rect, params, ...
+    win, ...
+    rect, ...
+    params, ...
+    ptonparams, ...
     fix, ...
-    eye_im, ...
     stim, ...
     run_frames, ...
     run_table, ...
     introscript, ...
     taskscript, ...
-    tfunEYE, ...
-    deviceNr, ...
-    oldCLUT,...
-    oldPriority, ...
-    eyetempfile)
+    deviceNr)
 
+%% PTB functionality notes:
+% Inputs to DrawTexture: 
+%   windowPointer, texturePointer(s), [sourceRect], destRects, rotAngles, filterModes, globalAlphas, modulateColors, textureShader, specialFlags, auxParameters]);
+% Inputs to MakeTextures/DrawTextures (plural) instead of DrawTexture (single): 
+%   * texturePointers need to be: n vector (where n is the number of textures)
+%   * destinationRects need to be: 4 row x n columns (where n is the number of textures)
+% Inputs to DrawFormattedText inputs are winptr, tstring, [sx], [sy], [color], [wrapat], [flipHorizontal], [flipVertical], [vSpacing], [righttoleft], [winRect]
+
+%  <framecolor> can also be size(<frameorder>,2) x 1 with values in [0,1] indicating an alpha change.
+    
 %% internal constants
 fliplead = 10/1000;  % min amount of time to allocate prior to flip
 
-%% Set flags and counters
-getoutearly    = 0;
-glitchcnt      = 0;
-when           = 0;
-forceglitch    = false;
-wantframefiles = false;
-detectinput    = true;
-
-%% Preallocate space for key presses and timestamps
-timekeys       = {};
-digitrecord    = [];
-digitframe     = [];
-digitpolarity  = [];
-
-%% PREPARE IMAGES
-allowforceglitch  = 0; % 0 means do nothing special. [1 D] means allow keyboard input 'p' to force a glitch of duration D secs.
+%% Set flags, counters, and preallocate space
+getoutearly       = 0;
+glitchcnt         = 0;
+when              = 0;
+forceglitch       = false;
+wantframefiles    = false;
+detectinput       = true;
+timekeys          = {}; % Preallocate space for key presses and timestamps
+allowforceglitch  = 0;  % 0 means do nothing special. [1 D] means allow keyboard input 'p' to force a glitch of duration D secs.
 frameorder        = 1:size(stim.im,1);
+timeframes        = NaN(1, floor(size(frameorder,2)-1)+1);
 
-% init variables, routines, constants
-timeframes = NaN(1, floor(size(frameorder,2)-1)+1);
-
-% make tmpdir
+%% make tmpdir
 if wantframefiles
     tmpDir = '~/Desktop/tmp/'; %#ok<UNRCH>
     framefiles = {'~/Desktop/tmp/frame%05d.png', []};
@@ -61,20 +60,19 @@ Screen('TextStyle', win, 0);
 Priority(9); % 9 = max value possible for Mac OS X. 
 HideCursor; % now hide cursors for all screen windows
 
-% Run functions as first time running them always takes more time
-GetSecs;
-now;
-ceil(1);
-fprintf('');
-
 % IMPORTANT to ensure proper functioning (flush caches, etc.)
 clear PsychHID;
 clear KbCheck;
 clear KbWait;
 
+%% Run functions as first time running them always takes more time
+GetSecs;
+now;
+ceil(1);
+fprintf('');
+
 %% Create background and fixation textures prior to exp onset (as we need them throughout the experiment)
 bckground_rect    = rect; %CenterRect([0 0 round(size(bckground,1)) round(size(bckground,2))],rect);
-% bckrgound_texture = Screen('MakeTexture', win, bckground); % no more background image
 
 % make fixation dot texture
 fix_texture.thin_full   = cell(1,size(fix.fix_thin_full,2));
@@ -90,7 +88,7 @@ for ll = 1:size(fix.fix_thin_full,2) % loop over luminance values
     fix_texture.thick_both{ll}  = Screen('MakeTexture',win,fix.fix_thick_both{ll});
 end
 
-%% Prepare background and fixation texture vector outside the flip loop
+%% Prepare fixation texture vector outside the flip loop
 fix_tex    = cell(length(stim.im),1);
 fix_rect   = fix_tex;
 im_tex     = fix_tex;
@@ -150,16 +148,12 @@ for nn = 1:size(run_frames.frame_event_nr,1)
     % ITI_ID                = 98; % inter-trial interval
     % IBI_ID                = 99; % inter-block interval
 
-    % If we want to use DrawTextures (plural) (instead of DrawTexture (single)):
-    % * TexturePointers need to be: n vector (where n is the number of textures)
-    % * DestinationRects need to be: 4 row x n columns (where n is the number of textures)
-
         % Draw background + fix dot on top
         case {0, 91, 92, 93, 94, 95, 96, 97, 98, 99}
             
-            im_tex{nn}     = fix_tex{nn}; %cat(1, bckrgound_texture, fix_tex(nn));
-            im_rect{nn}    = fix_rect{nn}; %cat(1, bckground_rect, fix_rect{nn});
-            framecolor{nn} = 255*ones(1,3); %255*ones(2,3); % <framecolor> can also be size(<frameorder>,2) x 1 with values in [0,1] indicating an alpha change.
+            im_tex{nn}     = fix_tex{nn}; 
+            im_rect{nn}    = fix_rect{nn};
+            framecolor{nn} = 255*ones(1,3); 
 
         case 90 % task_cue_ID
             % Get instructions from text file
@@ -167,56 +161,179 @@ for nn = 1:size(run_frames.frame_event_nr,1)
                 regexp(taskscript,sprintf('%02d',run_frames.crossingIDs(nn)),'match'))};
             [task_instr, task_rect] = vcd_getInstructionText(params, script, rect);
             
-%             im_tex{nn}  = bckrgound_texture;
-%             im_rect{nn} = bckground_rect;
             txt_tex{nn}  = task_instr;
             txt_rect{nn} = task_rect;
             framecolor{nn} = 255*ones(1,3);
         
         % Draw background with eyetracking target
         case {990,991} % eye_gaze_fix_ID = 990,991; % central fixation "rest" and "target"
-            im_tex{nn}  = Screen('MakeTexture',win,eye_im.sac_im(:,:,:,1));
+            im_tex{nn}  = Screen('MakeTexture',win, stim.im.eye.sac_im(:,:,:,1));
             im_rect{nn} = rect;
             framecolor{nn} = 255*ones(1,3);
             
         case 992 % eye_gaze_sac_target_ID  = left
-            im_tex{nn}  = Screen('MakeTexture',win,eye_im.sac_im(:,:,:,2));
+            im_tex{nn}  = Screen('MakeTexture',win, stim.im.eye.sac_im(:,:,:,2));
             im_rect{nn} = rect;
             framecolor{nn} = 255*ones(1,3);
             
         case 993 % eye_gaze_sac_target_ID  = right
-            im_tex{nn}  = Screen('MakeTexture',win,eye_im.sac_im(:,:,:,3));
+            im_tex{nn}  = Screen('MakeTexture',win, stim.im.eye.sac_im(:,:,:,3));
             im_rect{nn} = rect;
             framecolor{nn} = 255*ones(1,3);
             
         case 994 % eye_gaze_sac_target_ID  = up
-            im_tex{nn}  = Screen('MakeTexture',win,eye_im.sac_im(:,:,:,4));
+            im_tex{nn}  = Screen('MakeTexture',win, stim.im.eye.sac_im(:,:,:,4));
             im_rect{nn} = rect;
             framecolor{nn} = 255*ones(1,3);
             
         case 995 % eye_gaze_sac_target_ID  = down
-            im_tex{nn}  = Screen('MakeTexture',win,eye_im.sac_im(:,:,:,5));
+            im_tex{nn}  = Screen('MakeTexture',win, stim.im.eye.sac_im(:,:,:,5));
             im_rect{nn} = rect;
             framecolor{nn} = 255*ones(1,3);
             
         case 996 % eye_gaze_pupil_ID is black
-            im_tex{nn}  = Screen('MakeTexture',win,eye_im.pupil_im_black);
+            im_tex{nn}  = Screen('MakeTexture',win, stim.im.eye.pupil_im_black);
             im_rect{nn} = rect;
             framecolor{nn} = 255*ones(1,3);
                          
         case 997 % eye_gaze_pupil_ID is white
-            im_tex{nn}  = Screen('MakeTexture',win,eye_im.pupil_im_white);
+            im_tex{nn}  = Screen('MakeTexture',win, stim.im.eye.pupil_im_white);
             im_rect{nn} = rect;
             framecolor{nn} = 255*ones(1,3);
     end
 end
 
+%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%   INIT SCREEN %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+Screen('Preference', 'SyncTestSettings', params.ptbMaxVBLstd); % params.ptbMaxVBLstd defines what deviation from empirical monitor refresh rate do we allow before calling it a missed flip (and throwing an error)
+oldCLUT     = pton(ptonparams{:});
+win         = firstel(Screen('Windows'));
+oldPriority = Priority(MaxPriority(win));
+rect        = Screen('Rect',win); % get total screen rect   % alternatively: rect = CenterRect(round([0 0 rect(3)*winsize rect(4)*winsize]),rect);
+HideCursor(win); 
+
+
+%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%  EYELINK SETUP  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+if ~params.wanteyetracking
+    % No need for EYE fun
+    tfunEYE            = @() fprintf('\n');
+else
+    % ANON EYE FUN for SYNC TIME
+    tfunEYE     = @() Eyelink('Message','SYNCTIME');
+
+    % Initialize Eyelink
+    et_ok = EyelinkInit;
+    assert(et_ok==1);
+
+    % Get Eyelink default params
+    el = EyelinkInitDefaults(win);
+    if ~isempty(el.callback)
+        PsychEyelinkDispatchCallback(el);
+    end
+    
+    % Update default Eyelink params with VCD needs
+    el = vcd_setEyelinkParams(el);
+    EyelinkUpdateDefaults(el);
+    
+    % Get window size
+    wwidth = rect(3); wheight = rect(4);  % returns in pixels
+    
+    % Ensure window size is what we think it is
+    assert(isequal(wwidth,params.disp.w_pix))
+    assert(isequal(wheight,params.disp.h_pix))
+    assert(isequal(round(wwidth/2),params.disp.xc))
+    assert(isequal(round(wheight/2),params.disp.yc))
+    
+    % Tell the user
+    fprintf('Pixel size of window is width: %d, height: %d.\n',wwidth,wheight);
+    fprintf('Pixel center offset of window is [x,y]=[%d,%d].\n',params.offsetpix(1),params.offsetpix(2));
+    
+    % Recenter EL coordinates if needed
+    % EK: should we just use updated params.stim.xc/yc??
+    if any(params.offsetpix~=[0,0]) || isempty(params.offsetpix)
+        xc_off = round(wwidth/2) + params.offsetpix(1);
+        yc_off = round(wheight/2) + params.offsetpix(2);
+    else
+        xc_off = round(wwidth/2);
+        yc_off = round(wheight/2);
+    end
+    
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % Customize calibration points (include pixel shift, change size and color)
+    Eyelink('command','screen_pixel_coords = %ld %ld %ld %ld',0,0,wwidth-1,wheight-1); % X,Y coordinates left/top/right/bottom of display area
+    Eyelink('message','DISPLAY_COORDS %ld %ld %ld %ld',0,0,wwidth-1,wheight-1);
+    % IF YOU DON'T WANT CUSTOM DOT POSITIONS: Set number of calibration/validation dots and spread: horizontal-only(H) or horizontal-vertical(HV) as H3, HV3, HV5, HV9 or HV13
+    Eyelink('command','calibration_type = HV5'); % horizontal-vertical 5-points.
+    Eyelink('command','generate_default_targets = NO');
+    Eyelink('command','calibration_samples  = 5');
+    Eyelink('command','calibration_sequence = 0,1,2,3,4,5');
+    Eyelink('command','calibration_targets  = %d,%d %d,%d %d,%d %d,%d %d,%d',...
+        xc_off,yc_off,  ... center x,y
+        xc_off + params.stim.el.point2point_distance_pix, yc_off, ... horz shift right
+        xc_off - params.stim.el.point2point_distance_pix, yc_off, ... horz shift left
+        xc_off, yc_off + params.stim.el.point2point_distance_pix, ... vert shift down
+        xc_off, yc_off - params.stim.el.point2point_distance_pix); %  vert shift up
+    Eyelink('command','validation_samples = 6');
+    Eyelink('command','validation_sequence = 0,1,2,3,4,5');
+    Eyelink('command','validation_targets  = %d,%d %d,%d %d,%d %d,%d %d,%d',...
+        xc_off,yc_off,  ... center x,y
+        xc_off + params.stim.el.point2point_distance_pix, yc_off, ... horz shift right
+        xc_off - params.stim.el.point2point_distance_pix, yc_off, ... horz shift left
+        xc_off, yc_off + params.stim.el.point2point_distance_pix, ... vert shift down
+        xc_off, yc_off - params.stim.el.point2point_distance_pix); %  vert shift up
+    
+    Eyelink('command','active_eye = LEFT');
+    Eyelink('command','binocular_enabled','NO');
+    Eyelink('command','enable_automatic_calibration','NO'); % force manual calibration sequencing, if yes, provide Eyelink('command','automatic_calibration_pacing=1500');
+    Eyelink('command','recording_parse_type = GAZE'); %from manual (default)
+    Eyelink('command','sample_rate = %d', 1000); % hz
+    Eyelink('command','driftcorrect_cr_disable = YES'); % yes to disable drift correction -- we don't want that!
+    %  EyelinkDoDriftCorrection(el); % No drift correction.
+    % other ways of drawing things in EL:     Eyelink('Command','draw_box %d %d %d %d %d',xPos-boundary,yPos-boundary,xPos+boundary,yPos+boundary,colorFrm);
+    
+    % what events (columns) are recorded in EDF:
+    Eyelink('command','file_event_filter = LEFT,RIGHT,FIXATION,SACCADE,BLINK,MESSAGE,BUTTON');
+    % what samples (columns) are recorded in EDF:
+    Eyelink('command','file_sample_data = LEFT,RIGHT,GAZE,GAZERES,PUPIL,AREA,STATUS');
+    % events available for real time:
+    Eyelink('command','link_event_filter = LEFT,RIGHT,FIXATION,SACCADE,BLINK,MESSAGE,BUTTON');
+    % samples available for real time:
+    Eyelink('command','link_sample_data = LEFT,RIGHT,GAZE,GAZERES,PUPIL,AREA,STATUS');
+    
+    % make temp file name and open
+    eyetempfile = sprintf('%s.edf', datestr(now, 'HHMMSS')); %less than 8 digits!
+    fprintf('Saving eyetracking data to %s.\n',eyetempfile);
+    Eyelink('Openfile',eyetempfile);  % NOTE THIS TEMPORARY FILENAME. REMEMBER THAT EYELINK REQUIRES SHORT FILENAME!
+    
+    % Send preamble to EDF header
+    preamble = sprintf('add_file_preamble_text ''VCD experiment @ CMRR %s, subject %03d, session %03d, run: %02d.''', ...
+        params.disp.name, params.subj_nr, params.ses_nr, params.run_nr);
+    Eyelink('command', preamble);
+    
+    % Do calibration & validation!
+    checkcalib = input('Do you want to do a calibration (0=no, 1=yes)? ','s');
+    if isequal(checkcalib,'1')
+        fprintf('Please perform calibration. When done, press the output/record button.\n');
+        EyelinkDoTrackerSetup(el);
+    end
+    
+    % Start recording
+    Eyelink('StartRecording');
+end
+
+
+%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%% LOAD PRE-RUN INSTRUCTION SCREEN %%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 % Get pre-run intructions
 [instrtext, prerun_text_rect] = vcd_getInstructionText(params, introscript, rect);
 
-% Draw background (gray screen)
-% Screen('DrawTexture',win, bckrgound_texture,[], bckground_rect,[], 0, 1, 255*ones(1,3)); % INPUTS TO DRAWTEXTURE: windowPointer, texturePointer(s), [sourceRect], destRects, rotAngles, filterModes, globalAlphas, modulateColors, textureShader, specialFlags, auxParameters]);
-Screen('FillRect',win,params.stim.bckgrnd_grayval,rect);
+% Draw background (gray screen) 
+Screen('FillRect',win,params.stim.bckgrnd_grayval,rect); % Previously: Screen('DrawTexture',win, bckrgound_texture,[], bckground_rect,[], 0, 1, 255*ones(1,3));
   
 % Draw intro text (pre-trigger)
 DrawFormattedText(win, instrtext, 'center', (prerun_text_rect(4)/2)-50, 0, 75,[],[],[],[],prerun_text_rect);
@@ -230,7 +347,7 @@ fprintf('Instructions are on screen, waiting for trigger...\n');
 fprintf('Please have participant press a button to confirm they are ready.\n');
 
 while 1
-  [keyIsDown,secs,keyCode,~] = KbCheck(deviceNr);
+  [keyIsDown,~,keyCode,~] = KbCheck(deviceNr);
   if keyIsDown
     temp = KbName(keyCode);
     if any(strcmp(temp(1), params.userkeys))
@@ -240,10 +357,10 @@ while 1
   end
 end
 
-fprintf('Press trigger key to begin the movie. (consider turning off network, energy saver, software updates.)\n');
+fprintf('Press trigger key to begin the movie. (consider turning off network, energy saver, software updates, psychopy.)\n');
 
 while 1
-    [~,keyCode,~] = KbWait(deviceNr,2); % previously deviceNr = -3; outputs: secs,keyCode,deltaSecs
+    [~,keyCode,~] = KbWait(deviceNr,2); % deviceNr = -3 --> listen to all devices; outputs: secs,keyCode,deltaSecs
     temp = KbName(keyCode);
     
     if isempty(params.triggerkey) || any(strcmp(temp(1), params.triggerkey))
@@ -306,39 +423,33 @@ while 1
         case {990, 991, 992, 993, 994, 995, 996, 997}
             Screen('DrawTexture',win,im_tex{framecnt},[],im_rect{framecnt},0,[],1,framecolor{framecnt});
 
-        % Draw background + fix circle (thin or thick) on top
+        % Draw fix circle (thin or thick)
         case {0, 91, 92, 93, 96, 97, 98, 99}
             Screen('DrawTexture',win,im_tex{framecnt},[],im_rect{framecnt},0,[],1,framecolor{framecnt});
-            % draw background and dot textures
-%             Screen('DrawTextures',win,cell2mat(im_tex{framecnt}),[],im_rect{framecnt}',[0;0],[],[1;1],framecolor{framecnt}');
-            
-        case 90 % task_cue_ID
-            
-            % draw background and background textures -- We do not plot a
-            % fixation circle such that subjects are encouraged to read the
-            % tak instructions
-%             Screen('DrawTexture',win, im_tex{framecnt},[],im_rect{framecnt},0,[],1,framecolor{framecnt});
-            
-            % draw text
-            % inputs are winptr, tstring, sx, sy, color, wrapat, flipHorizontal, flipVertical, vSpacing, righttoleft, winRect)
+        
+        % Draw task instruction text (We do not plot a fixation circle such
+        % that subjects are encouraged to read the task instructions)
+        case 90 
             DrawFormattedText(win, txt_tex{framecnt}, 'center', (txt_rect{framecnt}(4)/2)-25,0,75,[],[],[],[],txt_rect{framecnt});
             
         case {94, 95} % stim IDs
-            % Draw stimulus textures
-%             Screen('DrawTexture',win, bckrgound_texture,[], bckground_rect, 0, [], 1, 255*ones(1,3));...
-        
             % stim.im is a cell with dims: frames x 2, where each cell has a uint8 image (1:l, 2:r)
-            for side = 1:length(run_frames.im_IDs(framecnt,~isnan(run_frames.im_IDs(framecnt,:))))
-                stim_texture = Screen('MakeTexture',win, stim.im{run_frames.im_IDs(framecnt,side),side});
-                Screen('DrawTexture',win,stim_texture,[], stim.rects{run_frames.im_IDs(framecnt,side),side}, 0,[],1, 255*ones(1,3));
+            sides = length(run_frames.im_IDs(framecnt,~isnan(run_frames.im_IDs(framecnt,:))));
+            if  sides == 1 % Make and draw one stimulus texture
+                stim_texture = Screen('MakeTexture',win, stim.im{run_frames.im_IDs(framecnt,sides),sides});
+                Screen('DrawTexture',win,stim_texture,[], stim.rects{run_frames.im_IDs(framecnt,sides),sides}, 0,[],1, 255*ones(1,3));
                 Screen('Close',stim_texture);
+            elseif sides == 2  % Make and draw two stimulus textures
+                stim_textures = Screen('MakeTextures',win, stim.im{run_frames.im_IDs(framecnt,:),:});
+                Screen('DrawTextures',win,stim_textures',[], stim.rects{run_frames.im_IDs(framecnt,:),:}', 0,[],1, 255*ones(2,3));
+                Screen('Close',stim_textures);
             end
 
             % Draw fix dot on top
             Screen('DrawTexture',win,fix_tex{framecnt},[], fix_rect{framecnt}, 0,[],1, 255*ones(1,3));
     end
 
-    % give hint to PT that we're done drawing
+    % Give hint to PT that we're done drawing
     Screen('DrawingFinished',win);
     
     %%%%%%%%%%%%%%%%%%%%%%%% the main while loop that actually puts up stimuli and records button presses
@@ -466,8 +577,6 @@ if params.wanteyetracking
         
     end
 end
-
-
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
