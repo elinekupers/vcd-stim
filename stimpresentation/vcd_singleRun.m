@@ -1,5 +1,25 @@
-function data = vcd_singleRun(subj_nr, ses_nr, ses_type, run_nr, dispName, varargin)
-
+function [data, all_images] = vcd_singleRun(subj_nr, ses_nr, ses_type, run_nr, dispName, varargin)
+% VCD stimulus presentation function to prepare running one VCD core 
+% stimulus run:
+% 
+%    [data, all_images] = vcd_singleRun(subj_nr, ses_nr, ses_type, run_nr, dispName, varargin)
+% 
+% INPUTS (mandatory, for optional inputs, see input parser below):
+%  subj_nr      : subject number (integral number between 1-999)
+%  ses_nr       : session number (integral number between 1-27)
+%  ses_type     : session type (either 1 for version A, 2 for version B)
+%  run_nr       : run number (integral number between 1-15)
+%  dispName     : display name to load display params. Choose from: 7TAS_BOLDSCREEN32, KKOFFICE_AOCQ3277, PPROOM_EIZOFLEXSCAN, 'EKHOME_ASUSVE247'
+%
+% OUTPUTS:
+%   data        : struct with behavioral button presses and monitor
+%                  refresh rate timing, as well as other parameters.
+%   all_images  : struct with all VCD images in uint8 pixels, to
+%                  avoid additional loading time when executing multiple runs.
+%
+% AUTHOR:
+%  Written by Eline Kupers @ UMN (kupers@umn.edu) (2024,2025)
+%
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%% PARSE INPUTS %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -63,13 +83,13 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 if ~isfield(params, 'disp') || isempty(params.disp)
-    params.disp = vcd_getDisplayParams(params.dispName); % BOLDSCREEN is default
+    params.disp = vcd_getDisplayParams(params.dispName);
 end
 
 if params.wantsynctest
-    skipsync = 0; % if wantsynctest = true, we do the synctest
+    skipsync = 0; % if wantsynctest = true, we do the psychtoolbox synctest
 else
-    skipsync = 1; % if wantsynctest = false, we skip the synctest
+    skipsync = 1; % if wantsynctest = false, we skip the psychtoolbox synctest
 end
 
 % Listen to all devices for KbCheck
@@ -93,20 +113,13 @@ end
 % %%%%%%%%% SETUP RNG %%%%%%%%%
 rand('seed', sum(100*clock)); %#ok<RAND>
 randn('seed', sum(100*clock)); %#ok<RAND>
-params.rng.rand = rand;
+params.rng.rand  = rand;
 params.rng.randn = randn;
 
 % If we are testing the experiment, change disp name to load stimuli
 if strcmp(params.env_type,'TEST')
     params.disp.name = 'PPROOM_EIZOFLEXSCAN';
 end
-
-% % Buttonbox / keyboard
-% if strcmp(params.env_type, 'MRI')
-%     params.ignorekeys = KbName({params.triggerkey});  % dont record TR triggers as subject response
-% else
-%     params.ignorekeys = [];
-% end
 
 
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -169,8 +182,6 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%% LOAD RUN STIMULI    %%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% CORE STIMULI %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
 % If you give the function a struct called "stim" with "im" field, we will
 % not load the images..
 if ~exist('stim','var') || ~isfield(scan,'im') || isempty(stim.im)
@@ -187,9 +198,13 @@ if ~exist('stim','var') || ~isfield(scan,'im') || isempty(stim.im)
         masks = a.masks;
         clear a d;
     else % we want to load stimuli on the fly (takes 15-60 seconds depending on the run)
-        [images, masks] = vcd_getImageOrderSingleRun(params, ...
+        if ~exist('all_images','var') && ~isempty(all_images)
+            all_images = [];
+        end
+        
+        [images, masks, all_images] = vcd_getImageOrderSingleRun(params, ...
             time_table_master, all_run_frames, params.subj_nr, params.ses_nr, params.ses_type, params.run_nr, ...
-            'store_params', false,'session_env', params.env_type); 
+            'images', all_images, 'store_params', false,'session_env', params.env_type); 
     end
     
     % Insert images and mask into stim struct
@@ -199,77 +214,27 @@ if ~exist('stim','var') || ~isfield(scan,'im') || isempty(stim.im)
     clear images masks
 end
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%% BACKGROUND STIM %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%  BACKGROUND: 4D array: [x,y, 3, num images]
-% input 2: 'puzzle'  (square central image + peripheral apertures,
-%          'dotring' (simple dot iso eccen donut),
-%          'comb'    (puzzle + simple dot iso-eccen ring overlayed)
-% input 3: 'skinny'  (no space between stim and edge of background) or
-%          'fat'     (+2 deg from stim)
-% input 4: number of unique noise background images
-% input 5: offset of center in pixels [x,y]
-% create background image that adjusts for shifted background if needed
+% Get fixation stim rect
+fix_thin_rect0   = CenterRect([0 0 round(size(stim.im.fix,1)) round(size(stim.im.fix,2))], [0 0 params.disp.w_pix params.disp.h_pix]);
+fix_thick_rect0  = CenterRect([0 0 round(size(stim.im.fix,1)) round(size(stim.im.fix,2))], [0 0 params.disp.w_pix params.disp.h_pix]);
+fix_thin_rect    = {fix_thin_rect0 + repmat(params.offsetpix,1,2)}; clear fix_thin_rect0
+fix_thick_rect   = {fix_thick_rect0 + repmat(params.offsetpix,1,2)}; clear fix_thick_rect0
 
-% if ~exist('bckground','var') || isempty(bckground)
-%     d = dir(fullfile(params.stimfolder,params.disp.name, sprintf('bckgrnd_%s*.mat',params.disp.name)));
-%     a = load(fullfile(d(end).folder, d(end).name),'bckgrnd_im');
-%     bckground = a.bckgrnd_im(:,:,:,params.run_nr);
-%     clear a d
-% end
-%
-% if any(params.offsetpix~=[0,0])
-%     bckground = vcd_pinknoisebackground(params, 'none', 'fat', 1, params.offsetpix);
-% end
+% merge fixation dot image and mask
+fix_thin_full   = cell(1,size(stim.im.fix,4));
+fix_thick_full  = cell(1,size(stim.im.fix,4));
+fix_thick_left  = cell(1,size(stim.im.fix,4));
+fix_thick_right = cell(1,size(stim.im.fix,4));
+fix_thick_both  = cell(1,size(stim.im.fix,4));
 
-% bckground = feval(flipfun,bckground);
-
-%%%%%%%%%%%%%%%%%%%%%%%%% EYETRACKING BLOCK STIM %%%%%%%%%%%%%%%%%%%%%%%%%%
-%  ET TARGETS: 4D array: [x,y, 3, type]
-% Load stored eyetracking block target images if needed
-if ~exist('eye_im','var') || isempty(eye_im) %#ok<NODEF>
-    fprintf('[%s]: Loading eyetracking target images..\n',mfilename);
-    
-    % FIX: 5D array: [x,y, 3, 5 lum, 2 widths]
-    d = dir(sprintf('%s*.mat', params.stim.el.stimfile));
-    a = load(fullfile(d(end).folder,d(end).name), 'sac_im','pupil_im_white','pupil_im_black');
-    eye_im.sac_im          = a.sac_im;
-    eye_im.pupil_im_white  = a.pupil_im_white;
-    eye_im.pupil_im_black  = a.pupil_im_black;
-    clear a d;
+for ll = 1:size(images.im.fix,4) % loop over luminance values
+    fix_thin_full{ll}   = feval(flipfun,  cat(3, stim.im.fix(:,:,:,ll,1), stim.im.fix.mask(:,:,1)));
+    fix_thick_full{ll}  = feval(flipfun,  cat(3, stim.im.fix(:,:,:,ll,2), stim.im.fix.mask(:,:,2)));
+    fix_thick_left{ll}  = feval(flipfun,  cat(3, stim.im.fix(:,:,:,ll,3), stim.im.fix.mask(:,:,3)));
+    fix_thick_right{ll} = feval(flipfun,  cat(3, stim.im.fix(:,:,:,ll,4), stim.im.fix.mask(:,:,4)));
+    fix_thick_both{ll}  = feval(flipfun,  cat(3, stim.im.fix(:,:,:,ll,5), stim.im.fix.mask(:,:,5)));
 end
 
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%% FIX IM %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%  FIX CIRCLE: 5D array: [x,y, 3, lum, type]
-if ~exist('fix','var') || isempty(fix) || ~isfield(fix,'im')
-    d = dir(fullfile(params.stimfolder,params.disp.name, sprintf('fix_%s*.mat',params.disp.name)));
-    a = load(fullfile(d(end).folder, d(end).name),'fix_im','mask');
-    fix_im = a.fix_im;
-    fix_mask = a.mask;
-    clear a d
-end
-
-% make fixation dot texture
-fix_thin_full   = cell(1,size(fix_im,4));
-fix_thick_full  = cell(1,size(fix_im,4));
-fix_thick_left  = cell(1,size(fix_im,4));
-fix_thick_right = cell(1,size(fix_im,4));
-fix_thick_both  = cell(1,size(fix_im,4));
-
-fix_thin_rect0   = CenterRect([0 0 round(size(fix_im,1)) round(size(fix_im,2))], [0 0 params.disp.w_pix params.disp.h_pix]);
-fix_thick_rect0  = CenterRect([0 0 round(size(fix_im,1)) round(size(fix_im,2))], [0 0 params.disp.w_pix params.disp.h_pix]);
-fix_thin_rect    = {fix_thin_rect0 + repmat(params.offsetpix,1,2)};
-fix_thick_rect   = {fix_thick_rect0 + repmat(params.offsetpix,1,2)};
-
-for ll = 1:size(fix_im,4) % loop over luminance values
-    fix_thin_full{ll}   = feval(flipfun,  cat(3, fix_im(:,:,:,ll,1), fix_mask(:,:,1)));
-    fix_thick_full{ll}  = feval(flipfun,  cat(3, fix_im(:,:,:,ll,2), fix_mask(:,:,2)));
-    fix_thick_left{ll}  = feval(flipfun,  cat(3, fix_im(:,:,:,ll,3), fix_mask(:,:,3)));
-    fix_thick_right{ll} = feval(flipfun,  cat(3, fix_im(:,:,:,ll,4), fix_mask(:,:,4)));
-    fix_thick_both{ll}  = feval(flipfun,  cat(3, fix_im(:,:,:,ll,5), fix_mask(:,:,5)));
-end
-
-clear fix_im fix_mask;
 fix_im = struct();
 fix_im.fix_thin_full   = fix_thin_full;   clear fix_thin_full
 fix_im.fix_thick_full  = fix_thick_full;  clear fix_thick_full
@@ -278,7 +243,6 @@ fix_im.fix_thick_right = fix_thick_right; clear fix_thick_right
 fix_im.fix_thick_both  = fix_thick_both;  clear fix_thick_both
 fix_im.fix_thin_rect   = fix_thin_rect;   clear fix_thin_rect
 fix_im.fix_thick_rect  = fix_thick_rect;  clear fix_thick_rect
-
 
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%% TRUNCATE TIME_TABLE_MASTER %%%%%%%%%%%%%%%%%%%%%%%
@@ -300,7 +264,6 @@ clear time_table_master all_run_frames
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%% IMAGE XY CENTER, SIZE, OFFSET %%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
 
 if ~exist('scan','var') || ~isfield(scan, 'rects') || isempty(scan.rects)
     % recenter x,y-center coordinates if needed
@@ -455,6 +418,7 @@ stim.apsize       = apsize;  clear apsize;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%% CENTER RECT %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 stim.rects = cell(size(stim.centers));
 for side = [1,2]
     % Find the non-empty center and size cells for each stimulus side
@@ -503,146 +467,10 @@ end
 % Clear some memory
 clear taskIDs taskNames d taskName
 
-
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%   INIT SCREEN %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%  DEFINE FILENAMES   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-Screen('Preference', 'SyncTestSettings', params.ptbMaxVBLstd); % params.ptbMaxVBLstd defines what deviation from empirical monitor refresh rate do we allow before calling it a missed flip (and throwing an error)
-oldCLUT     = pton(ptonparams{:});
-win         = firstel(Screen('Windows'));
-oldPriority = Priority(MaxPriority(win));
-rect        = Screen('Rect',win); % get total screen rect   % alternatively: rect = CenterRect(round([0 0 rect(3)*winsize rect(4)*winsize]),rect);
-HideCursor(win); 
 
-
-%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%  EYELINK SETUP  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-if ~params.wanteyetracking
-    
-    % No need for EYE fun, eyelink files
-    tfunEYE            = @() ('\n');
-    eyetempfile        = [];
-    params.eyelinkfile = [];
-    
-elseif params.wanteyetracking
-    
-    % ANON EYE FUN for SYNC TIME
-    tfunEYE     = @() Eyelink('Message','SYNCTIME');
-
-    % Create eyelink file if user didn't define one yet.
-    if ~isfield(params,'eyelinkfile') || isempty(params.eyelinkfile)
-        params.eyelinkfile = fullfile(sprintf('eye_%s_vcd_subj-%s_run-%d.edf',datestr(now,30),params.subj_nr,params.run_nr));
-    end
-    
-    % Initialize Eyelink
-    et_ok = EyelinkInit;
-    assert(et_ok==1);
-    
-    %     % Check TCP/IP address
-    %     if strcmp(dispName,'7TAS_BOLDSCREEN32')
-    %         Eyelink('SetAddress','100.1.1.1') %% copied from MGS exp
-    %     elseif strcmp(dispName,'PPROOM_EIZOFLEXSCAN')
-    %         Eyelink('SetAddress','100.1.1.1') %% <--- CHECK THIS
-    %     end
-    
-    % Get Eyelink default params
-    el = EyelinkInitDefaults(win);
-    if ~isempty(el.callback)
-        PsychEyelinkDispatchCallback(el);
-    end
-    
-    % Update default Eyelink params with VCD needs
-    el = vcd_setEyelinkParams(el);
-    EyelinkUpdateDefaults(el);
-    
-    % Get window size
-    wwidth = rect(3); wheight = rect(4);  % returns in pixels
-    
-    % Ensure window size is what we think it is
-    assert(isequal(wwidth,params.disp.w_pix))
-    assert(isequal(wheight,params.disp.h_pix))
-    assert(isequal(round(wwidth/2),params.disp.xc))
-    assert(isequal(round(wheight/2),params.disp.yc))
-    
-    % Tell the user
-    fprintf('Pixel size of window is width: %d, height: %d.\n',wwidth,wheight);
-    fprintf('Pixel center offset of window is [x,y]=[%d,%d].\n',params.offsetpix(1),params.offsetpix(2));
-    
-    % Recenter EL coordinates if needed
-    % EK: should we just use updated params.stim.xc/yc??
-    if any(params.offsetpix~=[0,0]) || isempty(params.offsetpix)
-        xc_off = round(wwidth/2) + params.offsetpix(1);
-        yc_off = round(wheight/2) + params.offsetpix(2);
-    else
-        xc_off = round(wwidth/2);
-        yc_off = round(wheight/2);
-    end
-    
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    % Customize calibration points (include pixel shift, change size and color)
-    Eyelink('command','screen_pixel_coords = %ld %ld %ld %ld',0,0,wwidth-1,wheight-1); % X,Y coordinates left/top/right/bottom of display area
-    Eyelink('message','DISPLAY_COORDS %ld %ld %ld %ld',0,0,wwidth-1,wheight-1);
-    % IF YOU DON'T WANT CUSTOM DOT POSITIONS: Set number of calibration/validation dots and spread: horizontal-only(H) or horizontal-vertical(HV) as H3, HV3, HV5, HV9 or HV13
-    Eyelink('command','calibration_type = HV5'); % horizontal-vertical 5-points.
-    Eyelink('command','generate_default_targets = NO');
-    Eyelink('command','calibration_samples  = 5');
-    Eyelink('command','calibration_sequence = 0,1,2,3,4,5');
-    Eyelink('command','calibration_targets  = %d,%d %d,%d %d,%d %d,%d %d,%d',...
-        xc_off,yc_off,  ... center x,y
-        xc_off + params.stim.el.point2point_distance_pix, yc_off, ... horz shift right
-        xc_off - params.stim.el.point2point_distance_pix, yc_off, ... horz shift left
-        xc_off, yc_off + params.stim.el.point2point_distance_pix, ... vert shift down
-        xc_off, yc_off - params.stim.el.point2point_distance_pix); %  vert shift up
-    Eyelink('command','validation_samples = 6');
-    Eyelink('command','validation_sequence = 0,1,2,3,4,5');
-    Eyelink('command','validation_targets  = %d,%d %d,%d %d,%d %d,%d %d,%d',...
-        xc_off,yc_off,  ... center x,y
-        xc_off + params.stim.el.point2point_distance_pix, yc_off, ... horz shift right
-        xc_off - params.stim.el.point2point_distance_pix, yc_off, ... horz shift left
-        xc_off, yc_off + params.stim.el.point2point_distance_pix, ... vert shift down
-        xc_off, yc_off - params.stim.el.point2point_distance_pix); %  vert shift up
-    
-    Eyelink('command','active_eye = LEFT');
-    Eyelink('command','binocular_enabled','NO');
-    Eyelink('command','enable_automatic_calibration','NO'); % force manual calibration sequencing, if yes, provide Eyelink('command','automatic_calibration_pacing=1500');
-    Eyelink('command','recording_parse_type = GAZE'); %from manual (default)
-    Eyelink('command','sample_rate = %d', 1000); % hz
-    Eyelink('command','driftcorrect_cr_disable = YES'); % yes to disable drift correction -- we don't want that!
-    %  EyelinkDoDriftCorrection(el); % No drift correction.
-    % other ways of drawing things in EL:     Eyelink('Command','draw_box %d %d %d %d %d',xPos-boundary,yPos-boundary,xPos+boundary,yPos+boundary,colorFrm);
-    
-    % what events (columns) are recorded in EDF:
-    Eyelink('command','file_event_filter = LEFT,RIGHT,FIXATION,SACCADE,BLINK,MESSAGE,BUTTON');
-    % what samples (columns) are recorded in EDF:
-    Eyelink('command','file_sample_data = LEFT,RIGHT,GAZE,GAZERES,PUPIL,AREA,STATUS');
-    % events available for real time:
-    Eyelink('command','link_event_filter = LEFT,RIGHT,FIXATION,SACCADE,BLINK,MESSAGE,BUTTON');
-    % samples available for real time:
-    Eyelink('command','link_sample_data = LEFT,RIGHT,GAZE,GAZERES,PUPIL,AREA,STATUS');
-    
-    % make temp file name and open
-    eyetempfile = sprintf('%s.edf', datestr(now, 'HHMMSS')); %less than 8 digits!
-    fprintf('Saving eyetracking data to %s.\n',eyetempfile);
-    Eyelink('Openfile',eyetempfile);  % NOTE THIS TEMPORARY FILENAME. REMEMBER THAT EYELINK REQUIRES SHORT FILENAME!
-    
-    % Send preamble to EDF header
-    preamble = sprintf('add_file_preamble_text ''VCD experiment @ CMRR %s, subject %03d, session %03d, run: %02d.''', ...
-        params.disp.name, params.subj_nr, params.ses_nr, params.run_nr);
-    Eyelink('command', preamble);
-    
-    % Do calibration & validation!
-    checkcalib = input('Do you want to do a calibration (0=no, 1=yes)? ','s');
-    if isequal(checkcalib,'1')
-        fprintf('Please perform calibration. When done, press the output/record button.\n');
-        EyelinkDoTrackerSetup(el);
-    end
-    
-    % Start recording
-    Eyelink('StartRecording');
-end
-
-%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Get time of stim call
 timeofshowstimcall = datestr(now,30);
 
@@ -662,23 +490,27 @@ if ~isfield(params,'behaviorfile') || isempty(params.behaviorfile)
         timeofshowstimcall,params.subj_nr,params.ses_nr,params.run_nr);
 end
 
+% Create eyelink file if user didn't define one yet.
+if params.wanteyetracking
+    if ~isfield(params,'eyelinkfile') || isempty(params.eyelinkfile)
+        params.eyelinkfile = fullfile(sprintf('eye_%s_vcd_subj-%s_run-%d.edf',datestr(now,30),params.subj_nr,params.run_nr));
+    end
+else
+    params.eyelinkfile = [];
+end
+
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% START EXPERIMENT! %%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-[data,~] = vcd_showStimulus(...
-    win, rect, params, ...
+[data, ~] = vcd_showStimulus(...
+    win, rect, params, ptonparams, ...
     fix_im, ...
-    eye_im, ...
     stim, ...
     run_frames, ...
     run_table, ...
     introscript, ...
     taskscript, ...
-    tfunEYE, ...
-    deviceNr, ...
-    oldCLUT,...
-    oldPriority, ...
-    eyetempfile);
+    deviceNr);
 
 
 return
