@@ -1,18 +1,18 @@
-function vcd_createEyeTrackingBlockTargets(params)
-
-% exp.block.eye_gaze_fix_ID         = 990; % fixation target
-% exp.block.eye_gaze_sac_target_ID  = 991:995; % central, left, right, up, down.
-% exp.block.eye_gaze_pupil_ID       = 996; % white then black
-% % eye gaze block
-% exp.block.nr_of_saccades      = 5;
-% exp.block.eye_gaze_fix0       = presentationrate_hz * 1.0; % start with 1 second fixation period
-% exp.block.eye_gaze_sac_target = presentationrate_hz * 1.2; % then 5x1.2 = 6 seconds of saccades (mimicing EL HV5 grid,±3 deg in all directions)
-% exp.block.eye_gaze_fix1       = presentationrate_hz * 2.0; % then a 2-seconds rest trial
-% exp.block.eye_gaze_pupil      = presentationrate_hz .* [3.0,1.0]; % then a 4-seconds pupil trial: 3-s black adaptation, 1-s white screen to evoke max pupil response.
-% exp.block.total_eyetracking_block_dur = sum([exp.block.eye_gaze_fix0, ...
-%     exp.block.eye_gaze_sac_target*exp.block.nr_of_saccades, ...
-%     exp.block.eye_gaze_fix1, ...
-%     exp.block.eye_gaze_pupil]);
+function [sac_im,pupil_im_white,pupil_im_black] = vcd_createEyeTrackingBlockTargets(params)
+% VCD function to create stimuli for eye tracking block
+% 
+%   [sac_im,pupil_im_white,pupil_im_black] = vcd_createEyeTrackingBlockTargets(params)
+% 
+% There are 5 saccade targets (params.exp.block.nr_of_saccades): central, 
+% left, right, up, down, and 1 pupil trial with a mid-gray central fixation 
+% target on a black and white background.
+%
+% An eye tracking block has the following sequence;
+%   1. a 1-second fixation period (central fixation target on a mid-gray luminance)
+%   2. 5 x 1.2 second = 6 seconds of saccades (mimicing EL HV5 grid,±3 deg in all directions)
+%   3. a 2-seconds rest period (central fixation target on a mid-gray luminance)
+%   4. a 4-seconds pupil trial: 3-s black adaptation, 1-s white screen to evoke max pupil response.
+%
 % The distance between the center and 4 left/right/up/down
 % points are set as [xc,yc] ± 265 pixels (BOLDscreen)
 % or ± 194 pixels (EIZOFLEXSCAN). This results in dots at the following
@@ -25,57 +25,69 @@ function vcd_createEyeTrackingBlockTargets(params)
 %                  [x3,y3]=[0,406]
 % [x1,y1]=[766,0]  [x0,y0]=[960,600]   [x2,y2]=[1154,0]
 %                  [x4,y4]=[0,794]
+%
 % EMPIRICAL target distance:
 % * BOLDscreen: 265 pixels, which corresponds to 3.0059 degrees.
 % * PP room EIZOFLEX: 194 pixels, which corresponds to 3.0139 degrees.
+%
 % See vcd_setEyelinkParams.m for other parameters regarding Eyelink.
-% stim.el.point2point_distance_deg = 3.0;                                % desired target distance (in deg) from fixation
-% stim.el.point2point_distance_pix = round((stim.el.point2point_distance_deg*disp_params.ppd/2))*2; % desired target distance in pixels
-% stim.el.total_target_diam_pix    = stim.fix.dotthickborderdiam_pix;    % same as thick fixation circle (22 pixels for BOLDscreen)
-% stim.el.target_center_diam_pix   = stim.fix.dotcenterdiam_pix;         % same as inner fixation circle (10 pixels for BOLDscreen)
-% 
+%
+% INPUTS:
+%  params           : (struct) parameter struct, which should contain the following fields:
+%   * exp.block.nr_of_saccades         :  nr of saccade targets (positive integral number) (default is 5)
+%   * stim.bckgrnd_grayval             :  mid-gray luminance level (default is 128)
+%   * stim.el.point2point_distance_deg :  desired target distance in degrees from center of the screen (default = 3 deg)
+%   * stim.el.point2point_distance_pix :  desired target distance in pixels from center of the screen (default is  265 pixels for BOLD screen and 194 pixels for PP room eizoflex)
+%   * stim.el.total_target_diam_pix    :  total diameter of target (inner circle + outer rim) in pixels (same as thick fixation circle, 22 pixels for BOLDscreen)
+%   * stim.el.target_center_diam_pix   :  diameter of the inner circle of the target in pixels (same as fixation circle,10 pixels for BOLDscreen)
+%   * disp.h_pix                       :  height of the display in pixels
+%   * disp.w_pix                       :  width of the display in pixels
+%
+% OUTPUTS:
+%  sac_im           : (uint8) saccade stimuli (disp.h_pix x disp.w_pix x 3 x nr of saccade targets)
+%  pupil_im_white   : (uint8) white background pupil trial stimulus (disp.h_pix x disp.w_pix x 3)
+%  pupil_im_black   : (uint8) black background pupil trial stimulus (disp.h_pix x disp.w_pix x 3)
+%
+% Written by E. Kupers @ UMN 2025/05
 
+% Define params
+target_locations = params.exp.block.nr_of_saccades;
+bckground_gray   = uint8(ones(params.disp.h_pix,params.disp.w_pix))*params.stim.bckgrnd_grayval;
+
+% Define folders to store stimulus matlab file and pngs.
+saveStimDir = fullfile(vcd_rootPath,'workspaces','stimuli',params.disp.name);
+saveFigDir = fullfile(vcd_rootPath,'figs',params.disp.name,'eye');
+if ~exist(saveFigDir,'file'), mkdir(saveFigDir); end
+if ~exist(saveStimDir,'file'), mkdir(saveStimDir); end
+
+% Create image support for saccade target
 support_x = 2*params.stim.fix.dotcenterdiam_pix;
 support_y = support_x; 
 
-target_im  = uint8(zeros([support_x, support_y, 3])); 
-
-x = [1:(2*params.stim.fix.dotcenterdiam_pix)]-params.stim.fix.dotcenterdiam_pix;
-[XX,~] = meshgrid(x,x);
-
 % Where to insert luminance val? (divide diam by 2 to get radius, which is
 % expected by makecircleimage)
-fixationmask_inner    = find(makecircleimage(support_x, params.stim.fix.dotcenterdiam_pix/2));
 fixationmask_rimthick  = find(makecircleimage(support_x, params.stim.fix.dotthickborderdiam_pix/2) - ...
-                           makecircleimage(support_x,   params.stim.fix.dotcenterdiam_pix/2));  
+                              makecircleimage(support_x, params.stim.fix.dotcenterdiam_pix/2));  
                        
-% everything is initially gray
+% Everything is initially gray
 fixation_rimthick0_black_on_gray = params.stim.bckgrnd_grayval*ones(support_x*support_y, 3);
 fixation_rimthick0_gray_on_white = 255*ones(support_x*support_y, 3);
 fixation_rimthick0_gray_on_black = zeros(support_x*support_y, 3);
-
 
 % add thin black rim 
 fixation_rimthick0_black_on_gray(fixationmask_rimthick,:)   = zeros(size(fixationmask_rimthick,1), 3);  % add black rim
 fixation_rimthick0_gray_on_white(fixationmask_rimthick,:)   = params.stim.bckgrnd_grayval*ones(size(fixationmask_rimthick,1), 3);  % add gray rim
 fixation_rimthick0_gray_on_black(fixationmask_rimthick,:)   = params.stim.bckgrnd_grayval*ones(size(fixationmask_rimthick,1), 3);  % add gray rim
 
-
 % reshape
 fixation_rimthick1_black_on_gray       = reshape(fixation_rimthick0_black_on_gray,[support_x, support_y, 3]);
 fixation_rimthick1_gray_on_white       = reshape(fixation_rimthick0_gray_on_white,[support_x, support_y, 3]);
 fixation_rimthick1_gray_on_black       = reshape(fixation_rimthick0_gray_on_black,[support_x, support_y, 3]);
 
-saveStimDir = fullfile(vcd_rootPath,'workspaces','stimuli',params.disp.name);
-saveFigDir = fullfile(vcd_rootPath,'figs',params.disp.name,'eye');
-if ~exist(saveFigDir), mkdir(saveFigDir); end
-if ~exist(saveStimDir), mkdir(saveStimDir); end
 
-target_locations = 5;
-
-bckground_gray = uint8(ones(params.disp.h_pix,params.disp.w_pix))*params.stim.bckgrnd_grayval;
-dot_halfsz = size(fixation_rimthick1_black_on_gray,1)/2;
-sac_im = [];
+%% Place saccade targets on grey background
+dot_halfsz     = size(fixation_rimthick1_black_on_gray,1)/2;
+sac_im         = [];
 
 for nr_loc = 1:target_locations
     
@@ -123,12 +135,14 @@ for nr_loc = 1:target_locations
     
     sac_im = cat(4,sac_im,im1); 
 
+    % Visualize image when requested
     if params.verbose
         figure(1); clf
         imshow(im1,[1 255]);
         axis image
     end
     
+    % Store image when requested
     if params.store_imgs
         imwrite(im1, fullfile(saveFigDir,sprintf('vcd_eyetarget_%02d.png', nr_loc)));
     end
@@ -136,7 +150,7 @@ for nr_loc = 1:target_locations
     
 end
 
-% Pupil trial
+%% Pupil trial
 bckground_white = uint8(ones(params.disp.h_pix,params.disp.w_pix))*255;
 bckground_black = uint8(zeros(params.disp.h_pix,params.disp.w_pix));
 
@@ -151,6 +165,7 @@ dot_coords_y = (ys - dot_halfsz) : (ys + dot_halfsz -1);
 pupil_im_white(dot_coords_y, dot_coords_x,:) = fixation_rimthick1_gray_on_white;
 pupil_im_black(dot_coords_y, dot_coords_x,:) = fixation_rimthick1_gray_on_black;
 
+% Visualize image when requested
 if params.verbose
     figure(2); clf
     imshow(pupil_im_white,[1 255]);
@@ -161,13 +176,12 @@ if params.verbose
     axis image
 end
 
+% Store image when requested
 if params.store_imgs
+    save(fullfile(saveStimDir,sprintf('eye_%s%s.mat', params.disp.name, datestr(now,30))), 'sac_im','pupil_im_white','pupil_im_black');
     imwrite(pupil_im_white, fullfile(saveFigDir,'vcd_eyepupil_white.png'));
     imwrite(pupil_im_black, fullfile(saveFigDir,'vcd_eyepupil_black.png'));   
 end
 
-if params.store_imgs
-    save(fullfile(saveStimDir,sprintf('eye_%s%s.mat', params.disp.name, datestr(now,30))), 'sac_im','pupil_im_white','pupil_im_black');
-end
     
 
