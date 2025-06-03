@@ -139,7 +139,7 @@ if params.stim.store_imgs
     tic
     saveDir = fileparts(fullfile(params.stim.fix.stimfile));
     if ~exist(saveDir,'dir'), mkdir(saveDir); end
-    save(fullfile(sprintf('%s_%s_%s.mat',params.stim.fix.stimfile,params.disp.name,datestr(now,30))),'fix_im','mask','info','-v7.3');
+    save(fullfile(sprintf('%s_%s.mat',params.stim.fix.stimfile,datestr(now,30))),'fix_im','mask','info','-v7.3');
 
     saveDir = fileparts(fullfile(params.stim.fix.infofile));
     if ~exist(saveDir,'dir'), mkdir(saveDir); end
