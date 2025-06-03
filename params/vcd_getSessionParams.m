@@ -141,7 +141,7 @@ else
     exp.session.mri.deep.session_types(end,2)           = 2;
     exp.session.mri.deep.n_runs_per_session             = NaN(26,2);        % there are 10x 6.05 min runs for DEEP sessions 1-25, 26A and 26B have 4 runs each
     exp.session.mri.deep.n_runs_per_session(1:end-1,1)  = 10; 
-    exp.session.mri.deep.n_runs_per_session(end,:)      = [4,4];
+    exp.session.mri.deep.n_runs_per_session(end,:)      = [5,5];
     exp.session.mri.deep.baseline_sessions              = 1:4;              % Deep sessions dedicated to establish baseline, prior to introducing LTM/IMG
 
     % General
@@ -346,42 +346,42 @@ else
     exp.session.deep.nr_of_type3_runs([1:4],:)  = [4,NaN; 5,NaN; 4,NaN; 5,NaN]; % 1 single-stim blocks / 4 double-stim blocks
     exp.session.deep.nr_of_type4_runs([1:4],:)  = [0,NaN; 0,NaN; 0,NaN; 0,NaN]; % 0 single-stim blocks / 5 double-stim blocks
 
-    % 5-21 Deep sessions with 2 run types, all crossings
+    % 5-20 Deep sessions with 2 run types, all crossings
     exp.session.deep.nr_of_type1_runs([5:20],:)  = repmat([3,NaN],length([5:20]),1);
     exp.session.deep.nr_of_type2_runs([5:20],:)  = repmat([0,NaN],length([5:20]),1);
     exp.session.deep.nr_of_type3_runs([5:20],:)  = repmat([0,NaN],length([5:20]),1);
     exp.session.deep.nr_of_type4_runs([5:20],:)  = repmat([7,NaN],length([5:20]),1);
 
-    % 22-24 Deep sessions with 2 run types, all crossings, winding down on single-stim blocks  
+    % 21-24 Deep sessions with 2 run types, all crossings, winding down on single-stim blocks  
     exp.session.deep.nr_of_type1_runs([21:24],:)  = repmat([4,NaN],length([21:24]),1);
     exp.session.deep.nr_of_type2_runs([21:24],:)  = repmat([0,NaN],length([21:24]),1);
     exp.session.deep.nr_of_type3_runs([21:24],:)  = repmat([0,NaN],length([21:24]),1);
     exp.session.deep.nr_of_type4_runs([21:24],:)  = repmat([6,NaN],length([21:24]),1);
     
-    % 22-24 Deep sessions with 2 run types, all crossings, winding down on single-stim blocks      
+    % Deep session 25 has 2 run types, all crossings, winding down on single-stim blocks      
     exp.session.deep.nr_of_type1_runs(25,:)  = [5,NaN];
     exp.session.deep.nr_of_type2_runs(25,:)  = [0,NaN];
     exp.session.deep.nr_of_type3_runs(25,:)  = [0,NaN];
     exp.session.deep.nr_of_type4_runs(25,:)  = [5,NaN];
     
-    % Last deep session (25) has two session types (A and B), uses first 3 run types, and only
-    % NS-stimulus crossings.
+    % Last deep session (26) has two session types (A and B), uses first 3 run types,
+    % with majority NS-stimulus crossings.
     exp.session.deep.nr_of_type1_runs(26,:)  = [2,2];
-    exp.session.deep.nr_of_type2_runs(26,:)  = [1,1];
-    exp.session.deep.nr_of_type3_runs(26,:)  = [1,1];
-    exp.session.deep.nr_of_type4_runs(26,:)  = [0,0];
+    exp.session.deep.nr_of_type2_runs(26,:)  = [0,0];
+    exp.session.deep.nr_of_type3_runs(26,:)  = [2,2];
+    exp.session.deep.nr_of_type4_runs(26,:)  = [1,1];
     
     exp.session.behavior.ses_blocks = zeros(size(exp.crossings,1),size(exp.crossings,2),length(exp.session.n_behavioral_sessions)); % last dim represents session type
     exp.session.wide.ses_blocks = zeros(size(exp.crossings,1),size(exp.crossings,2),length(exp.session.n_wide_sessions),2);
     exp.session.deep.ses_blocks = zeros(size(exp.crossings,1),size(exp.crossings,2),length(exp.session.n_deep_sessions),2);
 
     
-    % sessions for behavior 1                  fix cd scc  pc  wm ltm img what where  how  
-    exp.session.behavior.ses_blocks(:,:,1,1) = [2	3	3	3	6	0	0	0	0	0; % gabor
-                                                2	3	3	3	6	0	0	0	0	0; % rdk
-                                                1	2	2	2	4	0	0	0	0	0; % dot
-                                                1	2	2	2	4	0	0	2	0	2; % obj
-                                                4	4	0	4	8	0	0	4	4	4]; % ns
+    % sessions for behavior 1                  fix cd  scc  pc  wm ltm img what where how  
+    exp.session.behavior.ses_blocks(:,:,1,1) = [1	1  0.5	 3	 6	 0	 0	 0	 0	  0; % gabor
+                                                1	1  0.5	 3	 6	 0	 0	 0	 0	  0; % rdk
+                                                1	1  0.5	 2	 4	 0	 0	 0	 0	  0; % dot
+                                                1	1  0.5	 2	 4	 0	 0	 2	 0	  2; % obj
+                                                1	1  0	 4   8	 0	 0	 4	 4	  4]; % ns
 
 
     % sessions WIDE 1A                    fix cd scc  pc  wm ltm img what where  how  
@@ -578,17 +578,17 @@ else
                                             2	2	0	2	1	4	3	2	3	3];
 
         %                                 % fix cd  scc  pc  wm ltm img what where how           
-    exp.session.deep.ses_blocks(:,:,26,1) =[0	0	0	0	0	0	0	0	0	0;
-                                            0	0	0	0	0	0	0	0	0	0;
-                                            0	0	0	0	0	0	0	0	0	0;
-                                            0	0	0	0	0	0	0	0	0	0;
+    exp.session.deep.ses_blocks(:,:,26,1) =[0	0	0	0	0	1	1	0	0	0;
+                                            0	0	0	0	0	1	1	0	0	0;
+                                            0	0	0	0	0	1	1	0	0	0;
+                                            0	0	0	0	0	1	1	0	0	0;
                                             2	2	0	3	3	0	2	3	3	3];
                                         
                                          % fix cd  scc  pc  wm ltm img what where how         
-    exp.session.deep.ses_blocks(:,:,26,2) =[0	0	0	0	0	0	0	0	0	0;
-                                            0	0	0	0	0	0	0	0	0	0;
-                                            0	0	0	0	0	0	0	0	0	0;
-                                            0	0	0	0	0	0	0	0	0	0;
+    exp.session.deep.ses_blocks(:,:,26,2) =[0	0	0	0	0	1	1	0	0	0;
+                                            0	0	0	0	0	1	1	0	0	0;
+                                            0	0	0	0	0	1	1	0	0	0;
+                                            0	0	0	0	0	1	1	0	0	0;
                                             1	3	0	2	3	0	2	4	2	4];
     
     % To achieve least 10 repetitions for each unique condition, we need to create 11+ trial repeats.
@@ -597,14 +597,14 @@ else
     % least one FIX block per session.
     
    
-    exp.nr_unique_trials_per_crossing          = exp.crossings.* [24,24,16,16,30]'; % 24+2 catch trials, etc 
+    exp.nr_unique_trials_per_crossing          = exp.crossings.* [24,24,16,16,30]'; % 24 trials per stim class, etc 
     exp.nr_unique_trials_per_crossing(1:4,1)   = exp.nr_unique_trials_per_crossing(1:4,1)*0.5; % fixation crossings have half the nr of unique trials.
     exp.nr_unique_trials_per_crossing(:,[6:7]) = (exp.nr_unique_trials_per_crossing(:,[6:7]).* [1/3, 1/3, 1/2, 1/2, 1/2]'); % ltm/img crossings have special core images only (1/3 or 1/2 nr of core), but x2.
-    exp.nr_unique_trials_per_crossing(1:4,2:end) = exp.nr_unique_trials_per_crossing(1:4,2:end); % x2 cues for classic stimuli
+%     exp.nr_unique_trials_per_crossing(1:4,2:end) = exp.nr_unique_trials_per_crossing(1:4,2:end); % x2 cues for classic stimuli
     exp.nr_trials_per_block = exp.crossings.* cat(2,repmat(exp.block.n_trials_single_epoch,1,4),repmat(exp.block.n_trials_double_epoch,1,3),repmat(exp.block.n_trials_single_epoch,1,3));
     
-    ses_type_1_trials = ((sum(exp.session.deep.ses_blocks(:,:,:,1),3) + sum(exp.session.wide.ses_blocks(:,:,:,1),3)) .*2 .* (exp.nr_trials_per_block+1));
-    ses_type_2_trials = ((sum(exp.session.deep.ses_blocks(:,:,:,2),3) + sum(exp.session.wide.ses_blocks(:,:,:,2),3)) .*2 .* (exp.nr_trials_per_block+1));
+    ses_type_1_trials = ((sum(exp.session.deep.ses_blocks(:,:,:,1),3) + sum(exp.session.wide.ses_blocks(:,:,:,1),3)) .* (exp.nr_trials_per_block));
+    ses_type_2_trials = ((sum(exp.session.deep.ses_blocks(:,:,:,2),3) + sum(exp.session.wide.ses_blocks(:,:,:,2),3)) .* (exp.nr_trials_per_block));
     exp.n_unique_trial_repeats_mri = ceil((ses_type_1_trials + ses_type_2_trials) ./  exp.nr_unique_trials_per_crossing) ;
    
     exp.n_unique_trial_repeats_behavior = ceil((exp.session.behavior.ses_blocks .*  exp.nr_trials_per_block)  ./  exp.nr_unique_trials_per_crossing);                                 
