@@ -47,7 +47,7 @@ if ~exist(saveFigsFolder,'dir'); mkdir(saveFigsFolder); end
 % "stim_<dispname>_*.mat" in fullfile(vcd_rootPath,'workspaces','info').
 % When storing generated parameters, we save the parameters as a .mat file
 % in "stim_<dispname>_YYYYMMDDTHHMMSS.mat" in fullfile(vcd_rootPath,'workspaces','info').
-params.load_params  = false;  % if true, we load from file. if false, define params.
+params.load_params  = true;  % if true, we load from file. if false, define params.
 params.store_params = true;  % if false, we don't store params. if true, we store mat file in fullfile(vcd_rootPath,'workspaces','info')
                                        
 % Reset random number generator with arbitrary number (based on system
@@ -76,57 +76,6 @@ params.exp    = vcd_getSessionParams('disp_name', params.disp.name, ...
 %%%%%% STIMULI %%%% 
 %%%%%%%%%%%%%%%%%%%
 
-%% Background
-% We create a pinknoise (1/f) image for the entire monitor size, and
-% superimpose a mean gray luminance cutout. The center of this cutout can
-% be adjusted with pixoffset parameter.
-% If params.verbose = true, this function will make a PNG of each
-% background image, and a figure plotting image with image nr and axes.
-% If params.store_imgs = true, this function will store these figures in
-% fullfile(vcd_rootPath,'figs',dispname,'background').
-%
-% INPUTS:
-% * params      : parameter struct (requires display and stimulus parameters)
-%
-% * gaptype     : what stimulus apertures to use to create cutout shape, choose from:
-%   - 'none'        : gray mean luminance background, no pink noise
-%   - 'circle'      : circular shape 
-%   - 'puzzle'      : union of center square and 2 parafoveal stimulus apertures in 2-stimulus array)
-%   - 'dotring'     : iso-eccentric ring that the single dot lives on.
-%   - 'comb'        : union of puzzle and dotring)
-%
-% * borderwidth : how much buffer zone do you want between stimulus edge and pink noise, choose from: 
-%   - 'skinny'    (no additional "buffer zone" between and pink noise background
-%   - 'fat'       (with additional "buffer zone": 1 degree added on each side of the cutout 
-%   if gaptype = 'none', borderwidth will be ignored.
-%
-% * num         : number of unique noise images (should be an integer, default is 1)
-% * pixoffset   : relative offset of [x,y] center in pixels from the native 
-%                 center of the monitor (BOLDscreen width 540 x height 960
-%                 pixels). Default is [0,0] pixels.
-%
-% OUTPUT: 
-% * bckgrnd_im  : (uint8) background images, height in pixels x width in pixels x 3 (rbg) x number of images (int) 
-%                 BOLDscreen dimensions are: height (1080 pixels) x width (1920 pixels)
-
-% Define inputs
-gaptype     = 'none';
-borderwidth = 'none';
-
-if strcmp(dispname,'PPROOM_EIZOFLEXSCAN')
-    % 14 runs * 1 session x 2 session type ("BEHAVIOR001")
-    num = 1; %sum(params.exp.session.behavior.n_runs_per_session); 
-elseif strcmp(dispname,'7TAS_BOLDSCREEN32')
-    % 258 MRI runs: 10 runs x 2 (WIDE01A + WIDE01B) + 10 runs x 25 sessions (DEEP001-0025) + 4 runs x 2 sessions (DEEP26A/26Bp)
-    num = 1; %sum(params.exp.session.mri.wide.n_runs_per_session) + sum(params.exp.session.mri.deep.n_runs_per_session);
-else
-    num = 1;
-end
-bckgrnd_im  = vcd_pinknoisebackground(params, ...
-                                     'gaptype', gaptype, ...
-                                     'borderwidth', borderwidth,...
-                                     'num', num, ...
-                                     'pixoffset', [0,0]); 
 
 %% Eyetracking targets
 
@@ -155,7 +104,7 @@ vcd_createEyeTrackingBlockTargets(params)
 [fix_im, fix_mask, fix_info] = vcd_fixationDot(params);
 
 %% Gabors
-% vcd_gabor function creates 120 Gabor stimuli: 24 core and 96 working
+% vcd_gabor function creates 56 Gabor stimuli: 24 core and 32 working
 % memory test images.
 % If params.verbose = true, this function will make a PNG of each
 % gabor image, and a figure plotting gabors with image nr and axes as well 
@@ -167,19 +116,29 @@ vcd_createEyeTrackingBlockTargets(params)
 % * params      : parameter struct (requires display and stimulus parameters)
 %
 % OUTPUTS:
-% * gabors      : (uint8) 120 unique gabor images, 5D array: 
-%                   height (354 pixels) x width (354 pixels) x 3 (rgb) 
-%                   x 24 unique images (8 ori x 3 contrasts) 
-%                   x 5 orientation tilt offsets (0 + -15, -5, +5, +15 deg)
-% * masks       : (uint8) alpha transparency masks used by Psychtoolbox to
-%                   crop the edges of the square support, 4D array:
-%                   height (354 pixels) x width (354 pixels) 
-%                   x 24 unique images x 5 tilt offsets
+% * gabors      : (uint8) 56 unique gabor images, 6D array: 
+%                   height (354/256 pixels for MRI/PProom) 
+%                   x width (354/256 pixels for MRI/PProom 
+%                   x 3 (rgb) 
+%                   x 8 orientations
+%                   x 3 contrasts 
+%                   x 5 orientation tilt offsets (0, -16, -8, +8, +16 deg)
+%                   Note that dims gabors(:,:,:,:,[1,2],:) are empty
+%                   as all wm test stimuli use the highest contrast level.
+% * masks       : (uint8) 56 alpha transparency masks used by Psychtoolbox to
+%                   crop the edges of the square support, 5D array:
+%                   height (354/256 pixels for MRI/PProom) 
+%                   x width (354/256 pixels for MRI/PProom) 
+%                   x 8 orientations
+%                   x 3 contrasts 
+%                   x 5 orientation tilt offsets (0, -16, -8, +8, +16 deg).
+%                   Note that dims masks(:,:,:,[1,2],:) are empty
+%                   as all wm test stimuli use the highest contrast level.
 % * info        : table with stimulus information matching the gabor array
-[gabors, masks, info] = vcd_gabor(params);
+[gabors, ~, ~] = vcd_gabor(params);
 
 %% RDKs (Random Dot motion Kinetograms)
-% vcd_rdk function creates 120 RDK movies: 24 core and 96 working memory
+% vcd_rdk function creates 56 RDK movies: 24 core and 32 working memory
 % test images.
 %
 % If params.verbose = true, this function will make a PNG of each RDK movie
@@ -193,16 +152,16 @@ vcd_createEyeTrackingBlockTargets(params)
 %
 % OUTPUTS:
 % * rdks        : (cell) 3D cell array with RDK stimuli: 
-%                  8 motion directions x 3 coherence levels x 5 motion direction offsets (0, -15, -5, +5, +15 deg). 
+%                  8 motion directions x 3 coherence levels x 5 motion direction offsets (0, -20, -10, +10, +20 deg). 
 %                  Each cell contains movie frames (uint8):
 %                  For BOLDscreen:
 %                   height (548 pixels) x width (548 pixels for BOLDscreen, 400 pixels for EIZOflexscan) 
 %                   x 3 (rgb) x 30 frames (total of 2 s, 33 ms per frame).
 % * masks       : (cell) 3D cell with alpha transparency masks:
-%                   8 motion directions x 3 coherence levels x 5 motion direction offsets (0, -15, -5, +5, +15 deg). 
+%                   8 motion directions x 3 coherence levels x 5 motion direction offsets (0, -20, -10, +10, +20 deg). 
 %                   Each cell contains one uint8 mask image: 
 %                   For BOLDscreen:
-%                     height (548 pixels) x width (548 pixels)
+%                     height (548 pixels) x width (548 pixels,
 % * info        : table with stimulus information matching the rdk array 
 
 [rdks, masks, info] = vcd_rdk(params);
@@ -307,3 +266,57 @@ vcd_createEyeTrackingBlockTargets(params)
 
 [scenes, ltm_lures, wm_im, info] = vcd_naturalscenes(params);
 
+
+
+
+%% Background -- now obsolete
+% We create a pinknoise (1/f) image for the entire monitor size, and
+% superimpose a mean gray luminance cutout. The center of this cutout can
+% be adjusted with pixoffset parameter.
+% If params.verbose = true, this function will make a PNG of each
+% background image, and a figure plotting image with image nr and axes.
+% If params.store_imgs = true, this function will store these figures in
+% fullfile(vcd_rootPath,'figs',dispname,'background').
+%
+% INPUTS:
+% * params      : parameter struct (requires display and stimulus parameters)
+%
+% * gaptype     : what stimulus apertures to use to create cutout shape, choose from:
+%   - 'none'        : gray mean luminance background, no pink noise
+%   - 'circle'      : circular shape 
+%   - 'puzzle'      : union of center square and 2 parafoveal stimulus apertures in 2-stimulus array)
+%   - 'dotring'     : iso-eccentric ring that the single dot lives on.
+%   - 'comb'        : union of puzzle and dotring)
+%
+% * borderwidth : how much buffer zone do you want between stimulus edge and pink noise, choose from: 
+%   - 'skinny'    (no additional "buffer zone" between and pink noise background
+%   - 'fat'       (with additional "buffer zone": 1 degree added on each side of the cutout 
+%   if gaptype = 'none', borderwidth will be ignored.
+%
+% * num         : number of unique noise images (should be an integer, default is 1)
+% * pixoffset   : relative offset of [x,y] center in pixels from the native 
+%                 center of the monitor (BOLDscreen width 540 x height 960
+%                 pixels). Default is [0,0] pixels.
+%
+% OUTPUT: 
+% * bckgrnd_im  : (uint8) background images, height in pixels x width in pixels x 3 (rbg) x number of images (int) 
+%                 BOLDscreen dimensions are: height (1080 pixels) x width (1920 pixels)
+
+% Define inputs
+% gaptype     = 'none';
+% borderwidth = 'none';
+% 
+% if strcmp(dispname,'PPROOM_EIZOFLEXSCAN')
+%     % 14 runs * 1 session x 2 session type ("BEHAVIOR001")
+%     num = 1; %sum(params.exp.session.behavior.n_runs_per_session); 
+% elseif strcmp(dispname,'7TAS_BOLDSCREEN32')
+%     % 258 MRI runs: 10 runs x 2 (WIDE01A + WIDE01B) + 10 runs x 25 sessions (DEEP001-0025) + 4 runs x 2 sessions (DEEP26A/26Bp)
+%     num = 1; %sum(params.exp.session.mri.wide.n_runs_per_session) + sum(params.exp.session.mri.deep.n_runs_per_session);
+% else
+%     num = 1;
+% end
+% bckgrnd_im  = vcd_pinknoisebackground(params, ...
+%                                      'gaptype', gaptype, ...
+%                                      'borderwidth', borderwidth,...
+%                                      'num', num, ...
+%                                      'pixoffset', [0,0]); 

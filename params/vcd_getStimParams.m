@@ -304,10 +304,11 @@ else
                 assert(isequal(sort(abs(90-p.ori_deg(1:(p.num_ori/2))),2),sort(abs(90-p.ori_deg(((p.num_ori/2)+1):p.num_ori)),2)))
                                                                                 
                 % WORKING MEMORY: gabor orientation deltas for test images
-                p.delta_from_ref   = [-15, -5, 5, 15];                          % how much should stim iso-eccen loc deviate from reference (WM: double epochs)
+                p.delta_from_ref        = [-16, -8, 8, 16];                     % how much should stim iso-eccen loc deviate from reference (WM: double epochs)
                                                                                 % the bigger the delta, the easier the judgement in a trial
-                p.unique_im_nrs_wm_test = [111:206];                                 % Unique image nrs associated with the 96 WM test images
+                p.unique_im_nrs_wm_test = [111:142];                            % unique image nrs associated with the 32 WM test images
 
+                
                 % check if all test images for WM have unique orientations
                 tmp = p.ori_deg + [0, p.delta_from_ref]';
                 tmp(tmp<0)   = tmp(tmp<0)+180;
@@ -319,11 +320,11 @@ else
                 p.ltm_pairs = [];
                 
                 % IMAGERY
-                p.unique_im_nrs_specialcore   = p.unique_im_nrs_core(17:end);                    % SELECTED UNIQUE IMAGES (SUBSET of all 24) (only high contrast)
-                p.imagery_sz_deg  = 5.658;                                      % QUIZ DOT PARAMS (STIM 2) desired diameter (deg) of the quiz dots image in an imagery trial to encourage subjects to create a vidid mental image.
-                p.imagery_sz_pix  = (round(p.img_sz_deg* disp_params.ppd)/2)*2; % QUIZ DOT PARAMS (STIM 2) diameter of quiz dot image in pixels (ensure even nr of pixels)                
-                p.unique_im_nrs_img_test  = [551:710];                          % Unique image nrs associated with the 8*20=160 IMG gabor test dot images
-                p.imagery_quiz_images = [ones(1,10),2.*ones(1,10)];             % quiz dots overlap (1) or not (2)
+                p.unique_im_nrs_specialcore   = p.unique_im_nrs_core(17:end);               % SELECTED UNIQUE IMAGES (SUBSET of all 24) (only high contrast)
+                p.imagery_sz_deg              = 5.658;                                      % QUIZ DOT PARAMS (STIM 2) desired diameter (deg) of the quiz dots image in an imagery trial to encourage subjects to create a vidid mental image.
+                p.imagery_sz_pix              = (round(p.img_sz_deg* disp_params.ppd)/2)*2; % QUIZ DOT PARAMS (STIM 2) diameter of quiz dot image in pixels (ensure even nr of pixels)                
+                p.unique_im_nrs_img_test      = [423:582];                                  % Unique image nrs associated with the 8*20=160 IMG gabor test dot images
+                p.imagery_quiz_images         = [ones(1,10),2.*ones(1,10)];                 % quiz dots overlap (1) or not (2)
 
                 % Add params to struct
                 stim.gabor = p;
@@ -377,8 +378,8 @@ else
 
                 
                 % WORKING MEMORY: motion direction deltas for test images
-                p.delta_from_ref        = [-15, -5, 5, 15];                       % How much should stim iso-eccen loc deviate from reference (WM: double epochs)
-                p.unique_im_nrs_wm_test = [207:302];                              % Unique image nrs associated with the 96 WM RDK test stimuli
+                p.delta_from_ref        = [-20, -10, 10, 20];                       % How much should stim iso-eccen loc deviate from reference (WM: double epochs)
+                p.unique_im_nrs_wm_test = [143:174];                                % Unique image nrs associated with the 32 WM RDK test stimuli
  
                 % check if all test images for WM have unique orientations
                 tmp          = p.dots_direction+[0, p.delta_from_ref]';
@@ -391,11 +392,11 @@ else
                 p.ltm_pairs = [];
                 
                 % IMAGERY: 
-                p.unique_im_nrs_specialcore    = p.unique_im_nrs_core(17:end);                  % SELECTED UNIQUE IMAGES (SUBSET of all 24) (only high coherence) 
-                p.imagery_sz_deg   = 5.658;                                    % desired diameter (degree) of the second, quiz dots image in an imagery trial to encourage subjects to create a vidid mental image.
-                p.imagery_sz_pix   = (round(p.img_sz_deg* disp_params.ppd)/2)*2; % diameter of quiz dot image (pixels) (ensure even nr of pixels)
-                p.unique_im_nrs_img_test  = [711:870];                         % Unique image nrs associated with the 8*20=60 IMG RDK test dot images
-                p.imagery_quiz_images = [ones(1,10),2.*ones(1,10)];            % quiz dots overlap (1) or not (2)
+                p.unique_im_nrs_specialcore    = p.unique_im_nrs_core(17:end);       % SELECTED UNIQUE IMAGES (SUBSET of all 24) (only high coherence) 
+                p.imagery_sz_deg               = 5.658;                              % desired diameter (degree) of the second, quiz dots image in an imagery trial to encourage subjects to create a vidid mental image.
+                p.imagery_sz_pix               = (round(p.img_sz_deg* disp_params.ppd)/2)*2; % diameter of quiz dot image (pixels) (ensure even nr of pixels)
+                p.unique_im_nrs_img_test  	   = [583:741];                          % Unique image nrs associated with the 8*20=160 IMG RDK test dot images
+                p.imagery_quiz_images          = [ones(1,10),2.*ones(1,10)];         % quiz dots overlap (1) or not (2)
                 
                 % Add params to struct
                 stim.rdk = p;
@@ -461,10 +462,11 @@ else
                 p.y0_pix        = disp_params.yc + round(y * disp_params.ppd);     % desired y-center loc in pix (translation from upper left corner [0,0])
                 
                 % WORKING MEMORY: dot angle position deltas for test images
-                p.delta_from_ref  = [-15, -5, 5, 15];                              % how much should stim iso-eccen loc deviate from reference (WM: double epochs)
+                p.delta_from_ref             = [-16, -8, 8, 16];                   % how much should stim iso-eccen loc deviate from reference (WM: double epochs)
                                                                                    % the bigger the delta, the easier the trial
-                p.unique_im_nrs_wm_test = [303:366];                                    % Unique image nrs associated with the 64 WM DOT test stimuli
-                                
+                p.unique_im_nrs_wm_test      = [175:238];                          % Unique image nrs associated with the 64 WM DOT test stimuli
+                p.min_ang_distance_test_stim = 20;                                 % minimum angular distance (deg) between two wm test images; otherwise test dot stimuli will overlap.
+                
                 % check if all test images for WM have unique angles
                 tmp          = p.ang_deg+[0, p.delta_from_ref]';
                 tmp(tmp<0)   = tmp(tmp<0)+360;
@@ -491,8 +493,8 @@ else
                 % IMAGERY: QUIZ DOT PARAMS
                 p.imagery_sz_deg   = [disp_params.w_deg/2, disp_params.h_deg];   % desired diameter (deg) of the second, quiz dots image in an imagery trial to encourage subjects to create a vidid mental image.
                 p.imagery_sz_pix   = [disp_params.xc,disp_params.h_pix];         % diameter of quiz dot image (pixels) (we already ensured even nr of pixels in display params function)
-                p.unique_im_nrs_img_test = [871:1030];                           %#ok<NBRAK> % Unique image nrs associated with the 8*20=60 IMG DOT test dot images
-                p.imagery_quiz_images    = [ones(1,10),2.*ones(1,10)];              % quiz dots overlap (1) or not (2)
+                p.unique_im_nrs_img_test = [742:901];                            % Unique image nrs associated with the 8*20=160 IMG DOT test dot images
+                p.imagery_quiz_images    = [ones(1,10),2.*ones(1,10)];           % quiz dots overlap (1) or not (2)
                 
                 % Add params to struct
                 stim.dot = p;
@@ -535,22 +537,40 @@ else
 
                 % OBJECT FACING ROTATION ANGLES
                 p.num_unique_objects       = 16;                            % nr of rotations (deg), 0 = rightward facing, 180 = leftward facing, 90 = forward facing
-                p.facing_dir_deg           = linspace(10,170,p.num_unique_objects+1); % do not include 0-10, 170-180 deg to avoid edge cases in WM
-                p.facing_dir_deg(p.facing_dir_deg==90) = [];                % remove 90 to avoid ill-defined rotation.
-                p.facing_dir_deg           = ceil(p.facing_dir_deg/2)*2;    % force integrals of 2 as original images come in steps of 2 degrees
-                
+                facing_dir_deg             = linspace(26,154,p.num_unique_objects+1); % do not include 0-10, 170-180 deg to avoid edge cases in WM
+                facing_dir_deg(facing_dir_deg==90) = [];                    % remove 90 to avoid ill-defined rotation.
+                facing_dir_deg             = ceil(facing_dir_deg/2)*2;    % force integrals of 2 as original images come in steps of 2 degrees
+                % facing_dir_deg = 
+                %                 26     1
+                %                 34     2
+                %                 42     3
+                %                 50     4
+                %                 58     5
+                %                 66     6
+                %                 74     7
+                %                 82     8     
+                %                100     9
+                %                108    10
+                %                116    11
+                %                124    12
+                %                132    13
+                %                140    14
+                %                148    15
+                %                156    16
                 % ensure equal distance from cardinal meridians
-                assert(isequal(abs(p.facing_dir_deg(1:(p.num_unique_objects/2))-90), fliplr(abs(90-p.facing_dir_deg(((p.num_unique_objects/2)+1):p.num_unique_objects)))));
-                assert(isequal(abs(45-p.facing_dir_deg(1:(p.num_unique_objects/2))), fliplr(abs(135-p.facing_dir_deg(((p.num_unique_objects/2)+1):p.num_unique_objects)))));
+                assert(isequal(abs(facing_dir_deg(1:(p.num_unique_objects/2))-90), fliplr(abs(90-facing_dir_deg(((p.num_unique_objects/2)+1):p.num_unique_objects)))));
+                assert(isequal(abs(45-facing_dir_deg(1:(p.num_unique_objects/2))), fliplr(abs(135-facing_dir_deg(((p.num_unique_objects/2)+1):p.num_unique_objects)))));
                 
                 % we carefully assign a unique rotation to an object
-                obj_idx                    = [6,4,14, ... 60 deg: damon, 40 deg: lisa, 140 deg:  sophia
-                                              3,9,12,8, ... 30 deg: parrot, 100 deg: cat, 130 deg: bear, 80 deg: giraffe
-                                              2,1, ... 20 deg: drill, 10 deg: brush
-                                              7, 11, ... 70 deg: bus, 120 deg: suv
-                                              16, 10, ... 170 deg: pizza, 110 deg: banana
-                                              15,5,13]; % 160 deg: church, 50 deg: house 140 deg: watertower
-                p.facing_dir_deg           = p.facing_dir_deg(obj_idx);
+                obj_idx                    = [5,3,14, ...   58 deg: damon, 42 deg: lisa, 132 deg: sophia
+                                              2,9,11,8, ... 34 deg: parrot, 100 deg: cat, 116 deg: bear, 82 deg: giraffe
+                                              6,1, ...      66 deg: drill, 26 deg: brush
+                                              7, 12, ...    74 deg: bus, 124 deg: suv
+                                              16, 10, ...   156 deg: pizza, 108 deg: banana
+                                              15,4,13]; %   148 deg: church, 50 deg: house, 132 deg: watertower
+                isequal([1:p.num_unique_objects],sort(obj_idx))
+                p.facing_dir_deg           = facing_dir_deg(obj_idx);
+                
                 
                 % Define the 5 superordinate, 1-3 basic, and 16 subordinate categories
                 p.super_cat          = {'human','animal','object','food','place'};     
@@ -575,25 +595,27 @@ else
                 p.affordance{5}      = {'enter','enter','observe'};
 
                 % WORKING MEMORY: dot angle position deltas for test images
-                p.delta_from_ref     = [-8, -4, 4, 8];                      % Relative rotation from reference image for WM test image
-                                                                            %  the bigger the delta, the easier the trial. 
-                                                                            % for 1-89 deg rotations: Negative values are leftwards, positive values is rightwards
-                                                                            % for 91-180 deg rotations: Negative values are rightward, positive values is leftward
-                p.unique_im_nrs_wm_test   = [367:430];                           % Unique image nrs associated with the 64 WM OBJ test stimuli
+                p.delta_from_ref         = [-24, -12, 12, 24];                  % Relative rotation from reference image for WM test image
+                                                                                %  the bigger the delta, the easier the trial. 
+                                                                                % for 1-89 deg rotations: Negative values are leftwards, positive values is rightwards
+                                                                                % for 91-180 deg rotations: Negative values are rightward, positive values is leftward
+                p.unique_im_nrs_wm_test  = [239:302];                           %  Unique image nrs associated with the 64 WM OBJ test stimuli
                                                                             
                 % check if all test images for WM have unique rotations
-                tmp          = p.facing_dir_deg+[0, p.delta_from_ref]';
-                assert(isequal(length(unique(tmp(:))), length(tmp(:))));
-                clear tmp
+                % (not possible anymore with the limited nr of rotations we
+                % can use).
+%                 tmp          = p.facing_dir_deg+[0, p.delta_from_ref]';
+%                 assert(isequal(length(unique(tmp(:))), length(tmp(:))));
+%                 clear tmp
                                                        
                 % IMAGERY: 
-                p.unique_im_nrs_specialcore = p.unique_im_nrs_core([1,3,5,7,8,10,12,14]);   % SELECTED IMAGES USED (SUBSET of 16 IMAGES)--these are hand picked!
+                p.unique_im_nrs_specialcore = p.unique_im_nrs_core([1,3,5,7,8,10,12,14]);   % 8 SELECTED IMAGES USED (SUBSET of 16 IMAGES)--these are hand picked! damon, sophia, cat, giraffe, drill, bus, pizza, church
                 
                 % IMAGERY QUIZ DOT PARAMS
-                p.imagery_sz_deg      = 5.658;                              % desired diameter (degree) of the second, quiz dots image in an imagery trial to encourage subjects to create a vidid mental image.
-                p.imagery_sz_pix      = (round(p.img_sz_deg* disp_params.ppd)/2)*2; % pixel diameter of quiz dot image (ensure even nr of pixels)
-                p.unique_im_nrs_img_test = [1031:1190];                      % Unique image nrs associated with the 8*20=60 IMG OBJ test dot images
-                p.imagery_quiz_images = [ones(1,10),2.*ones(1,10)];          % quiz dots overlap (1) or not (2)
+                p.imagery_sz_deg         = 5.658;                              % desired diameter (degree) of the second, quiz dots image in an imagery trial to encourage subjects to create a vidid mental image.
+                p.imagery_sz_pix         = (round(p.img_sz_deg* disp_params.ppd)/2)*2; % pixel diameter of quiz dot image (ensure even nr of pixels)
+                p.unique_im_nrs_img_test = [902:1061];                         % Unique image nrs associated with the 8*20=160 IMG OBJ test dot images
+                p.imagery_quiz_images    = [ones(1,10),2.*ones(1,10)];         % quiz dots overlap (1) or not (2)
                 
                 % LTM PAIR
                 p.ltm_pairs          = [];                                       %%
@@ -676,24 +698,24 @@ else
                 % NSD image by adding or removing something in the image.
                 % These changes can be obvious (easy) or subtle (hard) to
                 % detect:
-                p.change_im                 = [1,2,-1,-2];
-                p.change_im_name            = {'easy_add', 'hard_add','easy_remove', 'hard_remove'};
-                p.unique_im_nrs_wm_test     = [431:550];                               % Unique image nrs associated with the 120 WM NS changed stimuli
-
-                % FOR LTM incorrect trials, we have very similar looking images called "lures":
-                p.lure_im                   = {'lure01', 'lure02', 'lure03', 'lure04'};
-                p.unique_im_nrs_ltm_lures   = [1491:1550];                             % Unique image nrs associated with the 15*4=60 WM NS lure images
-
-                % LTM PAIRED ASSOCIATES
-                p.ltm_pairs     = [];                                       
+                p.change_im                 = [-2,-1,1,2]; % ±2 = easy, ±1 hard. (-) = hard (+) = easy, 
+                p.change_im_name            = {'easy_remove','hard_remove','hard_add','easy_add'};
+                p.unique_im_nrs_wm_test     = [303:422];                               % Unique image nrs associated with the 120 WM NS changed stimuli
                 
                 % IMAGERY 
                 p.unique_im_nrs_specialcore = p.unique_im_nrs_core([2,4,5,8,10,11,13,15,18,20,21,23,26,27,30]); % Half of the images will be used for  IMG/LTM pairing (these are carefully handpicked! see scene_info csv file)
                 p.imagery_sz_deg            = p.img_sz_deg;                                                     % desired diameter (degree) of the second, quiz dots image in an imagery trial to encourage subjects to create a vidid mental image.
                 p.imagery_sz_pix            = p.img_sz_pix;                                                     % diameter of quiz dot image (pixels) (we already ensured even nr of pixels)
-                p.unique_im_nrs_img_test    = [1191:1490];                                                      % Unique image nrs associated with the 15*20=300 IMG NS test dot images
+                p.unique_im_nrs_img_test    = [1062:1361];                                                      % Unique image nrs associated with the 15*20=300 IMG NS test dot images
                 p.imagery_quiz_images       = [ones(1,10),2.*ones(1,10)];                                       % Quiz dots overlap (1) or not (2)
                 
+                % FOR LTM incorrect trials, we have very similar looking images called "lures":
+                p.lure_im                   = {'lure01', 'lure02', 'lure03', 'lure04'};
+                p.unique_im_nrs_ltm_lures   = [1362:1421];                                                      % Unique image nrs associated with the 15*4=60 WM NS lure images
+                
+                % LTM PAIRED ASSOCIATES
+                p.ltm_pairs                 = [];
+
                 % Add params to struct
                 stim.ns = p;
                 

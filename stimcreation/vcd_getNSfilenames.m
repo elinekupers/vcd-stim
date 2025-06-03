@@ -4,7 +4,7 @@ function [filenames, unique_im_nrs] = vcd_getNSfilenames()
 % 431:632 are wm test images (the same as params.stim.ns.unique_im_nrs_wm_test)
 % 1491:1550 are novel ltm lure images (the same as params.stim.ns.unique_im_nrs_ltm_lures)
 
-unique_im_nrs = [81:110, 431:550, 1491:1550]';
+unique_im_nrs = [81:110, 303:422, 1362:1421]';
 
 filenames = {'shared0790_nsd56949.png'; ...
         'shared0426_nsd31748.png'; ...

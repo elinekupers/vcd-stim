@@ -14,9 +14,9 @@ function [rdks, masks, info] = vcd_rdk(params)
 %   2 spatial locations (left/right) are evenly distributed across 24
 %   core images.
 % 
-%   We also create 4 test images for WM task: -15, -5 +5 +15 deg
+%   We also create 4 test images for WM task: -20, -10 +10 +20 deg
 %   motion direction offsets for each core rdk motion direction, with 
-%   unique image nrs 207-302.
+%   unique image nrs 143-174.
 % 
 %   When params.stim.store_imgs = true, 
 %   * We store individual RDK movie mat files for each orientation,
@@ -60,14 +60,22 @@ function [rdks, masks, info] = vcd_rdk(params)
 %
 % OUTPUTS:
 %   rdks         : (uint8) unique RDK images used for VCD experiment, 
-%                   8x3x5 cell for each motion direction, coherence level and delta offset (0, -15, -5, +5, +15)
-%                   Each cell contains an uint8 image with dimensions: height (pixels) x width (pixels) x 3 (rgb) x 60 frames
+%                   8x3x5 cell for each motion direction, coherence level 
+%                   and delta offset (0, -20, -10, +10, +20)
+%                   Each cell contains an uint8 image with dimensions: 
+%                   height (pixels) x width (pixels) x 3 (rgb) x 60 frames.
+%                   Note that delta offset movies are only made for the  
+%                   highest coherence level.
 %   masks        : (uint8) unique alpha mask images used for VCD experiment,
-%                   8x3x5 cell for each motion direction, coherence level and delta offset (0, -15, -5, +5, +15):
-%                   Each cell contains an uint8 image with dimensions: height (pixels) x width (pixels)
-%   info         : table with rdk stimulus information matching the gabor array
+%                   8x3x5 cell for each motion direction, coherence level 
+%                   and delta offset (0, -20, -10, +10, +20):
+%                   Each cell contains an uint8 image with dimensions: 
+%                   height (pixels) x width (pixels).
+%                   Note that delta offset masks are only made for the  
+%                   highest coherence level.
+%   info         : table with rdk stimulus information
 %      unique_im        : (double) unique image nr for each RDK movie: 
-%                           range 25-48 for core RDKs, 207-302.   
+%                           range 25-48 for core RDKs, 143-174 for wm test movies.   
 %      stim_pos_i       : (double) stimulus position index. 1=left, 2=right
 %      stim_pos         : (cell) stimulus position, same as stim_loc_i but
 %                           human readable ({'left'} or {'right'})
@@ -79,9 +87,9 @@ function [rdks, masks, info] = vcd_rdk(params)
 %      dot_coh_i        : (double) same as dot_coh but indexed 1 (lowest: 0.064)
 %                           2 (medium: 0.128) or 3 (highest: 0.512).
 %      rel_motdir_deg   : (double) motion direction relative from
-%                           corresponding core RDK -15, -5, +5, +15 (deg)
+%                           corresponding core RDK 0, -20, -10, +10, +20 (deg)
 %      rel_motdir_deg_i : (double) same as rel_motdir_deg but indexed 1
-%                           (-15 deg), 2 (-5 deg), 3 (+5 deg), or 4 (+15 deg).            
+%                           (-20 deg), 2 (-10 deg), 3 (+10 deg), or 4 (+20 deg).            
 %      dot_pos          : {1×1 cell} 200x2xtime dot positions on each frame
 %                           relative to the center of the aperture (pixels).
 %      is_specialcore    : (logical) whether the RDK movie is part of the
@@ -107,11 +115,11 @@ if strcmp(params.disp.name, '7TAS_BOLDSCREEN32')
     scf = 1.548022598870056; % scf = 548/354; convert background square image from [93.04,78.880, 548.7,577.02] into [0 0 548 548]; 
     rect_box_sz = 577;
 elseif strcmp(params.disp.name, 'PPROOM_EIZOFLEXSCAN')
-    scf = 1.550387596899225; % scf = 400/258; convert background square image from [68.08, 57.76, 399.9, 420.54] into [0 0 400 400]; 
-    rect_box_sz = 400;
+    scf = 1.546875000000000; %1.550387596899225; % scf = 396/256; convert background square image from [68.08, 57.76, 399.9, 420.54] into [0 0 398 398]; 
+    rect_box_sz = 396;
 else
     scf = 1.548022598870056;
-    rect_box_sz = params.disp.ppd/88.3702666667; % infer the rectangular support of the background by comparing the pixels per degree to the ppd of the BOLD screen.
+    rect_box_sz = params.disp.ppd/88.178261586694418; % infer the rectangular support of the background by comparing the pixels per degree to the ppd of the BOLD screen.
 end
 
 
@@ -129,10 +137,7 @@ else
 end
 
 % Organize unique image numbers for core and WM test images
-img_im_nrs = reshape(params.stim.rdk.unique_im_nrs_wm_test,length(params.stim.rdk.delta_from_ref),[]);
-img_im_nrs2{1} = img_im_nrs(1,1:length(params.stim.rdk.dots_direction)); % dir 1:8, coherence 1, delta = nr+dd
-img_im_nrs2{2} = img_im_nrs(1,(length(params.stim.rdk.dots_direction)+1):(length(params.stim.rdk.dots_direction)*2)); % dir 1:8, coherence 2, delta = nr+dd
-img_im_nrs2{3} = img_im_nrs(1,(2*(length(params.stim.rdk.dots_direction))+1):(length(params.stim.rdk.dots_direction)*3)); % dir 1:8, coherence 3, delta = nr+dd
+wm_im_nrs = reshape(params.stim.rdk.unique_im_nrs_wm_test,length(params.stim.rdk.delta_from_ref),[]);
 
 %% Preallocate space
 
@@ -176,7 +181,9 @@ set(gcf,'Position',[1 1 2*params.stim.rdk.img_sz_pix, 2*params.stim.rdk.img_sz_p
 
 counter = 1;
 for cc = 1:length(params.stim.rdk.dots_coherence)
-    
+    if params.verbose
+        fprintf('\n[%s]: Dot coherence: %2.2f %%', mfilename, params.stim.rdk.dots_coherence(cc));
+    end
     for bb = 1:length(params.stim.rdk.dots_direction)
     
         for dd = 0:length(params.stim.rdk.delta_from_ref)
@@ -184,244 +191,252 @@ for cc = 1:length(params.stim.rdk.dots_coherence)
             % Get motion direction in degrees and print for user
             if dd == 0
                 curr_motdir_deg = params.stim.rdk.dots_direction(bb);
-                if params.verbose,
+                if params.verbose
                     fprintf('\n[%s]: Motion direction: %2.2f deg', mfilename, curr_motdir_deg);
                 end
             else
-                curr_motdir_deg = params.stim.rdk.dots_direction(bb)+params.stim.rdk.delta_from_ref(dd);
-                if params.verbose, fprintf('\n[%s]: Motion direction: %2.2f: %2.2f with %2.2f delta deg', ...
-                    mfilename, curr_motdir_deg, params.stim.rdk.dots_direction(bb), params.stim.gabor.delta_from_ref(dd)); 
-                end
-            end
-
-            % TRICKY STUFF: Subtract 90 deg to ensure 0 deg desired motion direction is 12 o'clock in x,y-pixel space 
-            curr_motdir_deg = curr_motdir_deg-90;
-
-            % Initialize and reset rng for each RDK video (will apply to
-            % rand, randn, and randi)
-            RandStream.setGlobalStream(RandStream('mt19937ar','seed',prod(rseed)));
-            clock_seed = sum(100*clock);
-            RandStream.setGlobalStream(RandStream('mt19937ar','seed',clock_seed));
-            rdk_seed(cc,bb,dd+1) = clock_seed;
-            
-            %% RDK MOVIE TIME!! 
-            
-            % Allocate space for new dots, their kill time and position in this video
-            dots               = NaN(ndots,2);
-            dot_kill_time      = NaN(ndots,1);
-            stored_coh_dot_pos = NaN(ndots,2,n_unique_videos);
-
-            % Calculate direction of dots, for noise (incoherent) and signal (coherent)
-            v_coh = [cos(deg2rad(curr_motdir_deg)) -sin(deg2rad(curr_motdir_deg))];    % convert angle from deg to radians, and then into dxdy direction (is already unit length)    
-            
-            % Get direction vectors with random orientation (unit length)
-            v_incoh = rand(ndots,1)*(2*pi);                                 % sample from random *uniform* motion directions (in radians)
-            v_incoh = [cos(v_incoh) -sin(v_incoh)];  
-            v_incoh = bsxfun(@rdivide,v_incoh,sqrt(sum(v_incoh.^2,2)));     % normalize to unit length (EK: Is this needed?)
-            
-            % Create coherence (single motion direction) and incoherent (random motion direction) velocities
-            v_signal_pix_per_frames   = params.stim.rdk.dots_speed .* repmat(v_coh,ndots,1); %[v_x; v_y] (in pixels/frames)
-            v_noise_pix_per_frames    = params.stim.rdk.dots_speed .* v_incoh;               %[v_x; v_y] (in pixels/frames)
-            
-            % Assign proportion of signal and noise dot velocities
-            dot_vel_pix_per_frames = v_noise_pix_per_frames;
-            dot_vel_pix_per_frames(1:round(params.stim.rdk.dots_coherence(cc) .* ndots),:) = v_signal_pix_per_frames(1:round(params.stim.rdk.dots_coherence(cc) .* ndots),:);
-            
-            % Select color (50:50 black:white)
-            colori = ([0 randperm(ndots-1)]) < ceil(ndots/num_col);
-            col = params.stim.rdk.dots_color(colori+1,:);
-            
-            % Create fresh batch of dots
-            for ii = 1:ndots
-    
-                enoughSpace = 0;
-                while ~enoughSpace
-                    
-                    % initialize dot spatial positions by assigning random
-                    % [angle,eccen] coordinates
-                    r       = sqrt(rand);
-                    theta   = 2*pi*rand();
-                    dots(ii,1) = r.*cos(theta).*ap_radius(1);
-                    dots(ii,2) = r.*sin(theta).*ap_radius(2);
-                    
-                    % check spacing relative to the other dots
-                    mydist = sqrt((dots(:,1) - dots(ii,1)).^2 + (dots(:,2) - dots(ii,2)).^2);
-                    mydist(ii) = 0;
-                    
-                    if (min(mydist(:)) >= 0)
-                        enoughSpace = 1;
+                if dd > 0 && cc == 3
+                    curr_motdir_deg = params.stim.rdk.dots_direction(bb)+params.stim.rdk.delta_from_ref(dd);
+                    if params.verbose, fprintf('\n[%s]: Motion direction: %2.2f: %2.2f with %2.2f delta deg', ...
+                            mfilename, curr_motdir_deg, params.stim.rdk.dots_direction(bb), params.stim.rdk.delta_from_ref(dd));
                     end
+                else
+                    curr_motdir_deg = NaN;
                 end
-                
-                % Initialize dot kill time for all dots (starting from frame 1)
-                dot_kill_time(ii) = 1 + rand().*params.stim.rdk.dots_lifetime; 
             end
 
             
-            % Reset video frames
-            frames = [];
-            
-            % loop over time frames
-            for curr_frame = 1:num_frames
+            if ~isnan(curr_motdir_deg)
+                % TRICKY STUFF: Subtract 90 deg to ensure 0 deg desired motion direction is 12 o'clock in x,y-pixel space 
+                curr_motdir_deg = curr_motdir_deg-90;
 
-                % loop over dots
+                % Initialize and reset rng for each RDK video (will apply to
+                % rand, randn, and randi)
+                RandStream.setGlobalStream(RandStream('mt19937ar','seed',prod(rseed)));
+                clock_seed = sum(100*clock);
+                RandStream.setGlobalStream(RandStream('mt19937ar','seed',clock_seed));
+                rdk_seed(cc,bb,dd+1) = clock_seed;
+
+                %% RDK MOVIE TIME!! 
+
+                % Allocate space for new dots, their kill time and position in this video
+                dots               = NaN(ndots,2);
+                dot_kill_time      = NaN(ndots,1);
+                stored_coh_dot_pos = NaN(ndots,2,n_unique_videos);
+
+                % Calculate direction of dots, for noise (incoherent) and signal (coherent)
+                v_coh = [cos(deg2rad(curr_motdir_deg)) -sin(deg2rad(curr_motdir_deg))];    % convert angle from deg to radians, and then into dxdy direction (is already unit length)    
+
+                % Get direction vectors with random orientation (unit length)
+                v_incoh = rand(ndots,1)*(2*pi);                                 % sample from random *uniform* motion directions (in radians)
+                v_incoh = [cos(v_incoh) -sin(v_incoh)];  
+                v_incoh = bsxfun(@rdivide,v_incoh,sqrt(sum(v_incoh.^2,2)));     % normalize to unit length (EK: Is this needed?)
+
+                % Create coherence (single motion direction) and incoherent (random motion direction) velocities
+                v_signal_pix_per_frames   = params.stim.rdk.dots_speed .* repmat(v_coh,ndots,1); %[v_x; v_y] (in pixels/frames)
+                v_noise_pix_per_frames    = params.stim.rdk.dots_speed .* v_incoh;               %[v_x; v_y] (in pixels/frames)
+
+                % Assign proportion of signal and noise dot velocities
+                dot_vel_pix_per_frames = v_noise_pix_per_frames;
+                dot_vel_pix_per_frames(1:round(params.stim.rdk.dots_coherence(cc) .* ndots),:) = v_signal_pix_per_frames(1:round(params.stim.rdk.dots_coherence(cc) .* ndots),:);
+
+                % Select color (50:50 black:white)
+                colori = ([0 randperm(ndots-1)]) < ceil(ndots/num_col);
+                col = params.stim.rdk.dots_color(colori+1,:);
+
+                % Create fresh batch of dots
                 for ii = 1:ndots
 
-                    % update spatial position
-                    dots(ii,:) = dots(ii,:) + dot_vel_pix_per_frames(ii,:); % .* 1; %(1/params.stim.presentationrate_hz);
+                    enoughSpace = 0;
+                    while ~enoughSpace
 
-                    % Check whether the dot has reached its 'kill time'
-                    % based on frames
-                    if curr_frame > dot_kill_time(ii)
-                        
-                        % if so, we create dot with a new kill time and a
-                        % new random x and y coordinate
-                        enoughSpace = 0;
-                        while ~enoughSpace
+                        % initialize dot spatial positions by assigning random
+                        % [angle,eccen] coordinates
+                        r       = sqrt(rand);
+                        theta   = 2*pi*rand();
+                        dots(ii,1) = r.*cos(theta).*ap_radius(1);
+                        dots(ii,2) = r.*sin(theta).*ap_radius(2);
 
-                            % Update dot spatial positions by assigning new
-                            % random [angle,eccen] coordinate
-                            r = sqrt(rand);
-                            theta = 2*pi*rand();
-                            
-                            dots(ii,1) = r.*cos(theta).*ap_radius(1);
-                            dots(ii,2) = r.*sin(theta).*ap_radius(2);
-                            
-                            % check spacing relative to the other dots
-                            mydist = sqrt((dots(:,1) - dots(ii,1)).^2 + (dots(:,2) - dots(ii,2)).^2);
-                            mydist(ii) = 0;
-                            
-                            if (min(mydist(:)) >= 0)
-                                enoughSpace = 1;
+                        % check spacing relative to the other dots
+                        mydist = sqrt((dots(:,1) - dots(ii,1)).^2 + (dots(:,2) - dots(ii,2)).^2);
+                        mydist(ii) = 0;
+
+                        if (min(mydist(:)) >= 0)
+                            enoughSpace = 1;
+                        end
+                    end
+
+                    % Initialize dot kill time for all dots (starting from frame 1)
+                    dot_kill_time(ii) = 1 + rand().*params.stim.rdk.dots_lifetime; 
+                end
+
+
+                % Reset video frames
+                frames = [];
+
+                % loop over time frames
+                for curr_frame = 1:num_frames
+
+                    % loop over dots
+                    for ii = 1:ndots
+
+                        % update spatial position
+                        dots(ii,:) = dots(ii,:) + dot_vel_pix_per_frames(ii,:); % .* 1; %(1/params.stim.presentationrate_hz);
+
+                        % Check whether the dot has reached its 'kill time'
+                        % based on frames
+                        if curr_frame > dot_kill_time(ii)
+
+                            % if so, we create dot with a new kill time and a
+                            % new random x and y coordinate
+                            enoughSpace = 0;
+                            while ~enoughSpace
+
+                                % Update dot spatial positions by assigning new
+                                % random [angle,eccen] coordinate
+                                r = sqrt(rand);
+                                theta = 2*pi*rand();
+
+                                dots(ii,1) = r.*cos(theta).*ap_radius(1);
+                                dots(ii,2) = r.*sin(theta).*ap_radius(2);
+
+                                % check spacing relative to the other dots
+                                mydist = sqrt((dots(:,1) - dots(ii,1)).^2 + (dots(:,2) - dots(ii,2)).^2);
+                                mydist(ii) = 0;
+
+                                if (min(mydist(:)) >= 0)
+                                    enoughSpace = 1;
+                                end
                             end
+
+                            dot_kill_time(ii) = curr_frame + params.stim.rdk.dots_lifetime -1;
+
                         end
 
-                        dot_kill_time(ii) = curr_frame + params.stim.rdk.dots_lifetime -1;
+                        % Check if dot has moved outside of the aperture and update and flip contrast if needed
+                        inside = isInsideAperture(dots(ii,:), ap_center, ap_radius);
+                        if ~inside
+                            % move to point symmetric location
+                            dots(ii,:) = -dots(ii,:); 
+                            col(ii,:) = setdiff(params.stim.rdk.dots_color,col(ii,:),'rows'); % flip contrast
+                        end
+                    end % ndots loop
+
+
+                    % Create frame with gray background
+                    figure(fH);
+                    clf; hold all;
+                    ax = gca;
+                    ax.Units = 'pixels';
+                    r=rectangle(ax,'Position', [(ap_center -(rect_box_sz/2)), ...
+                        rect_box_sz, rect_box_sz], ...
+                        'FaceColor', [0.5 0.5 0.5], 'EdgeColor', 'none'); %
+                    colormap gray; axis off square tight; 
+                    set(gca, 'CLim',[0 1]);
+                    for mm = 1:size(dots,1)
+                        drawcircle('Parent',ax,'Center',dots(mm,:),'Radius',params.stim.rdk.dots_size,...
+                            'Color',col(mm,:), 'InteractionsAllowed', 'none', 'FaceAlpha', 1, 'LineWidth', 1);
 
                     end
 
-                    % Check if dot has moved outside of the aperture and update and flip contrast if needed
-                    inside = isInsideAperture(dots(ii,:), ap_center, ap_radius);
-                    if ~inside
-                        % move to point symmetric location
-                        dots(ii,:) = -dots(ii,:); 
-                        col(ii,:) = setdiff(params.stim.rdk.dots_color,col(ii,:),'rows'); % flip contrast
+                    % store location in case we want to check it later
+                    stored_coh_dot_pos(:,:,curr_frame) = dots;
+
+
+                    % Check size of background image
+                    ax_size = ax.Children(end).Parent.Position;
+                    offsetRect = [0,0,scf*params.stim.rdk.img_sz_pix,scf*params.stim.rdk.img_sz_pix];
+                    % ensure even nr of pixels
+                    offsetRect(3:4) = 2*ceil(offsetRect(3:4)./2);
+
+    %                 whRect = matlab.ui.internal.PositionUtils.getPixelRectangleInDevicePixels([0 0 offsetRect(3:4)./2], fH);
+    %                 xyRect = matlab.ui.internal.PositionUtils.getPixelRectangleInDevicePixels(offsetRect./2, fH);
+
+                    f = getframe(ax,offsetRect);
+                    im = frame2im(f);
+
+                    % if you want to print individual frames as png
+    %                 fn = fullfile(saveStimDir,'export',sprintf('%04d_vcd_rdk_coh%02d_dir%02d_delta%02d_t%02d.png', cc,bb,dd,curr_frame));
+    %                 imwrite(im,fn);
+
+                    if size(im,1) > offsetRect(3)
+                        im = imresize(im, offsetRect(3)/size(im,1));
                     end
-                end % ndots loop
 
-                
-                % Create frame with gray background
-                figure(fH);
-                clf; hold all;
-                ax = gca;
-                ax.Units = 'pixels';
-                r=rectangle(ax,'Position', [(ap_center -(rect_box_sz/2)), ...
-                    rect_box_sz, rect_box_sz], ...
-                    'FaceColor', [0.5 0.5 0.5], 'EdgeColor', 'none'); %
-                colormap gray; axis off square tight; 
-                set(gca, 'CLim',[0 1]);
-                for mm = 1:size(dots,1)
-                    drawcircle('Parent',ax,'Center',dots(mm,:),'Radius',params.stim.rdk.dots_size,...
-                        'Color',col(mm,:), 'InteractionsAllowed', 'none', 'FaceAlpha', 1, 'LineWidth', 1);
+                    % store frame
+                    frames = cat(4,frames,im);
+
+                    % clean up
+                    clear f im
+
+                end % frame loop
+
+                % Store rdk video and dot positions in cell array
+                rdks{bb,cc,dd+1} = frames;
+                dotlocs{bb,cc,dd+1} = stored_coh_dot_pos;
+
+                % Log info 
+                info.dot_motdir_deg(counter) = curr_motdir_deg + 90; % shift 90 deg back
+                info.dot_coh(counter) = params.stim.rdk.dots_coherence(cc);
+                info.dot_motdir_deg_i(counter) = bb;
+                info.dot_coh_i(counter) = cc;
+                info.dot_pos{counter} = {stored_coh_dot_pos};
+
+                if dd == 0
+                    info.rel_motdir_deg(counter) = 0;
+                    info.rel_motdir_deg_i(counter) = 0;
+                    info.unique_im(counter) = params.stim.rdk.unique_im_nrs_core(bb + ((cc-1)*length(params.stim.rdk.dots_direction)));
+                else
+                    info.rel_motdir_deg(counter)   = params.stim.rdk.delta_from_ref(dd);
+                    info.rel_motdir_deg_i(counter) = dd;
+                    info.unique_im(counter) = wm_im_nrs(dd,bb);
+                end
+
+                special_core_idx = find(info.unique_im(counter)==params.stim.rdk.unique_im_nrs_specialcore);
+                if ~isempty(special_core_idx)
+                    info.is_specialcore(counter) = true;
+                else
+                    info.is_specialcore(counter) = false;
+                end
+
+                % Create binary circular alpha mask for rdk frames
+                [XX,YY]       = meshgrid((1:size(frames,1))-(size(frames,1)/2),(1:size(frames,1))-(size(frames,1)/2)); 
+                mask_radius   = ap_radius(1)+(4*params.stim.rdk.dots_size); % add 4 x dot pixel radius to avoid cutting off dots
+                circlemask    = (YY - ap_center(1)).^2 + (XX - ap_center(2)).^2 <= mask_radius.^2;
+                mask          = double(circlemask);
+                mask(mask==1) = 255;
+                mask          = uint8(mask);
+
+                masks{bb,cc,dd+1} = mask;
+
+                if params.store_imgs
+                    % save intermediate stage in case matlab crashes 
+                    rdk_info = info(counter,:);
+                    rdk_rng_seed = clock_seed;
+                    save(fullfile(tmpDir, sprintf('%04d_vcd_rdk_ori%02d_coh%02d_delta%02d.mat', info.unique_im(counter), bb,cc,dd)),'frames','rdk_info','mask','rdk_rng_seed','stored_coh_dot_pos','-v7.3');
+
+                    % Create RDK movie (mp4, with compression)
+                    vcd_createStimVideo(rdks{bb,cc,dd+1}, 1/params.stim.presentationrate_hz, ...
+                            fullfile(vcd_rootPath,'figs',params.disp.name,'rdk'),sprintf('%04d_vcd_rdk_coh%02d_dir%02d_delta%02d',info.unique_im(counter),cc,bb,dd));
 
                 end
 
-                % store location in case we want to check it later
-                stored_coh_dot_pos(:,:,curr_frame) = dots;
-                
-                
-                % Check size of background image
-                ax_size = ax.Children(end).Parent.Position;
-                offsetRect = [0,0,scf*params.stim.rdk.img_sz_pix,scf*params.stim.rdk.img_sz_pix];
-                % ensure even nr of pixels
-                offsetRect(3:4) = 2*ceil(offsetRect(3:4)./2);
-                
-%                 whRect = matlab.ui.internal.PositionUtils.getPixelRectangleInDevicePixels([0 0 offsetRect(3:4)./2], fH);
-%                 xyRect = matlab.ui.internal.PositionUtils.getPixelRectangleInDevicePixels(offsetRect./2, fH);
-                
-                f = getframe(ax,offsetRect);
-                im = frame2im(f);
-                
-                % if you want to print individual frames as png
-%                 fn = fullfile(saveStimDir,'export',sprintf('%04d_vcd_rdk_coh%02d_dir%02d_delta%02d_t%02d.png', cc,bb,dd,curr_frame));
-%                 imwrite(im,fn);
-                
-                if size(im,1) > offsetRect(3)
-                    im = imresize(im, offsetRect(3)/size(im,1));
-                end
+                clear frames
+                counter = counter +1;
 
-                % store frame
-                frames = cat(4,frames,im);
-                
-                % clean up
-                clear f im
-                
-            end % frame loop
-            
-            % Store rdk video and dot positions in cell array
-            rdks{bb,cc,dd+1} = frames;
-            dotlocs{bb,cc,dd+1} = stored_coh_dot_pos;
-            
-            % Log info 
-            info.dot_motdir_deg(counter) = curr_motdir_deg + 90; % shift 90 deg back
-            info.dot_coh(counter) = params.stim.rdk.dots_coherence(cc);
-            info.dot_motdir_deg_i(counter) = bb;
-            info.dot_coh_i(counter) = cc;
-            info.dot_pos{counter} = {stored_coh_dot_pos};
-            
-            if dd == 0
-                info.rel_motdir_deg(counter) = 0;
-                info.rel_motdir_deg_i(counter) = 0;
-                info.unique_im(counter) = params.stim.rdk.unique_im_nrs_core(bb + ((cc-1)*length(params.stim.rdk.dots_direction)));
-            else
-                info.rel_motdir_deg(counter) = params.stim.gabor.delta_from_ref(dd);
-                info.rel_motdir_deg_i(counter) = dd;
-                info.unique_im(counter) = img_im_nrs2{cc}(bb)+(dd-1);
-            end
-
-            special_core_idx = find(info.unique_im(counter)==params.stim.rdk.unique_im_nrs_specialcore);
-            if ~isempty(special_core_idx)
-                info.is_specialcore(counter) = true;
-            else
-                info.is_specialcore(counter) = false;
-            end
-            
-            % Create binary circular alpha mask for rdk frames
-            [XX,YY]       = meshgrid((1:size(frames,1))-(size(frames,1)/2),(1:size(frames,1))-(size(frames,1)/2)); 
-            mask_radius   = ap_radius(1)+(4*params.stim.rdk.dots_size); % add 4 x dot pixel radius to avoid cutting off dots
-            circlemask    = (YY - ap_center(1)).^2 + (XX - ap_center(2)).^2 <= mask_radius.^2;
-            mask          = double(circlemask);
-            mask(mask==1) = 255;
-            mask          = uint8(mask);
-    
-            masks{bb,cc,dd+1} = mask;
-    
-            if params.store_imgs
-                % save intermediate stage in case matlab crashes 
-                rdk_info = info(counter,:);
-                rdk_rng_seed = clock_seed;
-                save(fullfile(tmpDir, sprintf('%04d_vcd_rdk_ori%02d_coh%02d_delta%02d.mat', info.unique_im(counter), bb,cc,dd)),'frames','rdk_info','mask','rdk_rng_seed','stored_coh_dot_pos','-v7.3');
-            
-                % Create RDK movie (mp4, with compression)
-                vcd_createStimVideo(rdks{bb,cc,dd+1}, 1/params.stim.presentationrate_hz, ...
-                        fullfile(vcd_rootPath,'figs',params.disp.name,'rdk'),sprintf('%04d_vcd_rdk_coh%02d_dir%02d_delta%02d',info.unique_im(counter),cc,bb,dd));
-            
-            end
-            
-            clear frames
-            counter = counter +1;
-        end
-    end
-end
+            end % nan check motion direction
+        end % delta loop
+    end % direction loop
+end % coherence loop
 
 % add stimulus location for each rdk orientation and coherence level
 % (uneven numbers are left, even numbers are right).
-stim_pos    = repmat(repelem({'left','right'},1+length(params.stim.gabor.delta_from_ref)), 1,length(params.stim.rdk.dots_direction)/2*length(params.stim.rdk.dots_coherence))';
-stim_pos_i  = repmat(repelem([1,2],1+length(params.stim.gabor.delta_from_ref)), 1, length(params.stim.rdk.dots_direction)/2*length(params.stim.rdk.dots_coherence))';
+stim_pos    = repmat(repelem({'left','right'},1+length(params.stim.rdk.delta_from_ref)), 1,length(params.stim.rdk.dots_direction)/2*length(params.stim.rdk.dots_coherence))';
+stim_pos_i  = repmat(repelem([1,2],1+length(params.stim.rdk.delta_from_ref)), 1, length(params.stim.rdk.dots_direction)/2*length(params.stim.rdk.dots_coherence))';
 info.stim_pos   = stim_pos;
 info.stim_pos_i = stim_pos_i;
-info = info(:,[1, 10, 11, 2:9]);
-
+info = info(:,[1, 10, 11, 2:9]); % reorder info table columns
+info = info(~isnan(info.unique_im),:);
 if params.store_imgs
     % in addition to storing separate conditions, we also store larger rdk file 
     saveDir = fileparts(fullfile(params.stim.rdk.stimfile));

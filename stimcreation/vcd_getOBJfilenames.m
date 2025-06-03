@@ -2,7 +2,7 @@ function [filenames, unique_im_nrs] = vcd_getOBJfilenames()
 
 % 65-80 are core images (the same as params.stim.obj.unique_im_nrs_core)
 % 367:430 are wm test images (the same as params.stim.obj.unique_im_nrs_wm_test)
-unique_im_nrs = [65:80,367:430]';
+unique_im_nrs = [65:80,239:302]';
 
 filenames = {'faces_damonwayans_rot31.png'; ...
             'faces_lisa_rot21.png'; ...
