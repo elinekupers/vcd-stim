@@ -69,7 +69,7 @@ p = inputParser;
 % MANDATORY INPUTS
 p.addRequired('dispname', @(x) ismember(x,{'7TAS_BOLDSCREEN32','KKOFFICE_AOCQ3277','PPROOM_EIZOFLEXSCAN','EKHOME_ASUSVE247'})) % display name to get the right display params. Choose from: 7TAS_BOLDSCREEN32, KKOFFICE_AOCQ3277, PPROOM_EIZOFLEXSCAN, 'EKHOME_ASUSVE247'
 % OPTIONAL INPUTS
-p.addOptional('ppd_eccen_range_deg' , 4, @isnumeric); % (degrees). 
+p.addParameter('ppd_eccen_range_deg' , 4, @isnumeric); % (degrees). 
 
 % Parse inputs
 p.parse(dispname, varargin{:});
