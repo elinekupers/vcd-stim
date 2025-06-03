@@ -1,9 +1,9 @@
-function [run_images, run_alpha_masks] = vcd_getImageOrderSingleRun(params, ...
+function [run_images, run_alpha_masks, images] = vcd_getImageOrderSingleRun(params, ...
     time_table_master, all_run_frames, subj_nr, ses_nr, ses_type, run_nr, varargin)
 % VCD function to load uint8 stimuli, alpha transparency masks, and
 % corresponding image nrs for each trial
 %
-%   [all_run_images, all_run_alpha_masks,all_run_im_nr] =
+%   [run_images, run_alpha_masks, images] =
 %   vcd_getImageOrderSingleRun( ...
 %       params, time_table_master, subj_nr, ses_nr, ses_type, run_nr, ...
 %       ['images', <images>], ['load_params',<load_params>], ...
@@ -89,23 +89,51 @@ else
     end
 end
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%% BACKGROUND STIM %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%  BACKGROUND: 4D array: [x,y, 3, num images]
+% input 2: 'puzzle'  (square central image + peripheral apertures,
+%          'dotring' (simple dot iso eccen donut),
+%          'comb'    (puzzle + simple dot iso-eccen ring overlayed)
+% input 3: 'skinny'  (no space between stim and edge of background) or
+%          'fat'     (+2 deg from stim)
+% input 4: number of unique noise background images
+% input 5: offset of center in pixels [x,y]
+% create background image that adjusts for shifted background if needed
+
+% if ~exist('bckground','var') || isempty(bckground)
+%     d = dir(fullfile(params.stimfolder,params.disp.name, sprintf('bckgrnd_%s*.mat',params.disp.name)));
+%     a = load(fullfile(d(end).folder, d(end).name),'bckgrnd_im');
+%     bckground = a.bckgrnd_im(:,:,:,params.run_nr);
+%     clear a d
+% end
+%
+% if any(params.offsetpix~=[0,0])
+%     bckground = vcd_pinknoisebackground(params, 'none', 'fat', 1, params.offsetpix);
+% end
+
+% bckground = feval(flipfun,bckground);
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%% FIX IM %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Load stored fixation dot images if needed
-if ~isfield(images,'fix') || isempty(images.fix)
+if ~isfield(images,'fix') || isempty(images.fix) || ~isfield(images.fix,'im')
     fprintf('[%s]: Loading fixation dot images..\n',mfilename);
     
-    % FIX: 5D array: [x,y, 3, 5 lum, 2 widths]
-    d = dir(sprintf('%s*.mat', params.stim.fix.stimfile));
-    load(fullfile(d(end).folder,d(end).name), 'fix_im','mask','info');
-    images.fix       = fix_im; clear fix_im;
-    images.info.fix  = info; clear info;
-    images.alpha.fix = mask; clear mask;
+    %  FIX CIRCLE: 5D array: [x,y, 3, lum, rim types]
+    d = dir(fullfile(params.stimfolder,params.disp.name, sprintf('fix_%s*.mat',params.disp.name)));
+    a1 = load(fullfile(d(end).folder,d(end).name), 'fix_im','mask','info');
+
+    images.fix       = a1.fix_im; 
+    images.info.fix  = a1.info; 
+    images.alpha.fix = a1.mask;
 end
 
-% Load stored fixation dot images if needed
+%%%%%%%%%%%%%%%%%%%%%%%%% EYETRACKING BLOCK STIM %%%%%%%%%%%%%%%%%%%%%%%%%%
+% Load stored eyetracking block target images if needed
 if ~isfield(images,'eye') || isempty(images.eye)
     fprintf('[%s]: Loading eyetracking target images..\n',mfilename);
     
-    % FIX: 5D array: [x,y, 3, 5 lum, 2 widths]
+    % ET TARGETS: 4D array: [x,y, 3, type]
     d = dir(sprintf('%s*.mat', params.stim.el.stimfile));
     a = load(fullfile(d(end).folder,d(end).name), 'sac_im','pupil_im_white','pupil_im_black');
     images.eye.sac_im    = a.sac_im; 
