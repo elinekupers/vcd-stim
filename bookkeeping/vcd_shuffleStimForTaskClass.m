@@ -58,7 +58,7 @@ for kk = 1:length(cued_stim_loc) % left, right, neutral
     
     if cued_stim_loc(kk) == 3 % scenes
         m0_center_img_nr  = master_table.stim_nr_left(m0_idx);
-
+        
         % shape into an 8 trials x m blocks matrix, such that the
         % columns contain different stimulus classes
         n_leftovers = mod(size(m0_center_img_nr,1),nr_of_trials_per_block);
@@ -95,11 +95,23 @@ for kk = 1:length(cued_stim_loc) % left, right, neutral
             img_nr_shuffle_center = cat(1,img_nr_shuffle_center,leftovers_img_nr);
             sub_shuffle_center = cat(1,sub_shuffle_center,leftovers_sub);
         end
+        
+        % record catch trials
+        if sum(master_table.is_catch) > 1
+            m0_center_catch  = master_table.stim_nr_left(master_table.is_catch & strcmp(master_table.task_class_name,{task_class_name_to_shuffle}) & master_table.is_cued == cued_stim_loc(kk));
+            sub_center_catch = find(master_table.is_catch & strcmp(master_table.task_class_name,{task_class_name_to_shuffle}) & master_table.is_cued == cued_stim_loc(kk));
+        end
+        
     else % gabor/rdk/dot/obj
 
         m0_left_img_nr  = master_table.stim_nr_left(m0_idx);
         m0_right_img_nr = master_table.stim_nr_right(m0_idx);
         
+%         m0_left_catch   = master_table.stim_nr_left(catch_sub);
+%         m0_right_catch  = master_table.stim_nr_right(catch_sub);
+%         n_catch_l       = length(m0_left_catch);
+%         n_catch_r       = length(m0_right_catch);
+%         
         % shape into an 8 trials x m blocks matrix, such that the
         % columns contain different stimulus classes
         n_leftovers_l = mod(size(m0_left_img_nr,1),nr_of_trials_per_block);
@@ -167,6 +179,16 @@ for kk = 1:length(cued_stim_loc) % left, right, neutral
             sub_shuffle_left(kk,:) = cat(1,sub_shuffle_left(kk,:),leftovers_sub_l);
             sub_shuffle_right(kk,:) = cat(1,sub_shuffle_right(kk,:),leftovers_sub_r);
         end
+        
+
+        % record catch trials
+        if sum(master_table.is_catch) > 1
+            img_nr_left_catch(kk,:)  = master_table.stim_nr_left(master_table.is_catch & strcmp(master_table.task_class_name,{task_class_name_to_shuffle}) & master_table.is_cued == cued_stim_loc(kk));
+            img_nr_right_catch(kk,:) = master_table.stim_nr_right(master_table.is_catch & strcmp(master_table.task_class_name,{task_class_name_to_shuffle}) & master_table.is_cued == cued_stim_loc(kk));
+            sub_shuffle_left_catch(kk,:)   = find(img_nr_left_catch(kk,:));
+            sub_shuffle_right_catch(kk,:)  = find(img_nr_right_catch(kk,:));
+        end
+
     end
 end
 
@@ -238,8 +260,20 @@ if exist('sub_shuffle_center','var')
         combined_trial_shuffleABC(insert_scenes_here,:) = sub_shuffle_center2;
         combined_trial_shuffleABC(insert_classics_here,:) = combined_trial_shuffleAB3;
     end
+    
+    if sum(master_table.is_catch) > 1
+        shuffle_vec_catch = shuffle_concat(sub_center_catch(1,:),1);
+        catch_table = catch_table.stim_class_name(shuffle_vec_catch(:,1),1);
+    end
 else
     combined_trial_shuffleABC = combined_trial_shuffleAB3;
+    
+    if sum(master_table.is_catch) > 1
+        shuffle_vec_catch = [shuffle_concat(sub_shuffle_left_catch(1,:),1); shuffle_concat(sub_shuffle_right_catch(2,:),1)];
+        % Shuffle catch trials
+        catch_table = master_table(shuffle_vec_catch(:,1),1);
+        catch_table = master_table(shuffle_vec_catch(:,2),2);
+    end
 end
   
 
@@ -312,7 +346,15 @@ for nrow = 1:size(shuffled_master_table,1)
 end
 
 % copy master table without current task rows
-master_table2 = master_table(~all_task_rows,:);
+master_table2     = master_table(~all_task_rows, :);
+
+if sum(master_table.is_catch) > 1
+    % Add catch trials back into shuffled_master_table
+    shuffled_master_table2 = cat(1,shuffled_master_table,catch_table);
+    shuffle_w_catch = randperm((size(shuffled_master_table,1)+1):(size(shuffled_master_table,1)+1)+length(shuffled_master_table2),length(catch_table));
+    shuffled_master_table3 = shuffled_master_table2(shuffle_w_catch,:);
+    shuffled_master_table = shuffled_master_table3;
+end
 
 % add shuffled SCC table, which combines all indiv stim class scc rows
 master_table2 = cat(1,master_table2,shuffled_master_table);
