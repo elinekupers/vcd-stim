@@ -109,7 +109,7 @@ else
 
     % **** SPATIAL ****
     % EMPIRICAL parafoveal stimulus locations:
-    %  * BOLDscreen: 354 pixels (4.0059 deg). 
+    %  * BOLDscreen: 352 pixels (4.0059 deg). 
     %  * PProom EIZOFLEX: 258 pixels (4.0082 deg). 
     x0_deg                   = [-4 4];                                     % Desired x-center location for left right stim apertures (degrees)
     y0_deg                   = [0 0];                                      % Desired y-center location for left right stim apertures (degrees)
@@ -150,10 +150,11 @@ else
     stim.fix.infofile               = fullfile(vcd_rootPath,'workspaces','info',sprintf('fix_info_%s',disp_params.name)); % csv file
     
     % TEMPORAL
-    stim.fix.dotmeanchange          = 1.4*stim.presentationrate_hz;         % nr 16.67ms frames, dot changes occur every 1.4 seconds
-    stim.fix.dotchangeplusminus     = 0*stim.presentationrate_hz;           % nr 16.67ms frames, earliest and latests time that dot changes occur. 2 seconds means [-1:1] from meanchange
+    stim.fix.dotmeanchange          = 1.4*stim.presentationrate_hz;         % (time frames) dot changes occur every 1.4 seconds
+    stim.fix.dotchangeplusminus     = 0*stim.presentationrate_hz;           % (time frames) earliest and latests time that dot changes occur. 2 seconds means [-1:1] from meanchange
     stim.fix.dres                   = [];                                   % rescale factor as a fraction between 0-1  
-        
+    stim.fix.fixsoafun              = @() round(stim.fix.dotmeanchange);    % frequency of fixation circle luminance change (in time frames)
+    
     % SPATIAL
     stim.fix.dotcenterdiam_deg      = 0.14;                                 % (deg) idealized diameter of inner fixation circle
     stim.fix.dotthinborderdiam_deg  = 0.20;                                 % (deg) idealized diameter of thick fixation circle rim
@@ -177,7 +178,7 @@ else
     stim.fix.dotlum                 = [dotlum_sq, stim.bckgrnd_grayval];
     stim.fix.dotopacity             = 0.5;                                 % dot and border have 50% opacity
     stim.fix.color                  = [255, 255, 255; 255 0 0];            % white and red (for spatial cue)
-   
+
     if verbose
         fprintf('*** FIXATION CIRCLE: inner center diameter = %d, inner+thin rim = %d, inner+thick rim = %d pixels ***\n', ...
         stim.fix.dotcenterdiam_pix,stim.fix.dotthinborderdiam_pix,stim.fix.dotthickborderdiam_pix);
@@ -185,44 +186,40 @@ else
     
     %% CONTRAST DECREMENT -- TEMPORAL MODULATION FUNCTION
     % For the CD task crossings, we make the stimulus dip in its contrast 
-    % using an inverted Gaussian temporal contrast modulation function.
+    % using sharp step function from mean contrast 100% --> 70%.
     %
     % * UNITS: the temporal function is in units of time frames, where each
-    % time point has a duration of 16.67 ms (see presentationrate_hz).
+    % time point has a duration of time frames (see presentationrate_hz).
     % We treat timepoint t=0 as the onset time of a frame flip, and t=1 is
     % the offset of the first frame flip and the onset of the second frame
-    % flip (so in between flips). 
+    % flip (so in between monitor refreshes). 
     % 
-    % * DURATION: For the contrast decrement, we implement an
-    % temporal contrast modulation function in the shape of an inverted
-    % gaussian. Gaussian support is 39 time frames [0-38]. First (t=0) and   
-    % last (t=38) time frames have a contrast modulation value of 0.9938.
-    % The temporal modulation duration is 39*(1/60) = 650 ms.
-    % Given that the current stimulus duration is 1 second, the modulation 
-    % affects about 2/3 of the total image duration. 
+    % * DURATION: For the contrast decrement, we implement an temporal
+    % contrast modulation function in the shape of step function. The
+    % support of the modulation function is 6 frames [1 1 1 0.7 0.7 0.7],
+    % but the duration of the contrast decrement may be longer, because the
+    % step function is one-directional and we have a variable onset time of
+    % the stepfunction within a stimulus presentation. The earliest onset
+    % time is 9 (=12-3) time frames, such that the step down occurs at 200
+    % ms after stimulus onset (assuming a 60 Hz presentation rate). The latest
+    % onset time is 45 (=48-3) time frames, such that the stimulus onset 
+    % occurs at 800 ms after stimulus onset (assuming a 60 Hz presentation 
+    % rate).
     % 
     % * MODULATION: How quickly the contrast decrement change occurs is 
-    % determined by the std and the % modulation. Current Gaussian std = 7 
-    % time frames (or 7*16.67 ms = 116.67 ms) and desired modulation is 30% 
-    % from the mean luminance. As a result, the full-width half max is 16  
-    % time frames or 266.67 ms (time between t=11 (0.2 s) and t=27 (0.467 s).
-    % The Gaussian temporal window is symmetric, where the peak contrast 
-    % decrement occurs at time frame t=19 or 333.33 ms after the onset of 
-    % the temporal modulation function (t=0).
-    stim.cd.t_gausswin_N            = 39;                                   % support of temporal modulatin function in number of time frames (one time frame = 16.67 ms)
-    stim.cd.t_gausswin_std          = 7;                                    % Standard devation of gaussian temporal modulation function in time frames (7 time frames = 116.67 ms)
-    stim.cd.meanchange              = stim.presentationrate_hz * 0.2;       % mean onset of temporal modulation function in time frames (200 ms = 12 time frames)  
-    stim.cd.changeplusminus         = (0.1/stim.framedur_s)-1;              % range of onsets: mean ± 100 ms (or 6 time frames))  
-    stim.cd.max_cd                  = 0.3;                                  % stimulus contrast is reduced by 30% of mean luminance at lowest point of temporal gaussian window (note: this corresponds to subtracting a contrast fraction of 10.^(log10(c)-0.1))
-    stim.cd.prob                    = 0.5;                                  % 50% probability that a trial will have a luminance change
+    % determined by the % modulation. Current desired modulation is 30% 
+    % from the mean luminance. We will only modulate the cued stimulus
+    % location for classic stimulus classes.
+    stim.cd.t_support_N            = 6;                                     % support of temporal modulatin function in number of time frames (one time frame = 16.67 ms)
+    stim.cd.meanchange             = round(stim.presentationrate_hz * 0.5); % mean onset of temporal modulation function in time frames (200 ms = 12 time frames)  
+    stim.cd.changeplusminus        = (0.3/stim.framedur_s)-1;               % range of onsets: mean ± 100 ms (or 6 time frames))  
+    stim.cd.min_cd                 = 0.3;                                   % stimulus contrast is reduced by 30% of mean luminance at lowest point of temporal gaussian window (note: this corresponds to subtracting a contrast fraction of 10.^(log10(c)-0.1))
+    stim.cd.cdsoafun               = @() round(stim.cd.meanchange + stim.cd.changeplusminus*(2*(rand-.5))); % onset of temporal contrast modulation function 
     
-    % Create 1D gaussian
-    t_support                       = linspace(-stim.cd.t_gausswin_N / 2, stim.cd.t_gausswin_N / 2, stim.cd.t_gausswin_N);  % [-9.5:1:9.5] in units of presentation 16.67 ms frames
-    t_gauss                         = exp(-t_support .^ 2 / (2 * stim.cd.t_gausswin_std ^ 2)); % 1D gaussian with a sd of 3 presentation frames
-    
-    % Scale max height of the Gaussian, then invert Gaussian time window.
-    t_gauss                         = 1-(t_gauss*stim.cd.max_cd); % inverted gaussian, we start from 0.9938, then dip to 0.7 and go back to 0.9938. 
-    stim.cd.t_gauss                 = t_gauss; 
+    % Create 1D step function downward
+    t_step                         = ones(1,stim.cd.t_support_N);           % units of presentation 16.67 ms frames
+    t_step(round(stim.cd.t_support_N/2):end) = 1-stim.cd.min_cd;            % set second half of step function to stim.cd.min_cd
+    stim.cd.t_cmodfun              = t_step; 
 
     %% EYETRACKING BLOCK PARAMS
     % Each run starts with an eyetracking "block", which mimics the 
@@ -343,22 +340,8 @@ else
                 else
                     p.square_pix_val = false;
                 end
-                
-                % TEMPORAL -- fixed params
-                % RDK specific
-                p.dots_size       = 3;                                            % single dot radius in pixels
-                p.dots_color      = [255 255 255; 1 1 1]./255;                    % 50:50 white:black, color in RGB and converted to [0-1] as expected by stimulus creation function
-                p.max_dots_per_frame = 200;                                       % how many dots within a square support. Density is 15.9 dots / deg^2   (Number is similar to Kiani lab, rokers lab aims for 150) and roughly matches to nr of pixels in aperture
-                p.dots_contrast   = 1;                                            % Michelson [0-1] (fraction)
-                p.duration        = stim.stimdur_frames;                               % frames (nr of monitor refreshes)
-                p.dots_speed      = (8*disp_params.ppd)/stim.presentationrate_hz; % speed in pixels per frame (same as 5 deg/s). For reference: Kiani lab uses usually 5 to 10 deg/s. Rokers lab uses 5 deg/s.
-                p.dots_interval   = 1;                                            % update dots every frame   (For reference: Kiani's 75 hz refresh rate + interval = 3 -->  25 frames/sec)
-                p.dots_lifetime   = 0.05 * stim.presentationrate_hz;              % 3 frames / 0.05 seconds   
-                
-                % TEMPORAL -- manipulated params
-                p.dots_coherence  = [0.3, 0.65, 1.0];                             % fraction of coherent moving dots. Kiani lab uses usually one of these [0 0.032 0.064 0.128 0.256 0.512]
-                
-                % SPATIAL -- fixed params
+
+                % SPATIAL -- general stim params
                 p.img_sz_deg      = parafov_circle_diam_deg;                      % stimulus aperture diameter (deg)
                 p.img_sz_pix      = parafov_circle_diam_pix;                      % stimulus aperture diameter (pix)
                 p.og_res_stim     = p.img_sz_pix;                                 % resolution of stored dot stimuli (in pixels)
@@ -367,6 +350,23 @@ else
                 p.y0_deg          = x0_deg;                                       % Desired y-center loc of stimulus in deg (translation from 0,0)
                 p.x0_pix          = x0_pix;                                       % x-center loc in pix (translation from 0,0)
                 p.y0_pix          = y0_pix;                                       % y-center loc in pix (translation from 0,0)
+                
+                % SPATIAL -- RDK specific
+                p.dots_size_deg   = 0.068/2;                                      % single dot radius in deg (we go by radius because that is what "drawcircle" expects
+                p.dots_size_pix   = round(p.dots_size_deg*disp_params.ppd);       % single dot radius in pixels
+                p.dots_color      = [255 255 255; 1 1 1]./255;                    % 50:50 white:black, color in RGB and converted to [0-1] as expected by stimulus creation function
+                p.dots_density    = 15.9;                                         % density of dots within circular aperture (dots/deg^2)
+                p.max_dots_per_frame = round(p.dots_density*(pi*(p.img_sz_deg/2)^2)); % how many individual dots within a square support. Density is 15.9 dots / deg^2   (Number is similar to Kiani lab, rokers lab aims for 150) and roughly matches to nr of pixels in aperture
+                p.dots_contrast   = 1;                                            % Michelson [0-1] (fraction)
+                
+                % TEMPORAL -- fixed params
+                p.duration        = stim.stimdur_frames;                          % frames (nr of monitor refreshes)
+                p.dots_speed      = (8*disp_params.ppd)/stim.presentationrate_hz; % speed in pixels per frame (currently set to 8 deg/s). For reference: Kiani lab uses usually 5 to 10 deg/s. Rokers lab uses 5 deg/s.
+                p.dots_interval   = 1;                                            % update dots every frame   (For reference: Kiani's 75 hz refresh rate + interval = 3 -->  25 frames/sec)
+                p.dots_lifetime   = 0.1 * stim.presentationrate_hz;               % 6 frames (0.1 seconds)
+                
+                % TEMPORAL -- manipulated params
+                p.dots_coherence  = [0.3, 0.65, 1.0];                             % fraction of coherent moving dots. Kiani lab uses usually one of these [0 0.032 0.064 0.128 0.256 0.512]
                 
                 % SPATIAL -- manipulated params
                 p.num_mot_dir      = 8;                                           % number of sampled motion directions
@@ -537,40 +537,49 @@ else
 
                 % OBJECT FACING ROTATION ANGLES
                 p.num_unique_objects       = 16;                            % nr of rotations (deg), 0 = rightward facing, 180 = leftward facing, 90 = forward facing
-                facing_dir_deg             = linspace(26,154,p.num_unique_objects+1); % do not include 0-10, 170-180 deg to avoid edge cases in WM
-                facing_dir_deg(facing_dir_deg==90) = [];                    % remove 90 to avoid ill-defined rotation.
-                facing_dir_deg             = ceil(facing_dir_deg/2)*2;    % force integrals of 2 as original images come in steps of 2 degrees
+                % Contraints: 
+                % * Do not include 0-25 deg and 155-180 deg to avoid edge cases in WM
+                % * Have equal nr of "sideways" and "forward" facing objects.
+                % * if possible, object rotations have equal distance from rotation category border (45 and 135).
+                % * if possible, equal distance between object rotations.
+                dd = 4; % degrees difference between rotations, arbitrary nr that we know fits in the smallest sampling bin (26-44 degrees).
+                facing_dir_deg             = cat(2, ... 
+                                              linspace(26,44,dd),   ... 4 sideways between 26-44 degrees 
+                                              linspace(46,64,dd),   ... 4 forward between 46-66 degrees.
+                                              linspace(116,134,dd), ... 4 forward between 91-111 degrees 
+                                              linspace(136,154,dd)); %  4 sideways between 136-154 degrees.
+                facing_dir_deg             = ceil(facing_dir_deg/2)*2; % force integrals of 2 as original images come in steps of 2 degrees
                 % facing_dir_deg = 
                 %                 26     1
-                %                 34     2
-                %                 42     3
-                %                 50     4
-                %                 58     5
-                %                 66     6
-                %                 74     7
-                %                 82     8     
-                %                100     9
-                %                108    10
-                %                116    11
-                %                124    12
-                %                132    13
-                %                140    14
-                %                148    15
-                %                156    16
+                %                 32     2
+                %                 38     3
+                %                 44     4    
+                %                 46     5
+                %                 52     6    
+                %                 58     7
+                %                 64     8
+                %                 116    9
+                %                 122   10
+                %                 128   11
+                %                 134   12
+                %                 136   13
+                %                 142   14
+                %                 148   15
+                %                 154   16
+
                 % ensure equal distance from cardinal meridians
                 assert(isequal(abs(facing_dir_deg(1:(p.num_unique_objects/2))-90), fliplr(abs(90-facing_dir_deg(((p.num_unique_objects/2)+1):p.num_unique_objects)))));
                 assert(isequal(abs(45-facing_dir_deg(1:(p.num_unique_objects/2))), fliplr(abs(135-facing_dir_deg(((p.num_unique_objects/2)+1):p.num_unique_objects)))));
                 
                 % we carefully assign a unique rotation to an object
-                obj_idx                    = [5,3,14, ...   58 deg: damon, 42 deg: lisa, 132 deg: sophia
-                                              2,9,11,8, ... 34 deg: parrot, 100 deg: cat, 116 deg: bear, 82 deg: giraffe
-                                              6,1, ...      66 deg: drill, 26 deg: brush
-                                              7, 12, ...    74 deg: bus, 124 deg: suv
-                                              16, 10, ...   156 deg: pizza, 108 deg: banana
-                                              15,4,13]; %   148 deg: church, 50 deg: house, 132 deg: watertower
-                isequal([1:p.num_unique_objects],sort(obj_idx))
+                obj_idx                    = [7,3,14, ...   58  deg: damon,  38  deg: lisa,  142 deg: sophia
+                                              2,13,9,5, ... 32  deg: parrot, 136 deg: cat,   116 deg: bear,   46 deg: giraffe
+                                              16, 1, ...    154 deg: drill,  26  deg: brush
+                                              8, 11, ...    64  deg: bus,    128 deg: suv
+                                              4, 10, ...    44  deg: pizza,  122 deg: banana
+                                              15,6,12]; %   148 deg: church, 52  deg: house, 134 deg: watertower
+                assert(isequal([1:p.num_unique_objects],sort(obj_idx)))
                 p.facing_dir_deg           = facing_dir_deg(obj_idx);
-                
                 
                 % Define the 5 superordinate, 1-3 basic, and 16 subordinate categories
                 p.super_cat          = {'human','animal','object','food','place'};     
@@ -698,7 +707,7 @@ else
                 % NSD image by adding or removing something in the image.
                 % These changes can be obvious (easy) or subtle (hard) to
                 % detect:
-                p.change_im                 = [-2,-1,1,2]; % ±2 = easy, ±1 hard. (-) = hard (+) = easy, 
+                p.change_im                 = [-2,-1,1,2]; % where ±2 = easy, ±1 = hard, (-) = remove (+) = add.
                 p.change_im_name            = {'easy_remove','hard_remove','hard_add','easy_add'};
                 p.unique_im_nrs_wm_test     = [303:422];                               % Unique image nrs associated with the 120 WM NS changed stimuli
                 
