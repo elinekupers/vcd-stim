@@ -19,6 +19,7 @@
 % 7. Create object images (OBJ)
 % 8. Create scene images (NS)
 
+
 %% %%%%%%%%%%%%%%%%%%%
 %%%%%% PARAMETERS %%%% 
 %%%%%%%%%%%%%%%%%%%%%%
@@ -38,21 +39,25 @@ params.store_imgs   = true; % store visualization figures (true) or not (false)
 dispname    = 'PPROOM_EIZOFLEXSCAN';
 params.disp = vcd_getDisplayParams(dispname);
 
-% Where to store visualization of stimuli (debug figures and PNGs)?
+% If params.verbose = true and params.store_imgs =  true, every stimulus
+% creation function will store pngs. You can define here the path to store 
+% the pngs of stimuli in "saveFigsFolder" (both debug figures and PNGs).
 saveFigsFolder = fullfile(vcd_rootPath,'figs',dispname); 
 if ~exist(saveFigsFolder,'dir'); mkdir(saveFigsFolder); end
+params.saveFigsFolder = saveFigsFolder;
 
 % Get stimulus parameters
-% When loading stored parameters from file, it will search for a file called
+% When loading stored parameters from file (params.load_params = true), 
+% vcd_getStimParams will search for a file called
 % "stim_<dispname>_*.mat" in fullfile(vcd_rootPath,'workspaces','info').
 % When storing generated parameters, we save the parameters as a .mat file
 % in "stim_<dispname>_YYYYMMDDTHHMMSS.mat" in fullfile(vcd_rootPath,'workspaces','info').
-params.load_params  = true;  % if true, we load from file. if false, define params.
+params.load_params  = false;  % if true, we load from file. if false, define params.
 params.store_params = true;  % if false, we don't store params. if true, we store mat file in fullfile(vcd_rootPath,'workspaces','info')
                                        
 % Reset random number generator with arbitrary number (based on system
 % clock). Early versions of Matlab use different generators for rand and
-% randn, hence we do it separately for each.
+% randn, hence we do it separately for each. (Needed for RDKs).
 rand('seed', sum(100*clock));
 params.rng.rand_seed  = rng;   % store rand seed
 randn('seed', sum(100*clock)); 
@@ -78,14 +83,42 @@ params.exp    = vcd_getSessionParams('disp_name', params.disp.name, ...
 
 
 %% Eyetracking targets
+% There are 5 saccade targets (params.exp.block.nr_of_saccades): central, 
+% left, right, up, down, and 1 pupil trial with a mid-gray central fixation 
+% target on a black and white background.
+%
+% The distance between the center and 4 left/right/up/down targets are set
+% as [xc,yc] ± 264 pixels (BOLDscreen) or ± 192 pixels (EIZOFLEXSCAN). 
+% This results in dots at the following pixel coordinates for the 5 targets
+% BOLDscreen coordinates in pixels:
+%                    [x3,y3]=[960,376]
+% [x1,y1]=[696,640]  [x0,y0]=[960,640]   [x2,y2]=[1224,640]
+%                    [x4,y4]=[960,904]
+%
+% EIZOFLEXSCAN coordinates in pixels:
+%                    [x3,y3]=[960,408]
+% [x1,y1]=[768,600]  [x0,y0]=[960,600]   [x2,y2]=[1156,600]
+%                    [x4,y4]=[960,792]
+%
+% EMPIRICAL target distance:
+% * BOLDscreen: 264 pixels, which corresponds to 2.9936 degrees.
+% * PP room EIZOFLEX: 192 pixels, which corresponds to 3.0046 degrees.
+%
+% INPUTS:
+%  params           : (struct) parameter struct, which should contain the following fields:
+%
+% OUTPUTS:
+%  sac_im           : (uint8) saccade stimuli (height in pixels x width in pixels x 3 x 5)
+%  pupil_im_white   : (uint8) white background pupil trial stimulus (height in pixels x width in pixels x 3)
+%  pupil_im_black   : (uint8) black background pupil trial stimulus (height in pixels x width in pixels x 3)
 
-vcd_createEyeTrackingBlockTargets(params)
+[sac_im,pupil_im_white,pupil_im_black] = vcd_createEyeTrackingBlockTargets(params);
                                  
 %% Fixation circle
-% vcd_fixationDot function creates 25 types of fixation circles, the full
-% crossing between 5 inner circle luminance levels and 5 rim types. 
-% If params.verbose = true, this function will make a PNG of each
-% fixation dot, and a figure with all dots in a 5x5 array.
+% vcd_fixationDot function creates 30 different fixation circle images, 
+% which is the full crossing between 6 inner circle luminance levels and 5 
+% rim types. If params.verbose = true, this function will make a PNG of 
+% each fixation dot, and a figure with all dots in a 6x5 array.
 % If params.store_imgs = true, this function will store these figures in
 % fullfile(vcd_rootPath,'figs',dispname,'fix').
 %
@@ -95,7 +128,7 @@ vcd_createEyeTrackingBlockTargets(params)
 % OUTPUTS:
 % * fix_im      : (uint8) unique fixation circle images, 5D array: 
 %                   height (24 pixels) x width (24 pixels) x 3 (rgb) 
-%                   x 5 luminance levels x 5 dot rims types 
+%                   x 6 luminance levels x 5 dot rims types 
 %                   Rim types are 1: thin white, 2: thick white, 
 %                   3: thick-red left, 4: thick-red right, 5: thick-red both
 % * fix_mask    : (uint8) alpha transparency masks, 4D array: 
@@ -117,8 +150,8 @@ vcd_createEyeTrackingBlockTargets(params)
 %
 % OUTPUTS:
 % * gabors      : (uint8) 56 unique gabor images, 6D array: 
-%                   height (354/256 pixels for MRI/PProom) 
-%                   x width (354/256 pixels for MRI/PProom 
+%                   height (352/256 pixels for MRI/PProom) 
+%                   x width (352/256 pixels for MRI/PProom 
 %                   x 3 (rgb) 
 %                   x 8 orientations
 %                   x 3 contrasts 
@@ -127,8 +160,8 @@ vcd_createEyeTrackingBlockTargets(params)
 %                   as all wm test stimuli use the highest contrast level.
 % * masks       : (uint8) 56 alpha transparency masks used by Psychtoolbox to
 %                   crop the edges of the square support, 5D array:
-%                   height (354/256 pixels for MRI/PProom) 
-%                   x width (354/256 pixels for MRI/PProom) 
+%                   height (352/256 pixels for MRI/PProom) 
+%                   x width (352/256 pixels for MRI/PProom) 
 %                   x 8 orientations
 %                   x 3 contrasts 
 %                   x 5 orientation tilt offsets (0, -16, -8, +8, +16 deg).
@@ -155,16 +188,17 @@ vcd_createEyeTrackingBlockTargets(params)
 %                  8 motion directions x 3 coherence levels x 5 motion direction offsets (0, -20, -10, +10, +20 deg). 
 %                  Each cell contains movie frames (uint8):
 %                  For BOLDscreen:
-%                   height (548 pixels) x width (548 pixels for BOLDscreen, 400 pixels for EIZOflexscan) 
+%                   height (BOLDscreen: 546 pixels, EIZOflexscan: 396 pixels)
+%                   x width (BOLDscreen: 546 pixels, EIZOflexscan: 396 pixels) 
 %                   x 3 (rgb) x 30 frames (total of 2 s, 33 ms per frame).
 % * masks       : (cell) 3D cell with alpha transparency masks:
 %                   8 motion directions x 3 coherence levels x 5 motion direction offsets (0, -20, -10, +10, +20 deg). 
 %                   Each cell contains one uint8 mask image: 
 %                   For BOLDscreen:
-%                     height (548 pixels) x width (548 pixels,
+%                     height (544 or 396 pixels) x width (544 or 396 pixels)
 % * info        : table with stimulus information matching the rdk array 
 
-[rdks, masks, info] = vcd_rdk(params);
+[rdks, ~, ~] = vcd_rdk(params);
 
 %% Single dot
 % vcd_singledot function creates 1 dot that will be used for 16 core and 64
@@ -182,13 +216,16 @@ vcd_createEyeTrackingBlockTargets(params)
 % OUTPUTS:
 % * single_dot  : (uint8) matrix with single dot image:
 %                 For BOLDscreen:
-%                   height (94 pixels) x width (94 pixels) x 3 (rgb).
+%                   height (BOLDscreen: 94 pixels, Eizoflexscan: 70 pixels)
+%                   x width (BOLDscreen: 94 pixels, Eizoflexscan: 70 pixels) 
+%                   x 3 (rgb).
 % * masks       : (uint8) matrix with single alpha transparency mask:
 %                 For BOLDscreen:
-%                   height (94 pixels) x width (94 pixels)
+%                   height (BOLDscreen: 94 pixels, Eizoflexscan: 70 pixels) 
+%                   x width (BOLDscreen: 94 pixels, Eizoflexscan: 70 pixels)
 % * info        : table with stimulus information about the dot locations
 
-[single_dot, masks, info] = vcd_singledot(params);
+[single_dot, ~, ~] = vcd_singledot(params);
 
 %% Objects
 % vcd_objects function creates 80 objects will be used for 16 core and 64
@@ -198,7 +235,7 @@ vcd_createEyeTrackingBlockTargets(params)
 % (core and WM test) and figures with axes/titles to check image nrs,
 % rotation.
 % If params.store_imgs = true, this function will store
-% these figures in fullfile(vcd_rootPath,'figs',dispname,'obj').
+% these figures in fullfile(vcd_rootPath,'figs',<dispname>,'obj').
 %
 % INPUTS:
 % * params      : parameter struct (requires display and stimulus parameters)
@@ -208,16 +245,17 @@ vcd_createEyeTrackingBlockTargets(params)
 %                 For BOLDscreen:
 %                   height (1024 pixels) x width (1024 pixels) x 3 (rgb) 
 %                   x 16 object categories (subordinate level) 
-%                   x 4 rotation offsets (0, -8, -4, +4, +8 deg). 
+%                   x 4 rotation offsets (0, -24, -12, +12, +24 deg). 
 % * masks       : (uint8) is a 4D array containing alpha transparency mask:
 %                 For BOLDscreen:
 %                   height (1024 pixels) x width (1024 pixels) 
 %                   x 16 object categories (subordinate level) 
-%                   x 5 rotation offsets (0, -8, -4, +4, +8 deg). 
-%  info         :   Loaded csv from workspaces/stimuli/ with png file names
-%                   and object category information. 
+%                   x 5 rotation offsets (0, -24, -12, +12, +24 deg). 
+% * info        : (table) information about object png filenames,
+%                  category information, and object rotation. Also stored
+%                  as csv info file in params.stim.obj.infofile.
 
-[objects, masks, info] = vcd_objects(params);
+[objects, ~, ~] = vcd_objects(params);
 
 %% Natural scenes
 % vcd_naturalscenes function loads, resizes (and squares pixel values if
@@ -226,8 +264,8 @@ vcd_createEyeTrackingBlockTargets(params)
 % for this stimulus class.
 %
 % If params.verbose = true, this function will make a PNG for each scene 
-% (core, WM test, and LTM lute) and figures with axes/titles to check image 
-% nrs, pixel values and scene size.
+% (core, WM test, and LTM novel lure scenes) and figures with axes/titles 
+% to check image nrs, pixel values and scene size.
 % If params.store_imgs = true, this function will store
 % these figures in fullfile(vcd_rootPath,'figs',dispname,'ns').
 %
@@ -236,14 +274,17 @@ vcd_createEyeTrackingBlockTargets(params)
 %
 % OUTPUTS:
 % * scenes      : (uint8) core scene images, 6D array:
-%                 For BOLDscreen:
-%                   height (743 pixels) x width ( 743 pixels) x 3 (rgb)
+%                 For :
+%                   height (BOLDscreen: 743 pixels, Eizoflexscan: 541 pixels)
+%                   x width (BOLDscreen: 743 pixels, Eizoflexscan: 541 pixels)
+%                   x 3 (rgb)
 %                   x 5 superordinate semantic object categories (human, animal, object, food, place)
 %                   x 2 scene locations (indoor/outdoor)
 %                   x 3 obj locations (left/middle/right)
 % * ltm_lures   : (uint8) long term memory lure scenes, 7D array:
-%                 For BOLDscreen:
-%                   height (743 pixels) x width (743 pixels) x 3 (rgb)
+%                   height (BOLDscreen: 743 pixels, Eizoflexscan: 541 pixels)
+%                   x width (BOLDscreen: 743 pixels, Eizoflexscan: 541 pixels)
+%                   x 3 (rgb)
 %                   x 5 superordinate semantic object categories 
 %                   x 2 scene locations (indoor/outdoor)
 %                   x 3 obj locations (left/middle/right) 
@@ -253,8 +294,9 @@ vcd_createEyeTrackingBlockTargets(params)
 %                       3: somewhat different
 %                       4: very different/easy
 % * wm_im       : (uint8) working memory test scenes, 7D array:
-%                 For BOLDscreen:
-%                   height (743 pixels) x width (743 pixels) x 3 (rgb) 
+%                   height (BOLDscreen: 743 pixels, Eizoflexscan: 541 pixels)
+%                   x width (BOLDscreen: 743 pixels, Eizoflexscan: 541 pixels)
+%                   x 3 (rgb)
 %                   x 5 superordinate semantic object categories 
 %                   x 2 scene locations (indoor/outdoor) 
 %                   x 3 obj locations (left/middle/right)
@@ -263,13 +305,16 @@ vcd_createEyeTrackingBlockTargets(params)
 %                       2:hard add -- scene is altered by adding something small/subtle
 %                       3:easy remove -- scene is altered by removing something big/obvious
 %                       4:hard remove -- scene is altered by removing something small/subtle
+% * info        : (table) information about scene png filenames and
+%                  category information. Also stored
+%                  as csv info file in params.stim.ns.infofile.
 
-[scenes, ltm_lures, wm_im, info] = vcd_naturalscenes(params);
+[scenes, ltm_lures, wm_im, ~] = vcd_naturalscenes(params);
 
 
 
 
-%% Background -- now obsolete
+%% -- Background -- OBSOLETE!!!
 % We create a pinknoise (1/f) image for the entire monitor size, and
 % superimpose a mean gray luminance cutout. The center of this cutout can
 % be adjusted with pixoffset parameter.
