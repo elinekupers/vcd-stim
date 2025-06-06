@@ -132,39 +132,68 @@ for kk = 1:length(cued_stim_loc) % left, right, neutral
         % keep track of row nr 
         tmp_sub_rz            = reshape(m0_sub,[],nr_of_trials_per_block);
         
-        % shuffle the order across columns such that gabors, rdks, dots, obj's get mixed
-        shuffled_ind_left  = nr_of_trials_per_block*[0:(size(tmp_img_nr_left_rz,1)-1)]' ...
-            + reshape(shuffle_concat([1:nr_of_trials_per_block],size(tmp_img_nr_left_rz,1)),nr_of_trials_per_block,[])';
-        
-        shuffled_ind_right = nr_of_trials_per_block*[0:(size(tmp_img_nr_right_rz,1)-1)]' ...
-            + reshape(shuffle_concat([1:nr_of_trials_per_block],size(tmp_img_nr_right_rz,1)),nr_of_trials_per_block,[])';
-        
-        assert(sum(sum(ismember(tmp_img_nr_left_rz,tmp_img_nr_right_rz)))==0);
-        
-        % transpose as matlab indexes over cols first
-        tmp_img_nr_left1       = tmp_img_nr_left_rz';
-        tmp_img_nr_right1      = tmp_img_nr_right_rz';
-        shuffled_ind_left1     = shuffled_ind_left';
-        shuffled_ind_right1    = shuffled_ind_right';
-        assert(sum(sum(ismember(tmp_img_nr_left1,tmp_img_nr_right1)))==0);
-        
-        % keep track of row nr 
-        tmp_sub_rz1 = tmp_sub_rz';
-                
-        % shuffle trials based on shuffled indices
-        tmp_img_nr_left2   = tmp_img_nr_left1(shuffled_ind_left1);
-        tmp_img_nr_right2  = tmp_img_nr_right1(shuffled_ind_right1);
-        assert(sum(sum(ismember(tmp_img_nr_left2,tmp_img_nr_right2)))==0);
-        
-        % keep track of row nr for left and right
-        tmp_sub_rz2_l      = tmp_sub_rz1(shuffled_ind_left1);
-        tmp_sub_rz2_r      = tmp_sub_rz1(shuffled_ind_right1);
-        
-        assert(isequal(sort(tmp_img_nr_left2,1),sort(tmp_img_nr_left1,1))) % sorted shuffled and sorted unshuffled left should be the same
-        assert(isequal(sort(tmp_img_nr_right2,1),sort(tmp_img_nr_right1,1))) % sorted shuffled and sorted unshuffled right should be the same
-        assert(~isequal(tmp_img_nr_left2,tmp_img_nr_left1)) % shuffled and unsort should not be the same
-        assert(~isequal(tmp_img_nr_right2,tmp_img_nr_right1)) % shuffled and unsort should not be the same
-        
+        while 1
+            % shuffle the order across columns such that gabors, rdks, dots, obj's get mixed
+            shuffled_ind_left  = nr_of_trials_per_block*[0:(size(tmp_img_nr_left_rz,1)-1)]' ...
+                + reshape(shuffle_concat([1:nr_of_trials_per_block],size(tmp_img_nr_left_rz,1)),nr_of_trials_per_block,[])';
+            
+            shuffled_ind_right = nr_of_trials_per_block*[0:(size(tmp_img_nr_right_rz,1)-1)]' ...
+                + reshape(shuffle_concat([1:nr_of_trials_per_block],size(tmp_img_nr_right_rz,1)),nr_of_trials_per_block,[])';
+            
+            assert(sum(sum(ismember(tmp_img_nr_left_rz,tmp_img_nr_right_rz)))==0);
+            
+            % transpose as matlab indexes over cols first
+            tmp_img_nr_left1       = tmp_img_nr_left_rz';
+            tmp_img_nr_right1      = tmp_img_nr_right_rz';
+            shuffled_ind_left1     = shuffled_ind_left';
+            shuffled_ind_right1    = shuffled_ind_right';
+            assert(sum(sum(ismember(tmp_img_nr_left1,tmp_img_nr_right1)))==0);
+            
+            % keep track of row nr
+            tmp_sub_rz1 = tmp_sub_rz';
+            
+            % shuffle trials based on shuffled indices
+            tmp_img_nr_left2   = tmp_img_nr_left1(shuffled_ind_left1);
+            tmp_img_nr_right2  = tmp_img_nr_right1(shuffled_ind_right1);
+            assert(sum(sum(ismember(tmp_img_nr_left2,tmp_img_nr_right2)))==0);
+            
+            % keep track of row nr for left and right
+            tmp_sub_rz2_l      = tmp_sub_rz1(shuffled_ind_left1);
+            tmp_sub_rz2_r      = tmp_sub_rz1(shuffled_ind_right1);
+            
+            assert(isequal(sort(tmp_img_nr_left2,1),sort(tmp_img_nr_left1,1))) % sorted shuffled and sorted unshuffled left should be the same
+            assert(isequal(sort(tmp_img_nr_right2,1),sort(tmp_img_nr_right1,1))) % sorted shuffled and sorted unshuffled right should be the same
+            assert(~isequal(tmp_img_nr_left2,tmp_img_nr_left1)) % shuffled and unsort should not be the same
+            assert(~isequal(tmp_img_nr_right2,tmp_img_nr_right1)) % shuffled and unsort should not be the same
+            
+            trial_order = [tmp_sub_rz2_l(:),tmp_sub_rz2_r(:)];
+            
+            % check if stimclasses are balanced 
+            [~,stimclss_idx] = ismember(master_table.stim_class_name(trial_order),params.exp.stimclassnames);
+            chance_of_stimclass = histcounts(stimclss_idx)./sum(histcounts(stimclss_idx));
+            dt = max(1./chance_of_stimclass);
+            n_start = 1:dt:size(trial_order,1);
+            sample_ok = [];
+            for nn = 1:length(n_start)
+                if n_start(nn)+(dt-1) > size(trial_order,1)
+                    curr_sample = stimclss_idx(n_start(nn):end,:);
+                else
+                    curr_sample = stimclss_idx(n_start(nn):(n_start(nn)+(dt-1)),:);
+                end
+                unique_stimclass = unique(curr_sample(:));
+                if length(unique_stimclass)==length(unique(stimclss_idx(:)))
+                    sample_ok(nn) = true;
+                else
+                    sample_ok(nn) = false;
+                    break;
+                end
+            end
+            if sum(sample_ok) == length(n_start)
+                break;
+            end
+            fprintf('[%s]: Reshuffle trials to get equally distributed nr of stimulus classes across trials\n',mfilename);
+        end
+
         img_nr_shuffle_left(kk,:)  = tmp_img_nr_left2(:); % this will fail if we don't have equal nr of trials per stimloc/cueing status
         img_nr_shuffle_right(kk,:) = tmp_img_nr_right2(:); % this will fail if we don't have equal nr of trials per stimloc/cueing status
         assert(sum(sum(ismember(img_nr_shuffle_left,img_nr_shuffle_right)))==0);
@@ -179,7 +208,6 @@ for kk = 1:length(cued_stim_loc) % left, right, neutral
             sub_shuffle_left(kk,:) = cat(1,sub_shuffle_left(kk,:),leftovers_sub_l);
             sub_shuffle_right(kk,:) = cat(1,sub_shuffle_right(kk,:),leftovers_sub_r);
         end
-        
 
         % record catch trials
         if sum(master_table.is_catch) > 1
@@ -239,12 +267,15 @@ else
     [length(params.stim.gabor.unique_im_nrs_core),length(params.stim.rdk.unique_im_nrs_core),... nr of unique core images
     length(params.stim.dot.unique_im_nrs_core),length(params.stim.obj.unique_im_nrs_core) ]))); % 
 end
+
+
 % shuffle order of uncued/cued
 shuffle_vec = shuffle_concat(1:nr_of_trials_per_block,size(combined_trial_shuffleAB2,1)/nr_of_trials_per_block); % 640 trials (1-8 indices)
 shuffle_vec = reshape(shuffle_vec, nr_of_trials_per_block,[]); % 8 trials x 80 blocks
 shuffle_vec = shuffle_vec + [[0:(size(shuffle_vec,2)-1)].*nr_of_trials_per_block]; % 8 trials x 80 blocks (continuous counting)
 shuffle_vec = shuffle_vec(:);
 combined_trial_shuffleAB3 = combined_trial_shuffleAB2(shuffle_vec,:);
+
 
 if exist('sub_shuffle_center','var')
     assert(isequal(size(sub_shuffle_center,1), (length(params.stim.ns.unique_im_nrs_specialcore)*unique_trial_repeats(5,strcmp(task_class_name_to_shuffle,params.exp.taskclassnames)))))
@@ -253,31 +284,31 @@ if exist('sub_shuffle_center','var')
     sub_shuffle_center2 = cat(2,sub_shuffle_center,NaN(size(sub_shuffle_center)));
     
     if strcmp(task_class_name_to_shuffle,{'ltm'})
-        combined_trial_shuffleABC = NaN(size(combined_trial_shuffleAB3,1)+size(sub_shuffle_center2,1),2);        
+        combined_trial_shuffleABC = NaN(size(combined_trial_shuffleAB3,1) + size(sub_shuffle_center2,1),2);        
         
-        insert_scenes_here = datasample(1:size(combined_trial_shuffleABC,1),size(sub_shuffle_center2,1), 'Replace',false);
+        insert_scenes_here   = datasample(1:size(combined_trial_shuffleABC,1),size(sub_shuffle_center2,1), 'Replace',false);
         insert_classics_here = setdiff(1:size(combined_trial_shuffleABC,1),insert_scenes_here);
-        combined_trial_shuffleABC(insert_scenes_here,:) = sub_shuffle_center2;
+        combined_trial_shuffleABC(insert_scenes_here,:)   = sub_shuffle_center2;
         combined_trial_shuffleABC(insert_classics_here,:) = combined_trial_shuffleAB3;
     end
-    
+    % shuffle catch trials
     if sum(master_table.is_catch) > 1
         shuffle_vec_catch = shuffle_concat(sub_center_catch(1,:),1);
-        catch_table = catch_table.stim_class_name(shuffle_vec_catch(:,1),1);
+        catch_table       = catch_table.stim_class_name(shuffle_vec_catch(:,1),1);
     end
 else
     combined_trial_shuffleABC = combined_trial_shuffleAB3;
     
+    % Shuffle catch trials
     if sum(master_table.is_catch) > 1
         shuffle_vec_catch = [shuffle_concat(sub_shuffle_left_catch(1,:),1); shuffle_concat(sub_shuffle_right_catch(2,:),1)];
-        % Shuffle catch trials
-        catch_table = master_table(shuffle_vec_catch(:,1),1);
-        catch_table = master_table(shuffle_vec_catch(:,2),2);
+        catch_table1 = master_table(shuffle_vec_catch(:,1),1);
+        catch_table2 = master_table(shuffle_vec_catch(:,2),2);
     end
 end
   
 
-% APPLY THE SHUFFLE!
+%% APPLY THE SHUFFLE!
 shuffled_master_table = table();
 for xx = 1:size(master_table(1,:),2); col_widths(xx) = size(table2array(master_table(1,xx)),2); end
 colNames = master_table.Properties.VariableNames;
@@ -327,6 +358,8 @@ for sc = 1:length(params.exp.stimclassnames)
 end
 % Check that left and right image nrs are not overlapping
 assert(sum(shuffled_master_table.stim_nr_left==shuffled_master_table.stim_nr_right)==0)
+
+%% CALCULATE REPEATS 
 
 % Compute how often each new combination of stimuli x cue status is repeated
 [uniquerow, ~, rowidx] = unique([shuffled_master_table.stim_nr_left, shuffled_master_table.stim_nr_right, shuffled_master_table.is_cued], 'rows'); 
