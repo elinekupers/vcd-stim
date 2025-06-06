@@ -1,12 +1,14 @@
 function conds_master_reordered_merged = vcd_mergeUniqueImageIntoTrials(conds_master)
 % VCD function to merge unique images into stimulus trials where there is a
 % left and right parafoveal stimulus or single central stimulus.
+%
+%   conds_master_reordered = vcd_mergeUniqueImageIntoTrials(conds_master,fix_task_flag)
+%
+% This function does the following:
 % Step 1: match left/right stimuli based on condition
 % Step 2: add thickening direction of fixation circle into a column
 % Step 3: recreate condition master table with merged unique images, where
 % each row is now a single trial.
-%
-%   conds_master_reordered = vcd_mergeUniqueImageIntoTrials(conds_master,fix_task_flag)
 %
 % INPUTS:
 % conds_master  :       (table) with columns for stim-trial properties and
@@ -72,9 +74,9 @@ if ~strcmp(unique(conds_master.task_class_name),{'fix'})
 
     end
     
-    cuing_conditions = [ones(1,length(left_cued)), 2.*ones(1,length(left_uncued)), ...
-        3.*ones(1,length(right_cued)), 4.*ones(1,length(right_uncued))];
-    cond_idx = shuffle_concat([1:nr_cueing_conds],size(trial_vec_i,1)/nr_cueing_conds);
+    cuing_conditions = [ones(1,length(left_cued)),  2.*ones(1,length(left_uncued)), ...
+                     3.*ones(1,length(right_cued)), 4.*ones(1,length(right_uncued))];
+    cond_idx         = shuffle_concat([1:nr_cueing_conds],size(trial_vec_i,1)/nr_cueing_conds);
     
     if length(cond_idx) < length(cuing_conditions)
         cond_idx = cat(2,cond_idx, shuffle_concat(1:diff([length(cond_idx),size(trial_vec_i,1)]),1));
