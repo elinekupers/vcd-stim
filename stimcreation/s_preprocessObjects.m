@@ -41,7 +41,7 @@
 %% DEAL WITH CONSTANTS
 
 % Get display params
-dispname = 'PPROOM_EIZOFLEXSCAN'; % Choose from: '7TAS_BOLDSCREEN32';'KKOFFICE_AOCQ3277';'EKHOME_ASUSVE247';'PPROOM_EIZOFLEXSCAN'
+dispname = '7TAS_BOLDSCREEN32'; % Choose from: '7TAS_BOLDSCREEN32';'KKOFFICE_AOCQ3277';'EKHOME_ASUSVE247';'PPROOM_EIZOFLEXSCAN'
 disp_params   = vcd_getDisplayParams(dispname);
 
 %% Define/Load stimulus params
@@ -56,27 +56,20 @@ disp_params   = vcd_getDisplayParams(dispname);
 load_stim_params                 = false; % if false, re-create params.
                                           % if true, we load stored mat file
 store_stim_params                = false; % if false, we don't store params. 
-                                          % if true, we store mat file in fullfile(vcd_rootPath,'workspaces','info')
-overwrite_randomized_stim_params = false; % if false, we will use now hardcoded (once probabilistic) stimulus/experimental design params. Use this for reproducible results.
-                                          % if true, we do redefine all stimulus/experimental design params, including probabilistic params
-                                       
-% Input 1: Stimulus class, choose from 'gabor','rdk','dot','obj','ns','all' (default is 'all')
-% Input 2: Display params struct (see vcd_getDisplayParams.m)
-% Input 3: Load prior stored parameters or not. 
-% Input 4: Store generated parameters or not. 
-% Input 5: Overwrite stored parameters and regenerate probabilistic params
-stim_params   = vcd_getStimParams('stim_class','all', ...
-                             'disp_name', dispname, ...
-                             'load_params', load_stim_params,...
-                             'store_params', store_stim_params, ...
-                             'overwrite_randomized_params', overwrite_randomized_stim_params); 
+                                          % if true, we store mat file in fullfile(vcd_rootPath,'workspaces','info')                                       
+% Input 1: Display params struct (see vcd_getDisplayParams.m)
+% Input 2: Load prior stored parameters or not. 
+% Input 3: Store generated parameters or not. 
+stim_params   = vcd_getStimParams('disp_name', dispname, ...
+                                  'load_params', load_stim_params,...
+                                   'store_params', store_stim_params); 
 
 % define folders and params
 % dir0 = '/var/fairstate-ext2/GoogleDrive/VCD/experimental_design/stimuli/workspaces/complex_objects/images_to_process';
-dir0         = fullfile(vcd_rootPath,'workspaces','stimuli','all_to_process'); % where 'raw' images live
+dir0         = fullfile(vcd_rootPath,'workspaces','stimuli','RAW','vcd_objects','all_to_process'); % where 'raw' images live
 % figuredir  = '/var/fairstate-ext2/GoogleDrive/VCD/experimental_design/stimuli/workspaces/complex_objects/tryD_targetsdlum_0pt03';  % where diagnostic figures are written
-figuredir    = fullfile(vcd_rootPath,'figs',dispname, 'objects_preproc_lummn0pt5_sd0pt15_sz99pct');
-outputdir    = [figuredir '/finalimages'];  % where final images are written to (this directory is REMOVED if it exists)
+figuredir    = fullfile(vcd_rootPath,'workspaces','stimuli',dispname, 'objects_preproc_lummn0pt5_sd0pt15_sz99pct');
+outputdir    = fullfile(vcd_rootPath,'workspaces','stimuli',dispname, 'vcd_objects_2degstep_lumcorrected');  % where final images are written to (this directory is REMOVED if it exists)
 
 % Parameters (CHANGE ONLY THESE SETTINGS)
 numrot       = 91;      	% number of image viewpoints
