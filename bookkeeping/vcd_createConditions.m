@@ -99,8 +99,8 @@ clear rename_me ff p0
 
 %% Load params if requested and we can find the file
 if load_params
-    d = dir(fullfile(vcd_rootPath,'workspaces','info',sprintf('trials_%s_%s*.mat',params.disp.name,session_env)));
-    fprintf('\n[%s]: Found %d trial .mat file(s)\n',mfilename,length(d));
+    d = dir(fullfile(vcd_rootPath,'workspaces','info',sprintf('condition_master_%s_%s*.mat',params.disp.name,session_env)));
+    fprintf('\n[%s]: Found %d condition_master .mat file(s)\n',mfilename,length(d));
     if ~isempty(d)
         if length(d) > 1
             warning('[%s]: Multiple .mat files! Will pick the most recent one\n', mfilename);
@@ -126,16 +126,41 @@ else % Recreate conditions and blocks and trials
             tmp = load(fullfile(d(end).folder,d(end).name));
             params.exp = tmp.exp;
         else
-            error('[%s]: Can''t find exp params file!\n', mfilename)
+            warning('[%s]: Can''t find exp session .mat files! Will run vcd_getSessionParams.m', mfilename);
+            params.exp  = vcd_getSessionParams('load_params',false,'store_params',false, 'verbose',false);
+        end
+    end
+    if ~isfield(params,'stim')
+        warning('[%s]: params.stim doesn''t exist!)',mfilename)
+        warning('[%s]: Will try to loading stim params from file.\n', mfilename);
+        d = dir(fullfile(vcd_rootPath,'workspaces','info',sprintf('stim_%s*.mat',params.disp.name)));
+        if ~isempty(d)
+            fprintf('\n[%s]: Found %d stim params .mat file(s)\n',mfilename,length(d));
+
+            if length(d) > 1
+                warning('[%s]: Multiple .mat files! Will pick the most recent one\n', mfilename);
+            end
+            
+            fprintf('[%s]: Loading stim params .mat file: %s\n', mfilename, d(end).name);
+            tmp = load(fullfile(d(end).folder,d(end).name));
+            params.exp = tmp.exp;
+        else
+            warning('[%s]: Can''t find stim session .mat files! Will run vcd_getStimParams.m', mfilename);
+            params.stim = vcd_getStimParams('load_params',false,'store_params',false, 'verbose',false);  
         end
     end
     
+    %% Preallocate space and set up tables/structs
     
-    % Bookkeeping structs
-    all_unique_im   = struct();
-    all_cond          = struct();
-    condition_master  = table();
+    all_unique_im     = struct();  % details about unique core images present in VCD-core experiment. This information is also present in condition_master.
+    all_cond          = struct();  % details about unique conditions (unique images x cueing condition) present in VCD-core experiment. This information is also present in condition_master.
     
+    % master table with all conditions shown across all sessions. 
+    % Note that block_nr counts continuously because we will shuffle the 
+    % block order later for each subject. Same holds for run_nr, these
+    % numbers do not represent the final nr of runs as they will change
+    % depending on the allocation of blocks to each run within a session.
+    condition_master  = table();   
     
     % Define block content for each stimulus class
     for stimClass_idx = 1:length(params.exp.stimclassnames)
@@ -239,7 +264,7 @@ else % Recreate conditions and blocks and trials
     end
     condition_master.correct_response = button_response;
 
-    %% ---- bookkeeping: See if we can achieve roughly equally sample scc images within a block
+    % ---- bookkeeping: See if we can achieve roughly equally sample scc images within a block
     scc_trials0 = find(condition_master.stim_class==99);
     cued0 = condition_master.is_cued(scc_trials0);
     scc_trials = scc_trials0; % make a copy
@@ -281,7 +306,7 @@ else % Recreate conditions and blocks and trials
     end
     
     
-    %% ---- bookkeeping: Check if button presses are balanced to the extent possible
+    % ---- bookkeeping: Check if button presses are balanced to the extent possible
     curr_sc = unique(condition_master.stim_class);
     curr_tc = unique(condition_master.task_class);
     curr_tc = curr_tc(curr_tc~=1); % exclude fixation
@@ -477,7 +502,7 @@ else % Recreate conditions and blocks and trials
 
     
     
-    %% Plot figures to check stimulus order
+    %% Plot figures to check condition master content
     if params.verbose
 
         vcd_visualizeMasterTable(condition_master, params.store_imgs,session_env);
