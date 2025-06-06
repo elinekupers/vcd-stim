@@ -619,12 +619,13 @@ for ii = 1:length(stim_row)
                 % decrement change to stimulus (this probability is already
                 % determined by vcd_addFIXandCDtoTimeTableMaster.m).
                 if run_table.cd_start(stim_row(ii),side)~=0
-                    stmclass = run_table.stim_class_name{stim_row(ii),side};
-                    rel_onset = run_table.cd_start(stim_row(ii),side) - run_table.event_start(stim_row(ii)) + 1;
+                    stmclass   = run_table.stim_class_name{stim_row(ii),side};
+                    rel_onset  = run_table.cd_start(stim_row(ii),side) - run_table.event_start(stim_row(ii)) + 1;
+                    t_cmod_pad = params.exp.trial.stim_array_dur-(rel_onset+params.stim.cd.t_cmodfun-1);
                     if strcmp(stmclass,'rdk')
-                        [f_im_cd, f_mask_cd] = vcd_applyContrastDecrement(params, rel_onset, stmclass, run_images(curr_frames,side), 'input_mask', run_alpha_masks(curr_frames,side)); % give all frames
+                        [f_im_cd, f_mask_cd] = vcd_applyContrastDecrement(params, rel_onset, stmclass, run_images(curr_frames,side), 'input_mask', run_alpha_masks(curr_frames,side),'t_cmod_pad',t_cmod_pad); % give all frames
                     else
-                        [f_im_cd, f_mask_cd] = vcd_applyContrastDecrement(params, rel_onset, stmclass, run_images(curr_frames(1),side), 'input_mask', run_alpha_masks(curr_frames(1),side)); % give first (and only frame)
+                        [f_im_cd, f_mask_cd] = vcd_applyContrastDecrement(params, rel_onset, stmclass, run_images(curr_frames(1),side), 'input_mask', run_alpha_masks(curr_frames(1),side),'t_cmod_pad',t_cmod_pad); % give first (and only frame)
                     end
                     run_images(curr_frames,side) = f_im_cd;
                     run_alpha_masks(curr_frames,side) = f_mask_cd;
