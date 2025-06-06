@@ -105,23 +105,24 @@ ap_center = [0,0]; % [x y] in pixels. center on zero for now
 
 % Define dot aperture in pixels. 
 % NOTE: we shave off 1 dot radius (3 pixels from each side) to avoid dots being plotting outside the aperture
-ap_radius = [params.stim.rdk.img_sz_pix./2 params.stim.rdk.img_sz_pix./2]-(params.stim.rdk.dots_size); % [w h] in pixels
+ap_radius = [params.stim.rdk.img_sz_pix./2 params.stim.rdk.img_sz_pix./2]-(params.stim.rdk.dots_size_pix); % [w h] in pixels
 
-% When exporting the frame, the RDK image turns out to be 548.7 pixels for 7TAS
-% BOLDscreen; This is ~1.5 times bigger than the 4 deg RDK aperture we specified. 
-% We adjust for this by increasing the size of the gray RDK box such that 
-% the inner dot aperture will have the 4 deg size we want.
+% The total size of the RDK frame is ~1.5x larger than the support expected  
+% for a 4 deg RDK aperture. The BOLDscreen 4 deg aperture is 352 x 352 pixels 
+% and frame support is 544 x 544 pixels. The Eizoflexscan 4 deg aperture is 
+% 256 x 256 pixels and frame support is 396 x 396 pixels. Note that this 
+% support scale factor is not exactly 1.5 because we want an even nr of
+% pixels for the total frame size.
 if strcmp(params.disp.name, '7TAS_BOLDSCREEN32')
-    scf = 1.548022598870056; % scf = 548/354; convert background square image from [93.04,78.880, 548.7,577.02] into [0 0 548 548]; 
-    rect_box_sz = 577;
+    scf = 1.545454545454545; % scf = 544/352; convert square support image from [92.52, 78.44, 545.6, 573.76] into [0 0 544 544]; 
+    rect_box_sz = 546;
 elseif strcmp(params.disp.name, 'PPROOM_EIZOFLEXSCAN')
-    scf = 1.546875000000000; %1.550387596899225; % scf = 396/256; convert background square image from [68.08, 57.76, 399.9, 420.54] into [0 0 398 398]; 
+    scf = 1.546875000000000; % scf = 396/256; convert square support image from [67.56, 57.32, 396.8, 417.28] into [0 0 396 396]; 
     rect_box_sz = 396;
 else
     scf = 1.548022598870056;
     rect_box_sz = params.disp.ppd/88.178261586694418; % infer the rectangular support of the background by comparing the pixels per degree to the ppd of the BOLD screen.
 end
-
 
 % Define number of frames within a single RDK video
 num_frames = params.stim.rdk.duration/params.stim.rdk.dots_interval;
@@ -131,7 +132,7 @@ ndots = params.stim.rdk.max_dots_per_frame;
 
 % Check if we have delta images for WM
 if ~isempty(params.stim.rdk.delta_from_ref)
-    rdk_motdir_ref = [0:length(params.stim.rdk.delta_from_ref)];
+    rdk_motdir_ref = [0:length(params.stim.rdk.delta_from_ref)]; %#ok<NBRAK>
 else
     rdk_motdir_ref = 0;
 end
@@ -147,7 +148,10 @@ rdks     = cell(length(params.stim.rdk.dots_direction),length(params.stim.rdk.do
 dotlocs  = rdks;
 masks    = rdks; 
 
-% nr of unique videos = 72 : 8 directions x 3 coherence levels x 5 deltas (none + 4)
+% actual nr of unique videos = 56:
+% 8 directions x 3 coherence levels x delta = 0 deg 
+% + % 8 directions x 3 coherence levels x 4 deltas 
+% But here we overestimate and then trim down
 n_unique_videos = size(rdks,1)*size(rdks,2)*size(rdks,3);
 
 % info table to log order of rdk videos
@@ -164,9 +168,9 @@ info.Properties.VariableNames = {'unique_im','dot_motdir_deg','dot_motdir_deg_i'
     'dot_coh','dot_coh_i','rel_motdir_deg','rel_motdir_deg_i','is_special_core','dot_pos'};
 
 %% RNG seed parameters
-rseed = [1000 2010];
-num_col = size(params.stim.rdk.dots_color,1);
-
+rseed    = [1000 2010];
+num_col  = size(params.stim.rdk.dots_color,1);
+rdk_seed = NaN(size(rdks,1),size(rdks,2),size(rdks,3));
 
 %% Folder to store RDK videos
 tmpDir = fullfile(vcd_rootPath, 'workspaces','stimuli',params.disp.name,'rdk',['rdk_test' datestr(now,'yyyymmdd')]);
@@ -182,7 +186,7 @@ set(gcf,'Position',[1 1 2*params.stim.rdk.img_sz_pix, 2*params.stim.rdk.img_sz_p
 counter = 1;
 for cc = 1:length(params.stim.rdk.dots_coherence)
     if params.verbose
-        fprintf('\n[%s]: Dot coherence: %2.2f %%', mfilename, params.stim.rdk.dots_coherence(cc));
+        fprintf('\n[%s]: Dot coherence: %2.2f %%', mfilename, 100*params.stim.rdk.dots_coherence(cc));
     end
     for bb = 1:length(params.stim.rdk.dots_direction)
     
@@ -222,7 +226,7 @@ for cc = 1:length(params.stim.rdk.dots_coherence)
                 % Allocate space for new dots, their kill time and position in this video
                 dots               = NaN(ndots,2);
                 dot_kill_time      = NaN(ndots,1);
-                stored_coh_dot_pos = NaN(ndots,2,n_unique_videos);
+                stored_coh_dot_pos = NaN(ndots,2,num_frames);
 
                 % Calculate direction of dots, for noise (incoherent) and signal (coherent)
                 v_coh = [cos(deg2rad(curr_motdir_deg)) -sin(deg2rad(curr_motdir_deg))];    % convert angle from deg to radians, and then into dxdy direction (is already unit length)    
@@ -281,7 +285,7 @@ for cc = 1:length(params.stim.rdk.dots_coherence)
                     for ii = 1:ndots
 
                         % update spatial position
-                        dots(ii,:) = dots(ii,:) + dot_vel_pix_per_frames(ii,:); % .* 1; %(1/params.stim.presentationrate_hz);
+                        dots(ii,:) = dots(ii,:) + dot_vel_pix_per_frames(ii,:); 
 
                         % Check whether the dot has reached its 'kill time'
                         % based on frames
@@ -328,36 +332,32 @@ for cc = 1:length(params.stim.rdk.dots_coherence)
                     clf; hold all;
                     ax = gca;
                     ax.Units = 'pixels';
-                    r=rectangle(ax,'Position', [(ap_center -(rect_box_sz/2)), ...
+                    r = rectangle(ax,'Position', [(ap_center -(rect_box_sz/2)), ...
                         rect_box_sz, rect_box_sz], ...
-                        'FaceColor', [0.5 0.5 0.5], 'EdgeColor', 'none'); %
+                        'FaceColor', [0.5 0.5 0.5], 'EdgeColor', 'none'); %#ok<NASGU> %
                     colormap gray; axis off square tight; 
                     set(gca, 'CLim',[0 1]);
                     for mm = 1:size(dots,1)
-                        drawcircle('Parent',ax,'Center',dots(mm,:),'Radius',params.stim.rdk.dots_size,...
+                        drawcircle('Parent',ax,'Center',dots(mm,:),'Radius',params.stim.rdk.dots_size_pix,...
                             'Color',col(mm,:), 'InteractionsAllowed', 'none', 'FaceAlpha', 1, 'LineWidth', 1);
 
                     end
 
-                    % store location in case we want to check it later
+                    % Store location of each individual dot in case we want to check it later
                     stored_coh_dot_pos(:,:,curr_frame) = dots;
 
-
                     % Check size of background image
-                    ax_size = ax.Children(end).Parent.Position;
+                    ax_size = ax.Children(end).Parent.Position; %#ok<NASGU>
                     offsetRect = [0,0,scf*params.stim.rdk.img_sz_pix,scf*params.stim.rdk.img_sz_pix];
                     % ensure even nr of pixels
                     offsetRect(3:4) = 2*ceil(offsetRect(3:4)./2);
 
-    %                 whRect = matlab.ui.internal.PositionUtils.getPixelRectangleInDevicePixels([0 0 offsetRect(3:4)./2], fH);
-    %                 xyRect = matlab.ui.internal.PositionUtils.getPixelRectangleInDevicePixels(offsetRect./2, fH);
-
                     f = getframe(ax,offsetRect);
                     im = frame2im(f);
 
-                    % if you want to print individual frames as png
-    %                 fn = fullfile(saveStimDir,'export',sprintf('%04d_vcd_rdk_coh%02d_dir%02d_delta%02d_t%02d.png', cc,bb,dd,curr_frame));
-    %                 imwrite(im,fn);
+                    % debug visualization: if you want to print individual frames as png
+                    % fn = fullfile(saveStimDir,'export',sprintf('%04d_vcd_rdk_coh%02d_dir%02d_delta%02d_t%02d.png', cc,bb,dd,curr_frame));
+                    % imwrite(im,fn);
 
                     if size(im,1) > offsetRect(3)
                         im = imresize(im, offsetRect(3)/size(im,1));
@@ -392,7 +392,7 @@ for cc = 1:length(params.stim.rdk.dots_coherence)
                     info.unique_im(counter) = wm_im_nrs(dd,bb);
                 end
 
-                special_core_idx = find(info.unique_im(counter)==params.stim.rdk.unique_im_nrs_specialcore);
+                special_core_idx = find(info.unique_im(counter)==params.stim.rdk.unique_im_nrs_specialcore); %#ok<EFIND>
                 if ~isempty(special_core_idx)
                     info.is_specialcore(counter) = true;
                 else
@@ -401,7 +401,7 @@ for cc = 1:length(params.stim.rdk.dots_coherence)
 
                 % Create binary circular alpha mask for rdk frames
                 [XX,YY]       = meshgrid((1:size(frames,1))-(size(frames,1)/2),(1:size(frames,1))-(size(frames,1)/2)); 
-                mask_radius   = ap_radius(1)+(4*params.stim.rdk.dots_size); % add 4 x dot pixel radius to avoid cutting off dots
+                mask_radius   = ap_radius(1)+(4*params.stim.rdk.dots_size_pix); % add 4 x dot pixel radius to avoid cutting off dots
                 circlemask    = (YY - ap_center(1)).^2 + (XX - ap_center(2)).^2 <= mask_radius.^2;
                 mask          = double(circlemask);
                 mask(mask==1) = 255;
@@ -437,8 +437,9 @@ info.stim_pos   = stim_pos;
 info.stim_pos_i = stim_pos_i;
 info = info(:,[1, 10, 11, 2:9]); % reorder info table columns
 info = info(~isnan(info.unique_im),:);
+
 if params.store_imgs
-    % in addition to storing separate conditions, we also store larger rdk file 
+    % in addition to storing individual rdk movies, we also store larger rdk file 
     saveDir = fileparts(fullfile(params.stim.rdk.stimfile));
     if ~exist(saveDir,'dir'), mkdir(saveDir); end
     save(fullfile(sprintf('%s_%s.mat',params.stim.rdk.stimfile,datestr(now,30))),'rdks','info','masks','dotlocs','rdk_seed','-v7.3');

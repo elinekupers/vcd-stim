@@ -3,22 +3,35 @@ function [objects, masks, info] = vcd_objects(params)
 %   [objects, masks, info] = vcd_objects(params)
 %
 % Purpose:
-%   Luminance-correct, load, and store object images for VCD experimental
-%   display. By default, we do not preprocess images and assume this has
-%   already been done.
+%   Luminance-controlled, load, and store rotated object images for VCD 
+%   experimental display. By default, we do not preprocess images and 
+%   assume this has already been done.
 %
-%   After preprocessing, you have two files required to execute the rest of
-%   the function:
-%    1. a set of individual object image files, where the folder is defined
-%       by params.stim.obj.indivobjfile, e.g.:
-%       fullfile(vcd_rootPath,'workspaces/stimuli/vcd_complex_objects/*_rot*.png)
-%    2. A csv file defined in params.stim.obj.infofile, e.g.: 
+%   If you haven't done so already, you can control object's luminance by 
+%   running the script: s_preprocessObjects.m. This line is commented out
+%   by default, assuming the user will only do this once at the beginning 
+%   and does not want to redo this step automatically everytime this 
+%   function is called. Preprocessing step requires "raw" png files living
+%   in the folder:
+%    ./vcd-stim/workspaces/stimuli/RAW/vcd_objects/all_to_process/*
+%   Once preprocess, png files are expected to live in the folder defined
+%   by "params.stim.obj.indivobjfile", which is by default:
+%    ./vcd-stim/workspaces/stimuli/<dispname>/vcd_objects_2degstep_lumcorrected/*'
+%
+%   This function will resize a subselection of preprocessed 
+%   object pngs if requested and reorder the files according to their 
+%   unique image number. It will also create a .csv info file, which 
+%   contains information about the object stimuli used in VCD. See OUTPUTS 
+%   below for more details. The csv file will be stored in the folder 
+%   defined by params.stim.obj.infofile, e.g.: 
 %       fullfile(vcd_rootPath,'workspaces/objects_info.csv')
-%   Given that 0, 90, and 180 degrees are right, forwards, and left facing, 
-%   respectively. Facing directions of objects in the following files are:
-%       * 1-23 (0-44 deg): face sideways
-%       * 24-46 (46-90 deg): face forward
-%       * 47-68 (92-134 deg): face forward
+%
+%   Objects can rotate between 0 and 180 degrees, where 0, 90, and 180 
+%   degrees correspond to right, forwards, and left facing, respectively. 
+%   Facing directions of objects in the following files are:
+%       * 1-23  (0-44 deg)   : face sideways
+%       * 24-46 (46-90 deg)  : face forward
+%       * 47-68 (92-134 deg) : face forward
 %       * 69-91 (136-180 deg): face sideways
 %   
 %   NOTE: If params.stim.obj.dres~=1, function rescales images by
@@ -29,78 +42,85 @@ function [objects, masks, info] = vcd_objects(params)
 %   object images as a single mat file in params.stim.obj.stimfile (e.g.:
 %   fullfile(vcd_rootPath,'workspaces','stimuli',<disp_name>,'objects.mat').
 %
-%   We also create a struct called "info", which contains subset of 
-%   the info table in the order they were loaded, which makes it easier to
-%   keep track and double check indexing.
-%    - object_name: {1×80 cell} - same as filename in info
-%    - base_rot: [1×80 double]  - base rotation of core object
-%    - abs_rot: [1×80 double]   - absolute rotation of object (after adding delta)
-%    - rel_rot: [1×80 double]   - rel rotation of object (i.e. the delta)
-%    - unique_im_nr: [1×80 double] - same as unique_im_nr in info
-%    - facing_dir: {1×80 cell}  - same as facing_dir in info
-%    - rel_rot_name: {1×80 cell} - same as rel_rot_name in info
-%
 % INPUTS:
-%  params            :   struct with stimulus params
+%  params       :   struct with stimulus params
 %
 % OUTPUTS:
-%  objects      :   uint8 images of complex images, dimensions are
-%                   width x height x 3 (rgb) x object's subordinate
-%                   category x num of rotations
-%  masks        :   uint8 alpha transparency masks for ptb to remove the 
-%                   background. Dimensions are width (pixels) x height
-%                   (pixels) x object's subordinate category x num of
-%                   rotations
+%  objects      :   uint8 5D array with images of individual object stimuli
+%                   dimensions are: 
+%                   width (1024 pixels) x height (1024 pixels) x 3 (rgb)
+%                   x 16 object's subordinate categories (e.g., damon, lisa, etc.)
+%                   x 5 rotations (0, -24, -12, +12, +24 degrees).
+%  masks        :   uint8 4D array with alpha transparency masks for 
+%                   Psychtoolbox to remove the object from the background.
+%                   Dimensions are:
+%                   width (1024 pixels) x height (1024 pixels)
+%                   x 16 object's subordinate categories (e.g., damon, lisa, etc.) 
+%                   x 5 rotations (0, -24, -12, +12, +24 degrees).
 %  info         :   Loaded csv from workspaces/stimuli/ with png file names
 %                   and object category information. 
-%      filename         : (cell) filename of original png, e.g.: {'faces_damonwayans_rot31.png'} or {'places_watertower_rot75.png'}                
-%      unique_im        : (double) unique image nr for each object: 
-%                         range 65-80, 367-430. 
-%      stim_pos_i       : (double) stimulus position index. 1=left, 2=right
-%      stim_pos         : (cell) stimulus position, same as stim_loc_i but
-%                           human readable ({'left'} or {'right'})
-%      superordinate    : (cell) superordinate semantic category label:
-%                           {'human','animal','object','food','place'}
-%      superordinate_i  : (double) same as superordinate, but indexed by nr
-%                           1:'human' through 5: 'place'    
-%      basic            : (cell) basic semantic category label for each
-%                          superordinate semantic categorycategory:
-%                           {'facefemale','facefemale', ...
-%                           'small','large',...
-%                           'tool','vehicle',...
-%                           'man-made','produce',...
-%                           'building'};
-%      basic_i          : (double) same as basic, but indexed by nr
-%                           1: facefemale, 2: facefemale
-%                           1: small, 2: large
-%                           1: tool, 2: vehicle
-%                           1: man-made, 2: produce
-%                           1: building.
-%      subordinate      : (cell) subordinate semantic category label, name 
-%                           for each individual core object: 
-%                           {'damon','lisa','sophia','parrot','cat','bear',...
+%      filename             : (cell) filename of original png, e.g.: {'faces_damonwayans_rot30.png'} or {'places_watertower_rot66.png'}                
+%      unique_im            : (double) unique image nr for each object: 
+%                              range 65-80 (core images), 239-302 (wm test images). 
+%      stim_pos_name        : (cell) stimulus position ({'left'} or {'right'}), 
+%                             same as stim_loc_i but human readable.
+%      stim_pos             : (double) stimulus position index. 1=left, 2=right
+%      super_cat_name       : (cell) superordinate semantic category label:
+%                             {'human','animal','object','food','place'}
+%      super_cat            : (double) same as superordinate, but indexed by nr
+%                             1:'human' through 5: 'place'    
+%      basic_cat_name       : (cell) basic semantic category label for each
+%                             superordinate semantic categorycategory:
+%                             {'facefemale','facefemale', ...
+%                             'small','large',...
+%                             'tool','vehicle',...
+%                             'man-made','produce',...
+%                             'building'};
+%      basic_cat           : (double) same as basic, but indexed by nr
+%                             1: facefemale, 2: facefemale
+%                             1: small, 2: large
+%                             1: tool, 2: vehicle
+%                             1: man-made, 2: produce
+%                             1: building.
+%      sub_cat_name        : (cell) subordinate semantic category label, name 
+%                            for each individual core object: 
+%                            {'damon','lisa','sophia','parrot','cat','bear',...
 %                            'giraffe','drill','brush','pizza','banana',...
 %                            'bus','suv''church','house','watertower'};
-%      subordinate_i    : (double) same as subordinate, but indexed by nr
-%                           1:damon, 1:lisa, 2:sophia, 
-%                           1:parrot, 2:cat, 1:bear, 2: giraffe,
-%                           1:drill, 2: brush,
-%                           1:bus, 2: suv,
-%                           1:pizza, 1: banana,
-%                           1:church, 2: house, 3: watertower
-%      rot_abs          : (double) absolute rotation (deg) of object.
-%                          ranges from 10-170, in evenly steps of 10 deg
-%                          (excluding 90 degrees). 
-%                           0 deg = profile view facing to the right. 
-%                           90 deg = forward facing view. 
-%                           180 deg = profile view facing to the left. 
+%      sub_cat             : (double) same as subordinate, but indexed by nr
+%                            1:damon, 1:lisa, 2:sophia, 
+%                            1:parrot, 2:cat, 1:bear, 2: giraffe,
+%                            1:drill, 2: brush,
+%                            1:bus, 2: suv,
+%                            1:pizza, 1: banana,
+%                            1:church, 2: house, 3: watertower
+%      affordance_name     : (cell) affordance label for each object, names 
+%                            are one of 4: {'greet','grasp','enter','observe'};          
+%      affordance_cat      : (double) same as affordance_name, but
+%                            computer-readable, where 1: greet, 2: grasp,
+%                            3: enter, and 4: observe.
+%      is_specialcore     : (logical) whether the object is part of the
+%                            subselected stimuli used in imagery and
+%                            long-term memory task.
+%      base_rot           : (double) rotation (in deg) of object shown in 
+%                            the first stimulus array (prior to applying 
+%                            relative rotation ("rel_rot). base_rot is the
+%                            same for core images, and only relevant for wm 
+%                            test images only. Values range from 26-154 deg,
+%                            in evenly steps of 8 deg (excluding 90 deg). 
+%      rot_abs            : (double) absolute rotation (deg) of object.
+%                            ranges from 26-154, in evenly steps of 8 deg
+%                            (excluding 90 degrees). 
+%                            0 deg = profile view facing to the right. 
+%                            90 deg = forward facing view. 
+%                            180 deg = profile view facing to the left. 
 %      rot_rel          : (double) relative rotation (deg) of object from
-%                           core object rotation, ranges from -8, -4, +4,
-%                           +8 deg.
+%                           core object rotation, ranges from -24, -12, +12,
+%                           +24 deg. Only relevant for wm test images.
 %      facing_dir       : (cell) facing direction, 'forward' directions are
 %                           between 46-134 degree. 'sideways' directions
 %                           are between 0-44 and 136-180 degrees. Rotations
-%                           of 45 and 135 are ill-defined and does not occur.
+%                           of 45, 90, and 135 are ill-defined and don't occur.
 %      rel_rot_name     : (cell) relative rotation name for WM test images
 %                           whether the relative rotation results in the
 %                           object facing more left or rightwards from the
@@ -113,14 +133,11 @@ function [objects, masks, info] = vcd_objects(params)
 %                           between 0-90 and relative rotation is < 0, OR
 %                           when absolute rotation is between 91-180
 %                           relative rotation is > 0 deg.
-%      is_specialcore    : (logical) whether the object is part of the
-%                           subselected stimuli used in imagery and
-%                           long-term memory task.
 %
-% Written by Eline Kupers 2024/12, updated 2025/04
+% Written by Eline Kupers 2024/12, updated 2025/04 and 2025/06
 
-%% If you haven't done so yet, first preprocess object images:
-% s_preprocessObjects.m
+%% If you haven't done so yet, first preprocess object images (once):
+% s_preprocessObjects; <-- Before you run this! Check variable names inside the script!!
 
 
 %% Prepare images
@@ -158,12 +175,12 @@ for bb = 1:length(params.stim.obj.super_cat)
     subordinate_i = cat(2,subordinate_i,sb);
 end
 
+% Define affordance index nr
 [~,affordance_i]    = ismember(affordance,{'greet','grasp','enter','observe'});
 
-% Get info about images
+% Get more info about images
 n_obj        = length(core_im_name);
-n_wm_im      = length(wm_test_im_name);
-n_wm_changes   = length(params.stim.obj.delta_from_ref);
+n_wm_changes = length(params.stim.obj.delta_from_ref);
 
 % Predefine info table
 info.stim_pos_name   = cat(1, repmat({'left';'right'},length(core_im_name)/2,1) , ....
@@ -193,9 +210,6 @@ info.base_rot = cat(1,params.stim.obj.facing_dir_deg',repelem(params.stim.obj.fa
 rot_abs_wm    = params.stim.obj.facing_dir_deg + params.stim.obj.delta_from_ref';
 info.abs_rot  = cat(1,params.stim.obj.facing_dir_deg', rot_abs_wm(:));  % alternating 2 view ± 4 steps spaced 2 deg apart
 info.rel_rot  = cat(1, repmat(rotations(1),n_obj,1),repmat(rotations(2:end)',n_obj,1));
-
-% reshape unique image nr for WM test images
-unique_wm_im   = reshape(params.stim.obj.unique_im_nrs_wm_test, [],n_obj);
 
 % Get (rescaled) image extent
 extent   = params.stim.obj.img_sz_pix.*params.stim.obj.dres;
@@ -344,7 +358,7 @@ if params.stim.store_imgs
     end
 end
 
-if params.verbose
+% if params.verbose
     
     % debug figure
 %     counter = 1;
@@ -378,7 +392,7 @@ if params.verbose
 %             counter = counter+1;
 %         end
 %     end
-end
+% end
 
 return
 

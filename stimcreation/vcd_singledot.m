@@ -67,9 +67,9 @@ function [dot, mask, info] = vcd_singledot(params)
 %      eccen_deg     : (double) eccentricity of dot (deg) 
 %      angle_rad     : (double) dot angle in radians.
 %      delta_deg     : (double) dot angle relative from core dot angle:
-%                             -15, -5, +5, +15 (deg)
-%      delta_deg_i   : (double) same as delta_deg but indexed 1: -15 deg
-%                             2: -5 deg, 3: +5 deg, or 4: +15 deg.            
+%                             -16, -8, +8, +16 (deg)
+%      delta_deg_i   : (double) same as delta_deg but indexed 1: -16 deg
+%                             2: -8 deg, 3: +8 deg, or 4: +16 deg.            
 %      dot_xpos_pix  : (double) x-position of dot angle in image space (pixels)
 %      dot_ypos_pix  : (double) y-position of dot angle in image space (pixels)
 %      is_specialcore : (logical) whether the dot location is part of the
@@ -277,7 +277,7 @@ if params.verbose
     title('single dot locations - both hemifields');
     axis image;
     if params.store_imgs
-        set(gcf, 'InvertHardCopy', 'off');
+%         set(gcf, 'InvertHardCopy', 'off');
         print(fullfile(saveFigDir,'singledot_all_loc'),'-dpng','-r150');
     end
     
@@ -297,13 +297,13 @@ if params.verbose
         hold all;
         h0 = drawcircle('Center',[params.disp.xc,params.disp.yc],'Radius',11,'color', [1 1 1],'LineWidth',6);
         h0.InteractionsAllowed = 'none';
-        h1 = drawcircle('Center',[xpos_dots_to_plot,ypos_dots_to_plot],'Radius',dot_halfsz,'color',[1 1 1],'EdgeAlpha',0);
+        h1 = drawcircle('Center',[params.disp.w_pix-xpos_dots_to_plot,params.disp.h_pix-ypos_dots_to_plot],'Radius',dot_halfsz,'color',[1 1 1],'EdgeAlpha',0);
         h1.InteractionsAllowed = 'none';
         h1.FaceAlpha=1;
         
         title(sprintf('Angle: %2.2f; Delta: %2.2f',info.angle_deg(aa),dot_ref_locs(dlta)), 'FontSize',20);
         axis image tight;
-        set(gcf, 'InvertHardCopy', 'off');
+%         set(gcf, 'InvertHardCopy', 'off');
         if params.stim.store_imgs
             print(fullfile(saveFigDir,sprintf('%04d_singledot_delta%02d', im_nr,dlta-1)),'-dpng','-r150');
         end

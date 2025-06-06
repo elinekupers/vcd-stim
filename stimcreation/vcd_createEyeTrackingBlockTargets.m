@@ -13,22 +13,22 @@ function [sac_im,pupil_im_white,pupil_im_black] = vcd_createEyeTrackingBlockTarg
 %   3. a 2-seconds rest period (central fixation target on a mid-gray luminance)
 %   4. a 4-seconds pupil trial: 3-s black adaptation, 1-s white screen to evoke max pupil response.
 %
-% The distance between the center and 4 left/right/up/down
-% points are set as [xc,yc] ± 265 pixels (BOLDscreen)
-% or ± 194 pixels (EIZOFLEXSCAN). This results in dots at the following
+% The distance between the center and 4 left/right/up/down targets are set
+% as [xc,yc] ± 264 pixels (BOLDscreen) or ± 192 pixels (EIZOFLEXSCAN). 
+% This results in dots at the following pixel coordinates for the 5 targets
 % BOLDscreen coordinates in pixels:
-%                  [x3,y3]=[0,375]
-% [x1,y1]=[695,0]  [x0,y0]=[960,640]   [x2,y2]=[1225,0]
-%                  [x4,y4]=[0,905]
+%                    [x3,y3]=[960,376]
+% [x1,y1]=[696,640]  [x0,y0]=[960,640]   [x2,y2]=[1224,640]
+%                    [x4,y4]=[960,904]
 %
 % EIZOFLEXSCAN coordinates in pixels:
-%                  [x3,y3]=[0,406]
-% [x1,y1]=[766,0]  [x0,y0]=[960,600]   [x2,y2]=[1154,0]
-%                  [x4,y4]=[0,794]
+%                    [x3,y3]=[960,408]
+% [x1,y1]=[768,600]  [x0,y0]=[960,600]   [x2,y2]=[1156,600]
+%                    [x4,y4]=[960,792]
 %
 % EMPIRICAL target distance:
-% * BOLDscreen: 265 pixels, which corresponds to 3.0059 degrees.
-% * PP room EIZOFLEX: 194 pixels, which corresponds to 3.0139 degrees.
+% * BOLDscreen: 264 pixels, which corresponds to 2.9936 degrees.
+% * PP room EIZOFLEX: 192 pixels, which corresponds to 3.0046 degrees.
 %
 % See vcd_setEyelinkParams.m for other parameters regarding Eyelink.
 %
@@ -37,7 +37,7 @@ function [sac_im,pupil_im_white,pupil_im_black] = vcd_createEyeTrackingBlockTarg
 %   * exp.block.nr_of_saccades         :  nr of saccade targets (positive integral number) (default is 5)
 %   * stim.bckgrnd_grayval             :  mid-gray luminance level (default is 128)
 %   * stim.el.point2point_distance_deg :  desired target distance in degrees from center of the screen (default = 3 deg)
-%   * stim.el.point2point_distance_pix :  desired target distance in pixels from center of the screen (default is  265 pixels for BOLD screen and 194 pixels for PP room eizoflex)
+%   * stim.el.point2point_distance_pix :  desired target distance in pixels from center of the screen (default is  264 pixels for BOLD screen and 192 pixels for PP room eizoflex)
 %   * stim.el.total_target_diam_pix    :  total diameter of target (inner circle + outer rim) in pixels (same as thick fixation circle, 22 pixels for BOLDscreen)
 %   * stim.el.target_center_diam_pix   :  diameter of the inner circle of the target in pixels (same as fixation circle,10 pixels for BOLDscreen)
 %   * disp.h_pix                       :  height of the display in pixels
@@ -55,10 +55,10 @@ target_locations = params.exp.block.nr_of_saccades;
 bckground_gray   = uint8(ones(params.disp.h_pix,params.disp.w_pix))*params.stim.bckgrnd_grayval;
 
 % Define folders to store stimulus matlab file and pngs.
-saveStimDir = fullfile(vcd_rootPath,'workspaces','stimuli',params.disp.name);
-saveFigDir = fullfile(vcd_rootPath,'figs',params.disp.name,'eye');
+saveStimMatFileDir = fullfile(vcd_rootPath,'workspaces','stimuli',params.disp.name);
+saveFigDir = fullfile(params.saveFigsFolder,'eye');
 if ~exist(saveFigDir,'file'), mkdir(saveFigDir); end
-if ~exist(saveStimDir,'file'), mkdir(saveStimDir); end
+if ~exist(saveStimMatFileDir,'file'), mkdir(saveStimMatFileDir); end
 
 % Create image support for saccade target
 support_x = 2*params.stim.fix.dotcenterdiam_pix;
@@ -178,7 +178,7 @@ end
 
 % Store image when requested
 if params.store_imgs
-    save(fullfile(saveStimDir,sprintf('eye_%s%s.mat', params.disp.name, datestr(now,30))), 'sac_im','pupil_im_white','pupil_im_black');
+    save(fullfile(saveStimMatFileDir,sprintf('eye_%s%s.mat', params.disp.name, datestr(now,30))), 'sac_im','pupil_im_white','pupil_im_black');
     imwrite(pupil_im_white, fullfile(saveFigDir,'vcd_eyepupil_white.png'));
     imwrite(pupil_im_black, fullfile(saveFigDir,'vcd_eyepupil_black.png'));   
 end

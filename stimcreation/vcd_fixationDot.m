@@ -137,12 +137,12 @@ info       = table(lum_info,width_info','VariableNames',{'luminance','rim_width'
 if params.stim.store_imgs
     fprintf('[%s]: Storing images..',mfilename)
     tic
-    saveDir = fileparts(fullfile(params.stim.fix.stimfile));
-    if ~exist(saveDir,'dir'), mkdir(saveDir); end
+    saveMatStimFileDir = fileparts(fullfile(params.stim.fix.stimfile));
+    if ~exist(saveMatStimFileDir,'dir'), mkdir(saveMatStimFileDir); end
     save(fullfile(sprintf('%s_%s.mat',params.stim.fix.stimfile,datestr(now,30))),'fix_im','mask','info','-v7.3');
 
-    saveDir = fileparts(fullfile(params.stim.fix.infofile));
-    if ~exist(saveDir,'dir'), mkdir(saveDir); end
+    saveMatStimFileDir = fileparts(fullfile(params.stim.fix.infofile));
+    if ~exist(saveMatStimFileDir,'dir'), mkdir(saveMatStimFileDir); end
     writetable(info,fullfile(sprintf('%s_%s.csv',params.stim.fix.infofile,datestr(now,30))));
     fprintf('done! '); toc
 end
@@ -151,7 +151,7 @@ end
 if params.verbose
     makeprettyfigures;
     
-    saveFigDir = fullfile(vcd_rootPath,'figs',params.disp.name,'fix','visual_check');
+    saveFigDir = fullfile(params.saveFigsFolder,'fix');
     if ~exist(saveFigDir,'dir'); mkdir(saveFigDir); end
     
     fH = figure(101); clf;
@@ -167,7 +167,7 @@ if params.verbose
             title(sprintf('%01d, %01d',ii, jj))
             counter = counter+1;
             if params.store_imgs
-                imwrite(fix_im(:,:,:,ii,jj), fullfile(vcd_rootPath,'figs',params.disp.name,'fix',sprintf('vcd_fixcircle_w_alphamask_%01d_%01d.png', ii, jj)), 'Alpha' , double(mask(:,:,jj))/255);
+                imwrite(fix_im(:,:,:,ii,jj), fullfile(saveFigDir,sprintf('vcd_fixcircle_w_alphamask_%01d_%01d.png', ii, jj)), 'Alpha' , double(mask(:,:,jj))/255);
             end
         end
     end
@@ -189,7 +189,7 @@ if params.verbose
             title(sprintf('%01d, %01d',ii, jj))
             counter = counter+1;
             if params.store_imgs
-                imwrite(fix_im(:,:,:,ii,jj), fullfile(vcd_rootPath,'figs',params.disp.name,'fix',sprintf('vcd_fixcircle_%01d_%01d.png', ii, jj)));
+                imwrite(fix_im(:,:,:,ii,jj), fullfile(saveFigDir,sprintf('vcd_fixcircle_%01d_%01d.png', ii, jj)));
             end
         end
     end
