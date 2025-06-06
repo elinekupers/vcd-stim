@@ -1,4 +1,4 @@
-function time_table_master = vcd_createRunTimeTables(params,condition_master_in,session_type)
+function time_table_master = vcd_createRunTimeTables(params,condition_master_in,session_env)
 % VCD function to add trial events to condition master, turning it into a
 % time table. This function also cleans some table columns that are now obsolete.
 %
@@ -10,7 +10,7 @@ function time_table_master = vcd_createRunTimeTables(params,condition_master_in,
 %  condition_master_in  :   (table) condition master table with subject
 %                           session,runs,blocks,trials, but no individual
 %                           trial events.
-%  [session_type]       :   (optional) Are we dealing with MRI or BEHAVIOR sessions
+%  [session_env]       :   (optional) Are we dealing with MRI or BEHAVIOR sessions
 %                           Default: 'MRI'
 % OUTPUTS:
 %   time_table_master   :  (struct) updated condition master table with
@@ -63,31 +63,13 @@ function time_table_master = vcd_createRunTimeTables(params,condition_master_in,
 condition_master = condition_master_in;
 
 % check inputs
-if (nargin ==2 && ~exist(session_type,'var')) || isempty(session_type)
-    session_type = 'MRI';
-elseif strcmp(session_type,'MRI')
-    % Concatenate wide and deep sessions
-    all_sessions     = cat(3, params.exp.session.wide.ses_blocks, params.exp.session.deep.ses_blocks);
-    runs_per_session = cat(1, params.exp.session.mri.wide.n_runs_per_session,params.exp.session.mri.deep.n_runs_per_session);
-    session_types    = cat(1, params.exp.session.mri.wide.session_types,params.exp.session.mri.deep.session_types);
-    
-    % Use longer plank periods
-    session_preblankdur  = params.exp.run.pre_blank_dur_MRI;
-    session_postblankdur = params.exp.run.post_blank_dur_MRI;
-    session_totalrundur  = params.exp.run.total_run_dur_MRI;
-    IBI_to_use           = params.exp.block.IBI_MRI;
-    
-    
-elseif strcmp(session_type,'BEHAVIOR')
-    all_sessions         = params.exp.session.behavior.ses_blocks;
-    runs_per_session     = params.exp.session.behavior.n_runs_per_session;
-    session_types        = params.exp.session.behavior.session_types;
-    
-    % Use shorter plank periods
-    session_preblankdur  = params.exp.run.pre_blank_dur_BEHAVIOR;
-    session_postblankdur = params.exp.run.post_blank_dur_BEHAVIOR;
-    session_totalrundur  = params.exp.run.total_run_dur_BEHAVIOR;
-    IBI_to_use           = params.exp.block.IBI_BEHAVIOR;
+if (nargin ==2 && ~exist(session_env,'var')) || isempty(session_env)
+    session_env = 'MRI';
+else
+    [all_sessions,session_envs,runs_per_session, ~, ...
+          session_totalrundur, ~, IBI_to_use, ~, ...
+          session_preblankdur, session_postblankdur] = ...
+            vcd_getSessionEnvironmentParams(params, session_env);
 end
 
 % Define event ID within trial for single and double epoch trial types
@@ -120,16 +102,18 @@ et_global_trial_nr = 1;
 for ses = 1:size(all_sessions,3)
     
     for st = 1:size(all_sessions,4)
-        if ~isnan(session_types(ses,st))
-            fprintf('SESSION %s %03d %02d..\n',ses,session_types(st))
+        
+        if ~isnan(session_envs(ses,st))
+            
+            fprintf('SESSION %03d %s..\n',ses,choose(st==1,'A','B'))
             
             % preallocate subject time table
             run_time_table = [];
-            subj_run_nrs = unique(condition_master.run_nr(~isnan(condition_master.run_nr)));
-            assert(isequal(runs_per_session(ses),length(subj_run_nrs)))
+            curr_run_nrs = unique(condition_master.run_nr(~isnan(condition_master.run_nr) & condition_master.session_nr==ses & condition_master.session_type==st));
+            assert(isequal(runs_per_session(ses,st),length(curr_run_nrs)))
             
             % Loop over runs
-            for rr = 1:runs_per_session(ses)
+            for rr = curr_run_nrs'
                 
                 % copy condition order table headers and scrub content
                 sz = [tbl_nrows size(condition_master(1,:),2)];
@@ -159,7 +143,7 @@ for ses = 1:size(all_sessions,3)
                 [~,nr_unique_blocks] = unique(block_nrs,'stable');
                 tmp_durs = [params.exp.block.total_single_epoch_dur, params.exp.block.total_double_epoch_dur];
                 block_dur = tmp_durs(t_trial.trial_type(nr_unique_blocks));
-                
+
                 [~,run_type_idx] = intersect(blocktype_allocation',[sum(t_trial.trial_type(nr_unique_blocks)==1);sum(t_trial.trial_type(nr_unique_blocks)==2)]','rows');
                 if isempty(run_type_idx)
                     special_run_flag = true;
@@ -179,7 +163,7 @@ for ses = 1:size(all_sessions,3)
                         params.exp.block.total_eyetracking_block_dur - session_postblankdur - session_preblankdur;
                     
                     % sneak in extra block for one behavioral run
-                    if strcmp(session_type,'BEHAVIOR') && special_run_flag
+                    if strcmp(session_env,'BEHAVIOR') && special_run_flag
                         total_ses_dur = total_ses_dur + params.exp.block.total_single_epoch_dur + min(IBI_to_use);
                         rounded_session_totalrundur = total_ses_dur + params.exp.block.total_eyetracking_block_dur + session_postblankdur + session_preblankdur;
                     end
@@ -215,7 +199,6 @@ for ses = 1:size(all_sessions,3)
                     time_table.trial_nr(table_idx)         = 1;
                     time_table.global_trial_nr(table_idx)   = et_global_trial_nr;
                     time_table.global_block_nr(table_idx)   = et_global_block_nr;
-                    time_table.global_session_nr(table_idx) = t_trial.global_session_nr(1);
                     time_table.correct_response(table_idx) = NaN;
                     time_table.event_start(table_idx)      = total_run_frames;
                     time_table.event_dur(table_idx)        = params.exp.block.eye_gaze_fix0;
@@ -244,7 +227,6 @@ for ses = 1:size(all_sessions,3)
                         time_table.block_nr(table_idx)          = 999;
                         time_table.global_trial_nr(table_idx)   = et_global_trial_nr;
                         time_table.global_block_nr(table_idx)   = et_global_block_nr;
-                        time_table.global_session_nr(table_idx) = t_trial.global_session_nr(1);
                         time_table.crossing_nr(table_idx)        = 999;
                         time_table.trial_nr(table_idx)          = 1+sac;
                         time_table.stim_class(table_idx)        = NaN;
@@ -263,13 +245,12 @@ for ses = 1:size(all_sessions,3)
                     end
                     
                     % Add post saccade fixation period (1s)
-                    time_table.run_nr(table_idx)                = rr;
                     time_table.session_nr(table_idx)            = ses;
                     time_table.session_type(table_idx)          = st;
+                    time_table.run_nr(table_idx)                = rr;
                     time_table.crossing_nr(table_idx)           = 999;
                     time_table.global_trial_nr(table_idx)       = et_global_trial_nr;
                     time_table.global_block_nr(table_idx)   = et_global_block_nr;
-                    time_table.global_session_nr(table_idx) = t_trial.global_session_nr(1);
                     time_table.block_nr(table_idx)              = 999;
                     time_table.trial_nr(table_idx)              = params.exp.block.nr_of_saccades+2;
                     time_table.stim_class(table_idx)            = NaN;
@@ -287,13 +268,12 @@ for ses = 1:size(all_sessions,3)
                     table_idx = table_idx+1;
                     
                     % Add pupil trial (3s black)
-                    time_table.run_nr(table_idx)                = rr;
                     time_table.session_nr(table_idx)            = ses;
                     time_table.session_type(table_idx)          = st;
+                    time_table.run_nr(table_idx)                = rr;
                     time_table.crossing_nr(table_idx)           = 999;
                     time_table.global_trial_nr(table_idx)       = et_global_trial_nr;
                     time_table.global_block_nr(table_idx)       = et_global_block_nr;
-                    time_table.global_session_nr(table_idx)     = t_trial.global_session_nr(1);
                     time_table.block_nr(table_idx)              = 999;
                     time_table.trial_nr(table_idx)              = params.exp.block.nr_of_saccades+3;
                     time_table.stim_class(table_idx)            = NaN;
@@ -312,13 +292,12 @@ for ses = 1:size(all_sessions,3)
                     et_global_trial_nr = et_global_trial_nr+1;
                     
                     % Add pupil trial (1s white)
-                    time_table.run_nr(table_idx)                = rr;
                     time_table.session_nr(table_idx)            = ses;
                     time_table.session_type(table_idx)          = st;
+                    time_table.run_nr(table_idx)                = rr;
                     time_table.crossing_nr(table_idx)           = 999;
                     time_table.global_trial_nr(table_idx)       = et_global_trial_nr;
                     time_table.global_block_nr(table_idx)       = et_global_block_nr;
-                    time_table.global_session_nr(table_idx)     = t_trial.global_session_nr(1);
                     time_table.block_nr(table_idx)              = 999;
                     time_table.trial_nr(table_idx)              = params.exp.block.nr_of_saccades+4;
                     time_table.stim_class(table_idx)            = NaN;
@@ -337,13 +316,12 @@ for ses = 1:size(all_sessions,3)
                     et_global_trial_nr = et_global_trial_nr+1;
                     
                     % Add final rest period (3s gray)
-                    time_table.run_nr(table_idx)                = rr;
                     time_table.session_nr(table_idx)            = ses;
                     time_table.session_type(table_idx)          = st;
+                    time_table.run_nr(table_idx)                = rr;
                     time_table.crossing_nr(table_idx)           = 999;
                     time_table.global_trial_nr(table_idx)       = et_global_trial_nr;
                     time_table.global_block_nr(table_idx)       = et_global_block_nr;
-                    time_table.global_session_nr(table_idx)     = t_trial.global_session_nr(1);
                     time_table.block_nr(table_idx)              = 999;
                     time_table.trial_nr(table_idx)              = params.exp.block.nr_of_saccades+5;
                     time_table.stim_class(table_idx)            = NaN;
@@ -363,7 +341,6 @@ for ses = 1:size(all_sessions,3)
                     et_global_trial_nr = et_global_trial_nr+1;
                     et_global_block_nr = et_global_block_nr+1;
                     
-                    
                     % Add pre-blank period
                     time_table.event_start(table_idx)    = total_run_frames;
                     time_table.event_dur(table_idx)      = session_preblankdur;
@@ -371,13 +348,13 @@ for ses = 1:size(all_sessions,3)
                     time_table.event_id(table_idx)       = 0;
                     time_table.event_name(table_idx)     = {'pre-blank'};
                     
-                    time_table.run_nr(table_idx)         = rr;
+                    
                     time_table.session_nr(table_idx)     = ses;
                     time_table.session_type(table_idx)   = st;
+                    time_table.run_nr(table_idx)         = rr;
                     time_table.block_nr(table_idx)       = 0;
                     time_table.global_trial_nr(table_idx)   = t_trial.global_trial_nr(1);
                     time_table.global_block_nr(table_idx)   = t_trial.global_block_nr(1);
-                    time_table.global_session_nr(table_idx) = t_trial.global_session_nr(1);
                     time_table.crossing_nr(table_idx)    = 0;
                     time_table.trial_nr(table_idx)       = 0;
                     time_table.crossing_nr(table_idx)    = 0;
@@ -406,7 +383,6 @@ for ses = 1:size(all_sessions,3)
                     
                     % get current block nr
                     curr_block = block_nrs(block_vec_idx);
-                    curr_global_session_nr        = t_trial.global_session_nr(1);
                     curr_global_block_nr          = t_trial.global_block_nr(1);
                     curr_global_trial_nr          = t_trial.global_trial_nr(1);
                     curr_crossing_nr              = t_trial.crossing_nr(1);
@@ -443,7 +419,6 @@ for ses = 1:size(all_sessions,3)
                         time_table.session_nr(table_idx)      = ses;
                         time_table.session_type(table_idx)    = st;
                         time_table.run_nr(table_idx)          = rr;
-                        time_table.global_session_nr(table_idx) = curr_global_session_nr;
                         time_table.global_block_nr(table_idx) = curr_global_block_nr;
                         time_table.global_trial_nr(table_idx) = curr_global_trial_nr;
                         time_table.block_nr(table_idx)        = curr_block;
@@ -471,7 +446,6 @@ for ses = 1:size(all_sessions,3)
                         time_table.session_nr(table_idx)      = ses;
                         time_table.session_type(table_idx)    = st;
                         time_table.run_nr(table_idx)          = rr;
-                        time_table.global_session_nr(table_idx) = curr_global_session_nr;
                         time_table.global_block_nr(table_idx) = curr_global_block_nr;
                         time_table.global_trial_nr(table_idx) = curr_global_trial_nr;
                         time_table.block_nr(table_idx)        = curr_block;
@@ -507,7 +481,6 @@ for ses = 1:size(all_sessions,3)
                         time_table.session_nr(table_idx)      = ses;
                         time_table.session_type(table_idx)   = st;
                         time_table.run_nr(table_idx)          = rr;
-                        time_table.global_session_nr(table_idx) = curr_global_session_nr;
                         time_table.global_block_nr(table_idx) = curr_global_block_nr;
                         time_table.global_trial_nr(table_idx) = curr_global_trial_nr;
                         time_table.block_nr(table_idx)        = curr_block;
@@ -575,7 +548,6 @@ for ses = 1:size(all_sessions,3)
                                 tmp1.session_type   = st;
                                 tmp1.run_nr         = rr;
                                 tmp1.is_cued         = curr_spatial_cue;
-                                tmp1.global_session_nr = curr_global_session_nr;
                                 tmp1.global_block_nr = curr_global_block_nr;
                                 tmp1.global_trial_nr = curr_global_trial_nr;
                                 if tmp1.trial_type == 1 % we are dealing with a single stim presentation trial
@@ -608,7 +580,6 @@ for ses = 1:size(all_sessions,3)
                                 tmp2.session_nr     = ses;
                                 tmp2.session_type   = st;
                                 tmp2.run_nr         = rr;
-                                tmp2.global_session_nr = curr_global_session_nr;
                                 tmp2.global_block_nr = curr_global_block_nr;
                                 tmp2.global_trial_nr = curr_global_trial_nr;
                                 tmp2.is_cued         = curr_spatial_cue;
@@ -640,7 +611,6 @@ for ses = 1:size(all_sessions,3)
                                 time_table.crossing_name(table_idx)     = curr_crossing_name;
                                 time_table.is_cued(table_idx)           = curr_spatial_cue;
                                 time_table.correct_response(table_idx)  = NaN;
-                                time_table.global_session_nr(table_idx) = curr_global_session_nr;
                                 time_table.global_block_nr(table_idx)   = curr_global_block_nr;
                                 time_table.global_trial_nr(table_idx)   = curr_global_trial_nr;
                                 
@@ -665,7 +635,6 @@ for ses = 1:size(all_sessions,3)
                                 time_table.crossing_name(table_idx)     = curr_crossing_name;
                                 time_table.is_cued(table_idx)           = curr_spatial_cue;
                                 time_table.correct_response(table_idx)  = NaN;
-                                time_table.global_session_nr(table_idx) = curr_global_session_nr;
                                 time_table.global_block_nr(table_idx)   = curr_global_block_nr;
                                 time_table.global_trial_nr(table_idx)   = curr_global_trial_nr;
                                 
@@ -714,7 +683,6 @@ for ses = 1:size(all_sessions,3)
                             time_table.task_class(table_idx)       = 0;
                             time_table.is_cued(table_idx)          = 0;
                             time_table.correct_response(table_idx) = NaN;
-                            time_table.global_session_nr(table_idx) = curr_global_session_nr;
                             time_table.global_block_nr(table_idx) = 0;
                             time_table.global_trial_nr(table_idx) = 0;
                             
@@ -754,7 +722,6 @@ for ses = 1:size(all_sessions,3)
                             time_table.task_class(table_idx)        = 0;
                             time_table.is_cued(table_idx)           = 0;
                             time_table.correct_response(table_idx)  = NaN;
-                            time_table.global_session_nr(table_idx) = curr_global_session_nr;
                             time_table.global_block_nr(table_idx)   = curr_global_block_nr;
                             time_table.global_trial_nr(table_idx)   = 0;
                             
@@ -798,6 +765,8 @@ for ses = 1:size(all_sessions,3)
                             left_over_blank = (session_totalrundur - (total_run_frames + session_postblankdur));
                             post_blank_dur  = session_postblankdur + left_over_blank;
                             assert(isequal((total_run_frames + post_blank_dur),session_totalrundur))
+                        else
+                            error('[%s]: Run duration doesn''t have the expected length',mfilename)
                         end
                     end
                     % add post_blank
@@ -815,18 +784,17 @@ for ses = 1:size(all_sessions,3)
                     time_table.stim_class(table_idx)    = 0;
                     time_table.task_class(table_idx)    = 0;
                     time_table.is_cued(table_idx)       = 0;
-                    time_table.global_session_nr(table_idx) = curr_global_session_nr;
                     time_table.global_block_nr(table_idx) = 0;
                     time_table.global_trial_nr(table_idx) = 0;
                     time_table.correct_response(table_idx)  = NaN;
                     
                     total_run_frames = time_table.event_end(table_idx);
                     
-                    if strcmp(session_type,'MRI')
+                    if strcmp(session_env,'MRI')
                         assert(isequal(session_totalrundur, total_run_frames));
                         assert(nearZero(mod(total_run_frames,params.exp.TR)));
                         assert(nearZero(mod(total_run_frames,session_totalrundur)))
-                    elseif strcmp(session_type,'BEHAVIOR')
+                    elseif strcmp(session_env,'BEHAVIOR')
                         %                         assert(isequal(session_totalrundur_run, total_run_frames));
                         %                         assert(total_run_frames <= session_totalrundur_run)
                     end
@@ -842,7 +810,7 @@ for ses = 1:size(all_sessions,3)
                     %
                     % reorganize column order
                     col_order = {'session_nr','session_type','run_nr','block_nr','trial_nr',...
-                        'global_session_nr','global_block_nr','global_trial_nr','condition_nr',...
+                        'global_run_nr','global_block_nr','global_trial_nr','condition_nr',...
                         'condition_name','stim_class','stim_class_name','task_class',...
                         'task_class_name','crossing_nr','crossing_name',...
                         'stim_nr_left','stim_nr_right',...
@@ -854,12 +822,16 @@ for ses = 1:size(all_sessions,3)
                         'stim2_im_nr', 'stim2_delta', 'stim2_orient_dir',...
                         'is_special_core','is_lure','repeat_nr','trial_type'};
                     
+                    % check if we missed and columns
                     assert(all(ismember(time_table2.Properties.VariableNames,col_order)));
+                    
+                    % apply the reordering
                     for col = 1:length(col_order)
                         new_col_order(col) = find(strcmp(time_table2.Properties.VariableNames,col_order(col)));
                     end
                     time_table2 = time_table2(:,new_col_order);
                     
+                    % clean up table
                     time_table2.is_lure(isnan(time_table2.is_lure(:,1)),1)=0;
                     time_table2.is_lure(isnan(time_table2.is_lure(:,2)),2)=0;
                     time_table2.is_catch(isnan(time_table2.is_catch))=0;
@@ -874,24 +846,21 @@ for ses = 1:size(all_sessions,3)
                     time_table2.sub_cat_name(cellfun(@isempty,time_table2.sub_cat_name)) = {NaN};
                     time_table2.affordance_name(cellfun(@isempty,time_table2.affordance_name)) = {NaN};
                     
-                    % add run to master
+                    % concatenate time_table2 to run_time_table
                     run_time_table = cat(1, run_time_table, time_table2);
-                    
                     
                     clear time_table2
                 end
             end
             
+            % concatenate run_time_table to session_time_table
             session_time_table = cat(1, session_time_table, run_time_table);
+         
+            % concatenate session_time_table to time_table_master
+            time_table_master  = cat(1,time_table_master,session_time_table);
+            
             if params.verbose
-%                 session_time_table.run_nr(isnan(session_time_table.run_nr))=0;
-%                 session_time_table.block_nr(isnan(session_time_table.block_nr))=0;
-%                 session_time_table.block_nr(session_time_table.block_nr == 999)=-1;
-%                 session_time_table.trial_nr(isnan(session_time_table.trial_nr))=0;
-%                 session_time_table.crossing_nr(isnan(session_time_table.crossing_nr))=0;
-%                 session_time_table.crossing_nr(session_time_table.crossing_nr>990)=-1;
-%                 session_time_table.block_nr( session_time_table.block_nr==99) = 0.5;
-                
+
                 figure(99); clf; set(gcf, 'Position', [1 1 1200 500])
                 imagesc([session_time_table.run_nr,session_time_table.block_nr,session_time_table.trial_nr,session_time_table.crossing_nr]')
                 set(gca,'YTick',[1:4],'YTickLabel',{'run nr','block nr', 'trial nr', 'crossing nr'})
@@ -899,17 +868,19 @@ for ses = 1:size(all_sessions,3)
                 colorbar
                 set(gca,'CLim', [0 32]);
                 xlabel('events (in time)')
-                sgtitle(sprintf('Session %02d %s',ses, choose(unique(session_time_table.session_type),'A','B')))
+                sgtitle(sprintf('Session %02d %s',ses, choose(st==1,'A','B')))
                 
                 if params.store_imgs
-                    saveFigsFolder = fullfile(vcd_rootPath,'figs',sprintf('condition_master1_%s',session_type));
-                    filename = sprintf('vcd_session%02d_%s_time_table_events.png', ses, choose(unique(session_time_table.session_type),'A','B'),rr);
+                    saveFigsFolder = fullfile(vcd_rootPath,'figs',sprintf('condition_master1_%s',session_env));
+                    filename = sprintf('vcd_session%02d_%s_time_table_events.png', ses, choose(st==1,'A','B'));
                     print(gcf,'-dpng','-r300',fullfile(saveFigsFolder,filename));
                 end
             end
-        end
+
+
+        end % ~nan(session type)
     end % session type
-    time_table_master = cat(1,time_table_master,session_time_table);
+    
 end % session nr
 
 
@@ -918,7 +889,7 @@ if params.store_params
     fprintf('\n[%s]:Storing time table master..\n',mfilename)
     saveDir = fileparts(fullfile(params.stim.fix.infofile));
     if ~exist(saveDir,'dir'), mkdir(saveDir); end
-    save(fullfile(saveDir,sprintf('time_table_master_%s_%s_%s.mat',params.disp.name, session_type, datestr(now,30))),'time_table_master')
+    save(fullfile(saveDir,sprintf('time_table_master_%s_%s_%s.mat',params.disp.name, session_env, datestr(now,30))),'time_table_master')
 end
 
 return
