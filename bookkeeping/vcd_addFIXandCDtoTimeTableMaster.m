@@ -1,23 +1,9 @@
-function [time_table_master,all_run_frames] = vcd_addFIXandCDtoTimeTableMaster(params, time_table_master, session_type)
+function [time_table_master,all_run_frames] = vcd_addFIXandCDtoTimeTableMaster(params, time_table_master, session_env)
 
-%% ANON FUNCTIONS TO GET ONSET OF FIX AND CD
 
-% Fixation order and fixation
-fixsoafun = @() round(params.stim.fix.dotmeanchange);
-
-% check session type
-if strcmp(session_type,'MRI')
-    all_sessions     = cat(3, params.exp.session.wide.ses_blocks, params.exp.session.deep.ses_blocks);
-    runs_per_session = cat(1, size(params.exp.session.wide.ses_blocks,3),size(params.exp.session.deep.ses_blocks,3));
-    session_types    = cat(1, params.exp.session.mri.wide.session_types,params.exp.session.mri.deep.session_types);
-    nr_session_types = 2;
-    
-elseif strcmp(session_type,'BEHAVIOR')
-    all_sessions         = params.exp.session.behavior.ses_blocks;
-    runs_per_session     = params.exp.session.behavior.n_runs_per_session;
-    session_types        = params.exp.session.behavior.session_types;
-    nr_session_types     = 1;
-end
+% get session environment params
+[~,session_types,~,~,~,~, ~, nr_session_types ] = vcd_getSessionEnvironmentParams(params, session_env);
+        
 
 %% Preallocate space for generated subject run frames and updated time table master
 session_nrs  = unique(time_table_master.session_nr);
@@ -36,15 +22,15 @@ for ses = 1:length(session_nrs)
             for rr = 1:length(run_nrs)
                 
                 % grab run trials from time_table_master
-                this_run = time_table_master(time_table_master.session_nr==session_nrs(ses) & ...
-                    time_table_master.session_type==session_types(ses,st) & ...
-                    time_table_master.run_nr==run_nrs(rr),:);
+                this_run = time_table_master(time_table_master.session_nr==ses & ...
+                    time_table_master.session_type==st & ...
+                    time_table_master.run_nr==rr,:);
                 
                 % check if the last event is a post-blank
                 assert(strcmp(this_run.event_name(end),'post-blank'))
                 
                  % get run duration (in frames)
-                run_dur = this_run.event_end(end)+1;
+                run_dur = this_run.event_end(end);
                 
                 % ensure a run is of reasonable length, and is not longer than 10 min
                 assert((run_dur*params.stim.presentationrate_hz)/3600 < 600)
@@ -66,7 +52,7 @@ for ses = 1:length(session_nrs)
                 % Column 2: absolute luminance values (between 0 and 255)
                 % Column 3: relative change in luminance values compared to the previous time point
                 % Column 4: correct button press associated with the relative luminance change (1=brighter, 2=dimmer).
-                fix_matrix = vcd_createFixationSequence(params,fixsoafun, run_dur, blank_onset,blank_offset); 
+                fix_matrix = vcd_createFixationSequence(params,params.stim.fix.fixsoafun, run_dur, blank_onset,blank_offset); 
                 
                 % remove button responses from frozen fixation periods;
                 fix_matrix(fix_matrix(:,4)==0,4) = NaN;
@@ -201,7 +187,7 @@ for ses = 1:length(session_nrs)
                 
                 % Log fixation changes as button presses in
                 % subject's time_table_master
-                all_frames = 0:run_dur-1; % subtract one frame because table starts at t=0;
+                all_frames = 0:(run_dur-1); % subtract one frame because table starts at t=0;
                 fix_events = find(strcmp(this_run.task_class_name,'fix'));
                 if  ~isempty(fix_events)
                     % given fixed interval and sampling without
