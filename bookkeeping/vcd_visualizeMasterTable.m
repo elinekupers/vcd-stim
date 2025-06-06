@@ -4,7 +4,7 @@ function fH = vcd_visualizeMasterTable(master_table,store_imgs, session_type)
 makeprettyfigures;
 
 %%
-strCols = find(ismember(master_table.Properties.VariableNames,{'stim_class_name','task_class_name','super_cat_name','basic_cat_name','sub_cat_name','stim2','img_txt_prompt','affordance_name'})); % columns with names/characters (we don't want to plot)
+strCols = find(ismember(cellfun(@class,table2cell(master_table(1,:)),'UniformOutput',false),{'cell','char'})); % columns with names/characters (we don't want to plot)
 colsToPlot = 1:size(master_table,2);
 colsToPlot = setdiff(colsToPlot,strCols);
 
@@ -58,7 +58,6 @@ for jj = 1:length(unique(master_table.stim_class))
             
             
             % Plot all trials
-%             subplot(length(nsubplots)+1,1,1) 
             imagesc(dataToPlot);
             box off; 
             title(sprintf('%s - %s', stimClassData.stim_class_name{1}, colName),'Interpreter', 'none', 'FontSize', 25)
