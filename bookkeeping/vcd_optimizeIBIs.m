@@ -36,6 +36,7 @@ else
     postblank_to_add = 0;
 end
 
+% EK HACK
 if mod(dur_to_optimize,30)>0 % want IBIs to be in increments of 0.5 sec
     frames_to_add = 30 - mod(dur_to_optimize,30);
     dur_to_optimize = dur_to_optimize + frames_to_add;
@@ -43,7 +44,7 @@ end
     
 % Find a distributed combination of possible IBIs
 % inputrs: totalamt,validoptions,numbins,mode,numlookback
-distribution_mode = 1; % uniformly sampled bins
+distribution_mode = 0; % uniformly sampled bins
 n_iterations      = 100; % when do we decide to give up before we find a solution
 f = distributewithconstraints(dur_to_optimize, ibis, nr_blocks-1, distribution_mode, n_iterations);
 
