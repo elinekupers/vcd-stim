@@ -84,13 +84,9 @@ trial_ID_double_epoch = [params.exp.block.spatial_cue_ID, ...
     params.exp.block.stim_epoch2_ID, ...
     params.exp.block.response_ID];
 
-% blocktype allocation
-blocktype_allocation = cat(2,params.exp.run.run_type1, params.exp.run.run_type2,params.exp.run.run_type3,params.exp.run.run_type4);
-
 % Preallocate space
 time_table_master = [];
-tbl_nrows    = 1000; % pick an arbitrary large number of rows (otherwise table uses 0 for missing values and we don't want that)
-tr_in_frames = (params.exp.TR*params.stim.presentationrate_hz);
+tbl_nrows         = 1000; % pick an arbitrary large number of rows (otherwise table uses 0 for missing values and we don't want that)
 
 % preallocate session time table
 session_time_table = [];
@@ -143,14 +139,6 @@ for ses = 1:size(all_sessions,3)
                 [~,nr_unique_blocks] = unique(block_nrs,'stable');
                 tmp_durs = [params.exp.block.total_single_epoch_dur, params.exp.block.total_double_epoch_dur];
                 block_dur = tmp_durs(t_trial.trial_type(nr_unique_blocks));
-
-                [~,run_type_idx] = intersect(blocktype_allocation',[sum(t_trial.trial_type(nr_unique_blocks)==1);sum(t_trial.trial_type(nr_unique_blocks)==2)]','rows');
-                if isempty(run_type_idx)
-                    special_run_flag = true;
-                else
-                    special_run_flag = false;
-                    expected_nr_of_blocktypes = blocktype_allocation(:,run_type_idx);
-                end
                 
                 % reset counter
                 total_run_frames = 0;
@@ -159,14 +147,7 @@ for ses = 1:size(all_sessions,3)
                 if ~isempty(block_nrs)
                     % remove frames such that duration in seconds is an integer (we will add those later)
                     rounded_session_totalrundur = (floor(session_totalrundur/params.stim.presentationrate_hz)*params.stim.presentationrate_hz);
-                    total_ses_dur =  rounded_session_totalrundur - ...
-                        params.exp.block.total_eyetracking_block_dur - session_postblankdur - session_preblankdur;
-                    
-                    % sneak in extra block for one behavioral run
-                    if strcmp(session_env,'BEHAVIOR') && special_run_flag
-                        total_ses_dur = total_ses_dur + params.exp.block.total_single_epoch_dur + min(IBI_to_use);
-                        rounded_session_totalrundur = total_ses_dur + params.exp.block.total_eyetracking_block_dur + session_postblankdur + session_preblankdur;
-                    end
+                    total_ses_dur = rounded_session_totalrundur - params.exp.block.total_eyetracking_block_dur - session_postblankdur - session_preblankdur;
                     
                     % predefine IBIs, make sure we don't go over the total
                     % run duration we want
