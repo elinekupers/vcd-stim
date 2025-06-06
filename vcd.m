@@ -14,6 +14,7 @@ function outputs = vcd(varargin)
 % [~, time_table_master] = vcd_createBlocksAndTrials(params, ...
 %   'load_params', false, 'store_params', true);
 % 
+% % --- STIMULUS CLASSES ---
 % Abbreviations for stimulus classes are: 
 %  1:'gabor'  - Gabor (grating subject to Gaussian window).
 %  2:'rdk'    - Random dot motion kinetogram
@@ -21,26 +22,39 @@ function outputs = vcd(varargin)
 %  4:'obj'    - Objects
 %  5:'ns'     - Natural scenes
 %
+% % --- TASK CLASSES ---
 % Abbreviations for task classes are: 
 %   1:'fix'   - Fixation brightness task
 %   2:'cd'    - Contrast change task
 %   3:'scc'   - Categorization task
-%   4:'pc'    - Perceptual categorization tasks (tilt, motion direction, dot position, object rotation, indoor/outdoor)
-%   5:'wm'    - Working memory tasks (tilt, motion direction, position, rotation, scene)
+%   4:'pc'    - Perceptual categorization tasks (tilt, motion direction, 
+%                            dot position, object rotation, indoor/outdoor)
+%   5:'wm'    - Working memory tasks (tilt, motion direction, position, 
+%                            rotation, scene)
 %   6:'ltm'   - Matching task
 %   7:'img'   - Imagery task
 %   8:'what'  - "What?" task
 %   9:'where' - "Where?" task
 %   10:'how'  - "How?" task
 % 
-% Any stimulus used in VCD has its own unique integer number between 1-1550.
-% Each stimulus has also a fixed spatial location: either left or right 
-% (for gabors, RDKs, single dots, and objects) or center (for NS). 
-% Note that <stimulus numbers> are different from <conditon numbers>.
-% Condition numbers refers to the stimulus with a particular cueing state
-% 'CUED' = 
-% 'UNCUED', 'NCUED'
-% and under a task
+% % --- STIMULUS NUMBERS ---
+% Any stimulus used in VCD has its own unique integer number between 1-1421.
+% # 1-110   are core VCD stimuli (used in all stimulus-task crossing)
+% # 111-422 are WM test stimuli  (used in the second stimulus array after 
+%                                the delay, for working memory task
+%                                crossings only).
+% # 1-110 are core VCD stimuli (used in all stimulus-task crossing)
+%
+% % --- CONDITION NAMES AND NUMBERS ---
+% Stimulus numbers are different from Condition numbers.
+% Condition numbers refer to the combination of:
+% (1) a unique stimulus (e.g., "GBR-0001-L"). Note that each stimulus has
+%  a fixed spatial location: either left or right (for gabors, RDKs, single
+%  dots, and objects) or center (for scenes).
+% (2) subject to a particular a cueing state ("CUED","UNCUED", or "NCUED" 
+%                           the latter refers for neutral cue)
+% (3) subject to a particular task crossing (e.g., "PC" or "FIX")
+% All possible conditions in VCD are stored in vcd_getConditionNames().
 %
 % Possible inputs:
 % 'stimulusclassnames'    : Provide all stimulus class names (use []),
