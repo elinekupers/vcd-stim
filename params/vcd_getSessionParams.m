@@ -130,7 +130,7 @@ else
     % BEHAVIORAL
     exp.session.behavior.session_nrs                    = 1;                % Sessions dedicated to behavioral experiment
     exp.session.behavior.session_types                  = 1;                % Only 1 BEHAVIOR session type (no A/B)
-    exp.session.behavior.n_runs_per_session             = 11;               % there are 11 runs for the BEHAVIOR session
+    exp.session.behavior.n_runs_per_session             = 12;               % There are 12 runs for the BEHAVIOR session
 
     % WIDE: Includes WIDE01A/WIDE01B
     % WIDE session 1A and 1B both have 10x 6.05 min runs per session
