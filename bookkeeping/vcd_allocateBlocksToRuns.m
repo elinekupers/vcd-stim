@@ -1,4 +1,4 @@
-function condition_master = vcd_allocateBlocksToRuns(params,condition_master_in,session_type)
+function condition_master = vcd_allocateBlocksToRuns(params,condition_master_in,session_env)
 % VCD function to allocate the unique trials and blocks to given runs.
 %
 %   condition_master = vcd_allocateBlocksToRuns(params)
@@ -9,7 +9,7 @@ function condition_master = vcd_allocateBlocksToRuns(params,condition_master_in,
 %                             to exist and contain condition_master v0.
 %   condition_master_in   :  (struct) input condition_master table with
 %                             block and runs for each subject and session.
-%   session_type          :  (str) label to define what type of session we
+%   session_env           :  (str) label to define what type of session we
 %                             are defining: 'MRI' or 'BEHAVIOR'.
 %
 % OUTPUTS:
@@ -29,8 +29,8 @@ if sum(strcmp(condition_master.Properties.VariableNames,'session_nr'))==0
         NaN(size(condition_master,1),1), ... run_nr
         NaN(size(condition_master,1),1), ... block_nr
         NaN(size(condition_master,1),1), ... global_run_nr
-        NaN(size(condition_master,1),1), ... %  global_block_nr (resets per subject)
-        NaN(size(condition_master,1),1), ... %  global_trial_nr (resets per subject)
+        NaN(size(condition_master,1),1), ... global_block_nr (resets per subject)
+        NaN(size(condition_master,1),1), ... global_trial_nr (resets per subject)
         NaN(size(condition_master,1),2), ... condition_nr
         num2cell(NaN(size(condition_master,1),2)), ... condition_name
         NaN(size(condition_master,1),1), ... crossing_nr
@@ -68,7 +68,7 @@ stim_class_abbr{1} = 'GBR';
 task_class_abbr = upper(params.exp.taskclassnames);
 
 % check session type
-[all_sessions,session_types] = vcd_getSessionEnvironmentParams(params, session_type);
+[all_sessions,session_types] = vcd_getSessionEnvironmentParams(params, session_env);
 
 % create separate counters for scc and ltm task crossings, because trials
 % are spread across stimulus classes
@@ -95,10 +95,10 @@ for ses = 1:size(all_sessions,3)
             for sc = 1:length(params.exp.stimclassnames)
                 for tc = 1:length(params.exp.taskclassnames)
                     
-                    if strcmp(session_type,'MRI')
+                    if strcmp(session_env,'MRI')
                         task_start = params.exp.session.mri.task_start(tc);
                         
-                    elseif strcmp(session_type,'BEHAVIOR')
+                    elseif strcmp(session_env,'BEHAVIOR')
                         task_start = params.exp.session.behavior.task_start(tc);
                     end
                     if  ses >= task_start
@@ -255,9 +255,9 @@ for ses = 1:size(all_sessions,3)
                                 condition_master.crossing_name(idx)     = blck_name(1);
                                 condition_master.crossing_nr(idx)       = find(strcmp(blck_name(1),params.exp.crossingnames));
                                 if half_block_flag
-                                    condition_master.global_block_nr(idx)      = curr_blocks(ii);
+                                    condition_master.block_nr(idx)      = curr_blocks(ii);
                                 else
-                                    condition_master.global_block_nr(idx)      = bb;
+                                    condition_master.block_nr(idx)      = bb;
                                 end
                                 condition_master.run_nr(idx)            = run_nr; % put in temporary run nr for now.
                                 
@@ -357,9 +357,9 @@ for ses = 1:size(all_sessions,3)
             end
             
             % Merge half blocks
-            if any(condition_master.global_block_nr < 1)
-                single_stim_half_blocks = find(~isnan(condition_master.global_block_nr) & (condition_master.global_block_nr < 1) & (condition_master.trial_type==1));
-                double_stim_half_blocks = find(~isnan(condition_master.global_block_nr) & (condition_master.global_block_nr < 1) & (condition_master.trial_type==2));
+            if any(condition_master.block_nr < 1)
+                single_stim_half_blocks = find(~isnan(condition_master.block_nr) & (condition_master.block_nr < 1) & (condition_master.trial_type==1));
+                double_stim_half_blocks = find(~isnan(condition_master.block_nr) & (condition_master.block_nr < 1) & (condition_master.trial_type==2));
 
                 nr_comb_single_blocks = length(single_stim_half_blocks)/params.exp.block.n_trials_single_epoch;
                 nr_comb_double_blocks = length(double_stim_half_blocks)/params.exp.block.n_trials_double_epoch;
@@ -370,17 +370,17 @@ for ses = 1:size(all_sessions,3)
                     for nn = 1:params.exp.block.n_trials_single_epoch:length(single_stim_half_blocks)
                         trial_idx = single_stim_half_blocks(nn:(nn+(params.exp.block.n_trials_single_epoch-1)));
                         condition_master.run_nr(trial_idx) = condition_master.run_nr(trial_idx(1));
-                        all_block_nrs = unique(condition_master.global_block_nr(...
+                        all_block_nrs = unique(condition_master.block_nr(...
                                                 condition_master.session_nr==condition_master.session_nr(trial_idx(1)) & ...
                                                 condition_master.session_type==condition_master.session_type(trial_idx(1)) & ...
                                                 condition_master.run_nr==condition_master.run_nr(trial_idx(1))));
-                        all_block_nrs = setdiff(all_block_nrs, condition_master.global_block_nr(trial_idx));
+                        all_block_nrs = setdiff(all_block_nrs, condition_master.block_nr(trial_idx));
                         if all(all_block_nrs~=1) && all(all_block_nrs<8)
                             allocated_block_nr = setdiff([1:max(all_block_nrs)],all_block_nrs);
                         else
                             allocated_block_nr = setdiff([min(all_block_nrs):max(all_block_nrs)],all_block_nrs);
                         end
-                        condition_master.global_block_nr(trial_idx) = repmat(allocated_block_nr,size(trial_idx,1),1);
+                        condition_master.block_nr(trial_idx) = repmat(allocated_block_nr,size(trial_idx,1),1);
                         condition_master.trial_nr(trial_idx) = [1:params.exp.block.n_trials_single_epoch]';
                     end
                     shave_me_off1 = nr_of_uncomb_single_blocks - nr_comb_single_blocks;
@@ -391,7 +391,7 @@ for ses = 1:size(all_sessions,3)
                     for nn = 1:params.exp.block.n_trials_double_epoch:length(double_stim_half_blocks)
                         trial_idx = double_stim_half_blocks(nn+(params.exp.block.n_trials_double_epoch-1));
                         condition_master.run_nr(trial_idx)   = condition_master.run_nr(trial_idx(1));
-                        condition_master.global_block_nr(trial_idx) = ceil(condition_master.global_block_nr(trial_idx(1)));
+                        condition_master.block_nr(trial_idx) = ceil(condition_master.block_nr(trial_idx(1)));
                         condition_master.trial_nr(trial_idx) = 1:params.exp.block.n_trials_single_epoch;
                     end
                     shave_me_off2 = nr_of_uncomb_double_blocks - nr_comb_double_blocks;
@@ -406,7 +406,7 @@ for ses = 1:size(all_sessions,3)
             % the number of blocks in the table should be equal to the number of
             % tracked stim-task-crossings allocated, as well as the sum vs vector length
             assert(isequal(stimtask_tracker_local-1,block_distr))
-            tmp = max(condition_master.global_block_nr(~isnan(condition_master.global_block_nr) & condition_master.session_nr==ses & condition_master.session_type==st));
+            tmp = max(condition_master.block_nr(~isnan(condition_master.block_nr) & condition_master.session_nr==ses & condition_master.session_type==st));
             
             % in case we deal with half blocks, then we want to adjust the nr of total block to nr of combined blocks 
             if exist('shave_me_off1','var')
@@ -428,8 +428,9 @@ condition_master.unique_trial_nr = [];
 
 % Reorder runs
 [~,run_idx] = sort(condition_master.run_nr);
+
 % We keep and reorder block nr for now (we will shuffle blocks later for each subject's session)
-[~,block_idx] = sort(condition_master.global_block_nr(run_idx));
+[~,block_idx] = sort(condition_master.block_nr(run_idx));
 
 condition_master = condition_master(run_idx(block_idx),:);
     
@@ -474,10 +475,15 @@ condition_master = condition_master(:,newOrder_idx);
 % Update trial repeat nr
 condition_master = vcd_getTrialRepeatNr(condition_master);
 
+% add global_trial_nr
+condition_master = vcd_updateGlobalCounters(params, condition_master, session_env);
+% condition_master.global_trial_nr = [1:size(condition_master,1)]';
+condition_master.block_nr = condition_master.global_block_nr;
+
 %Visualize results
 if params.verbose
     figure; set(gcf,'Position',[1 1 1200 600]);
-    clims = [0, max([max(condition_master.global_block_nr),max(condition_master.run_nr)])];
+    clims = [0, max([max(condition_master.block_nr),max(condition_master.run_nr)])];
     cmap = cmapturbo(max(clims)+1);                
     close all; makeprettyfigures
     for ses = 1:size(all_sessions,3)
@@ -489,7 +495,7 @@ if params.verbose
                 ses_idx = (condition_master.session_nr==ses & condition_master.session_type==st);
                 ses_data = condition_master(ses_idx,:);
                 [~,new_run_line] = unique(ses_data.run_nr,'stable');
-                dataToPlot = [ses_data.session_nr, ses_data.run_nr, ses_data.global_block_nr]';
+                dataToPlot = [ses_data.session_nr, ses_data.run_nr, ses_data.block_nr]';
                 imagesc(dataToPlot);
                 colormap(cmap);
                 set(gca,'CLim',clims);
@@ -506,7 +512,7 @@ if params.verbose
                 
                 
                 if params.store_imgs
-                    saveFigsFolder = fullfile(vcd_rootPath,'figs',sprintf('condition_master1_%s',session_type));
+                    saveFigsFolder = fullfile(vcd_rootPath,'figs',sprintf('condition_master1_%s',session_env));
                     if ~exist(saveFigsFolder,'dir'); mkdir(saveFigsFolder);end
                     filename = sprintf('vcd_session%02d_%s_subjblocks_post_shuffle.png',ses,choose(st==1, 'A','B'));
                     print(gcf,'-dpng','-r300',fullfile(saveFigsFolder,filename));
@@ -522,16 +528,16 @@ return
 %     cmap = cmapturbo(500);
 %     figure; set(gcf,'Position',[1 1 1200 300]);
 %     colormap(cmap); sgtitle(sprintf('Session %02d',ses))
-%     new_block_line = find(abs(diff(condition_master.global_block_nr(~isnan(condition_master.global_block_nr))))>1);
+%     new_block_line = find(abs(diff(condition_master.block_nr(~isnan(condition_master.block_nr))))>1);
 %     subplot(311); cla;
-%     imagesc(condition_master.global_block_nr(~isnan(condition_master.global_block_nr))');
+%     imagesc(condition_master.block_nr(~isnan(condition_master.block_nr))');
 % %         hold on;
 % %     for ff = 1:length(new_block_line)
 % %         plot([new_block_line(ff),new_block_line(ff)]+0.05,[0,4],'k','linewidth', 0.01)
 % %     end
 %     set(gca,'YTick',1,'YTickLabel',{'trial nr'})
 %     subplot(312);cla;
-%     imagesc(condition_master.global_block_nr(~isnan(condition_master.global_block_nr))');
+%     imagesc(condition_master.block_nr(~isnan(condition_master.block_nr))');
 %
 % %         hold on;
 % %     for ff = 1:length(new_block_line)
@@ -539,7 +545,7 @@ return
 % %     end
 %     set(gca,'YTick',1,'YTickLabel',{'local block nr'})
 %     subplot(313)
-%     imagesc(condition_master.global_block_nr(~isnan(condition_master.global_block_nr))');
+%     imagesc(condition_master.block_nr(~isnan(condition_master.block_nr))');
 % %     hold on;
 % %     for ff = 1:length(new_block_line)
 % %         plot([new_block_line(ff),new_block_line(ff)]+0.05,[0,4],'k','linewidth', 0.01)
