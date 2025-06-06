@@ -1,44 +1,53 @@
 %% s_createDesignMatrix.m
 %
-% Script to create and store a giant matrix (or struct??) that defines the 
-% the order in which VCD-core stimuli and tasks are shown across subject 
-% at 4 levels of the experiment:
-%  1: subject session (1.5 hrs), contains multiple runs (highest level) 
-%  2: runs (6 mins), contains multiple blocks, interspersed with rest
-%     periods 
-%  3: block (1-1.5 mins), contains multiple trials of a single 
-%     stimulus-task crossing. blocks are interspersed with variable
-%     (5-9 sec) Inter-Block-Intervals (IBIs), which are "rest" periods where
-%     subject is presented with background+fixation dot (and continues to 
-%     fixate). Number of trials per block depends on the trial type (8 
-%     trials for single epoch trials, 4 trials for double epoch trials). 
-%     Trials within a block are interspersed with variable (0.2-1.6 sec)
-%     Inter-Trial-Intervals (ITIs).
-%  4: trial (single: 4.2 sec or double: 14.2 sec, without ITI). Structure
-%     sequence of the following events: 
-%     SINGLE EPOCH:
-%       * trial start (fixation dot rim thickening) (0.4 sec)
-%       * covert spatial attention cue (0.8 sec)
-%       * stimulus array (epoch 1) (2.0 sec)
-%       * response window (1.0 sec)
-%       * trial end + ITI (fixation dot rim thinning (0.2-1.6 sec)
-%     DOUBLE EPOCH:
-%       * trial start (fixation dot rim thickening) (0.4 sec)
-%       * covert spatial attention cue (0.8 sec)
-%       * stimulus array (epoch 1) (2.0 sec)
-%       * inter-stimulus interval (ISI) (8.0 sec)
-%       * stimulus array (epoch 2) (2.0 sec)
-%       * response window (1.0 sec)
-%       * trial end + ITI (fixation dot rim thinning (0.2-1.6 sec)
+% Script to create and store the entire VCD experiment as a MATLAB table
+% including the order in which VCD-core stimuli and tasks are shown to  
+% subject at the granularity of trial events.
+% At a bird's eye level: there are sessions (~1.5-2 hrs), which contain
+% multiple runs (~6.5 mins), which contain multiple blocks interspersed 
+% with rest periods of a gray (mean luminance) screen + fixation circle
+% called Inter-Block-Intervals (IBIs, 5-9 sec) or pre/post-run rest
+% periods.
 %
-% Requirements:
+% Each block is (~40-60 s) and contains multiple trials of a single 
+% stimulus-task crossing. For a given trial, the subject is presented with
+% gray background + fixation circle that the subject is instructed to 
+% continuously fixate at throughout the run.
+%
+% A single block contains starts with a task cue (4 sec ON, followed by a 1 
+% sec blank screen), followed by either 8 trials (for single stimulus 
+% presentation blocks, also known as trial_type 1) or 4 trials (double  
+% stimulus presentation blocks, also known as trial_type 2). Trials within
+% a block are interspersed with variable (0-1.5 sec) Inter-Trial-Intervals
+% (ITIs).
+% 
+% A single trial (single: 4.5 sec or double: 13.5 sec, without ITI)
+% contains the following events: 
+%     SINGLE stimulus-presentation trial:
+%       * covert spatial attention cue (0.5 sec)
+%       * gap (gray screen             (0.5 sec)
+%       * stimulus array               (1.0 sec)
+%       * response window              (2.5 sec)
+%       * ITI                          (0-1.5 sec)
+%     DOUBLE stimulus-presentation trial:
+%       * covert spatial attention cue (0.5 sec)
+%       * gap (gray screen             (0.5 sec)
+%       * stimulus array 1             (1.0 sec)
+%       * delay                        (8.0 sec)
+%       * stimulus array 2             (1.0 sec)
+%       * response window              (2.5 sec)
+%       * ITI                          (0-1.5 sec)
+%
+% Code dependencies:
 %   * vcd-stim code repo (github.com/elinekupers/vcd-stim)
+%   * knkutils code repo (github.com/cvnlab/knkutils)
 %
 %
 % Written by Eline Kupers @ UMN
 % History:
 % v0.0: 11/2024 - first attempt
 % v0.1: 03/2025 - refactoring code
+% v0.2: 06/2025 - minor tweaks
 
 %% %%%%%%%%%%%%%%%%%%%
 %%%%%% PARAMETERS %%%% 
@@ -54,16 +63,16 @@ params.disp = vcd_getDisplayParams(dispname);
 
 % Infer session type
 if strcmp(dispname,'7TAS_BOLDSCREEN32')
-    session_type = 'MRI';
+    session_env = 'MRI';
 elseif strcmp(dispname,'PPROOM_EIZOFLEXSCAN')
-    session_type = 'BEHAVIOR';
+    session_env = 'BEHAVIOR';
 else
-    session_type = 'MRI';
+    session_env = 'MRI';
 end
 
 % Get stimulus parameters
-params.load_params                 = false; % load stored params or recreate them
-params.store_params                = true;
+params.load_params  = false; % load stored params or recreate them
+params.store_params = true;
 
 % SETUP RNG
 params.rng.rand_seed = sum(100*clock);
@@ -85,21 +94,24 @@ params.exp    = vcd_getSessionParams('disp_name', params.disp.name, ...
                                 'load_params', params.load_params, ...
                                 'store_params', params.store_params);
 
-%% Make/Load blocks with trials that sample unique stimuli from each class
+%% Create unique conditions
 % !!WARNING!! There is a randomization component involved in creating the
-% trial sequence (e.g., order of unique images within a block). If you
-% don't want this, set second input (load_params) to true and load an
-% existing file
+% conditions (i.e., order of trials within a session). If you don't want
+% this, set second input (load_params) to true and load an existing
+% condition_master.
 %
-% This function contains the following important steps/functions:
+% This function will create the unique stimuli and conditions for each
+% task-stim crossing occuring across all sessions (MRI or BEHAVIOR).
+%
+% This function contains the following important steps/subfunctions:
 % * vcd_defineUniqueImages
 % * vcd_createConditionMaster
 % * vcd_shuffleStimForTaskClass
-params.verbose = false;
+
 [params, condition_master, all_unique_im, all_cond] = ...
-            vcd_createBlocksAndTrials(params,'load_params', params.load_params, ...
+            vcd_createConditions(params,  'load_params',  params.load_params, ...
                                           'store_params', params.store_params, ...
-                                          'session_type', session_type);
+                                          'session_env', session_env);
 
 %% Create/Load miniblocks into runs and sessions, shuffle blocks within a run for each subject's run
 % !!WARNING!! There is a randomization component involved in creating the
@@ -112,7 +124,7 @@ params.verbose = false;
 % * vcd_addFIXandCDtoTimeTableMaster
 [params,time_table_master] = vcd_createSessions(params,'load_params',  params.load_params, ...
                                                        'store_params', params.store_params, ...
-                                                       'session_type', session_type);
+                                                       'session_env', session_env);
 
 
 
