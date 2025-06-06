@@ -54,6 +54,10 @@ function results = vcdbehavioralanalysis(filename);
 %   stim_cued - name of stimulus class being cued (e.g. 'rdk'). for the FIX task and
 %               for catch trials, this is set to NaN. stim_cued is useful for the special
 %               SCC and LTM tasks.
+%   excess_buttons - 0/1 indicating whether the user pressed at least one button in the 
+%                    extra period after the official window. this applies only in the case
+%                    of non-FIX tasks. for FIX task, excess_buttons is always NaN.
+%                    also, for catch trials, excess_buttons is always NaN.
 %   onset_start - frame time corresponding to stimulus onset. (this is either
 %                 stim1 or stim2 where appropriate, and for the special FIX dot change
 %                 events, stimulus onset refers to the change in the dot luminance.)
@@ -68,7 +72,7 @@ function results = vcdbehavioralanalysis(filename);
 %
 %   * In the case of catch trials for non-FIX tasks, all of the following are set to NaN
 %     no matter what the subject does:
-%       correct_response, change_mind, button_pressed, is_correct, rt
+%       excess_buttons, correct_response, change_mind, button_pressed, is_correct, rt
 %
 %   * If the subject did not press a button, is_correct is set to 0, and all of the 
 %     following are set to NaN:
@@ -108,7 +112,8 @@ validkeys = {'1!' '2@' '3#' '4$' '5%' 'r' 'y' 'g' 'b' 't' 'absolutetimefor0' 'tr
 userkeys = {'1' '2' '3' '4' 'r' 'y' 'g' 'b'};  % user-driven buttons
 choicebuttons = {'1' '2' '3' '4'};  % the official buttons we expect subjects to press
 triggerkeys = {'5' 't'};  % this indicates buttons that are interpreted as a trigger
-responsewindow_reg = [100 3500];  % we accept buttons in this range of milliseconds after stimulus onset (for all tasks other than fixation)
+responsewindow_reg = [0 4500 4800];  % we accept buttons in this range of milliseconds after stimulus onset (for all tasks other than fixation)
+                                       % the third number indicates how far to detect excess buttons
 responsewindow_fix = [100 1500];  % for the fixation task, we accept buttons in this range of milliseconds after each dot change
 
 %% Setup
@@ -441,6 +446,7 @@ while 1
     stimonset = timeframes(a1.run_table.event_start(ii)+1);
     windowstart = stimonset + responsewindow_reg(1)/1000;
     windowend   = stimonset + responsewindow_reg(2)/1000;
+    windowexcess= stimonset + responsewindow_reg(3)/1000;
 
     % record
     results.trialinfo.onset_start(rii)      = a1.run_table.event_start(ii);
@@ -451,6 +457,7 @@ while 1
     if a1.run_table.is_catch(ii) == 1
     
       results.trialinfo.stim_cued{rii}        = NaN;
+      results.trialinfo.excess_buttons(rii)   = NaN;
       results.trialinfo.change_mind(rii)      = NaN;
       results.trialinfo.button_pressed(rii)   = NaN;
       results.trialinfo.is_correct(rii)       = NaN;
@@ -460,6 +467,12 @@ while 1
 
       % deal with stim_cued    
       results.trialinfo.stim_cued{rii} = a1.run_table.stim_class_name{ii,mod2(a1.run_table.is_cued(ii),2)};
+
+      % deal with excess buttons
+      okok = find( buttontimes > windowend & ...
+                   buttontimes <= windowexcess & ...
+                   ismember(buttonpressed,choicebuttons) );
+      results.trialinfo.excess_buttons(rii)     = double(~isempty(okok));  % 0 means no excess buttons, 1 means at least one excess button
 
       % find buttons within response window. we only want buttons that are one of the choice buttons.
       okok = find( buttontimes > windowstart & ...
@@ -549,9 +562,10 @@ while 1
       results.trialinfo.run_nr(rii) =       a1.run_table.run_nr(ii);
       results.trialinfo.block_nr(rii) =     a1.run_table.block_nr(ii);
       results.trialinfo.crossing_nr(rii) =  a1.run_table.crossing_nr(ii);
-      results.trialinfo.trial_nr(rii) =     NaN;  % NOTE!
-      results.trialinfo.is_catch(rii) =     0;    % NOTE!
-      results.trialinfo.stim_cued{rii} =    NaN;  % NOTE!
+      results.trialinfo.trial_nr(rii) =     NaN;   % NOTE!
+      results.trialinfo.is_catch(rii) =     0;     % NOTE!
+      results.trialinfo.stim_cued{rii} =    NaN;   % NOTE!
+      results.trialinfo.excess_buttons(rii) = NaN; % NOTE!
 
       % calc some times
       stimonset = timeframes(fixstart-1+seq(p)+1);
@@ -617,6 +631,8 @@ for pp=1:length(userkeys)
 end
 fprintf('\n');
 fprintf('Number of triggers: %d\n',length(triggertimes));
+fprintf('Number of trials with button(s) in excess window: %d of %d\n', ...
+        sum(results.trialinfo.excess_buttons==1),sum(ismember(results.trialinfo.excess_buttons,[0 1])));
 fprintf('==============================================================\n');
 
 %% Summarize behavioral performance
