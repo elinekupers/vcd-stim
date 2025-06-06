@@ -1,4 +1,4 @@
-function [condition_master_shuffled, run_matrix,trial_order_local_shuffled, trial_order_global_shuffled] ...
+function [condition_master_shuffled, condition_master_shuffle_idx, session_crossing_matrix, session_block_matrix] ...
                 = vcd_randomizeBlocksAndRunsWithinSession(params, condition_master, session_env, varargin)
 % VCD function to shuffle stimulus blocks and trials within a block across
 % all sessions/session types. And then resave individual subject's runs
@@ -19,8 +19,8 @@ function [condition_master_shuffled, run_matrix,trial_order_local_shuffled, tria
 %% %%%%%%%%%%%%% PARSE INPUTS %%%%%%%%%%%%%
 p0 = inputParser;
 p0.addRequired('params'           , @isstruct);
-p0.addRequired('condition_master' , [], @istable);
-p0.addRequired('session_env'      , 'MRI', @(x) any(strcmp(x,{'BEHAVIOR','MRI'})));
+p0.addRequired('condition_master' , @istable);
+p0.addRequired('session_env'      , @(x) any(strcmp(x,{'BEHAVIOR','MRI'})));
 p0.addParameter('prefix'          , 'subjXXX_', @ischar);
 
 % Parse inputs
@@ -40,8 +40,14 @@ clear rename_me ff p0
 % User can allow for slack in the run duration threshold before moving on
 % to the next run. We do this to allow for adding one more block and avoid
 % ending ending upwith long blank at the end.
-slack                       = 10*params.stim.presentationrate_hz;  % time frames we extract from run_dur when allocating blocks.
-max_run_deviation           = 30*params.stim.presentationrate_hz; % time frames we use as cutoff to start over (if run is 30 s shorter than expect run duration, then we reshuffle blocks).
+%
+% To use run_dur as a constraint, we overestimate the total duration for 
+% the allocated IBIs by summing the longest 7 IBIs (3780/60 = 63 s).
+% For reference: difference between the sum of the shortest 7 and the sum
+% of longest 7 IBIs is 1050/60 = 17.5 s. Hence we want to also introduce
+% some slack, to add avoid adding too few blocks to a run.
+slack                       = 10*params.stim.presentationrate_hz; % time frames we extract from run_dur when allocating blocks. 
+max_run_deviation           = 40*params.stim.presentationrate_hz; % time frames we use as cutoff to start over (if run is 40 s shorter than expect run duration, then we reshuffle blocks). 
 max_allowable_block_repeats = 2;  % nr of blocks we allow for repeat in their crossing (so finding A-A and later on B-B)
 block_dur     = [params.exp.block.total_single_epoch_dur, params.exp.block.total_double_epoch_dur];
 
@@ -137,7 +143,7 @@ for ses = 1:length(unique_sessions)
                     if reshuffle_me
                         continue;
                     end
-                    % For every 7 executive single stimulus presentation blocks,
+                    % For every group of 7 single stimulus presentation blocks,
                     %  we check their crossing, if they have the same crossing
                     %  we shuffle the order of all single stimulus presentation
                     %  blocks. We use 7 because that is the max nr of blocks
@@ -154,17 +160,17 @@ for ses = 1:length(unique_sessions)
                         nr_s_blocks = sum(d_block_idx);
                         nr_d_blocks = sum(s_block_idx);
                         
-                        if sum(d_block_idx(1:6))==6 % if we have too many double-stim blocks, we restart
+                        if nr_d_blocks>=4 % if we have too many double-stim blocks, we restart
                             shuffle_ok(nn) = false;
                         end
-                        if nr_s_blocks==7 % if we have too only single-stim blocks in a row, we restart
-                            shuffle_ok(nn) = false;
-                        end
-                        if length(unique(tmp_blocks)) >= length(tmp_blocks)-1
+%                         if nr_s_blocks==7 % if we have only single-stim blocks in a row, we restart
+%                             shuffle_ok(nn) = false;
+%                         end
+                        if length(unique(tmp_blocks)) >= length(tmp_blocks)-1 % if we have 6 or 7 unique crossings in a row, we are happy
                             shuffle_ok(nn) = true;
-                        else
+                        else % if we don't have at least 6 unique crossings in a row, we break out of loop and restart shuffling
                             shuffle_ok(nn) = false;
-                            continue; % break out of brick laying loop and restart?
+                            continue; 
                         end
                         if nr_d_blocks > 0  % && nr_s_blocks > 0 we want at least one double stim presentation block per run
                             shuffle_ok(nn) = true;
@@ -191,7 +197,7 @@ for ses = 1:length(unique_sessions)
                 bb_glbl_cnt   = 0;
                 bb_cnt        = 0;
                 rr_cnt        = 1;
-                run_dur       = run_dur_min + sum(IBIs((length(IBIs)-blocks_per_run-1):end));
+                run_dur       = run_dur_min + sum(max(IBIs)*blocks_per_run);
                 total_run_dur = [];
                 run_too_short = [];
                 runs_ok       = true;
@@ -211,7 +217,7 @@ for ses = 1:length(unique_sessions)
                         total_run_dur(rr_cnt) = run_dur;
                         rr_cnt  = rr_cnt +1;   % count next run
                         bb_cnt  = 1;           % reset within run block counter when moving to the next run
-                        run_dur = run_dur_min + sum(IBIs((length(IBIs)-blocks_per_run-1):end)); % reset run duration when moving to the next run
+                        run_dur = run_dur_min + sum(max(IBIs)*blocks_per_run); % reset run duration when moving to the next run
                     end
                     
                     run_dur_tmp = run_dur + block_dur(trialtypes_shuffled(bb_glbl_cnt));
