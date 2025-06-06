@@ -218,8 +218,9 @@ switch block_name
         % 
         % 1-INDEX  = FORWARD
         % 2-MIDDLE = SIDEWAYS
-
-        forward =  (params.stim.obj.facing_dir_deg  > 45 & params.stim.obj.facing_dir_deg  < 135);
+        
+        % We set the cutoff at 45 and 135 degrees.
+        forward =  (params.stim.obj.facing_dir_deg > 45 & params.stim.obj.facing_dir_deg < 135);
         sideways = (params.stim.obj.facing_dir_deg < 45 | params.stim.obj.facing_dir_deg > 135);
         assert(~isequal(forward,sideways));
         if sum(cat(2,forward,sideways))==0
@@ -321,13 +322,13 @@ switch block_name
         % 
         % 1-INDEX  = ADDED CONTENT
         % 2-MIDDLE = REMOVED CONTENT
-        if table_row.stim2_delta(1) == 1 % 'easy_add'
+        if table_row.stim2_delta(1) == 2 % 'easy_add'
             button_response = 1;
-        elseif table_row.stim2_delta(1) == 2 % 'hard_add'
+        elseif table_row.stim2_delta(1) == 1 % 'hard_add'
             button_response = 1;
-        elseif table_row.stim2_delta(1) == 3 % 'easy_remove'
+        elseif table_row.stim2_delta(1) == -2 % 'easy_remove'
             button_response = 2;
-        elseif table_row.stim2_delta(1) == 4 % 'hard_remove'
+        elseif table_row.stim2_delta(1) == -1 % 'hard_remove'
             button_response = 2;
         else
             error('[%s]: Ill-defined button response for %s!',mfilename,block_name)
