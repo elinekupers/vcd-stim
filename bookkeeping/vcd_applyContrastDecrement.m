@@ -21,7 +21,7 @@ function [output_im, output_mask] = vcd_applyContrastDecrement(params, c_onset, 
 %    stim.(<stim_class>).duration     duration of the stimulus in nr of
 %                                     presentation frames. E.g., a duration
 %                                     of 60 frames at 60 Hz is 1 second.
-%    stim.cd.t_gauss                : Temporal contrast modulation
+%    stim.cd.t_cmodfun              : Temporal contrast modulation
 %                                     function, that describes the fraction
 %                                     by which the mean contrast of the
 %                                     input image will be altered.
@@ -54,7 +54,7 @@ function [output_im, output_mask] = vcd_applyContrastDecrement(params, c_onset, 
 %                                      alpha transparency mask, it will be
 %                                      ignored when applying the contast
 %                                      decrement.
-% * input_mask                      : (optional): separated alpha
+% * [input_mask]                     : (optional): separated alpha
 %                                      transparency mask(s) for the
 %                                      input_im(s). input_mask has the same
 %                                      dimensions as input_im in pixels
@@ -67,6 +67,12 @@ function [output_im, output_mask] = vcd_applyContrastDecrement(params, c_onset, 
 %                                      1 means show pixels] or continuous
 %                                      values between [0-255], where 0 =
 %                                      mask, 255 = show.
+% * [t_cmod_pad]                     : (optional): nr of time frames to 
+%                                       padding of the contrast modulation 
+%                                       function with. We will use value of
+%                                       the last time frame in the temporal 
+%                                       modulation function as the value
+%                                       for the padded frames.
 %
 % OUTPUTS:
 % * output_im                       : (uint8) images with temporal contrast
@@ -104,6 +110,7 @@ p0.addRequired('c_onset'      , @(x) isnumeric(x) & (x>0));
 p0.addRequired('stim_class'   , @(x) ischar(x) & ismember(x, {'gabor','rdk','dot','obj','ns'}));
 p0.addRequired('input_im'     , @iscell);
 p0.addParameter('input_mask'  , [], @iscell); 
+p0.addParameter('t_cmod_pad'  , [], @(x) isnumeric(x) & (x>0));
 
 % Parse inputs
 p0.parse(params,c_onset,stim_class,input_im,varargin{:});
@@ -116,20 +123,27 @@ end
 clear rename_me ff p0
 
 % Check if user defined the temporal modulation function and stim duration
-assert(isfield(params.stim.cd, 't_gauss'))
-assert(~isempty(params.stim.cd.t_gauss))
+assert(isfield(params.stim.cd, 't_cmodfun'))
+assert(~isempty(params.stim.cd.t_cmodfun))
 assert(isfield(params.stim.(stim_class), 'duration'))
 assert(~isempty(params.stim.(stim_class).duration))
 
 % Check if onset of contrast decrement falls within stimulus duration
 assert(c_onset < params.stim.(stim_class).duration)
 
+% Pad the temporal modulation function if requested:
+if ~isempty(t_cmod_pad)
+    cmodfun = cat(2, params.stim.cd.t_cmodfun, params.stim.cd.t_cmodfun(end).* ones(1,t_cmod_pad));
+else
+    cmodfun = params.stim.cd.t_cmodfun;
+end
+
 % Check if temporal modulation function fits within stimulus duration
-assert(length(params.stim.cd.t_gauss) <= params.stim.(stim_class).duration)
+assert(length(cmodfun) <= params.stim.(stim_class).duration)
 
 % Check if onset of contrast decrement allows for temporal modulation function
 % to fall entirely within stimulus duration
-assert((c_onset+length(params.stim.cd.t_gauss)-1) <= params.stim.(stim_class).duration)
+assert((c_onset+length(cmodfun)-1) <= params.stim.(stim_class).duration)
 
 % Check if we deal with a static image (one frame or a movie (multiple
 % frames).
@@ -149,7 +163,7 @@ output_im = input_im;
 output_mask = input_mask;
 
 % loop over time points of the temporal contrast modulation function
-for tt = 1:length(params.stim.cd.t_gauss)
+for tt = 1:length(cmodfun)
     
     % Get image
     tmp_im = output_im{c_onset+tt-1}; % subtract one because we want to start at c_onset
@@ -191,13 +205,13 @@ for tt = 1:length(params.stim.cd.t_gauss)
     if strcmp(stim_class, 'ns')
         % SCENES are in color, where RGB channels range between values of 0-255.
         tmp_im_g        = rgb2gray(tmp_im0);                                % convert rgb to gray
-        tmp_im_g_norm   = (tmp_im_g./255).^2;                       % convert grayscale image range from [0-255] to [0-1] (normalized image)
-        tmp_im_norm     = (tmp_im0./255).^2;                        % convert color image range from [0-255] to [0-1] (normalized image)
+        tmp_im_g_norm   = (tmp_im_g./255).^2;                               % convert grayscale image range from [0-255] to [0-1] (normalized image)
+        tmp_im_norm     = (tmp_im0./255).^2;                                % convert color image range from [0-255] to [0-1] (normalized image)
         mn_im           = mean(tmp_im_g_norm(:));                           % compute the mean of grayscale image
         % subtract the mean luminance of this scene from the normalized
         % color image, then scale contrast for the given time frame in the
         % contrast modulation function, and add back the mean.
-        tmp_im_c        = ((tmp_im_norm-mn_im).*params.stim.cd.t_gauss(tt)) + mn_im;  
+        tmp_im_c        = ((tmp_im_norm-mn_im).*cmodfun(tt)) + mn_im;  
         tmp_im_c        = (255.*sqrt(tmp_im_c));                            % bring back to 0-255
         
     elseif strcmp(stim_class,'obj')
@@ -206,13 +220,13 @@ for tt = 1:length(params.stim.cd.t_gauss)
         mn_im           = mean(tmp_im_norm(:));                             % compute the mean of image
         % center around mean, scale contrast for the given time frame in 
         % the contrast modulation function, bring min/max range back to [0-1]  
-        tmp_im1         = ((tmp_im_norm - mn_im)*params.stim.cd.t_gauss(tt)) + mn_im;                  
+        tmp_im1         = ((tmp_im_norm - mn_im)*cmodfun(tt)) + mn_im;                  
         tmp_im_c        = ( (254.*sqrt(tmp_im1)) +1 );                      % bring min/max range back to [1-255]
         
     else % Gabors, RDKs, Dots are gray scale, where RGB channels range between luminance values [1-255], and mean luminance is 128
-        tmp_im_norm = (tmp_im0./255)-0.5;                                      % center around 0, range [-0.5 0.5]
-        tmp_im1     = tmp_im_norm.*params.stim.cd.t_gauss(tt);                    % scale contrast for the given time frame in the contrast modulation function
-        tmp_im_c    = ( (255.*(tmp_im1+0.5)) );                               % bring back to 1-255
+        tmp_im_norm = (tmp_im0./255)-0.5;                                   % center around 0, range [-0.5 0.5]
+        tmp_im1     = tmp_im_norm.*cmodfun(tt);                             % scale contrast for the given time frame in the contrast modulation function
+        tmp_im_c    = ( (255.*(tmp_im1+0.5)) );                             % bring back to 1-255
     end
     
     % Create full uint8 image
