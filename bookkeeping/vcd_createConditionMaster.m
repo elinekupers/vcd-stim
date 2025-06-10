@@ -1267,7 +1267,8 @@ if nr_reps > 0
                     [~,idx_c] = ismember(conds_master_single_rep2.stim_nr_left(noncatch_trials_idx),params.stim.ns.unique_im_nrs_core);
                     idx_wm = params.stim.ns.unique_im_nrs_wm_test(1:4:end);
                     stim2_im_nr = NaN(size(conds_master_single_rep2.orient_dir,1),2);
-                    stim2_im_nr(noncatch_trials_idx,1)        = [idx_wm(idx_c) + (shuffle_delta(1:n_unique_cases)-1)']';
+                    [~,stim2_im_delta_idx] = ismember(shuffle_delta(1:n_unique_cases),params.stim.ns.change_im);
+                    stim2_im_nr(noncatch_trials_idx,1)        = idx_wm(idx_c)' + stim2_im_delta_idx-1;
                     conds_master_single_rep2.stim2_delta      = delta_vec;
                     conds_master_single_rep2.stim2_im_nr      = stim2_im_nr;
                     conds_master_single_rep2.stim2_orient_dir = NaN(size(conds_master_single_rep2.orient_dir,1),2);
