@@ -573,7 +573,7 @@ for ii = 1:length(stim_row)
                         assert(isequal(i5, run_table.basic_cat(stim_row(ii),1)));
                         assert(isequal(i6, run_table.sub_cat(stim_row(ii),1)));
                         
-                        run_images{curr_frames(1),side} = all_images.ns.wm_im(:,:,:,i4,i5,i6,wm_change);
+                        run_images{curr_frames(1),side} = all_images.ns.wm_im(:,:,:,i4,i5,i6,wm_change == params.stim.ns.change_im);
                         run_alpha_masks{curr_frames(1),side} = [];
                         
                     elseif strcmp(run_table.event_name(stim_row(ii)),'stim2') && strcmp(run_table.task_class_name(stim_row(ii)),'ltm') && run_table.is_catch(stim_row(ii)) == 0
