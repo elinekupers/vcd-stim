@@ -25,7 +25,8 @@ p0.addRequired('ses_nr'             , @isnumeric);
 p0.addRequired('ses_type'           , @isnumeric);
 p0.addRequired('run_nr'             , @isnumeric);
 p0.addParameter('all_images'        , struct(), @isstruct);
-p0.addParameter('store_params', true, @islogical);
+p0.addParameter('store_params'      , true, @islogical);
+p0.addParameter('verbose'           , false, @islogical);
 p0.addParameter('session_env', 'MRI', @(x) ismember(x,{'MRI','BEHAVIOR','TEST'}));
 
 % Parse inputs
@@ -75,6 +76,9 @@ end
 
 %% Load params if requested and we can find the file
 
+fprintf('[%s]: Loading stimuli..\n',mfilename);
+    
+
 % Check if we need to load more images
 % If we did not provide images.. then create the field names of the all_images struct
 if isempty(all_images) || isempty(fieldnames(all_images))
@@ -85,7 +89,7 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%% INSTRUCTIONS IM %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Load stored instruction cues if needed
 if ~isfield(all_images,'instr') || isempty(all_images.instr) || ~isfield(all_images.instr,'im')
-    fprintf('[%s]: Loading instruction images (text + icons)..\n',mfilename);
+    if verbose; fprintf('[%s]: Loading instruction images (text + icons)..\n',mfilename); end
     
     d = dir(fullfile(params.stimfolder,'instruction_images', '*.png'));
     
@@ -107,7 +111,7 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%% FIX IM %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Load stored fixation dot images if needed
 if ~isfield(all_images,'fix') || isempty(all_images.fix)
-    fprintf('[%s]: Loading fixation dot images..\n',mfilename);
+     if verbose; fprintf('[%s]: Loading fixation dot images..\n',mfilename); end
     
     %  FIX CIRCLE: 5D array: [x,y, 3, lum, rim types]
     d = dir(fullfile(params.stimfolder,params.disp.name, sprintf('fix_%s*.mat',params.disp.name)));
@@ -121,7 +125,7 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%% EYETRACKING BLOCK STIM %%%%%%%%%%%%%%%%%%%%%%%%%%
 % Load stored eyetracking block target images if needed
 if ~isfield(all_images,'eye') || isempty(all_images.eye)
-    fprintf('[%s]: Loading eyetracking target images..\n',mfilename);
+     if verbose; fprintf('[%s]: Loading eyetracking target images..\n',mfilename); end
     
     % ET TARGETS: 4D array: [x,y, 3, type]
     d = dir(sprintf('%s*.mat', params.stim.el.stimfile));
@@ -153,7 +157,8 @@ stim_row    = find(ismember(run_table.event_id, [params.exp.block.stim_epoch1_ID
 
 
 % Loop over all stimulus rows
-fprintf('[%s]: Load stimuli for each trial..\n',mfilename); tic;
+if verbose; fprintf('[%s]: Load stimuli for each trial..\n',mfilename); end
+tic;
 for ii = 1:length(stim_row)
     
     frame_counter = run_table.event_start(stim_row(ii))+1; % t=1 is 0, but we can't use 0 as index
@@ -179,7 +184,7 @@ for ii = 1:length(stim_row)
             
             switch stimClass
                 case 'gabor'
-                    fprintf('[%s]: Loading gabor images..\n',mfilename);
+                     if verbose; fprintf('[%s]: Loading gabor images..\n',mfilename); end
                     if isempty(all_images.gabor)
                         % GABORS: 6D array: [x,y,8 orient, 4 phase,3 contrast, og + 4 delta]
                         d = dir(sprintf('%s*.mat', params.stim.gabor.stimfile));
@@ -268,7 +273,7 @@ for ii = 1:length(stim_row)
                     
                     
                 case 'rdk'
-                    fprintf('[%s]: Loading rdk images..\n',mfilename);
+                    if verbose; fprintf('[%s]: Loading rdk images..\n',mfilename); end
                     
                     if strcmp(run_table.event_name(stim_row(ii)),'stim1') && run_table.is_catch(stim_row(ii)) == 0
                         
@@ -406,7 +411,7 @@ for ii = 1:length(stim_row)
                     end
                     
                 case 'dot'
-                    fprintf('[%s]: Loading dot images..\n',mfilename);
+                    if verbose; fprintf('[%s]: Loading dot images..\n',mfilename); end
                     if isempty(all_images.dot)
                         % Simple dot: 2D array: [x,y]
                         d = dir(sprintf('%s*.mat', params.stim.dot.stimfile));
@@ -432,7 +437,7 @@ for ii = 1:length(stim_row)
                     end
                     
                 case 'obj'
-                    fprintf('[%s]: Loading object images..\n',mfilename);
+                    if verbose; fprintf('[%s]: Loading object images..\n',mfilename); end
                     if isempty(all_images.obj)
                         % Complex objects: 4D array: [x,y,16 object, og + 10 rotation]
                         d = dir(sprintf('%s*.mat', params.stim.obj.stimfile));
@@ -513,7 +518,7 @@ for ii = 1:length(stim_row)
                     
                     
                 case 'ns'
-                    fprintf('[%s]: Loading scene images..\n',mfilename);
+                    if verbose; fprintf('[%s]: Loading scene images..\n',mfilename); end
                     if isempty(all_images.ns)
                         % NS: 6D array: [x,y,3, 5 superordinate cat, 2 ns_loc, 3 obj_loc]
                         % CBlind: 7D array: [x,y,5 superordinate cat, 2 ns_loc, 3 obj_loc, 4 change images];
@@ -556,9 +561,9 @@ for ii = 1:length(stim_row)
                     elseif strcmp(run_table.event_name(stim_row(ii)),'stim2') && strcmp(run_table.task_class_name(stim_row(ii)),'wm') && run_table.is_catch(stim_row(ii)) == 0
                         
                         wm_change = run_table.stim2_delta(stim_row(ii),1);
-                        wm_im_nr = run_table.stim2_im_nr(stim_row(ii), 1); % {'easy_added','hard_added','easy_removed','hard_removed'}
-                        im_nr = (all_images.info.ns.unique_im== wm_im_nr);
-                        info_name = params.stim.ns.change_im_name{wm_change};
+                        wm_im_nr  = run_table.stim2_im_nr(stim_row(ii), 1); % {'easy_added','hard_added','easy_removed','hard_removed'}
+                        im_nr = (all_images.info.ns.unique_im == wm_im_nr);
+                        info_name = params.stim.ns.change_im_name{wm_change == params.stim.ns.change_im};
                         info_name2 = strsplit(all_images.info.ns.filename{im_nr},'/');
                         
                         assert(strcmp(info_name2{2},sprintf('%s.png',info_name)));
@@ -644,7 +649,6 @@ end
 % tell the user we are done and report time it took to load images
 fprintf('Done! ');  toc;
 fprintf('\n');
-
 
 return
 
