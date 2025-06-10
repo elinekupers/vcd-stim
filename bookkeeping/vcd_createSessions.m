@@ -51,7 +51,7 @@ else
         
         d = dir(fullfile(vcd_rootPath,'workspaces','info',sprintf('stim_%s*.mat',disp_name)));
         if ~isempty(d)
-            if verbose
+            if params.verbose
                 fprintf('[%s]: Found %d stim params .mat file(s)\n',mfilename,length(d));
                 if length(d) > 1
                     warning('[%s]: Multiple .mat files! Will pick the most recent one\n', mfilename);
@@ -66,7 +66,7 @@ else
         
         d = dir(fullfile(vcd_rootPath,'workspaces','info',sprintf('exp_%s*.mat',disp_name)));
         if ~isempty(d)
-            if verbose
+            if params.verbose
                 fprintf('[%s]: Found %d exp params .mat file(s)\n',mfilename,length(d));
                 if length(d) > 1
                     warning('[%s]: Multiple .mat files! Will pick the most recent one\n', mfilename);
@@ -90,7 +90,7 @@ else
         % check if stimulus parameters are already defined and load it if needed
         if ~isfield(params,'stim') || isempty(params.stim)
             warning('[%s]: Can''t find stim field in params! Will run vcd_getStimParams.m', mfilename);
-            params.stim = vcd_getStimParams('load_params',false,'store_params',false, 'verbose',false);
+            params.stim = vcd_getStimParams('load_params',false,'store_params',false, 'verbose', false);
         end
     
         % set saveDir if we haven't already

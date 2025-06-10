@@ -57,6 +57,8 @@ p.addParameter('all_images'         , struct()  , @isstruct);                   
 p.addParameter('infofolder'         , fullfile(vcd_rootPath,'workspaces','info')        , @ischar); % where are the *_info.csv file(s)?
 p.addParameter('stimfolder'         , fullfile(vcd_rootPath,'workspaces','stimuli')     , @ischar); % where are the mat-files with store stimuli?
 p.addParameter('instrtextdir'       , fullfile(vcd_rootPath,'workspaces','stimuli','instruction_images'), @ischar); % where are the png-files with task instructions?
+p.addParameter('verbose'            , true      , @islogical)                    % (boolean) whether to print out text in command window. Default = true. 
+
 % Parse inputs
 p.parse(subj_nr, ses_nr, ses_type, run_nr, dispName, varargin{:});
 
