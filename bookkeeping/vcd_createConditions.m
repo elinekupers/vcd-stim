@@ -432,7 +432,7 @@ else % Recreate conditions and blocks and trials
         fprintf('[%s]:Storing condition_master..\n',mfilename)
         saveDir = fullfile(vcd_rootPath,'workspaces','info');
         if ~exist(saveDir,'dir'), mkdir(saveDir); end
-        save(fullfile(saveDir,sprintf('condition_master_%s_%s_%s.mat',params.disp.name,session_env,datestr(now,30))),'condition_master','all_unique_im','all_cond')
+        save(fullfile(saveDir,sprintf('condition_master_%s_%s.mat',params.disp.name,datestr(now,30))),'condition_master','all_unique_im','all_cond')
     end
     
     

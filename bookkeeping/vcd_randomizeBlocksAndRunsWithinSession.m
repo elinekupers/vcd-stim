@@ -167,7 +167,7 @@ p0.addParameter('slack'                         , 0*60 , @isnumeric); % time fra
 p0.addParameter('max_run_deviation'             , 15*60, @isnumeric); % time frames
 p0.addParameter('max_block_repeats'             , 10   , @isnumeric);
 p0.addParameter('allowed_block_combinations'    , []   , @isnumeric); % first row is max single-stim block nrs / run, second row is max double-stim block nrs / run (e.g., [6 4 2 3; 1 2 4 3]) 
-p0.addParameter('saveDir'                       , []   , @ischar); % where to store the shuffled condition_master
+p0.addParameter('saveDir'                       , ''   , @ischar); % where to store the shuffled condition_master
 % Parse inputs
 p0.parse(params,condition_master,session_env,varargin{:});
 
