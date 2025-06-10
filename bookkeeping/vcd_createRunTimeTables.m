@@ -966,7 +966,8 @@ if store_params
     end
     if ~exist(saveDir,'dir'), mkdir(saveDir); end
     fname = sprintf('%stime_table_master_%s_%s.mat', [subj_id '_'], params.disp.name, datestr(now,30));
-    fprintf('[%s]: Storing expanded time table for subject in %s..\n',mfilename,fullfile(saveDir,fname))
+    fprintf('[%s]: Storing expanded time table for subject in:\t',mfilename)
+    fprintf('\t%s\n',fullfile(saveDir,fname))
     save(fullfile(saveDir, fname), 'time_table_master','all_run_frames')
 end
     
