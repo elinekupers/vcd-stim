@@ -1,17 +1,25 @@
-function time_table_master = vcd_createRunTimeTables(params,condition_master_in,session_env)
+function [time_table_master, all_run_frames] = vcd_createRunTimeTables(params, varargin)
 % VCD function to add trial events to condition master, turning it into a
 % time table. This function also cleans some table columns that are now obsolete.
 %
-%   condition_master = vcd_allocateBlocksToRuns(params,condition_master_in)
+%   [time_table_master, run_frames] = vcd_createRunTimeTables(params,condition_master, session_env, varargin)
 %
 % INPUTS:
-%   params              : 	(struct) parameter struct needed to get subject
+%  params                : 	(struct) parameter struct needed to get subject
 %                           nrs and run type params.
-%  condition_master_in  :   (table) condition master table with subject
+%  [condition_master]    :  (table) condition master table with subject
 %                           session,runs,blocks,trials, but no individual
 %                           trial events.
-%  [session_env]       :   (optional) Are we dealing with MRI or BEHAVIOR sessions
+%  [session_env]         :  (char) Are we dealing with MRI or BEHAVIOR sessions
 %                           Default: 'MRI'
+%  [saveDir]             :  (char; optional) Where do we store
+%                           time_table_master? If saveDir is not defined or 
+%                           left empty, we will store it under
+%                           fullfile(vcd_rootPath,'data',[subj_id])
+%  [subj_id]              :  (char) fixed string added to filename when
+%                           storing the time_table_master file. If left 
+%                           empty, subj_id will be set to 'subjXXX'.
+%
 % OUTPUTS:
 %   time_table_master   :  (struct) updated condition master table with
 %                           single trial events.
@@ -58,9 +66,99 @@ function time_table_master = vcd_createRunTimeTables(params,condition_master_in,
 %     {'repeat_nr'           } : (double) how often this particular stimulus-task crossing has been repeated across sessions for a subject
 %     {'global_block_nr'     } : (double) block number across all sessions for a subject
 
+%% %%%%%%%%%%%%% PARSE INPUTS %%%%%%%%%%%%%
+p0 = inputParser;
+p0.addRequired('params'           , @isstruct);
+p0.addParameter('condition_master', [], @istable);
+p0.addParameter('load_params'     , true, @islogical);
+p0.addParameter('store_params'    , true, @islogical);
+p0.addParameter('session_env'     , 'MRI', @(x) any(strcmp(x,{'BEHAVIOR','MRI'})));
+p0.addParameter('saveDir'         , fullfile(vcd_rootPath,'data'), @ischar);
+p0.addParameter('subj_id'          , 'vcd_subj000', @ischar);
 
-% Copy condition master input
-condition_master = condition_master_in;
+% Parse inputs
+p0.parse(params,varargin{:});
+
+% Rename variables into general params struct
+rename_me = fieldnames(p0.Results);
+for ff = 1:length(rename_me)
+    eval([sprintf('%s = p0.Results.%s;', rename_me{ff},rename_me{ff})]);
+end
+clear rename_me ff p0
+
+%% Load params if requested and we can find the file
+if load_params
+    
+    d = dir(fullfile(vcd_rootPath,'data', subj_id, sprintf('%stime_table_master*%s*.mat',[subj_id '_'],params.disp.name)));
+    if isempty(d)
+        error('[%s]: Can''t find time table file with subj_id: %s!\n', mfilename, subj_id)
+    elseif ~isempty(d(end).name)
+        if length(d) > 1
+            warning('[%s]: Multiple trial .mat files! Will pick the most recent one.\n', mfilename);
+        end
+        load(fullfile(d(end).folder,d(end).name),'time_table_master');
+    end
+    
+else
+    % Create subject sessions
+    
+    % check if trial struct is already defined and load it if needed
+    if ~exist('condition_master','var') || isempty(condition_master)
+        
+        % load trial info
+        d = dir(fullfile(vcd_rootPath,'workspaces','data',subj_id, [subj_id '_condition_master*' session_env '*.mat']));
+        
+        if ~isempty(d(end).name)
+            if length(d) > 1
+                warning('[%s]: Multiple condition_master .mat files! Will pick the most recent one', mfilename);
+            end
+            a = load(fullfile(d(end).folder,d(end).name),'condition_master_shuffled');
+            condition_master = a.condition_master_shuffled; clear a;
+        else
+            error('[%s]: Can''t find condition_master .mat files! Please check! You may have to run vcd_createConditions.m and/or vcd_createSessions.m', mfilename);
+        end
+    end
+    
+    % check if experimental parameters are already defined and load it if needed
+    if ~isfield(params,'exp') || isempty(params.exp)
+        
+        % load trial info
+        d = dir(fullfile(vcd_rootPath,'workspaces','info','exp*.mat'));
+        
+        if length(d) == 1
+            load(fullfile(d(end).folder,d(end).name),'exp');
+            params.exp = exp;
+        elseif length(d) > 1
+            warning('[%s]: Multiple trial.mat files! Will pick the most recent one', mfilename);
+            load(fullfile(d(end).folder,d(end).name),'exp');
+            params.exp = exp; clear exp;
+        else
+            warning('[%s]: Can''t find exp session .mat files! Will run vcd_getSessionParams.m', mfilename);
+            params.exp  = vcd_getSessionParams('load_params',false,'store_params',false, 'verbose',false);
+        end
+    end
+    
+    % check if stimulus parameters are already defined and load it if needed
+    if ~isfield(params,'stim') || isempty(params.stim)
+        
+        % load trial info
+        d = dir(fullfile(vcd_rootPath,'workspaces','info','stim*.mat'));
+        
+        if ~isempty(d)
+            if length(d) > 1
+                warning('[%s]: Multiple trial.mat files! Will pick the most recent one', mfilename);
+            end
+            load(fullfile(d(end).folder,d(end).name),'stim');
+            params.stim = stim;
+        else
+            warning('[%s]: Can''t find stim session .mat files! Will run vcd_getStimParams.m', mfilename);
+            params.stim = vcd_getStimParams('load_params',false,'store_params',false, 'verbose',false);
+        end
+    end
+end
+
+%% Copy condition master input
+condition_master0 = condition_master;
 
 % check inputs
 if (nargin ==2 && ~exist(session_env,'var')) || isempty(session_env)
@@ -106,7 +204,7 @@ for ses = 1:size(all_sessions,3)
             % preallocate subject time table
             run_time_table = [];
             curr_run_nrs = unique(condition_master.run_nr(~isnan(condition_master.run_nr) & condition_master.session_nr==ses & condition_master.session_type==st));
-            assert(isequal(runs_per_session(ses,st),length(curr_run_nrs)))
+            assert(runs_per_session(ses,st)==length(curr_run_nrs)); % ideally we know exactly how many runs we expect..
             
             % Loop over runs
             for rr = curr_run_nrs'
@@ -148,21 +246,17 @@ for ses = 1:size(all_sessions,3)
                     % remove frames such that duration in seconds is an integer (we will add those later)
                     rounded_session_totalrundur = (floor(session_totalrundur/params.stim.presentationrate_hz)*params.stim.presentationrate_hz);
                     total_ses_dur = rounded_session_totalrundur - params.exp.block.total_eyetracking_block_dur - session_postblankdur - session_preblankdur;
-                    
+                    assert(isequal(params.exp.run.actual_task_dur_BEHAVIOR,total_ses_dur));
                     % predefine IBIs, make sure we don't go over the total
                     % run duration we want
                     while 1
                         % vcd_optimizeIBIs inputs are run_dur, block_dur, ibis, nr_blocks, prepost_blank
                         [ibis, postblank_to_add] = vcd_optimizeIBIs(total_ses_dur, block_dur, IBI_to_use, length(block_dur), 0); % prepost_blank is 0 because we already subtract this when defining total_ses_dur
-                        if (rounded_session_totalrundur - sum(ibis) - sum(block_dur) - ...
-                                postblank_to_add -  params.exp.block.total_eyetracking_block_dur - ...
-                                session_postblankdur -  session_preblankdur) <= 0  
+                        if (total_ses_dur - sum(ibis) - sum(block_dur) - postblank_to_add) <= 0  
                             break;
                         end
                     end
-                    fprintf('Selected IBIs (in time frames): \n')
-                    disp(ibis)
-                    fprintf('\n')
+                    fprintf('[%s]: Selected IBIs (in time frames): %s \n', mfilename, num2str(ibis))
                 end
                 % Add eyetracking block and pre-blank period
                 if total_run_frames == 0
@@ -644,12 +738,8 @@ for ses = 1:size(all_sessions,3)
                             
                             % add IBI
                             time_table.event_start(table_idx)  = total_run_frames;
-                            IBI = ibis(1);
-                            %                             if ~nearZero(mod(time_table.event_start(table_idx)+IBI,1))
-                            %                                 IBI = IBI + (1 - mod(time_table.event_start(table_idx)+IBI,1)); % round out to a full second
-                            %                             end
                             time_table.event_start(table_idx)  = total_run_frames;
-                            time_table.event_dur(table_idx)    = IBI;
+                            time_table.event_dur(table_idx)    = ibis(1);
                             time_table.event_name(table_idx)   = {'IBI'};
                             time_table.event_id(table_idx)     = params.exp.block.IBI_ID;
                             time_table.event_end(table_idx)    = time_table.event_start(table_idx) + time_table.event_dur(table_idx);
@@ -658,18 +748,18 @@ for ses = 1:size(all_sessions,3)
                             time_table.session_type(table_idx)     = st;
                             time_table.run_nr(table_idx)           = rr;
                             time_table.block_nr(table_idx)         = 0;
-                            time_table.trial_nr(table_idx)      = 0;
+                            time_table.trial_nr(table_idx)         = 0;
                             time_table.crossing_nr(table_idx)      = 0;
                             time_table.stim_class(table_idx)       = 0;
                             time_table.task_class(table_idx)       = 0;
                             time_table.is_cued(table_idx)          = 0;
                             time_table.correct_response(table_idx) = NaN;
-                            time_table.global_block_nr(table_idx) = 0;
-                            time_table.global_trial_nr(table_idx) = 0;
+                            time_table.global_block_nr(table_idx)  = 0;
+                            time_table.global_trial_nr(table_idx)  = 0;
                             
                             total_run_frames = time_table.event_end(table_idx);
                             
-                            ibis(1) = []; clear IBI;
+                            ibis(1) = [];
                             table_idx = table_idx+1;
                             
                         elseif curr_block == next_block_id
@@ -686,10 +776,8 @@ for ses = 1:size(all_sessions,3)
                             end
                             
                             % add ITI
-                            ITI =  itis(1); % grab the first one from the shuffled list
-                            itis(1) = []; % and remove it
                             time_table.event_start(table_idx)  = total_run_frames;
-                            time_table.event_dur(table_idx)    = ITI;
+                            time_table.event_dur(table_idx)    = itis(1); % grab the first one from the shuffled list
                             time_table.event_name(table_idx)   = {'ITI'};
                             time_table.event_id(table_idx)     = params.exp.block.ITI_ID;
                             time_table.event_end(table_idx)    = time_table.event_start(table_idx) + time_table.event_dur(table_idx);
@@ -707,7 +795,7 @@ for ses = 1:size(all_sessions,3)
                             time_table.global_trial_nr(table_idx)   = 0;
                             
                             total_run_frames = time_table.event_end(table_idx);
-                            
+                            itis(1) = []; %  remove used ITI it
                             table_idx = table_idx+1;
                         end
                         
@@ -861,16 +949,23 @@ for ses = 1:size(all_sessions,3)
 
         end % ~nan(session type)
     end % session type
-    
 end % session nr
 
+%% AT LAST: We expand the "time_table_master" with the fixation sequence
+% and onset of contrast dip, and correct button presses for FIX and CD
+% task-crossings
+[time_table_master, all_run_frames] = vcd_addFIXandCDtoTimeTableMaster(params,time_table_master,session_env);
 
-
+%% Store tables locally, if requested
 if params.store_params
-    fprintf('\n[%s]:Storing time table master..\n',mfilename)
-    saveDir = fileparts(fullfile(params.stim.fix.infofile));
+    if isempty(saveDir)
+        saveDir = fullfile(vcd_rootPath,'data',session_env, subj_id);
+    end
     if ~exist(saveDir,'dir'), mkdir(saveDir); end
-    save(fullfile(saveDir,sprintf('time_table_master_%s_%s_%s.mat',params.disp.name, session_env, datestr(now,30))),'time_table_master')
+    fname = sprintf('%stime_table_master_%s_%s.mat', [subj_id '_'], params.disp.name, datestr(now,30));
+    fprintf('[%s]: Storing expanded time table for subject in %s..\n',mfilename,fullfile(saveDir,fname))
+    save(fullfile(saveDir, fname), 'time_table_master','all_run_frames')
 end
+    
 
 return
