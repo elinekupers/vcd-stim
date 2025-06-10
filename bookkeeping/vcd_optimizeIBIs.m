@@ -35,9 +35,7 @@ if dur_to_optimize > max_possible_IBI_dur
     postblank_to_add = dur_to_optimize-max_possible_IBI_dur;
     dur_to_optimize  = max_possible_IBI_dur;
     if verbose
-        fprintf('[%s]: **** WARNING START ****\n', mfilename)
-        fprintf('[%s]: IBIs cannot account for the total run duration. Will increase post-blank duration by %d time frames.\n', mfilename,postblank_to_add)
-        fprintf('[%s]: **** WARNING END ****\n', mfilename)
+        fprintf('[%s]: **** WARNING *** IBIs cannot account for the total run duration. Will increase post-blank duration by %d time frames.\n', mfilename,postblank_to_add)
     end
     if postblank_to_add > 3600
         error('[%s]: **** We are adding more than a minute of blank?! That doesn''t seem right.. ****\n', mfilename)
