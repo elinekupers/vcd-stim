@@ -359,7 +359,7 @@ fprintf('Instructions are on screen, waiting for trigger...\n');
 fprintf('Please have participant press a button to confirm they are ready.\n');
 
 while 1
-  [keyIsDown,~,keyCode,~] = KbCheck(deviceNr);
+  [keyIsDown,~,keyCode,~] = KbCheck(deviceNr,2);
   if keyIsDown
     temp = KbName(keyCode);
     if any(strcmp(temp(1), params.userkeys))
