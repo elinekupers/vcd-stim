@@ -1,4 +1,4 @@
-function optimized_runs = vcd_optimizeRunTypes(params, run_types_to_optimize, nr_blocks)
+function optimized_runs = vcd_optimizeRunTypes(run_types, nr_blocks)
 % VCD function to find the smallest number of runs to allocate stimulus blocks, 
 % given the run-types available and run-type block contraints. For example,
 % if we have 100 blocks, 25 double-stim and 75 single-stim, how many runs
@@ -9,41 +9,29 @@ function optimized_runs = vcd_optimizeRunTypes(params, run_types_to_optimize, nr
 %    optimized_runs = vcd_optimizeRunTypes(params, run_types_to_optimize, nr_blocks)
 %
 % INPUTS:
-%  params                    : struct with parameters 
-%       exp.run.run_type1       :  single-stim, double-stim blocks within
-%                                   runtype 1 (for example: [7; 0])
-%       exp.run.run_type2       :  single-stim, double-stim blocks within
-%                                   runtype 2  (for example: [4; 2])
-%       exp.run.run_type3       :  single-stim, double-stim blocks within
-%                                   runtype 3  (for example: [1; 4])
-%       exp.run.run_type4       :  single-stim, double-stim blocks within
-%                                   runtype 4  (for example: [0; 5])
-%  run_types_to_optimize     : (int) index for run type to use, e.g., [1:3]
-%                               indicates only use runtypes 1, 2, and 3
-%  nr_blocks                 : (double) nr of [single-stim, double-stim]
-%                               blocks to optimize for. Can be a non-integer.
+%  run_types  : (int) 2xN nr of [single;double] blocks allowed per run.
+%  nr_blocks  : (double) nr of [single-stim, double-stim] blocks to
+%                optimize for. Can be a non-integer.
 % 
 % Example:
-% vcd_optimizeRunTypes(params, [1:3], [233,259])
+% vcd_optimizeRunTypes([6, 4, 2, 1; 1, 2, 4, 5], [44,33])
+%
+% Written by E Kupers @ UMN [2025/04]
 
-all_run_types = cat(2, params.exp.run.run_type1, ... [7; 0];
-    params.exp.run.run_type2, ...% = [4; 2];
-    params.exp.run.run_type3, ...% = [1; 4];
-    params.exp.run.run_type4);   % = [0; 5]; 
-    
-run_types = all_run_types(:,run_types_to_optimize);
 
 % Objective function: minimize total number of runs
 f_obj = [ones(1,size(run_types,2))];
 
+% Lower bound is 0 runs
 lb  = zeros(size(run_types,2),1);
 
 % minimize nr of runs
 x = linprog(f_obj,[],[],run_types,nr_blocks,lb);
-x = ceil(x);
+x = ceil(x); % can't have half runs
 
 assert(isequal(sum((x'.*run_types),2)>=nr_blocks',[1;1]))
 
+% Tell the user
 optimized_runs = x;
 
 
