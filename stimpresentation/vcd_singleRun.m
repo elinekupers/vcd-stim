@@ -32,31 +32,31 @@ p.addRequired('run_nr'  , @isnumeric); % run number (integral number between 1-1
 p.addRequired('dispName', @(x) ismember(x,{'7TAS_BOLDSCREEN32','KKOFFICE_AOCQ3277','PPROOM_EIZOFLEXSCAN','EKHOME_ASUSVE247'})) % display name to get the right display params. Choose from: 7TAS_BOLDSCREEN32, KKOFFICE_AOCQ3277, PPROOM_EIZOFLEXSCAN, 'EKHOME_ASUSVE247'
 
 % OPTIONAL INPUTS
-p.addParameter('savedatadir'    , []        , @ischar);                      % place to store data with today's date
-p.addParameter('behaviorfile'   , []        , @ischar);                      % filename used for stored matlab file with behavioral data (name will add today's date)
-p.addParameter('eyelinkfile'    , []        , @ischar);                      % filename used for stored eyelink edf file with eyetracking data (name will add today's date)
-p.addParameter('stim'           , []        , @isstruct);                    % if you don't want to reload stimuli, you need stim.im to containing uint8 images (time frames x 2 cell array). 
-p.addParameter('loadparams'     , true      , @islogical)                    % (boolean) whether load stim/condition params or regenerate
-p.addParameter('storeparams'    , true      , @islogical)                    % whether to store stimulus params
-p.addParameter('laptopkey'      , -3        , @isnumeric);                   % listen to all keyboards/boxes (is this similar to k=-3;?)
-p.addParameter('wanteyetracking', false     , @islogical);                   % whether to try to hook up to the eyetracker
-p.addParameter('deviceNr'       , []        , @isnumeric);                   % kbWait/kbCheck input device number to listen to
-p.addParameter('device_check'   , 'both'    , @char);                        % what type of devices do we want to check for button presses: 'external','internal', or 'both'
-p.addParameter('triggerkey'     , {'5','t'}, @(x) iscell(x) || isstring(x)) % key(s) that starts the experiment
-p.addParameter('triggerkeyname' , '''5'' or ''t''', @isstring)               % for display only
-p.addParameter('userkeys'       , {'1','2','3','4'}, @(x) iscell(x) || isstring(x)) % key(s) that participants are expected to push
-p.addParameter('offsetpix'      , [0 0]     , @isnumeric);                   % offset of screen in pixels [10 20] means move 10-px right, 20-px down
-p.addParameter('movieflip'      , [0 0]     , @isnumeric)                    % whether to flip up-down, whether to flip left-right
-p.addParameter('wantsynctest'   , true      , @islogical)                    % whether we want to run the PTB sync test or not
-p.addParameter('savestim'       , false     , @islogical)                    % whether we want to store temp file with stimuli and timing
+p.addParameter('savedatadir'        , ''        , @ischar);                      % place to store data with today's date
+p.addParameter('behaviorfile'       , ''        , @ischar);                      % filename used for stored matlab file with behavioral data (name will add today's date)
+p.addParameter('eyelinkfile'        , ''        , @ischar);                      % filename used for stored eyelink edf file with eyetracking data (name will add today's date)
+p.addParameter('stim'               , []        , @isstruct);                    % if you don't want to reload stimuli, you need stim.im to containing uint8 images (time frames x 2 cell array). 
+p.addParameter('loadparams'         , true      , @islogical)                    % (boolean) whether load stim/condition params or regenerate
+p.addParameter('storeparams'        , true      , @islogical)                    % whether to store stimulus params
+p.addParameter('laptopkey'          , -3        , @isnumeric);                   % listen to all keyboards/boxes (is this similar to k=-3;?)
+p.addParameter('wanteyetracking'    , false     , @islogical);                   % whether to try to hook up to the eyetracker
+p.addParameter('deviceNr'           , []        , @isnumeric);                   % kbWait/kbCheck input device number to listen to
+p.addParameter('device_check'       , 'both'    , @char);                        % what type of devices do we want to check for button presses: 'external','internal', or 'both'
+p.addParameter('triggerkey'         , {'5','t'}, @(x) iscell(x) || isstring(x)) % key(s) that starts the experiment
+p.addParameter('triggerkeyname'     , '''5'' or ''t''', @isstring)               % for display only
+p.addParameter('userkeys'           , {'1','2','3','4'}, @(x) iscell(x) || isstring(x)) % key(s) that participants are expected to push
+p.addParameter('offsetpix'          , [0 0]     , @isnumeric);                   % offset of screen in pixels [10 20] means move 10-px right, 20-px down
+p.addParameter('movieflip'          , [0 0]     , @isnumeric)                    % whether to flip up-down, whether to flip left-right
+p.addParameter('wantsynctest'       , true      , @islogical)                    % whether we want to run the PTB sync test or not
+p.addParameter('savestim'           , false     , @islogical)                    % whether we want to store temp file with stimuli and timing
 p.addParameter('loadstimfromrunfile', false , @islogical)                    % whether we want to load stim from run file
-p.addParameter('ptbMaxVBLstd'   , 0.0008    , @isnumeric)                    % what standard deviation for screen flip duration do we allow?
-p.addParameter('env_type'       , []        , @(x) ismember(x, {'MRI','BEHAVIOR', 'TEST'})); % are we running the behavioral (PProom), MRI (7TAS), or a TEST (office monitors) version of the VCD core experiment?
-p.addParameter('randomization_file',[]      , @ischar);                      % what randomization file are we loading? file should exist in   
-p.addParameter('all_images'     , struct()  , @isstruct);                    % preloaded all_images in a single struct (to save time)
-p.addParameter('infofolder'     , fullfile(vcd_rootPath,'workspaces','info')        , @ischar); % where are the *_info.csv file(s)?
-p.addParameter('stimfolder'     , fullfile(vcd_rootPath,'workspaces','stimuli')     , @ischar); % where are the mat-files with store stimuli?
-p.addParameter('instrtextdir'   , fullfile(vcd_rootPath,'workspaces','stimuli','instructions'), @ischar); % where are the png-files with task instructions?
+p.addParameter('ptbMaxVBLstd'       , 0.0008    , @isnumeric)                    % what standard deviation for screen flip duration do we allow?
+p.addParameter('env_type'           , []        , @(x) ismember(x, {'MRI','BEHAVIOR', 'TEST'})); % are we running the behavioral (PProom), MRI (7TAS), or a TEST (office monitors) version of the VCD core experiment?
+p.addParameter('randomization_file' , ''        , @ischar);                      % what randomization file are we loading? file should exist in   
+p.addParameter('all_images'         , struct()  , @isstruct);                    % preloaded all_images in a single struct (to save time)
+p.addParameter('infofolder'         , fullfile(vcd_rootPath,'workspaces','info')        , @ischar); % where are the *_info.csv file(s)?
+p.addParameter('stimfolder'         , fullfile(vcd_rootPath,'workspaces','stimuli')     , @ischar); % where are the mat-files with store stimuli?
+p.addParameter('instrtextdir'       , fullfile(vcd_rootPath,'workspaces','stimuli','instruction_images'), @ischar); % where are the png-files with task instructions?
 % Parse inputs
 p.parse(subj_nr, ses_nr, ses_type, run_nr, dispName, varargin{:});
 
