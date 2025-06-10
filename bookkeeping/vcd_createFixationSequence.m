@@ -4,7 +4,20 @@ function fix_matrix = vcd_createFixationSequence(params,fixsoafun,run_dur,blank_
 % stimulus-onset-asynchrony (SOA).
 %
 % INPUTS:
-%  * WRITE ME
+%  * params         : (struct) parameter struct
+%  * fixsoafun      : (function handle) function to determine the rate of 
+%                       the fixation circle changing luminance during
+%                       stimulus blocks.
+%  * run_dur        : (double) duration of single run in time frames
+%                       (expected to be the same across all runs in a session)
+%  * blank_onset    : (double) first time frames related to onset of blank
+%                        or "non-stimulus block" period. During these
+%                        periods the fixation circle luminance will be
+%                        frozen to mean luminance gray. This can be the 
+%                        pre-run rest period, post-run rest period, or
+%                        interblock interval (IBI).
+%  * blank_offset   : (double) first time frames related to offset of blank
+%                        or "non-stimulus block" period. 
 %
 % OUTPUTS:
 %  * fix_matrix     : (double) Nx4 matrix where N is the number of time
@@ -13,43 +26,30 @@ function fix_matrix = vcd_createFixationSequence(params,fixsoafun,run_dur,blank_
 %                       luminance values compared to the previous time
 %                       point, 4: correct button press associated with the
 %                       relative luminance change (1=brighter, 2=dimmer).
+%
+% Written by E Kupers @ UMN 2025/06
 
-% %%%% Get fixation timing
-% fix_seq = [0]; f_fix = 0;
-% while f_fix(end) < run_dur
-%     fix_seq = [fix_seq, fixsoafun()];
-%     f_fix = cumsum(fix_seq);
-% end
+%% Determine frozen fixation periods
 
-% % trim in case we accidentally went overtime
-% f_fix = f_fix(f_fix<run_dur);
-% 
-% % fill up fixation sequence until run dur
-% if f_fix(end)~=run_dur
-%     f_fix(end+1) = run_dur;
-%     fix_seq(end+1) = f_fix(end) - f_fix(end-1);
-% end
+% Convert time frames to indices
+blank_onset_idx  = blank_onset + 1;
+blank_offset_idx = blank_offset + 1;
 
-
-% Determine frozen periods
-blank_onset(1)    = 1; % add 1 because we can't zero index 
-blank_offset(end) = blank_offset(end)+1;
-
+% Get frozen time periods
 freeze_me = zeros(run_dur,1);
-for ii = 1:length(blank_onset)
-    freeze_me(blank_onset(ii):(blank_offset(ii)-1)) = 1;
+for ii = 1:length(blank_onset_idx)
+    freeze_me(blank_onset_idx(ii):(blank_offset_idx(ii)-1)) = 1;
 end
 
-freeze_me(end) = 1;
+% Get twinkle luminance values (i.e., ignore 128 lum value as that's for IBI and blank periods only)
+lum_vals = setdiff(params.stim.fix.dotlum,params.stim.bckgrnd_grayval);
 
-% Ignore 128 lum value (that's for IBI and black periods only)
-lum_vals = setdiff(params.stim.fix.dotlum,128);
-
-fix_interval = fixsoafun()-1;
+% Assuming fixed fixation update interval
+fix_interval = fixsoafun();
 
 while 1
     % create sequence of shuffled luminance values (so randomly selecting WITHOUT replacement)
-    lum_vec = shuffle_concat(lum_vals,(ceil(run_dur/fix_interval)/length(lum_vals)));
+    lum_vec    = shuffle_concat(lum_vals,(ceil(run_dur/fix_interval)/length(lum_vals)));
     repeat_lum = find(diff(lum_vec)==0);
     lum0 = lum_vec(repeat_lum);
     
@@ -87,30 +87,31 @@ while 1
 end
 
 fix_abs_lum = NaN(run_dur,1);
-for kk = 1:run_dur
+for rr = 1:run_dur
     
-    if freeze_me(kk) == 1 % we freeze luminance value at mid-gray level (128)
-       fix_abs_lum(kk) = 128;
+    if freeze_me(rr) == 1 % we freeze luminance value at mid-gray level (128)
+       fix_abs_lum(rr) = 128;
        counter = 0;
-    elseif freeze_me(kk) == 0 % add luminance value
-       if kk > 1 && (fix_abs_lum(kk-1) == 128)
+    elseif freeze_me(rr) == 0 % add luminance value
+       if rr > 1 && (fix_abs_lum(rr-1) == 128)
            % if we just had a frozen time frame
            % then we want a new luminance sample
            lum_sample      = lum_vec(1);
-           fix_abs_lum(kk) = lum_sample;
+           fix_abs_lum(rr) = lum_sample;
            lum_vec(1)      = []; % and toss it out 
+           counter         = counter + 1; % update counter
        elseif counter==fix_interval
            % if reached our update rate, we move on the the luminance sample
            % and reset the counter
-           counter          = 0;
            lum_sample       = lum_vec(1);
            lum_vec(1)       = [];
-           fix_abs_lum(kk)  = lum_sample;
+           fix_abs_lum(rr)  = lum_sample;
+           counter         = 1; % reset counter
        else % if we are in a stable state, we continue with the same 
            % luminance sample
-           fix_abs_lum(kk)  = lum_sample;
+           fix_abs_lum(rr) = lum_sample;
+           counter         = counter + 1; % update counter
        end
-       counter = counter + 1;
     end
 end
 
@@ -124,7 +125,45 @@ button_response_fix = NaN(run_dur,1);
 button_response_fix(fix_rel_lum>0) = 1; % brighter
 button_response_fix(fix_rel_lum<0) = 2; % dimmer
 
+%% Clean up button response
+% the first transition from frozen to one of the 5 luminance levels is
+% considered moot.
+
+% Get frames corresponding to button presses.
+button_press_frame  = find(~isnan(button_response_fix));
+
+% All button press frames should correspond to a change in relative luminance.
+assert(all(abs(fix_rel_lum(button_press_frame))>0)); 
+
+% Find those corresponding to mean luminance gray.
+button_press_mean_lum = button_press_frame(find(fix_abs_lum(button_press_frame)==params.stim.bckgrnd_grayval)); % indices corresponding to button presses for first transition to mean luminance gray 
+
+% make sure the registered button press is linked to mean gray luminance
+assert(isequal(unique(fix_abs_lum(button_press_mean_lum)),params.stim.bckgrnd_grayval)) 
+
+% make sure this is indeed registered as a button press
+assert(all(button_response_fix(button_press_mean_lum)~=0))        
+
+% make sure this is indeed the first button press after a period of nothing
+assert(all(isnan(button_response_fix(button_press_mean_lum-1)))); 
+
+% check if there is a first button press related to the onset of that fixation block
+blank_onset_mn_lum = blank_onset_idx(ismember(blank_onset_idx,button_press_frame));
+blank_offset_mn_lum = blank_offset_idx(ismember(blank_offset_idx,button_press_frame));
+
+delete_me_onset  = fix_abs_lum(blank_onset_mn_lum)==128;
+delete_me_offset = fix_abs_lum(blank_offset_mn_lum)==128;
+
+if sum(delete_me_onset)>0
+    button_response_fix(blank_onset_mn_lum(delete_me_onset)) = NaN;
+end
+
+if sum(delete_me_offset)>0
+    button_response_fix(blank_offset_mn_lum(delete_me_onset)) = NaN;
+end
+
+% Record timing, absolute, relative fixation luminance, and button response
 fix_matrix = [fix_timing,fix_abs_lum,fix_rel_lum,button_response_fix];
-fix_matrix = fix_matrix(1:run_dur,:);
+fix_matrix = fix_matrix(1:run_dur,:); % ensure duration is as we expect
 
 end
