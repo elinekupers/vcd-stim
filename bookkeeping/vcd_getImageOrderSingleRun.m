@@ -1,12 +1,12 @@
-function [run_images, run_alpha_masks, images] = vcd_getImageOrderSingleRun(params, ...
+function [run_images, run_alpha_masks, all_images] = vcd_getImageOrderSingleRun(params, ...
     time_table_master, all_run_frames, subj_nr, ses_nr, ses_type, run_nr, varargin)
 % VCD function to load uint8 stimuli, alpha transparency masks, and
 % corresponding image nrs for each trial
 %
-%   [run_images, run_alpha_masks, images] =
+%   [run_images, run_alpha_masks, all_images] =
 %   vcd_getImageOrderSingleRun( ...
 %       params, time_table_master, subj_nr, ses_nr, ses_type, run_nr, ...
-%       ['images', <images>], ['load_params',<load_params>], ...
+%       ['all_images', <all_images>], ['load_params',<load_params>], ...
 %       ['store_params',<store_params>],['session_env',<session_env>])
 %
 % Note image files are stored locally (workspaces > stimuli), and need to
@@ -24,7 +24,7 @@ p0.addRequired('subj_nr'            , @isnumeric);
 p0.addRequired('ses_nr'             , @isnumeric);
 p0.addRequired('ses_type'           , @isnumeric);
 p0.addRequired('run_nr'             , @isnumeric);
-p0.addParameter('images'      , []  , @isstruct);
+p0.addParameter('all_images'        , struct(), @isstruct);
 p0.addParameter('store_params', true, @islogical);
 p0.addParameter('session_env', 'MRI', @(x) ismember(x,{'MRI','BEHAVIOR','TEST'}));
 
@@ -41,7 +41,7 @@ clear rename_me ff p0
 %% Check subject, session and run nrs to process
 
 % Check if subject nr is member of total subjects
-subj_ok = find(ismember([1:params.exp.total_subjects],subj_nr));
+subj_ok = ismember([1:params.exp.total_subjects],subj_nr);
 if isempty(subj_ok)
     error('[%s]: Subject number is outside the range!\n',mfilename);
 end
@@ -75,70 +75,60 @@ end
 
 %% Load params if requested and we can find the file
 
-% Check if we need to load images
-% If we did not provide images.. and params.images is empty. then
-% create the field names of the images struct
-if isempty(images) || isempty(fieldnames(images))
-    images = struct('gabor',[],'rdk',[],'dot',[],'obj',[],'ns',[],...
+% Check if we need to load more images
+% If we did not provide images.. then create the field names of the all_images struct
+if isempty(all_images) || isempty(fieldnames(all_images))
+    all_images = struct('gabor',[],'rdk',[],'dot',[],'obj',[],'ns',[],...
         'fix',[], 'info',[], 'eye',[],'alpha',[]);
-else
-    % If we provided images, then add it to params struct
-    % !!! WARNING that this will override the existing params.images field!)
-    if isfield(params, 'images') &&  ~isempty(fieldnames(params.images))
-        images = params.images;  params = rmfield(params, 'images');
-    end
 end
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%% BACKGROUND STIM %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%  BACKGROUND: 4D array: [x,y, 3, num images]
-% input 2: 'puzzle'  (square central image + peripheral apertures,
-%          'dotring' (simple dot iso eccen donut),
-%          'comb'    (puzzle + simple dot iso-eccen ring overlayed)
-% input 3: 'skinny'  (no space between stim and edge of background) or
-%          'fat'     (+2 deg from stim)
-% input 4: number of unique noise background images
-% input 5: offset of center in pixels [x,y]
-% create background image that adjusts for shifted background if needed
-
-% if ~exist('bckground','var') || isempty(bckground)
-%     d = dir(fullfile(params.stimfolder,params.disp.name, sprintf('bckgrnd_%s*.mat',params.disp.name)));
-%     a = load(fullfile(d(end).folder, d(end).name),'bckgrnd_im');
-%     bckground = a.bckgrnd_im(:,:,:,params.run_nr);
-%     clear a d
-% end
-%
-% if any(params.offsetpix~=[0,0])
-%     bckground = vcd_pinknoisebackground(params, 'none', 'fat', 1, params.offsetpix);
-% end
-
-% bckground = feval(flipfun,bckground);
+%%%%%%%%%%%%%%%%%%%%%%%%%%%% INSTRUCTIONS IM %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Load stored instruction cues if needed
+if ~isfield(all_images,'instr') || isempty(all_images.instr) || ~isfield(all_images.instr,'im')
+    fprintf('[%s]: Loading instruction images (text + icons)..\n',mfilename);
+    
+    d = dir(fullfile(params.stimfolder,'instruction_images', '*.png'));
+    
+    %  instr_im: 4D array: [x,y, 3, nr_crossings]ß
+    all_images.instr = uint8(zeros(700,700,3,length(params.exp.crossings)+1));
+    
+    for aa = 1:length(d)
+        a1 = imread(fullfile(d(aa).folder,d(aa).name));
+        if ismatrix(a1)
+            a1 = repmat(a1,[1 1 3]);
+        end
+        all_images.instr(:,:,:,aa) = a1;
+        all_images.info.instr(aa)  = {d(aa).name};
+        all_images.alpha.instr(aa) = NaN;
+    end
+end
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%% FIX IM %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Load stored fixation dot images if needed
-if ~isfield(images,'fix') || isempty(images.fix) || ~isfield(images.fix,'im')
+if ~isfield(all_images,'fix') || isempty(all_images.fix)
     fprintf('[%s]: Loading fixation dot images..\n',mfilename);
     
     %  FIX CIRCLE: 5D array: [x,y, 3, lum, rim types]
     d = dir(fullfile(params.stimfolder,params.disp.name, sprintf('fix_%s*.mat',params.disp.name)));
     a1 = load(fullfile(d(end).folder,d(end).name), 'fix_im','mask','info');
 
-    images.fix       = a1.fix_im; 
-    images.info.fix  = a1.info; 
-    images.alpha.fix = a1.mask;
+    all_images.fix       = a1.fix_im; 
+    all_images.info.fix  = a1.info; 
+    all_images.alpha.fix = a1.mask;
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%% EYETRACKING BLOCK STIM %%%%%%%%%%%%%%%%%%%%%%%%%%
 % Load stored eyetracking block target images if needed
-if ~isfield(images,'eye') || isempty(images.eye)
+if ~isfield(all_images,'eye') || isempty(all_images.eye)
     fprintf('[%s]: Loading eyetracking target images..\n',mfilename);
     
     % ET TARGETS: 4D array: [x,y, 3, type]
     d = dir(sprintf('%s*.mat', params.stim.el.stimfile));
     a = load(fullfile(d(end).folder,d(end).name), 'sac_im','pupil_im_white','pupil_im_black');
-    images.eye.sac_im    = a.sac_im; 
-    images.eye.pupil_im_white  = a.pupil_im_white;
-    images.eye.pupil_im_black = a.pupil_im_black;
+    all_images.eye.sac_im    = a.sac_im; 
+    all_images.eye.pupil_im_white  = a.pupil_im_white;
+    all_images.eye.pupil_im_black = a.pupil_im_black;
     clear a d;
 end
 
@@ -190,58 +180,57 @@ for ii = 1:length(stim_row)
             switch stimClass
                 case 'gabor'
                     fprintf('[%s]: Loading gabor images..\n',mfilename);
-                    if isempty(images.gabor)
+                    if isempty(all_images.gabor)
                         % GABORS: 6D array: [x,y,8 orient, 4 phase,3 contrast, og + 4 delta]
                         d = dir(sprintf('%s*.mat', params.stim.gabor.stimfile));
                         a = load(fullfile(d(end).folder,d(end).name), 'gabors','masks','info');
                         
-                        images.gabor = a.gabors; 
-                        images.info.gabor  = a.info; 
-                        images.alpha.gabor = a.masks; 
+                        all_images.gabor = a.gabors; 
+                        all_images.info.gabor  = a.info; 
+                        all_images.alpha.gabor = a.masks; 
                         clear a d;
                     end
                     
                     if strcmp(run_table.event_name(stim_row(ii)),'stim1') && run_table.is_catch(stim_row(ii)) == 0
                         
                         % GABORS: 6D array: [x,y,orient,contrast,phase,delta]
-                        idx0 = find(images.info.gabor.unique_im==unique_im);
-                        gbr_ori      = images.info.gabor.orient_deg(idx0);
-                        gbr_contrast = images.info.gabor.contrast(idx0);
-                        gbr_phase    = images.info.gabor.phase_deg(idx0);
-                        ori_idx      = images.info.gabor.orient_i(idx0);
-                        con_idx      = images.info.gabor.contrast_i(idx0);
+                        idx0 = find(all_images.info.gabor.unique_im==unique_im);
+                        gbr_ori      = all_images.info.gabor.orient_deg(idx0);
+                        gbr_contrast = all_images.info.gabor.contrast(idx0);
+                        gbr_phase    = all_images.info.gabor.phase_deg(idx0);
+                        ori_idx      = all_images.info.gabor.orient_i(idx0);
+                        con_idx      = all_images.info.gabor.contrast_i(idx0);
                         
                         % check if stim params match
                         assert(isequal( run_table.orient_dir(stim_row(ii),side) , gbr_ori));
                         assert(isequal( run_table.contrast(stim_row(ii),side), gbr_contrast));
                         assert(isequal( run_table.gbr_phase(stim_row(ii),side), gbr_phase));
                         
-                        run_images{curr_frames(1),side} = images.gabor(:,:,:,ori_idx,con_idx,1);
-                        run_alpha_masks{curr_frames(1),side} = images.alpha.gabor(:,:,ori_idx,con_idx,1);
+                        run_images{curr_frames(1),side} = all_images.gabor(:,:,:,ori_idx,con_idx,1);
+                        run_alpha_masks{curr_frames(1),side} = all_images.alpha.gabor(:,:,ori_idx,con_idx,1);
                         
                     elseif strcmp(run_table.event_name(stim_row(ii)),'stim2') && strcmp(run_table.task_class_name(stim_row(ii)),'wm') && run_table.is_catch(stim_row(ii)) == 0
                         delta_deg = run_table.stim2_delta(stim_row(ii),side);
                         
-                        idx0 = find( (images.info.gabor.orient_deg == (run_table.orient_dir(stim_row(ii),side))) & ...
-                            (images.info.gabor.phase_deg==run_table.gbr_phase(stim_row(ii),side)) & ...
-                            (images.info.gabor.contrast==run_table.contrast(stim_row(ii),side)) &...
-                            (images.info.gabor.delta_deg==delta_deg) );
+                        idx0 = find( (all_images.info.gabor.orient_deg == (run_table.orient_dir(stim_row(ii),side))) & ...
+                            (all_images.info.gabor.phase_deg==run_table.gbr_phase(stim_row(ii),side)) & ...
+                            (all_images.info.gabor.contrast==max(params.stim.gabor.contrast)) & ...
+                            (all_images.info.gabor.delta_deg==delta_deg) );
                         
-                        ori_idx      = images.info.gabor.orient_i(idx0);
-                        con_idx      = images.info.gabor.contrast_i(idx0);
-                        test_im      = images.info.gabor.unique_im(idx0);
+                        ori_idx      = all_images.info.gabor.orient_i(idx0);
+                        con_idx      = max(all_images.info.gabor.contrast_i); % we only use highest contrast for gabor wm test im
+                        test_im      = all_images.info.gabor.unique_im(idx0);
                         assert(isequal(test_im,run_table.stim2_im_nr(stim_row(ii),side)))
                         
                         % check if stim params match
-                        assert(isequal( run_table.orient_dir(stim_row(ii),side) , images.info.gabor.orient_deg(idx0)));
-                        assert(isequal( run_table.contrast(stim_row(ii),side),    images.info.gabor.contrast(idx0)));
-                        assert(isequal( run_table.gbr_phase(stim_row(ii),side),   images.info.gabor.phase_deg(idx0)));
-                        assert(isequal( delta_deg, images.info.gabor.delta_deg(idx0)));
+                        assert(isequal( run_table.orient_dir(stim_row(ii),side) , all_images.info.gabor.orient_deg(idx0)));
+                        assert(isequal( run_table.gbr_phase(stim_row(ii),side),   all_images.info.gabor.phase_deg(idx0)));
+                        assert(isequal( delta_deg, all_images.info.gabor.delta_deg(idx0)));
                         
                         delta_idx = 1+ find(delta_deg == params.stim.gabor.delta_from_ref);
                         
-                        run_images{curr_frames(1),side}      = images.gabor(:,:,:,ori_idx,con_idx, delta_idx);
-                        run_alpha_masks{curr_frames(1),side} = images.alpha.gabor(:,:,ori_idx,con_idx, delta_idx);
+                        run_images{curr_frames(1),side}      = all_images.gabor(:,:,:,ori_idx,con_idx, delta_idx);
+                        run_alpha_masks{curr_frames(1),side} = all_images.alpha.gabor(:,:,ori_idx,con_idx, delta_idx);
                         
                     elseif strcmp(run_table.event_name(stim_row(ii)),'stim2') && strcmp(run_table.task_class_name(stim_row(ii)),'ltm') && run_table.is_catch(stim_row(ii)) == 0
                         
@@ -344,7 +333,7 @@ for ii = 1:length(stim_row)
                         filename = sprintf('%04d_vcd_rdk_ori%02d_coh%02d_delta%02d',...
                             test_im, ...
                             find(og_ori == params.stim.rdk.dots_direction), ...
-                            find(run_table.rdk_coherence(stim_row(ii),side) == params.stim.rdk.dots_coherence), ...
+                            find(max(params.stim.rdk.dots_coherence) == params.stim.rdk.dots_coherence), ...
                             delta_idx);
                         
                         stimfile = fullfile(stimDir(1).folder,stimDir(1).name,sprintf('%s.mat', filename));
@@ -356,7 +345,6 @@ for ii = 1:length(stim_row)
                         
                         
                         % check if stim description matches
-                        assert(isequal(rdk_info.dot_coh, run_table.rdk_coherence(stim_row(ii),side)));
                         assert(isequal(rdk_info.dot_motdir_deg, updated_ori));
                         
                         % ensure duration
@@ -419,20 +407,20 @@ for ii = 1:length(stim_row)
                     
                 case 'dot'
                     fprintf('[%s]: Loading dot images..\n',mfilename);
-                    if isempty(images.dot)
+                    if isempty(all_images.dot)
                         % Simple dot: 2D array: [x,y]
                         d = dir(sprintf('%s*.mat', params.stim.dot.stimfile));
                         a=load(fullfile(d(end).folder,d(end).name), 'dot','mask','info');
-                        images.dot = a.dot; 
-                        images.alpha.dot = a.mask; 
-                        images.info.dot = a.info; 
+                        all_images.dot = a.dot; 
+                        all_images.alpha.dot = a.mask; 
+                        all_images.info.dot = a.info; 
                         clear a d;
                     end
                     
                     
                     if run_table.is_catch(stim_row(ii)) == 0
-                        run_images{curr_frames(1),side} = images.dot;
-                        run_alpha_masks{curr_frames(1),side} = images.alpha.dot;
+                        run_images{curr_frames(1),side} = all_images.dot;
+                        run_alpha_masks{curr_frames(1),side} = all_images.alpha.dot;
                         
                         if strcmp(run_table.event_name(stim_row(ii)),'stim2')
                             test_im = run_table.stim2_im_nr(stim_row(ii),side);
@@ -445,37 +433,37 @@ for ii = 1:length(stim_row)
                     
                 case 'obj'
                     fprintf('[%s]: Loading object images..\n',mfilename);
-                    if isempty(images.obj)
+                    if isempty(all_images.obj)
                         % Complex objects: 4D array: [x,y,16 object, og + 10 rotation]
                         d = dir(sprintf('%s*.mat', params.stim.obj.stimfile));
                         a = load(fullfile(d(end).folder,d(end).name), 'objects','masks','info');
-                        images.obj = a.objects; 
-                        images.alpha.obj = a.masks; 
-                        images.info.obj = a.info; 
+                        all_images.obj = a.objects; 
+                        all_images.alpha.obj = a.masks; 
+                        all_images.info.obj = a.info; 
                         clear a d;
                     end
                     
                     if strcmp(run_table.event_name(stim_row(ii)),'stim1') && run_table.is_catch(stim_row(ii)) == 0
                         
-                        idx = find( (images.info.obj.super_cat == run_table.super_cat(stim_row(ii),side)) & ...
-                            (images.info.obj.basic_cat == run_table.basic_cat(stim_row(ii),side)) & ...
-                            (images.info.obj.sub_cat == run_table.sub_cat(stim_row(ii),side)) & ...
-                            (images.info.obj.abs_rot == run_table.orient_dir(stim_row(ii),side)) );
+                        idx = find( (all_images.info.obj.super_cat == run_table.super_cat(stim_row(ii),side)) & ...
+                            (all_images.info.obj.basic_cat == run_table.basic_cat(stim_row(ii),side)) & ...
+                            (all_images.info.obj.sub_cat == run_table.sub_cat(stim_row(ii),side)) & ...
+                            (all_images.info.obj.abs_rot == run_table.orient_dir(stim_row(ii),side)) );
                         
-                        obj_super = images.info.obj.super_cat_name(idx);
-                        obj_basic = images.info.obj.basic_cat_name(idx);
-                        obj_sub   = images.info.obj.sub_cat_name(idx);
-                        obj_rotation = images.info.obj.abs_rot(idx);
+                        obj_super = all_images.info.obj.super_cat_name(idx);
+                        obj_basic = all_images.info.obj.basic_cat_name(idx);
+                        obj_sub   = all_images.info.obj.sub_cat_name(idx);
+                        obj_rotation = all_images.info.obj.abs_rot(idx);
                         
                         % check if stim idx matches
-                        assert(isequal(images.info.obj.unique_im(idx),     unique_im));
+                        assert(isequal(all_images.info.obj.unique_im(idx),     unique_im));
                         assert(isequal(obj_super,   run_table.super_cat_name(stim_row(ii),side)));
                         assert(isequal(obj_basic,   run_table.basic_cat_name(stim_row(ii),side)));
                         assert(isequal(obj_sub,     run_table.sub_cat_name(stim_row(ii),side)));
                         assert(isequal(obj_rotation,run_table.orient_dir(stim_row(ii),side)));
                         
-                        run_images{curr_frames(1),side}      = images.obj(:,:,:,unique_im==params.stim.obj.unique_im_nrs_core,1);
-                        run_alpha_masks{curr_frames(1),side} = images.alpha.obj(:,:,unique_im==params.stim.obj.unique_im_nrs_core,1);
+                        run_images{curr_frames(1),side}      = all_images.obj(:,:,:,unique_im==params.stim.obj.unique_im_nrs_core,1);
+                        run_alpha_masks{curr_frames(1),side} = all_images.alpha.obj(:,:,unique_im==params.stim.obj.unique_im_nrs_core,1);
                         
                     elseif strcmp(run_table.event_name(stim_row(ii)),'stim2') && strcmp(run_table.task_class_name(stim_row(ii)),'wm') && run_table.is_catch(stim_row(ii)) == 0
                         
@@ -491,18 +479,18 @@ for ii = 1:length(stim_row)
                             corresponding_unique_im = run_table.stim_nr_right(stim_row(ii))==params.stim.obj.unique_im_nrs_core;
                         end
                         % check if stim idx matches
-                        idx = find( (images.info.obj.super_cat == run_table.super_cat(stim_row(ii),side)) & ...
-                            (images.info.obj.basic_cat == run_table.basic_cat(stim_row(ii),side)) & ...
-                            (images.info.obj.sub_cat == run_table.sub_cat(stim_row(ii),side)) & ...
-                            (images.info.obj.abs_rot == ref_dir) );
+                        idx = find( (all_images.info.obj.super_cat == run_table.super_cat(stim_row(ii),side)) & ...
+                            (all_images.info.obj.basic_cat == run_table.basic_cat(stim_row(ii),side)) & ...
+                            (all_images.info.obj.sub_cat == run_table.sub_cat(stim_row(ii),side)) & ...
+                            (all_images.info.obj.abs_rot == ref_dir) );
                         
                         test_im = run_table.stim2_im_nr(stim_row(ii),side);
                         delta_idx0 = find(delta==params.stim.obj.delta_from_ref);
-                        assert(strcmp(run_table.sub_cat_name(stim_row(ii),side), images.info.obj.sub_cat_name(idx)));
+                        assert(strcmp(run_table.sub_cat_name(stim_row(ii),side), all_images.info.obj.sub_cat_name(idx)));
                         tmp_test_im = reshape(params.stim.obj.unique_im_nrs_wm_test,4,[]);
                         assert(isequal(test_im,tmp_test_im(delta_idx0,corresponding_unique_im)))
-                        run_images{curr_frames(1),side} = images.obj(:,:,:,corresponding_unique_im,delta_idx0);
-                        run_alpha_masks{curr_frames(1),side} = images.alpha.obj(:,:,corresponding_unique_im,delta_idx0);
+                        run_images{curr_frames(1),side} = all_images.obj(:,:,:,corresponding_unique_im,delta_idx0);
+                        run_alpha_masks{curr_frames(1),side} = all_images.alpha.obj(:,:,corresponding_unique_im,delta_idx0);
                         
                     elseif strcmp(run_table.event_name(stim_row(ii)),'stim2') && strcmp(run_table.task_class_name(stim_row(ii)),'ltm') && run_table.is_catch(stim_row(ii)) == 0
                         
@@ -526,16 +514,16 @@ for ii = 1:length(stim_row)
                     
                 case 'ns'
                     fprintf('[%s]: Loading scene images..\n',mfilename);
-                    if isempty(images.ns)
+                    if isempty(all_images.ns)
                         % NS: 6D array: [x,y,3, 5 superordinate cat, 2 ns_loc, 3 obj_loc]
                         % CBlind: 7D array: [x,y,5 superordinate cat, 2 ns_loc, 3 obj_loc, 4 change images];
                         % Lures: 7D array: [x,y,5 superordinate cat, 2 ns_loc, 3 obj_loc, 4 lure images];
                         d = dir(sprintf('%s*.mat', params.stim.ns.stimfile));
                         a = load(fullfile(d(end).folder,d(end).name), 'scenes','ltm_lures','wm_im','info');
-                        images.ns.scenes = a.scenes; 
-                        images.ns.lures = a.ltm_lures; 
-                        images.ns.wm_im = a.wm_im; 
-                        images.info.ns = a.info; 
+                        all_images.ns.scenes = a.scenes; 
+                        all_images.ns.lures = a.ltm_lures; 
+                        all_images.ns.wm_im = a.wm_im; 
+                        all_images.info.ns = a.info; 
                         clear a d;
                     end
                     
@@ -546,39 +534,39 @@ for ii = 1:length(stim_row)
                     i6 = run_table.sub_cat(stim_row(ii));
                     
                     if strcmp(run_table.event_name(stim_row(ii)),'stim1') && run_table.is_catch(stim_row(ii)) == 0
-                        idx0 = (images.info.ns.super_cat == run_table.super_cat(stim_row(ii),1) & ...
-                            (images.info.ns.basic_cat == run_table.basic_cat(stim_row(ii),1) ) & ...
-                            (images.info.ns.sub_cat == run_table.sub_cat(stim_row(ii),1)) & ...
-                            (ismember(images.info.ns.unique_im, params.stim.ns.unique_im_nrs_core)));
+                        idx0 = (all_images.info.ns.super_cat == run_table.super_cat(stim_row(ii),1) & ...
+                            (all_images.info.ns.basic_cat == run_table.basic_cat(stim_row(ii),1) ) & ...
+                            (all_images.info.ns.sub_cat == run_table.sub_cat(stim_row(ii),1)) & ...
+                            (ismember(all_images.info.ns.unique_im, params.stim.ns.unique_im_nrs_core)));
                         
-                        obj_super = images.info.ns.super_cat(idx0);
-                        obj_basic = images.info.ns.basic_cat(idx0);
-                        obj_sub   = images.info.ns.sub_cat(idx0);
+                        obj_super = all_images.info.ns.super_cat(idx0);
+                        obj_basic = all_images.info.ns.basic_cat(idx0);
+                        obj_sub   = all_images.info.ns.sub_cat(idx0);
                         
                         % check if stim idx matches
-                        assert(isequal(images.info.ns.unique_im(idx0),unique_im));
+                        assert(isequal(all_images.info.ns.unique_im(idx0),unique_im));
                         assert(isequal(obj_super,run_table.super_cat(stim_row(ii),1)))
                         assert(isequal(obj_basic,run_table.basic_cat(stim_row(ii),1)))
                         assert(isequal(obj_sub,run_table.sub_cat(stim_row(ii),1)))
                         
                         % third dim has image and alpha mask
-                        run_images{curr_frames(1),side} = images.ns.scenes(:,:,:,i4,i5,i6);
+                        run_images{curr_frames(1),side} = all_images.ns.scenes(:,:,:,i4,i5,i6);
                         run_alpha_masks{curr_frames(1),side} = [];
                         
                     elseif strcmp(run_table.event_name(stim_row(ii)),'stim2') && strcmp(run_table.task_class_name(stim_row(ii)),'wm') && run_table.is_catch(stim_row(ii)) == 0
                         
                         wm_change = run_table.stim2_delta(stim_row(ii),1);
                         wm_im_nr = run_table.stim2_im_nr(stim_row(ii), 1); % {'easy_added','hard_added','easy_removed','hard_removed'}
-                        im_nr = (images.info.ns.unique_im== wm_im_nr);
+                        im_nr = (all_images.info.ns.unique_im== wm_im_nr);
                         info_name = params.stim.ns.change_im_name{wm_change};
-                        info_name2 = strsplit(images.info.ns.filename{im_nr},'/');
+                        info_name2 = strsplit(all_images.info.ns.filename{im_nr},'/');
                         
                         assert(strcmp(info_name2{2},sprintf('%s.png',info_name)));
                         assert(isequal(i4, run_table.super_cat(stim_row(ii),1)));
                         assert(isequal(i5, run_table.basic_cat(stim_row(ii),1)));
                         assert(isequal(i6, run_table.sub_cat(stim_row(ii),1)));
                         
-                        run_images{curr_frames(1),side} = images.ns.wm_im(:,:,:,i4,i5,i6,wm_change);
+                        run_images{curr_frames(1),side} = all_images.ns.wm_im(:,:,:,i4,i5,i6,wm_change);
                         run_alpha_masks{curr_frames(1),side} = [];
                         
                     elseif strcmp(run_table.event_name(stim_row(ii)),'stim2') && strcmp(run_table.task_class_name(stim_row(ii)),'ltm') && run_table.is_catch(stim_row(ii)) == 0
@@ -587,7 +575,7 @@ for ii = 1:length(stim_row)
                             
                             lure_im = run_table.stim2_delta{stim_row(ii),1};
                             im_idx = find(strcmp(pair_im,params.stim.ns.ltm_lure_im)); % {'lure01','lure02', 'lure03', 'lure04'};
-                            info_name = images.info.ns.(sprintf('lure%02d',im_idx));
+                            info_name = all_images.info.ns.(sprintf('lure%02d',im_idx));
                             pair_im = run_table.stim2_im_nr(stim_row(ii),1);
                             
                             assert(isequal(sprintf('%s.png',lure_im),info_name{im_idx}));
@@ -595,7 +583,7 @@ for ii = 1:length(stim_row)
                             assert(isequal(i5, run_table.basic_cat(stim_row(ii),1)));
                             assert(isequal(i6, run_table.sub_cat(stim_row(ii),1)));
                             
-                            run_images{curr_frames(1),side} = images.ns.lures(:,:,:,i4,i5,i6,lure_im);
+                            run_images{curr_frames(1),side} = all_images.ns.lures(:,:,:,i4,i5,i6,lure_im);
                             
                         else
                             pair_im = run_table.ltm_pair(stim_row(ii),1);
@@ -618,18 +606,22 @@ for ii = 1:length(stim_row)
                 % 50% change we will actually apply the contrast
                 % decrement change to stimulus (this probability is already
                 % determined by vcd_addFIXandCDtoTimeTableMaster.m).
-                if run_table.cd_start(stim_row(ii),side)~=0
+                if run_table.cd_start(stim_row(ii))~=0
                     stmclass   = run_table.stim_class_name{stim_row(ii),side};
-                    rel_onset  = run_table.cd_start(stim_row(ii),side) - run_table.event_start(stim_row(ii)) + 1;
-                    t_cmod_pad = params.exp.trial.stim_array_dur-(rel_onset+params.stim.cd.t_cmodfun-1);
-                    if strcmp(stmclass,'rdk')
-                        [f_im_cd, f_mask_cd] = vcd_applyContrastDecrement(params, rel_onset, stmclass, run_images(curr_frames,side), 'input_mask', run_alpha_masks(curr_frames,side),'t_cmod_pad',t_cmod_pad); % give all frames
-                    else
-                        [f_im_cd, f_mask_cd] = vcd_applyContrastDecrement(params, rel_onset, stmclass, run_images(curr_frames(1),side), 'input_mask', run_alpha_masks(curr_frames(1),side),'t_cmod_pad',t_cmod_pad); % give first (and only frame)
+                    rel_onset  = run_table.cd_start(stim_row(ii)) - run_table.event_start(stim_row(ii)) + 1;
+                    run_frames_cd_start = find(run_frames.timing == run_table.cd_start(stim_row(ii)));
+                    
+                    if ~isnan(rel_onset)
+                        t_cmod_pad = params.exp.trial.stim_array_dur-(rel_onset+length(params.stim.cd.t_cmodfun)-1);
+                        if strcmp(stmclass,'rdk')
+                            [f_im_cd, f_mask_cd] = vcd_applyContrastDecrement(params, rel_onset, stmclass, run_images(curr_frames,side), 'input_mask', run_alpha_masks(curr_frames,side)); % give all frames
+                        else
+                            [f_im_cd, f_mask_cd] = vcd_applyContrastDecrement(params, rel_onset, stmclass, run_images(curr_frames(1),side), 'input_mask', run_alpha_masks(curr_frames(1),side)); % give first (and only frame)
+                        end
+                        run_images(curr_frames,side) = f_im_cd;
+                        run_alpha_masks(curr_frames,side) = f_mask_cd;
+                        clear f_im_cd f_mask_cd;
                     end
-                    run_images(curr_frames,side) = f_im_cd;
-                    run_alpha_masks(curr_frames,side) = f_mask_cd;
-                    clear f_im_cd f_mask_cd;
                 end
             end
             
