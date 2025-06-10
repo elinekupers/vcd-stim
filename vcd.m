@@ -368,10 +368,10 @@ if isempty(vcd_info) || ~exist('vcd_info','var')
         error('[%s]: Please navigate to vcd-stim folder',mfilename)
     end
     
-    d = dir(fullfile(vcd_rootPath,'workspaces','info',sprintf('time_table_master_complete*.mat')));
+    d = dir(fullfile(vcd_rootPath,'workspaces','info',sprintf('condition_master_*.mat')));
     
     if isempty(d)
-        error('[%s]: Can''t find vcd_info! Looking for a file called: "vcd_rootPath/workspaces/info/time_table_master_complete*.mat"',mfilename)
+        error('[%s]: Can''t find vcd_info! Looking for a file called: "vcd_rootPath/workspaces/info/condition_master*.mat"',mfilename)
     else
         if verbose
         fprintf('[%s]: Found %d vcd info file(s)\n',mfilename,length(d));
