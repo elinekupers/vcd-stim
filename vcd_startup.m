@@ -91,7 +91,7 @@ if exp_env == 2 % psychophysics room
     assert(length(smatch)==1);
     s1 = serial(smatch{1}); fopen(s1);
     fprintf(s1,['$BitsPlusPlus' 13]);
-    fprintf(s1,['$enableGammaCorrection=[invGammaLUT.txt]' 13]);
+    fprintf(s1,['$enableGammaCorrection=[greyLums.txt]' 13]);
     % MONO PLUS MODE FOR REFERENCE
     %fprintf(s1,['$monoPlusPlus' 13]);
     %fprintf(s1,['$enableGammaCorrection=[13bitLinearLUT.txt]' 13]);
