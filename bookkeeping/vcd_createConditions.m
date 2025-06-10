@@ -159,7 +159,7 @@ else % Recreate conditions and blocks and trials
     %% Preallocate space and set up tables/structs
     if params.verbose
         tic
-        fprintf('\n[%s]: Start creating conditions for.. \n',mfilename);
+        fprintf('\n[%s]: Start creating conditions for %s experiment.. \n',mfilename,session_env);
     end
     
     all_unique_im     = struct();  % details about unique core images present in VCD-core experiment. This information is also present in condition_master.
