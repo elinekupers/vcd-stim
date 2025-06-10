@@ -59,11 +59,30 @@ The content of the `workspaces` folder is ignored, as the files are too big. You
 
 ## Code and folder overview
 Base functions:
-* `runme_vcdcore.m` : This is the main function to run the core experiment of VCD, mandatory inputs are: subject number, session number, session type (1: version A; 2: version B, only for MRI session 1 and 27), run_nr (1-10 for MRI, 1-15 for behavior), display name ('7TAS_BOLDSCREEN32' for BOLDscreen monitor in the 7TAS, 'PPROOM_EIZOFLEXSCAN' for Eizo Flexscan monitor in the psychophysics room)
 * `vcd_rootPath.m` : Function to set the rootpath to relative to the base of this folder.
 * `vcd.m` : Function to get basic info about the stimulus classes, task classes, and stimuli used in VCD.
+* `runme_vcdcore.m` : This is the main function to run the core experiment of VCD.
+
+	The `runme_vcdcore.m` mandatory inputs are (in this order): 
+		* subject number : 1-999 (nr will be zero padded)
+		* session number : 1-27 for MRI; 1 for behavior.
+		* session type   : 1 for version A; 2 for version B. Version B only exists for MRI session 1 and 27).
+		* run_nr 		 : 1-10 for MRI; 1-13 for behavior.
+		* display name   :'7TAS_BOLDSCREEN32' for BOLDscreen monitor in the 7TAS; 'PPROOM_EIZOFLEXSCAN' for Eizo Flexscan monitor in the psychophysics room).
+ 
+	The `runme_vcdcore.m` can take several optional inputs, here are the most important ones:
+		* randomization_file : path to file where subject's time_table_master lives. If randomization_file is left empty, the stimulus presentation code will generate a new file from the corresponding condition_master mat file for that experiment/display. Example path: `fullfile(vcd_rootPath', 'data', 'BEHAVIOR', 'vcd_subj000', 'vcd_subj000_time_table_master_PPROOM_EIZOFLEXSCAN_20250609T200011.mat)` 
+		* `wantsynctest`     : Logical flag to run Psychtoolbox sync test or not. Default: true.
+		* `wanteyetracking`  : Logical flag to initialize Eyelink and record eyetracking data. Default: false.
+		* `ptbMaxVBLstd`     : (double) time in seconds referring to the max standard devation across VBL time stamps collected during the PTB sync test. If standard deviation happens to be larger than this value, the sync test fails. Default: 0.0006 s (or 0.6 ms).
+
+ 	The `runme_vcdcore.m` outputs are (in this order): 
+ 		* data  	 : (struct) behavioral data including button presses and their time stamps, VBL time stamps, subject's run table and frames describing every event during the experimental run. We also store other variables present in the workspace (except for uint8 images).
+ 		* all_images : (struct) all uint8 stimuli and alpha transparency masks used in the vcd-core experiment. One may want to have all stimuli ready in the workspace to avoid reloading the stimulus mat-files every single run.
+
 
 Folders:
+* `analysis` : Folder with vcd related functions to analyze behavioral and eye gaze data.
 * `bookkeeping` : Folder with standalone script and vcd related functions to create experimental design and keep track of stimulus conditions during stimulus presentation.
 * `external` : Folder with external functions from other toolboxes.
 * `params` : Folder with vcd functions that define display, stimulus, and experimental session parameters.
@@ -73,13 +92,13 @@ Folders:
 * `utils` : Folder with small and simple utility functions.
 
 
-Folders ignored by git (see .gitignore):
+Folders with contents that are mostly ignored by git (see .gitignore):
 * `workspaces` : Folder where the created stimuli, condition tables, and instructions live.
 	* `stimuli` : Subfolder where stimuli are stored in matlab (.mat) files
-	* `info` : Subfolder where logged stimulus information is stored in csv files, as well as stimulus, display, experiment session params are stored in matlab (.mat) files. (ONE EXCEPTION: we do not ignore the trials_*.mat file as this file is used by vcd.m)
+	* `info` : Subfolder where logged stimulus information is stored in csv files, as well as stimulus, display, experiment session params are stored in matlab (.mat) files. (TWO EXCEPTIONS: we do not ignore the condition_master_*.mat files as this file is used by vcd.m, and we do not ignore the .csv info files as they are small and contain important information about the stimuli.)
 	* `instructions` : Subfolder where instructions are stored in text (.txt) files
 * `figs` : Folder where debug figures are stored
-* `data` : Folder where subject's button presses and created stimuli are stored (if requested).
+* `data` : Folder where subject's button presses, created run_table and run_frames are stored.
 
 
 ## Examples
@@ -87,6 +106,7 @@ Folders ignored by git (see .gitignore):
 Example 0: Get all stimulus class names
 
 `vcd('stimulusclassnames',[])`
+
 
 Example 1: Create stimuli
 
@@ -99,11 +119,9 @@ Example 2: Create experimental design
 `s_createDesignMatrix.m`
 
 
-
 Example 3: For subject 001, present MRI session 01 (wide), session type A, run 01, with eye tracking:
   
 `runme_vcdcore(1,1,1,1,'7TAS_BOLDSCREEN32','wanteyetracking', true)`
-
 
 
 Example 4: For subject 001, present MRI session 01 (wide), session type B, run 01, with eye tracking:
@@ -111,10 +129,10 @@ Example 4: For subject 001, present MRI session 01 (wide), session type B, run 0
 `runme_vcdcore(1,1,2,1,'7TAS_BOLDSCREEN32','wanteyetracking', true)`
 
 
-
 Example 5: For subject 001, present behavioral session 01, session type A, run 02, without eye tracking (note: there is only type A for behavior):
   
 `runme_vcdcore(1,1,1,2,'PPROOM_EIZOFLEXSCAN')`
+
 
 Example 6: For subject 002, present MRI session 07 (deep), session type A, run 01, without eye tracking (note: there is only type A for MRI session 2-26):
   
@@ -124,7 +142,7 @@ Example 6: For subject 002, present MRI session 07 (deep), session type A, run 0
 
 ## Terminology
 
-* `Monitor refresh rate:` The rate by which a monitor runs vertical retrace (VBL). For example, BOLD screen monitor refresh is (approximately) 120 Hz (for reference: 6 frames = (1000/120)*6 = 50 ms). Most standard monitors have a refresh rate of about 60 Hz. But other rates are possible, like 75 Hz, 85 Hz.
+* `Monitor refresh rate:` The rate by which a monitor runs vertical retrace (VBL). For example, BOLD screen monitor refresh is (approximately) 120 Hz (for reference: 6 frames = (1000/120) x 6 = 50 ms). Most standard monitors have a refresh rate of about 60 Hz. But other rates are possible, like 75 Hz, 85 Hz.
 * `Frames / frame rate / frame duration:` Because we present our stimuli at a slower rate than the monitor refresh rate, we “bundle” or “skip” several monitor refreshes into a “frame”. We run our stimuli at 30 Hz, so we bundle 4 120 Hz (BOLDscreen) monitor refreshes or 2 60 Hz (regular LCD) monitor refreshes.
 * `Stimulus:` Either the thing on the left, right, or centrally positioned. There can be two stimuli on the screen simultaneously.
 * `Session:` The 2-3 hr scan session at the MRI scanner
@@ -144,13 +162,9 @@ Example 6: For subject 002, present MRI session 07 (deep), session type A, run 0
 * `IBI:` Interblock interval (time between the offset of the response window of the last trial in a block, and the onset of the task instruction window of the following miniblock). IBIs involve just the fixation circle.
 * `Correct image:` The image that you should have learned to associate with the reference image) vs. incorrect image (some incorrect images are lures (applies only to LTM; defined as incorrect associated images that are within stimulus class (in the classic group) or incorrect similarly-looking images (in the natural group)), modified stimulus (applies only NS-WM), stimulus pair (AB) where B is associated with A (LTM), test dots (IMG).
 * `Eyetracking terms:` targets, eyetracking block, Eyelink calibration
-* `Rest time:` (whenever there is “nothing” for the participant to do other than fixate)
-* Stimulus-task crossing - e.g. NS-WM
-
-
-
+* `Rest time:` Whenever there is “nothing” for the participant to do other than fixate.
+* `Stimulus-task crossing:` the crossing between a stimulus class and task class (e.g., NS-WM).
 * `Unique stimuli:` All the images/movies within a single stimulus class. The number of unique stimuli is determined by the number of fully-crossed manipulated stimulus features (up to 3 stimulus features, see below). The manipulated stimulus features of interest can be at the image level (e.g., gabor contrast level, RDK motion coherence), or at the global property level (indoor vs outdoor, manmade vs natural foods). 
-
 * `Semantic Categories:` For CO and NS we sample different semantic categories:
 	* `Superordinate level:` humans, animals, food, objects, places
 	* `Basic level:` faces, cats, giraffes, tools, houses
