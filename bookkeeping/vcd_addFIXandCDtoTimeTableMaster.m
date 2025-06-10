@@ -1,11 +1,17 @@
 function [time_table_master,all_run_frames] = vcd_addFIXandCDtoTimeTableMaster(params, time_table_master, session_env)
-
+% [WRITE ME]
+% 
+%    [time_table_master,all_run_frames] = vcd_addFIXandCDtoTimeTableMaster(params, time_table_master, session_env)
+%
+%
+%
+%
 
 % get session environment params
 [~,session_types,~,~,~,~, ~, nr_session_types ] = vcd_getSessionEnvironmentParams(params, session_env);
         
 
-%% Preallocate space for generated subject run frames and updated time table master
+% Preallocate space for generated subject run frames and updated time table master
 session_nrs  = unique(time_table_master.session_nr);
 run_nrs      = unique(time_table_master.run_nr);
 
@@ -52,11 +58,13 @@ for ses = 1:length(session_nrs)
                 % Column 2: absolute luminance values (between 0 and 255)
                 % Column 3: relative change in luminance values compared to the previous time point
                 % Column 4: correct button press associated with the relative luminance change (1=brighter, 2=dimmer).
-                fix_matrix = vcd_createFixationSequence(params,params.stim.fix.fixsoafun, run_dur, blank_onset,blank_offset); 
+                fix_matrix = vcd_createFixationSequence(params,params.stim.fix.fixsoafun, run_dur, blank_onset, blank_offset); 
                 
                 % remove button responses from frozen fixation periods;
-                fix_matrix(fix_matrix(:,4)==0,4) = NaN;
-
+                if sum(fix_matrix(:,4)==0)>0
+                    fix_matrix(fix_matrix(:,4)==0,4) = NaN;
+                end
+                
                 % add fixation sequence to run_frames table
                 run_frames = table();
                 run_frames.session_nr           = repmat(ses,run_dur,1);
@@ -69,25 +77,26 @@ for ses = 1:length(session_nrs)
                 
                 % visualize fixation sequence
                 if params.verbose
-                    makeprettyfigures
-                    figure(101); clf; set(gcf,'Position',[137,952,2424,600])
-                    sgtitle(sprintf('Fixation sequence: session %02d, run %02d', session_nrs(ses),run_nrs(rr)))
+                    makeprettyfigures;
+                    
+                    figure(101); clf; set(gcf,'Position',[1,1,1400,444])
+                    sgtitle(sprintf('Fixation sequence: session %02d %s, run %02d', session_nrs(ses),choose(session_types(ses,st)==1,'A','B'),run_nrs(rr)))
                     subplot(211);
-                    plot([0:1:length(run_frames.fix_abs_lum)-1].*params.stim.presentationrate_hz,run_frames.fix_abs_lum,'ko-');
+                    plot(fix_matrix(:,1)./params.stim.presentationrate_hz,run_frames.fix_abs_lum,'ko-');
                     xlabel('Time (s)'); ylabel('dot luminance');
-                    ylim([0 255]); xlim([0, (length(run_frames.fix_abs_lum).*params.stim.presentationrate_hz)])
+                    ylim([0 255]); xlim([0, length(fix_matrix(:,1))/params.stim.presentationrate_hz])
                     title('fixation dot luminance sequence')
                     
                     subplot(212);
-                    plot([0:1:length(run_frames.fix_correct_response)-1].*params.stim.presentationrate_hz,  run_frames.fix_correct_response ,'ko-');
+                    plot(fix_matrix(:,1)./params.stim.presentationrate_hz,  run_frames.fix_correct_response ,'ko-');
                     title('fixation dot luminance rel diff')
                     set(gca,'YTick', [0,1,2], 'YTickLabel', {'No Change','Brighter','Dimmer'})
                     xlabel('Time (s)');
-                    xlim([0, (length(run_frames.fix_correct_response).*params.stim.presentationrate_hz)])
+                    xlim([0, length(fix_matrix(:,1))/params.stim.presentationrate_hz])
                     
                     if params.store_imgs
                         saveFigsFolder = fullfile(vcd_rootPath,'figs');
-                        filename = sprintf('vcd_session%02d_run%02d_fix_sequence.png', session_nrs(ses),run_nrs(rr));
+                        filename = sprintf('vcd_session%02d_%s_run%02d_fix_sequence.png', session_nrs(ses),choose(session_types(ses,st)==1,'A','B'),run_nrs(rr));
                         print(gcf,'-dpng','-r300',fullfile(saveFigsFolder,filename));
                     end
                 end
@@ -106,10 +115,10 @@ for ses = 1:length(session_nrs)
                         all_crossings = cat(1, all_crossings, repmat(this_run.crossing_nr(jj), this_run.event_dur(jj),1));
                     end
                 end
-                run_frames.frame_event_nr = single([all_events; 0]);      clear all_events
-                run_frames.is_cued        = single([all_cued; 0]);      clear all_cued;
-                run_frames.is_catch       = logical([all_catch; false]);  clear all_catch;
-                run_frames.crossingIDs    = single([all_crossings; 0]);   clear all_crossings
+                run_frames.frame_event_nr = single(all_events);      clear all_events
+                run_frames.is_cued        = single(all_cued);      clear all_cued;
+                run_frames.is_catch       = logical(all_catch);  clear all_catch;
+                run_frames.crossingIDs    = single(all_crossings);   clear all_crossings
                 
                 stim_idx    = ismember(this_run.event_id, [params.exp.block.stim_epoch1_ID, params.exp.block.stim_epoch2_ID, ...
                                 params.exp.block.eye_gaze_fix_ID, params.exp.block.eye_gaze_sac_target_ID, ...
@@ -164,21 +173,27 @@ for ses = 1:length(session_nrs)
                         
                         % NOT A CATCH TRIAL
                         if ~this_run.is_catch(stim_row(ii))
+                            
                             % IF CONTRAST DECREMENT TASK BLOCK
                             if strcmp(this_run.task_class_name(stim_row(ii)),'cd')
-                                for side = nsides
-                                    % 50% change we will actually apply the contrast
-                                    % decrement change to stimulus
-                                    c_onset = this_run.cd_start(stim_row(ii),side);
-
-                                    if ~isnan(c_onset) && c_onset~=0
-                                        f_cd = c_onset:(c_onset+length(params.stim.cd.t_gauss)-1);
-                                        run_frames.contrast(f_cd,side) = params.stim.cd.t_gauss;
-                                        run_frames.button_response_cd(f_cd) = 1;
-                                    else
-                                        run_frames.button_response_cd(curr_frames) = 2;
-                                    end
+                                pre_onset_time_frames = sum(params.stim.cd.t_cmodfun==1);
+                                % 20% change we will actually apply the contrast
+                                % decrement change to the cued stimulus
+                                % (uncued stimulus will never change
+                                % contrast).
+                                c_onset      = this_run.cd_start(stim_row(ii));
+                                if ~isnan(c_onset) && c_onset~=0
+                                    cd_cued_side    = run_frames.is_cued(c_onset);
+                                    if cd_cued_side == 3; cd_cued_side = 1; end % for NS
+                                    c_onset_support = c_onset - pre_onset_time_frames; % we shift the support function to an earlier time point such that the disp occurs at c_onset
+                                    f_cd            = c_onset_support:this_run.event_end(stim_row(ii));
+                                    t_pad           = length(f_cd) - length(params.stim.cd.t_cmodfun);
+                                    run_frames.contrast(f_cd,cd_cued_side) = cat(2,params.stim.cd.t_cmodfun, params.stim.cd.t_cmodfun(end)*ones(1,t_pad))';
+                                    run_frames.button_response_cd(c_onset) = 1;
+                                else
+                                    run_frames.button_response_cd(curr_frames) = 2;
                                 end
+                                
                             end
                         end % if catch
                     end
@@ -198,7 +213,7 @@ for ses = 1:length(session_nrs)
                     % assert(isequal(unique(diff(find(diff(run.fix_correct_response)>0)))', [params.stim.fix.dotmeanchange, 2*params.stim.fix.dotmeanchange]));
                     
                     fix_block_nrs  = unique(this_run.block_nr(fix_events,:))';        % should be 1 or 2 or 3 blocks per rum
-                    fix_update_idx = (run_frames.fix_correct_response>0);             % 1 x 20592 --> 234 fixation changes per run
+                    fix_update_idx = (run_frames.fix_correct_response>0);             % 1 x 22560 --> 31 or 43 fixation changes per block
                     [~,fix_block_frames] = ismember(this_run.block_nr,fix_block_nrs); % 40 trial events per block
                     fix_block_change_direction = run_frames.fix_correct_response(fix_update_idx); % 1=brighter, 2=dimmer
                     fix_block_abs_lum = run_frames.fix_abs_lum(fix_update_idx); %
@@ -229,18 +244,6 @@ for ses = 1:length(session_nrs)
 end % sessions
 
 time_table_master = time_table_master2;
-
-% Store structs locally, if requested
-if params.store_params
-    fprintf('[%s]: Storing expanded time table for all subjects..\n',mfilename)
-    saveDir = fullfile(vcd_rootPath,'workspaces','info');
-    if ~exist(saveDir,'dir'), mkdir(saveDir); end
-    save(fullfile(saveDir, ...
-        sprintf('time_table_master_complete_%s_%s.mat', ...
-        params.disp.name, datestr(now,30))), ...
-        'time_table_master','all_run_frames','-v7.3')
-end
-
 
 
 end
