@@ -260,6 +260,7 @@ if ~exist('stim','var') || ~isfield(scan,'im') || isempty(stim.im)
     % Insert images and mask into stim struct
     stim.im    = images;
     stim.masks = masks;
+    stim.eye   = cat(4, all_images.eye.sac_im, all_images.eye.pupil_im_black, all_images.eye.pupil_im_white);
     
     clear images masks
 end
