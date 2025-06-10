@@ -75,32 +75,33 @@ for ses = 1:length(session_nrs)
                 
                 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                 
-                % visualize fixation sequence
-                if params.verbose
-                    makeprettyfigures;
-                    
-                    figure(101); clf; set(gcf,'Position',[1,1,1400,444])
-                    sgtitle(sprintf('Fixation sequence: session %02d %s, run %02d', session_nrs(ses),choose(session_types(ses,st)==1,'A','B'),run_nrs(rr)))
-                    subplot(211);
-                    plot(fix_matrix(:,1)./params.stim.presentationrate_hz,run_frames.fix_abs_lum,'ko-');
-                    xlabel('Time (s)'); ylabel('dot luminance');
-                    ylim([0 255]); xlim([0, length(fix_matrix(:,1))/params.stim.presentationrate_hz])
-                    title('fixation dot luminance sequence')
-                    
-                    subplot(212);
-                    plot(fix_matrix(:,1)./params.stim.presentationrate_hz,  run_frames.fix_correct_response ,'ko-');
-                    title('fixation dot luminance rel diff')
-                    set(gca,'YTick', [0,1,2], 'YTickLabel', {'No Change','Brighter','Dimmer'})
-                    xlabel('Time (s)');
-                    xlim([0, length(fix_matrix(:,1))/params.stim.presentationrate_hz])
-                    
-                    if params.store_imgs
-                        saveFigsFolder = fullfile(vcd_rootPath,'figs');
-                        filename = sprintf('vcd_session%02d_%s_run%02d_fix_sequence.png', session_nrs(ses),choose(session_types(ses,st)==1,'A','B'),run_nrs(rr));
-                        print(gcf,'-dpng','-r300',fullfile(saveFigsFolder,filename));
+                if ~verLessThan('matlab', '9.6')
+                    % visualize fixation sequence
+                    if params.verbose
+                        makeprettyfigures;
+                        
+                        figure(101); clf; set(gcf,'Position',[1,1,1400,444])
+                        sgtitle(sprintf('Fixation sequence: session %02d %s, run %02d', session_nrs(ses),choose(session_types(ses,st)==1,'A','B'),run_nrs(rr)))
+                        subplot(211);
+                        plot(fix_matrix(:,1)./params.stim.presentationrate_hz,run_frames.fix_abs_lum,'ko-');
+                        xlabel('Time (s)'); ylabel('dot luminance');
+                        ylim([0 255]); xlim([0, length(fix_matrix(:,1))/params.stim.presentationrate_hz])
+                        title('fixation dot luminance sequence')
+                        
+                        subplot(212);
+                        plot(fix_matrix(:,1)./params.stim.presentationrate_hz,  run_frames.fix_correct_response ,'ko-');
+                        title('fixation dot luminance rel diff')
+                        set(gca,'YTick', [0,1,2], 'YTickLabel', {'No Change','Brighter','Dimmer'})
+                        xlabel('Time (s)');
+                        xlim([0, length(fix_matrix(:,1))/params.stim.presentationrate_hz])
+                        
+                        if params.store_imgs
+                            saveFigsFolder = fullfile(vcd_rootPath,'figs');
+                            filename = sprintf('vcd_session%02d_%s_run%02d_fix_sequence.png', session_nrs(ses),choose(session_types(ses,st)==1,'A','B'),run_nrs(rr));
+                            print(gcf,'-dpng','-r300',fullfile(saveFigsFolder,filename));
+                        end
                     end
                 end
-                
                 
                 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                 %%%%%%%%%%%%% Expand run frames table %%%%%%%%%%%%%%%%%%
