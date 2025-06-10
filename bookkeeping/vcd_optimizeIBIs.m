@@ -29,9 +29,14 @@ end
 
 max_possible_IBI_dur = max(ibis)*(nr_blocks-1);
 if dur_to_optimize > max_possible_IBI_dur
-    warning('[%s]: IBIs cannot account for the total run duration. Will increase post-blank duration', mfilename)
     postblank_to_add = dur_to_optimize-max_possible_IBI_dur;
     dur_to_optimize  = max_possible_IBI_dur;
+    fprintf('[%s]: **** WARNING START ****\n', mfilename)
+    fprintf('[%s]: IBIs cannot account for the total run duration. Will increase post-blank duration by %d time frames.\n', mfilename,postblank_to_add)
+    fprintf('[%s]: **** WARNING END ****\n', mfilename)
+    if postblank_to_add > 3600
+        error('[%s]: **** We are adding more than a minute of blank?! That doesn''t seem right.. ****\n', mfilename)
+    end
 else
     postblank_to_add = 0;
 end
