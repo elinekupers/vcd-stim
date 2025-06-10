@@ -116,41 +116,51 @@ else % Recreate conditions and blocks and trials
         warning('[%s]: Will try to loading exp params from file.\n', mfilename);
         d = dir(fullfile(vcd_rootPath,'workspaces','info',sprintf('exp_%s*.mat',params.disp.name)));
         if ~isempty(d)
-            fprintf('\n[%s]: Found %d exp params .mat file(s)\n',mfilename,length(d));
-
-            if length(d) > 1
-                warning('[%s]: Multiple .mat files! Will pick the most recent one\n', mfilename);
+            if params.verbose
+                fprintf('\n[%s]: Found %d exp params .mat file(s)\n',mfilename,length(d));
+                if length(d) > 1
+                    warning('[%s]: Multiple .mat files! Will pick the most recent one\n', mfilename);
+                end
+                fprintf('[%s]: Loading exp params .mat file: %s\n', mfilename, d(end).name);
             end
-            
-            fprintf('[%s]: Loading exp params .mat file: %s\n', mfilename, d(end).name);
             tmp = load(fullfile(d(end).folder,d(end).name));
             params.exp = tmp.exp;
         else
-            warning('[%s]: Can''t find exp session .mat files! Will run vcd_getSessionParams.m', mfilename);
+            if params.verbose
+                warning('[%s]: Can''t find exp session .mat files! Will run vcd_getSessionParams.m', mfilename);
+            end
             params.exp  = vcd_getSessionParams('load_params',false,'store_params',false, 'verbose',false);
         end
     end
     if ~isfield(params,'stim')
-        warning('[%s]: params.stim doesn''t exist!)',mfilename)
-        warning('[%s]: Will try to loading stim params from file.\n', mfilename);
+        if params.verbose
+            warning('[%s]: params.stim doesn''t exist!)',mfilename)
+            warning('[%s]: Will try to loading stim params from file.\n', mfilename);
+        end
         d = dir(fullfile(vcd_rootPath,'workspaces','info',sprintf('stim_%s*.mat',params.disp.name)));
         if ~isempty(d)
-            fprintf('\n[%s]: Found %d stim params .mat file(s)\n',mfilename,length(d));
-
-            if length(d) > 1
-                warning('[%s]: Multiple .mat files! Will pick the most recent one\n', mfilename);
+            if params.verbose
+                fprintf('\n[%s]: Found %d stim params .mat file(s)\n',mfilename,length(d));
+                if length(d) > 1
+                    warning('[%s]: Multiple .mat files! Will pick the most recent one\n', mfilename);
+                end
+                fprintf('[%s]: Loading stim params .mat file: %s\n', mfilename, d(end).name);
             end
-            
-            fprintf('[%s]: Loading stim params .mat file: %s\n', mfilename, d(end).name);
             tmp = load(fullfile(d(end).folder,d(end).name));
             params.exp = tmp.exp;
         else
-            warning('[%s]: Can''t find stim session .mat files! Will run vcd_getStimParams.m', mfilename);
+            if params.verbose
+                warning('[%s]: Can''t find stim session .mat files! Will run vcd_getStimParams.m', mfilename);
+            end
             params.stim = vcd_getStimParams('load_params',false,'store_params',false, 'verbose',false);  
         end
     end
     
     %% Preallocate space and set up tables/structs
+    if params.verbose
+        tic
+        fprintf('\n[%s]: Start creating conditions for.. \n',mfilename);
+    end
     
     all_unique_im     = struct();  % details about unique core images present in VCD-core experiment. This information is also present in condition_master.
     all_cond          = struct();  % details about unique conditions (unique images x cueing condition) present in VCD-core experiment. This information is also present in condition_master.
@@ -392,7 +402,11 @@ else % Recreate conditions and blocks and trials
         
     end
     
-    % Get onset of cd change within a trial
+    % Get onset time frame of the cd modulation within a trial 
+    % (the modulation function has 2 frames of high contrast, prior to
+    % dip). The onset time refers to the time the actual contrast dip
+    % happens (so after the second time frames finishes and the third
+    % starts).
     cd_change_total = 2.*ones(1,nr_cued_cd_trials);
     cd_change_total(when)=1; % 1=yes change, 2=no change
     for rpt = 1:sum(cd_change_total==1)
