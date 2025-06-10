@@ -178,6 +178,14 @@ for ff = 1:length(rename_me)
 end
 clear rename_me ff p0
 
+%% Check inputs
+if ~isfield(params,'verbose') || isempty(params.verbose)
+    params.verbose = false;
+end
+
+if ~isfield(params,'store_params') || isempty(params.store_params)
+    params.store_params = true;
+end
 
 %% Infer other inputs
 unique_sessions  = unique(condition_master.session_nr);
