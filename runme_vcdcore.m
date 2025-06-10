@@ -121,7 +121,7 @@ function [data,all_images] = runme_vcdcore(subj_nr,ses_nr,ses_type,run_nr, dispN
 %                          If the measurement error is larger than the desired monitor refresh rate, psychtoolbox throws an error during the synctest.
 %                          Default: 0.0004 s. Larger standard deviations are more forgiving and less likely for psychtoolbox to throw an error.
 %   [all_images]         : struct with all VCD images, to avoid extra load time.
-%   [randomization_file] : mat-file specifying the randomization block and run order for this subject's session.
+%   [randomization_file] : mat-file specifying the time_table_master based on the subject's shuffled condition_master table.
 %                          Default: []. No file means that the runme_vcdcore code will generate a new randomization file on the fly.
 %
 % OUTPUTS:
@@ -138,7 +138,9 @@ function [data,all_images] = runme_vcdcore(subj_nr,ses_nr,ses_type,run_nr, dispN
 %  [data,all_images] = runme_vcdcore(1, 1, 1, 1, '7TAS_BOLDSCREEN32'  , 'wantsynctest', false);
 %  [data,all_images] = runme_vcdcore(1, 1, 1, 1, 'KKOFFICE_AOCQ3277'  , 'wantsynctest', true);
 %  [data,all_images] = runme_vcdcore(1, 1, 1, 1, 'EKHOME_ASUSVE247'   , 'wantsynctest', false);
-%
+%  [data,all_images] = runme_vcdcore(1, 1, 1, 1, 'PPROOM_EIZOFLEXSCAN', 'randomization_file',[])
+%  [data,all_images] = runme_vcdcore(1, 1, 1, 1, 'PPROOM_EIZOFLEXSCAN','randomization_file', fullfile(vcd_rootPath,'data','BEHAVIOR','vcd_subj000','vcd_subj000_time_table_master_PPROOM_EIZOFLEXSCAN_20250610T110319.mat'))
+
 % DEPENDENCIES:
 %  * Psychtoolbox-3 (https://github.com/Psychtoolbox/Psychtoolbox-3) 
 %       7TAS   : v. 3.0.14 commit ef093cbf296115badddb995fa06452e34c8c7d02 (origin/master). build date Nov 17 19:46:08 2020 +0100
@@ -172,13 +174,13 @@ p.addParameter('savestim'           , false, @islogical);
 p.addParameter('loadstimfromrunfile', false, @islogical);
 p.addParameter('offsetpix'          , [0 0], @isnumeric); % [x,y]
 p.addParameter('movieflip'          , [0 0], @isnumeric); % up/down, left/right
-p.addParameter('stimDir'            , fullfile(vcd_rootPath,'workspaces','info'), @ischar); % Where do the stimulus mat files live?
-p.addParameter('instructionsDir'    , fullfile(vcd_rootPath, 'workspaces','instructions'), @ischar); % Where do the task instruction text files live?
+p.addParameter('stimDir'            , fullfile(vcd_rootPath,'workspaces','stimuli'), @ischar); % Where do the stimulus mat files live?
+p.addParameter('instructionsDir'    , fullfile(vcd_rootPath, 'workspaces','stimuli','instruction_images'), @ischar); % Where do the task instruction png files live?
 p.addParameter('savedatadir'        , [], @ischar);
 p.addParameter('subjfilename'       , [], @ischar);
 p.addParameter('wanteyetracking'    , false, @islogical);
 p.addParameter('ptbMaxVBLstd'       , [], @isnumeric);
-p.addParameter('all_images'         , [], @isstruct);
+p.addParameter('all_images'         , struct(), @isstruct);
 p.addParameter('randomization_file' , [], @ischar);
 
 % Parse inputs
@@ -212,8 +214,7 @@ elseif ischar(dispName)
 end
       
 % Can we actually run this experiment?
-assert(~isempty(subjfun(subj_nr)));
-assert(subjfun(subj_nr)>=1 && subjfun(subj_nr)<=999);
+assert(subj_nr>=0 && (subj_nr<=999));
 if strcmp(env_type,'BEHAVIOR')
     assert(run_nr>=1 && run_nr<=15);
     assert(isequal(ses_type,1));
@@ -266,7 +267,11 @@ fprintf('[%s]: Running VCD core %s experiment: subj_nr %03d - session %02d %s - 
     mfilename, env_type, subj_nr,ses_nr,choose(ses_type==1,'A','B'),run_nr)
 fprintf('[%s]: %s eyetracking \n', mfilename, choose(wanteyetracking,'YES','NO'))
 fprintf('[%s]: Running experiment with images optimized for %s\n', mfilename, dispName)
-
+if isempty(randomization_file)
+    fprintf('[%s]: Subject''s randomization file was NOT specified. Will create one on the fly. \n', mfilename)
+else
+    fprintf('[%s]: Will load subject''s randomization file: %s \n', mfilename, randomization_file)
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%% Run experiment %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -287,5 +292,7 @@ fprintf('[%s]: Running experiment with images optimized for %s\n', mfilename, di
     'instrtextdir',    instructionsDir, ...
     'savestim',        savestim, ...
     'loadstimfromrunfile', loadstimfromrunfile, ...
-    'ptbMaxVBLstd',    ptbMaxVBLstd); 
+    'ptbMaxVBLstd',    ptbMaxVBLstd, ...
+    'randomization_file', randomization_file, ...
+    'all_images',      all_images); 
 
