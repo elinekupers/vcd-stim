@@ -117,6 +117,9 @@ framecolor = fix_tex;
 task_tex   = fix_tex;
 task_rect  = fix_tex;
 
+unique_crossingIDs = unique(run_frames.crossingIDs, 'stable');
+unique_crossingIDs(ismember(unique_crossingIDs,[999,0])) = [];
+
 for nn = 1:size(run_frames.frame_event_nr,1)
     
     eventID = run_frames.frame_event_nr(nn);
@@ -177,45 +180,43 @@ for nn = 1:size(run_frames.frame_event_nr,1)
 
         case 90 % task_cue_ID
             % Get instructions from png file
-            task_idx = taskscript{~cellfun(@isempty, ...
-                regexp(taskscript,sprintf('%02d',run_frames.crossingIDs(nn)),'match'))};
-            task_tex{nn}   = Screen('MakeTexture',win, taskscript.im{task_idx});
-            task_rect{nn}  = tasksrect{task_idx};
+            task_tex{nn}   = Screen('MakeTexture',win, taskscript.im{run_frames.crossingIDs(nn)==unique_crossingIDs});
+            task_rect{nn}  = taskscript.rect{run_frames.crossingIDs(nn)==unique_crossingIDs};
             framecolor{nn} = 255*ones(1,3);
         
         % Draw background with eyetracking target
         case {990,991} % eye_gaze_fix_ID = 990,991; % central fixation "rest" and "target"
-            im_tex{nn}  = Screen('MakeTexture',win, stim.im.eye.sac_im(:,:,:,1));
+            im_tex{nn}  = Screen('MakeTexture',win, stim.eye(:,:,:,1));
             im_rect{nn} = rect;
             framecolor{nn} = 255*ones(1,3);
             
         case 992 % eye_gaze_sac_target_ID  = left
-            im_tex{nn}  = Screen('MakeTexture',win, stim.im.eye.sac_im(:,:,:,2));
+            im_tex{nn}  = Screen('MakeTexture',win, stim.eye(:,:,:,2));
             im_rect{nn} = rect;
             framecolor{nn} = 255*ones(1,3);
             
         case 993 % eye_gaze_sac_target_ID  = right
-            im_tex{nn}  = Screen('MakeTexture',win, stim.im.eye.sac_im(:,:,:,3));
+            im_tex{nn}  = Screen('MakeTexture',win, stim.eye(:,:,:,3));
             im_rect{nn} = rect;
             framecolor{nn} = 255*ones(1,3);
             
         case 994 % eye_gaze_sac_target_ID  = up
-            im_tex{nn}  = Screen('MakeTexture',win, stim.im.eye.sac_im(:,:,:,4));
+            im_tex{nn}  = Screen('MakeTexture',win, stim.eye(:,:,:,4));
             im_rect{nn} = rect;
             framecolor{nn} = 255*ones(1,3);
             
         case 995 % eye_gaze_sac_target_ID  = down
-            im_tex{nn}  = Screen('MakeTexture',win, stim.im.eye.sac_im(:,:,:,5));
+            im_tex{nn}  = Screen('MakeTexture',win, stim.eye(:,:,:,5));
             im_rect{nn} = rect;
             framecolor{nn} = 255*ones(1,3);
             
         case 996 % eye_gaze_pupil_ID is black
-            im_tex{nn}  = Screen('MakeTexture',win, stim.im.eye.pupil_im_black);
+            im_tex{nn}  = Screen('MakeTexture',win, stim.eye(:,:,:,6));
             im_rect{nn} = rect;
             framecolor{nn} = 255*ones(1,3);
                          
         case 997 % eye_gaze_pupil_ID is white
-            im_tex{nn}  = Screen('MakeTexture',win, stim.im.eye.pupil_im_white);
+            im_tex{nn}  = Screen('MakeTexture',win, stim.eye(:,:,:,7));
             im_rect{nn} = rect;
             framecolor{nn} = 255*ones(1,3);
     end
