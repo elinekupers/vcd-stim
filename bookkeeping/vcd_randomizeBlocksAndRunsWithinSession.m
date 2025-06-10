@@ -254,7 +254,7 @@ for ses = 1:length(unique_sessions)
             % we only break this while loop when we are happy with the
             % order of blocks: that is, we want every 4 blocks to be from a
             % different crossing nr
-            fprintf('[%s]: Start shuffle attempts..\n', mfilename)
+            fprintf('[%s]: Start shuffle attempts..', mfilename)
             attempts = 0;
             while 1
                 reshuffle_me = false(1,2);
@@ -573,17 +573,17 @@ for ses = 1:length(unique_sessions)
                 % if runs are shorter than expected, then check if additional IBIs would help
                 if runs_ok
                     short_runs = find( (run_dur + max_run_deviation) < run_dur_max);
-                    if params.verbose
-                        fprintf('[%s]: Run(s) %s are on the short side..\n',mfilename, num2str(short_runs));
-                        fprintf('[%s]: Run duration(s): %s time frames (%s seconds)\n', mfilename, num2str(run_dur(short_runs)), num2str(run_dur(short_runs)./params.stim.presentationrate_hz));
-                    end
+                    
+                    % for debug purposes, print run duration...
+                    %fprintf('[%s]: Run(s) %s are on the short side..\n',mfilename, num2str(short_runs));
+                    %fprintf('[%s]: Run duration(s): %s time frames (%s seconds)\n', mfilename, num2str(run_dur(short_runs)), num2str(run_dur(short_runs)./params.stim.presentationrate_hz));
+                    
                     if ~isempty(short_runs)
                         short_runs_more_IBIs = run_dur(short_runs) + [(tmp_blocks_per_run(short_runs)-1)*additional_IBIs]; % we add the difference between min and max IBI to simulate the run dur when we would use all max IBIs
                         too_short = find( (short_runs_more_IBIs + max_run_deviation) < run_dur_max );
                         if length(too_short)>0
-                            if params.verbose
-                                fprintf('[%s]: Even with extra-long IBIs, run(s) %s are still considered too short: %s time frames\n', mfilename, num2str(short_runs(too_short)), num2str(short_runs_more_IBIs(too_short)));
-                            end
+                            % for debug purposes print outcome of adding extra IBI 
+                            % %fprintf('[%s]: Even with extra-long IBIs, run(s) %s are still considered too short: %s time frames\n', mfilename, num2str(short_runs(too_short)), num2str(short_runs_more_IBIs(too_short)));
                             runs_ok = false; % if not, we start over
                         end
                     end
@@ -676,10 +676,9 @@ for ses = 1:length(unique_sessions)
                     trial_order_global_shuffled{run_idx,bb_idx} = trial_order;
                     trial_order_local_shuffled{run_idx,bb_idx}  = local_trial_order;
 
-                    % Show user the trial order within a block
-                    if params.verbose
-                        fprintf('\nRun %02d, block row start %02d in condition_master, trial order: %s',run_idx,curr_block_start(bb_idx),num2str(local_trial_order))
-                    end
+                    % For debug purposes, you can print trial order within a block
+                    % %fprintf('\nRun %02d, block row start %02d in condition_master, trial order: %s',run_idx,curr_block_start(bb_idx),num2str(local_trial_order))
+                    
                     % Add the new run/block/trial order to condition_master
                     condition_master0.run_nr(trial_order)   = run_order(run_idx);
                     condition_master0.block_nr(trial_order) = bb_idx;
