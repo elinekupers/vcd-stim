@@ -52,12 +52,13 @@ p.addParameter('savestim'       , false     , @islogical)                    % w
 p.addParameter('loadstimfromrunfile', false , @islogical)                    % whether we want to load stim from run file
 p.addParameter('ptbMaxVBLstd'   , 0.0008    , @isnumeric)                    % what standard deviation for screen flip duration do we allow?
 p.addParameter('env_type'       , []        , @(x) ismember(x, {'MRI','BEHAVIOR', 'TEST'})); % are we running the behavioral (PProom), MRI (7TAS), or a TEST (office monitors) version of the VCD core experiment?
+p.addParameter('randomization_file',[]      , @ischar);                      % what randomization file are we loading? file should exist in   
+p.addParameter('all_images'     , struct()  , @isstruct);                    % preloaded all_images in a single struct (to save time)
 p.addParameter('infofolder'     , fullfile(vcd_rootPath,'workspaces','info')        , @ischar); % where are the *_info.csv file(s)?
 p.addParameter('stimfolder'     , fullfile(vcd_rootPath,'workspaces','stimuli')     , @ischar); % where are the mat-files with store stimuli?
-p.addParameter('instrtextdir'   , fullfile(vcd_rootPath,'workspaces','instructions'), @ischar); % where are the txt-files with task instructions?
-
+p.addParameter('instrtextdir'   , fullfile(vcd_rootPath,'workspaces','stimuli','instructions'), @ischar); % where are the png-files with task instructions?
 % Parse inputs
-p.parse(subj_nr, ses_nr, ses_type, run_nr,dispName, varargin{:});
+p.parse(subj_nr, ses_nr, ses_type, run_nr, dispName, varargin{:});
 
 % Rename variables into general params struct
 rename_me = fieldnames(p.Results);
@@ -76,6 +77,9 @@ elseif params.movieflip(2)
 else
     flipfun = @(x) x;
 end
+
+% release images
+all_images = params.all_images; rmfield(params, 'all_images');
 
 
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -105,7 +109,7 @@ if strcmp(params.disp.name, 'PPROOM_EIZOFLEXSCAN')
     % apparently PP room monitor native refresh rate shows up as 0 (but is actually 60 Hz)
     % PProom EIZOFLEXScan screen ptonparams are expected to be {[1920 1200 0 24],[], 0, 0}
     ptonparams = {[params.disp.w_pix params.disp.h_pix 0 24],[],params.disp.clut, skipsync};
-else
+else % '7TAS_BOLDSCREEN32','KKOFFICE_AOCQ3277','EKHOME_ASUSVE247'
     % Nova1x32 coil with BOLDscreen and big eye mirrors ptonparams are expected to be {[1920 1080 120 24],[], 0, 0}
     ptonparams = {[params.disp.w_pix params.disp.h_pix params.disp.refresh_hz 24],[],params.disp.clut, skipsync};
 end
@@ -167,16 +171,53 @@ end
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%% LOAD TIME TABLE MASTER %%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-if ~exist('time_table_master','var') ||  isempty(params.exp)
-    if params.loadparams
-        d = dir(fullfile(params.infofolder,'time_table_master_complete*.mat'));
+if ~exist('time_table_master','var') 
+    if ~isempty(params.randomization_file)
+        d = dir(fullfile(params.randomization_file));
         if ~isempty(d)
             load(fullfile(d(end).folder,d(end).name),'time_table_master','all_run_frames');
+        else
+            error('[%s]: Can''t find time table master!!',mfilename)    
+        end
+    else
+        d = dir(fullfile(vcd_rootPath,'data',sprintf('vcd_subj%03d',params.subj_nr), '%s_time_table_master*.mat',sprintf('vcd_subj%03d',params.subj_nr)));
+        if ~isempty(d)
+            load(fullfile(d(end).folder,d(end).name),'time_table_master','all_run_frames');
+        else
+            d = dir(fullfile(vcd_rootPath,'workspaces','info', sprintf('condition_master*%s*.mat', dispName)));
+            a1 = load(fullfile(d(end).folder,d(end).name),'condition_master');
+            saveDir = fullfile(vcd_rootPath,'data',sprintf('vcd_subj%03d',params.subj_nr));
+            
+            % make randomization file!
+            [time_table_master,all_run_frames] = ...
+                vcd_createRunTimeTables(params, ...
+                'load_params',false, ...
+                'store_params',true, ...
+                'condition_master',a1.condition_master,...
+                'session_env',params.ses_env, ...
+                'saveDir',saveDir, ...
+                'subj_id',sprintf('vcd_subj%03d',params.subjnr));
         end
     end
 else
-    error('[%s]: Can''t find time table master!!',mfilename)
+    
 end
+
+%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%% TRUNCATE TIME_TABLE_MASTER %%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% Subselect the run frames and run table from bigger tables
+% (all_run_frames and time_table_master) with the entire experiment
+run_frames = all_run_frames(all_run_frames.session_nr == params.ses_nr & ...
+    all_run_frames.session_type == params.ses_type & ...
+    all_run_frames.run_nr ==params.run_nr,:);
+
+run_table = time_table_master(time_table_master.session_nr==params.ses_nr & ...
+    time_table_master.session_type==params.ses_type &...
+    time_table_master.run_nr==params.run_nr,:);
+
+clear time_table_master all_run_frames
 
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%% LOAD RUN STIMULI    %%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -198,13 +239,13 @@ if ~exist('stim','var') || ~isfield(scan,'im') || isempty(stim.im)
         masks = a.masks;
         clear a d;
     else % we want to load stimuli on the fly (takes 15-60 seconds depending on the run)
-        if ~exist('all_images','var') && ~isempty(all_images)
-            all_images = [];
+        if exist('all_images','var') && ~isempty(all_images)
+            all_images = struct();
         end
         
         [images, masks, all_images] = vcd_getImageOrderSingleRun(params, ...
-            time_table_master, all_run_frames, params.subj_nr, params.ses_nr, params.ses_type, params.run_nr, ...
-            'images', all_images, 'store_params', false,'session_env', params.env_type); 
+            run_table, run_frames, params.subj_nr, params.ses_nr, params.ses_type, params.run_nr, ...
+            'all_images', all_images, 'store_params', false,'session_env', params.env_type); 
     end
     
     % Insert images and mask into stim struct
@@ -215,24 +256,24 @@ if ~exist('stim','var') || ~isfield(scan,'im') || isempty(stim.im)
 end
 
 % Get fixation stim rect
-fix_thin_rect0   = CenterRect([0 0 round(size(stim.im.fix,1)) round(size(stim.im.fix,2))], [0 0 params.disp.w_pix params.disp.h_pix]);
-fix_thick_rect0  = CenterRect([0 0 round(size(stim.im.fix,1)) round(size(stim.im.fix,2))], [0 0 params.disp.w_pix params.disp.h_pix]);
+fix_thin_rect0   = CenterRect([0 0 round(size(all_images.fix,1)) round(size(all_images.fix,2))], [0 0 params.disp.w_pix params.disp.h_pix]);
+fix_thick_rect0  = CenterRect([0 0 round(size(all_images.fix,1)) round(size(all_images.fix,2))], [0 0 params.disp.w_pix params.disp.h_pix]);
 fix_thin_rect    = {fix_thin_rect0 + repmat(params.offsetpix,1,2)}; clear fix_thin_rect0
 fix_thick_rect   = {fix_thick_rect0 + repmat(params.offsetpix,1,2)}; clear fix_thick_rect0
 
 % merge fixation dot image and mask
-fix_thin_full   = cell(1,size(stim.im.fix,4));
-fix_thick_full  = cell(1,size(stim.im.fix,4));
-fix_thick_left  = cell(1,size(stim.im.fix,4));
-fix_thick_right = cell(1,size(stim.im.fix,4));
-fix_thick_both  = cell(1,size(stim.im.fix,4));
+fix_thin_full   = cell(1,size(all_images.fix,4));
+fix_thick_full  = cell(1,size(all_images.fix,4));
+fix_thick_left  = cell(1,size(all_images.fix,4));
+fix_thick_right = cell(1,size(all_images.fix,4));
+fix_thick_both  = cell(1,size(all_images.fix,4));
 
-for ll = 1:size(images.im.fix,4) % loop over luminance values
-    fix_thin_full{ll}   = feval(flipfun,  cat(3, stim.im.fix(:,:,:,ll,1), stim.im.fix.mask(:,:,1)));
-    fix_thick_full{ll}  = feval(flipfun,  cat(3, stim.im.fix(:,:,:,ll,2), stim.im.fix.mask(:,:,2)));
-    fix_thick_left{ll}  = feval(flipfun,  cat(3, stim.im.fix(:,:,:,ll,3), stim.im.fix.mask(:,:,3)));
-    fix_thick_right{ll} = feval(flipfun,  cat(3, stim.im.fix(:,:,:,ll,4), stim.im.fix.mask(:,:,4)));
-    fix_thick_both{ll}  = feval(flipfun,  cat(3, stim.im.fix(:,:,:,ll,5), stim.im.fix.mask(:,:,5)));
+for ll = 1:size(all_images.fix,4) % loop over luminance values
+    fix_thin_full{ll}   = feval(flipfun,  cat(3, all_images.fix(:,:,:,ll,1), all_images.alpha.fix(:,:,1)));
+    fix_thick_full{ll}  = feval(flipfun,  cat(3, all_images.fix(:,:,:,ll,2), all_images.alpha.fix(:,:,2)));
+    fix_thick_left{ll}  = feval(flipfun,  cat(3, all_images.fix(:,:,:,ll,3), all_images.alpha.fix(:,:,3)));
+    fix_thick_right{ll} = feval(flipfun,  cat(3, all_images.fix(:,:,:,ll,4), all_images.alpha.fix(:,:,4)));
+    fix_thick_both{ll}  = feval(flipfun,  cat(3, all_images.fix(:,:,:,ll,5), all_images.alpha.fix(:,:,5)));
 end
 
 fix_im = struct();
@@ -244,21 +285,7 @@ fix_im.fix_thick_both  = fix_thick_both;  clear fix_thick_both
 fix_im.fix_thin_rect   = fix_thin_rect;   clear fix_thin_rect
 fix_im.fix_thick_rect  = fix_thick_rect;  clear fix_thick_rect
 
-%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%% TRUNCATE TIME_TABLE_MASTER %%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-% Subselect the run frames and run table from bigger tables
-% (all_run_frames and time_table_master) with the entire experiment
-run_frames = all_run_frames(all_run_frames.session_nr == params.ses_nr & ...
-    all_run_frames.session_type == params.ses_type & ...
-    all_run_frames.run_nr ==params.run_nr,:);
-
-run_table = time_table_master(time_table_master.session_nr==params.ses_nr & ...
-    time_table_master.session_type==params.ses_type &...
-    time_table_master.run_nr==params.run_nr,:);
-
-clear time_table_master all_run_frames
 
 
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -447,23 +474,30 @@ clear rects_shortlist centers_shortlist apsize_shortlist
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%% TASK INSTRUCTIONS %%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-introscript = fullfile(params.instrtextdir,'00_runvcdcore_subjectinstructions.txt');
-if ~exist(introscript,'file')
-    error('[%s]: Can''t find instructions text file!',mfilename')
-end
+introscript.im   = all_images.instr(:,:,:,1);
+introscript.rect = CenterRectOnPoint([0 0 size(introscript.im,1) size(introscript.im,2)], size(introscript.im,1) + params.stim.xc, size(introscript.im,2) + params.stim.yc);
+
 % Find the crossing_nrs for each stimulus block
-taskIDs = unique(run_table.crossing_nr);
-taskIDs = taskIDs(~isnan(taskIDs));
-taskIDs = taskIDs(taskIDs~=0); % black periods
-taskIDs = taskIDs(taskIDs~=999); % eyetracking block events
+taskIDs   = unique(run_table.crossing_nr);
+taskIDs   = taskIDs(~isnan(taskIDs));
+taskIDs   = taskIDs(taskIDs~=0); % black periods
+taskIDs   = taskIDs(taskIDs~=999); % eyetracking block events
 taskNames = params.exp.crossingnames(taskIDs);
+
 % Now load the task instructions from file.
-taskscript = cell(1,length(taskIDs));
+taskscript = struct();
+taskscript.im   = cell(1,length(taskIDs));
+taskscript.rect = cell(1,length(taskIDs));
 for nn = 1:length(taskIDs)
+    % load in instruction image
+    taskscript.im{nn}   = all_images.instr(:,:,:,taskIDs(nn)+1);  % +1 because introtext is first image
+    taskscript.rect{nn} = CenterRectOnPoint([0 0 size(taskscript.im{nn},1) size(taskscript.im{nn},2)], size(taskscript.im{nn},1) + params.stim.xc, size(taskscript.im{nn},2) + params.stim.yc);
+    
+    % Check we got the right file
     taskName = strrep(taskNames{nn},'-','_');
-    d = dir(fullfile(params.instrtextdir,sprintf('%02d_runvcdcore_%s.txt', taskIDs(nn),taskName)));
-    taskscript{nn} = fullfile(d.folder,d.name);
+    assert(isequal(all_images.info.instr{taskIDs(nn)+1}, sprintf('%02d_runvcdcore_%s.png', taskIDs(nn),taskName))); % +1 because introtext is first image
 end
+
 % Clear some memory
 clear taskIDs taskNames d taskName
 
@@ -503,7 +537,7 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% START EXPERIMENT! %%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 [data, ~] = vcd_showStimulus(...
-    win, rect, params, ptonparams, ...
+    params, ptonparams, ...
     fix_im, ...
     stim, ...
     run_frames, ...

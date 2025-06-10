@@ -1,6 +1,4 @@
 function [data,getoutearly,run_frames,run_table] = vcd_showStimulus(...
-    win, ...
-    rect, ...
     params, ...
     ptonparams, ...
     fix, ...
@@ -9,6 +7,7 @@ function [data,getoutearly,run_frames,run_table] = vcd_showStimulus(...
     run_table, ...
     introscript, ...
     taskscript, ...
+    tasksrect, ...
     deviceNr)
 
 %% PTB functionality notes:
@@ -18,32 +17,50 @@ function [data,getoutearly,run_frames,run_table] = vcd_showStimulus(...
 %   * texturePointers need to be: n vector (where n is the number of textures)
 %   * destinationRects need to be: 4 row x n columns (where n is the number of textures)
 % Inputs to DrawFormattedText inputs are winptr, tstring, [sx], [sy], [color], [wrapat], [flipHorizontal], [flipVertical], [vSpacing], [righttoleft], [winRect]
-
+%
 %  <framecolor> can also be size(<frameorder>,2) x 1 with values in [0,1] indicating an alpha change.
     
-%% internal constants
+%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%  SET CONSTANTS / FLAGS / COUNTERS  %%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% internal constants
 fliplead = 10/1000;  % min amount of time to allocate prior to flip
 
-%% Set flags, counters, and preallocate space
-getoutearly       = 0;
+% Set counters
 glitchcnt         = 0;
 when              = 0;
-forceglitch       = false;
-wantframefiles    = false;
-detectinput       = true;
-timekeys          = {}; % Preallocate space for key presses and timestamps
-allowforceglitch  = 0;  % 0 means do nothing special. [1 D] means allow keyboard input 'p' to force a glitch of duration D secs.
+
+% Set logical flags
+getoutearly       = false;  % we are not getting out early (yet). Will change to true when experimenter presses ESCAPE button
+allowforceglitch  = false;  % 0 means do nothing special. [1 D] means allow keyboard input 'p' to force a glitch of duration D secs.
+forceglitch       = false;  % useful for testing timing
+wantframefiles    = false;  % do we want to print every single frame flipped on the screen (to create a video of the experiment).
+detectinput       = true;   % do we want detect the button presses prior to the experiment starts (to test if button box is working)
+
+% Preallocate space for key presses and timestamps
+timekeys          = {};
 frameorder        = 1:size(stim.im,1);
 timeframes        = NaN(1, floor(size(frameorder,2)-1)+1);
 
-%% make tmpdir
+% make tmpdir
 if wantframefiles
-    tmpDir = '~/Desktop/tmp/'; %#ok<UNRCH>
+    tmpDir     = '~/Desktop/tmp/'; %#ok<UNRCH>
     framefiles = {'~/Desktop/tmp/frame%05d.png', []};
     if ~exist(tmpDir,'dir'), mkdir(tmpDir); end
 end
 
-%% PTB stuff
+%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%   INIT SCREEN %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+Screen('Preference', 'SyncTestSettings', params.ptbMaxVBLstd); % params.ptbMaxVBLstd defines what deviation from empirical monitor refresh rate do we allow before calling it a missed flip (and throwing an error)
+oldCLUT     = pton(ptonparams{:});
+win         = firstel(Screen('Windows'));
+oldPriority = Priority(MaxPriority(win));
+rect        = Screen('Rect',win); % get total screen rect   % alternatively: rect = CenterRect(round([0 0 rect(3)*winsize rect(4)*winsize]),rect);
+HideCursor(win); 
+
+% OTHER PTB stuff
 mfi            = Screen('GetFlipInterval',win);     % empirical refresh rate determined when we "opened" the ptb window pointer
 frameduration  = round(params.stim.framedur_s/mfi); % 60 Hz presentation, 1 time frame for office/psph monitors (60 Hz), 2 time frames for BOLDscreen (120 Hz);
 
@@ -65,16 +82,19 @@ clear PsychHID;
 clear KbCheck;
 clear KbWait;
 
-%% Run functions as first time running them always takes more time
+% Run functions as first time running them always takes more time
 GetSecs;
 now;
 ceil(1);
 fprintf('');
 
-%% Create background and fixation textures prior to exp onset (as we need them throughout the experiment)
-bckground_rect    = rect; %CenterRect([0 0 round(size(bckground,1)) round(size(bckground,2))],rect);
 
-% make fixation dot texture
+%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%% CREATE TEXTURES  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% Create fixation textures prior to exp onset (as we need them throughout the experiment)
+% We make fixation dot textures for each luminance value and rim thickness.
 fix_texture.thin_full   = cell(1,size(fix.fix_thin_full,2));
 fix_texture.thick_full  = cell(1,size(fix.fix_thin_full,2));
 fix_texture.thick_left  = cell(1,size(fix.fix_thin_full,2));
@@ -88,14 +108,14 @@ for ll = 1:size(fix.fix_thin_full,2) % loop over luminance values
     fix_texture.thick_both{ll}  = Screen('MakeTexture',win,fix.fix_thick_both{ll});
 end
 
-%% Prepare fixation texture vector outside the flip loop
+% Prepare fixation texture vector outside the flip loop
 fix_tex    = cell(length(stim.im),1);
 fix_rect   = fix_tex;
 im_tex     = fix_tex;
 im_rect    = fix_tex;
 framecolor = fix_tex;
-txt_tex    = fix_tex;
-txt_rect   = fix_tex;
+task_tex   = fix_tex;
+task_rect  = fix_tex;
 
 for nn = 1:size(run_frames.frame_event_nr,1)
     
@@ -156,13 +176,11 @@ for nn = 1:size(run_frames.frame_event_nr,1)
             framecolor{nn} = 255*ones(1,3); 
 
         case 90 % task_cue_ID
-            % Get instructions from text file
-            script = taskscript{~cellfun(@isempty, ...
+            % Get instructions from png file
+            task_idx = taskscript{~cellfun(@isempty, ...
                 regexp(taskscript,sprintf('%02d',run_frames.crossingIDs(nn)),'match'))};
-            [task_instr, task_rect] = vcd_getInstructionText(params, script, rect);
-            
-            txt_tex{nn}  = task_instr;
-            txt_rect{nn} = task_rect;
+            task_tex{nn}   = Screen('MakeTexture',win, taskscript.im{task_idx});
+            task_rect{nn}  = tasksrect{task_idx};
             framecolor{nn} = 255*ones(1,3);
         
         % Draw background with eyetracking target
@@ -203,15 +221,7 @@ for nn = 1:size(run_frames.frame_event_nr,1)
     end
 end
 
-%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%   INIT SCREEN %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-Screen('Preference', 'SyncTestSettings', params.ptbMaxVBLstd); % params.ptbMaxVBLstd defines what deviation from empirical monitor refresh rate do we allow before calling it a missed flip (and throwing an error)
-oldCLUT     = pton(ptonparams{:});
-win         = firstel(Screen('Windows'));
-oldPriority = Priority(MaxPriority(win));
-rect        = Screen('Rect',win); % get total screen rect   % alternatively: rect = CenterRect(round([0 0 rect(3)*winsize rect(4)*winsize]),rect);
-HideCursor(win); 
+
 
 
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -329,14 +339,15 @@ end
 %%%%%%%%%%%%%%% LOAD PRE-RUN INSTRUCTION SCREEN %%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-% Get pre-run intructions
-[instrtext, prerun_text_rect] = vcd_getInstructionText(params, introscript, rect);
-
 % Draw background (gray screen) 
 Screen('FillRect',win,params.stim.bckgrnd_grayval,rect); % Previously: Screen('DrawTexture',win, bckrgound_texture,[], bckground_rect,[], 0, 1, 255*ones(1,3));
-  
-% Draw intro text (pre-trigger)
-DrawFormattedText(win, instrtext, 'center', (prerun_text_rect(4)/2)-50, 0, 75,[],[],[],[],prerun_text_rect);
+
+% Get pre-run intructions from png file
+intro_tex  = Screen('MakeTexture', win, introscript.im);
+Screen('DrawTexture',win,intro_tex,[], introscript.rect, 0, [], 1, 255*ones(1,3));
+Screen('Close',intro_tex);
+
+% Show the subject the intro screen (pre-trigger)
 Screen('Flip',win);
 
 fprintf('Instructions are on screen, waiting for trigger...\n');
@@ -427,10 +438,10 @@ while 1
         case {0, 91, 92, 93, 96, 97, 98, 99}
             Screen('DrawTexture',win,im_tex{framecnt},[],im_rect{framecnt},0,[],1,framecolor{framecnt});
         
-        % Draw task instruction text (We do not plot a fixation circle such
+        % Draw task instruction text (we do not plot a fixation circle such
         % that subjects are encouraged to read the task instructions)
         case 90 
-            DrawFormattedText(win, txt_tex{framecnt}, 'center', (txt_rect{framecnt}(4)/2)-25,0,75,[],[],[],[],txt_rect{framecnt});
+            Screen('DrawTexture',win,task_tex{framecnt},[], task_rect{framecnt}, 0, [], 1, framecolor{framecnt});
             
         case {94, 95} % stim IDs
             % stim.im is a cell with dims: frames x 2, where each cell has a uint8 image (1:l, 2:r)
