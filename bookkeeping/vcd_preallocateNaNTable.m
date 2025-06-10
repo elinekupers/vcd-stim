@@ -4,7 +4,24 @@ function nan_table = vcd_preallocateNaNTable(nr_rows, nr_cols, table_example, co
 sz = [nr_rows nr_cols];
 varTypes = varfun(@class,table_example,'OutputFormat','cell');
 
-nan_table = table('Size',sz,'VariableTypes',varTypes, 'VariableNames',table_example.Properties.VariableNames);
+% check matlab version for backwards compatibility
+% if this version isn't from the 2000s, we need to do make the table the annoying way
+if verLessThan('matlab', '9.6')
+    
+    nan_table = table();
+    for ii = 1:length(varTypes)
+        if strcmp(varTypes{ii},'cell')
+            tmp = table(mat2cell(NaN(sz(1),1), ones(sz(1),1)), 'VariableNames', table_example.Properties.VariableNames(ii));
+            
+        elseif strcmp(varTypes{ii},'double')
+            tmp = table(NaN(sz(1),1), 'VariableNames', table_example.Properties.VariableNames(ii));
+        end
+    end
+    nan_table = [nan_table; tmp];
+else
+    nan_table = table('Size',sz,'VariableTypes',varTypes, 'VariableNames',table_example.Properties.VariableNames);
+end
+
 for vt = 1:length(varTypes)
     
     if ~exist('col_width','var') || isempty(col_width) 
