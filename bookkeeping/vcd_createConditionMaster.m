@@ -247,9 +247,9 @@ if nr_reps > 0
                     n_deltas            = length(params.stim.gabor.delta_from_ref);
                     delta_vec           = NaN(size(conds_single_rep_merged.orient_dir));
                     noncatch_trials_idx = ~isnan(conds_single_rep_merged.orient_dir(:,1));
-                    delta_vec(conds_single_rep_merged.is_cued(noncatch_trials_idx)==1,1)  = shuffle_concat(repelem(params.stim.gabor.delta_from_ref, n_unique_cases/2/n_deltas),1); % left cued
+                    delta_vec(conds_single_rep_merged.is_cued(noncatch_trials_idx)==1,1)    = shuffle_concat(repelem(params.stim.gabor.delta_from_ref, n_unique_cases/2/n_deltas),1); % left cued
                     delta_vec(~(conds_single_rep_merged.is_cued(noncatch_trials_idx)==1),1) = shuffle_concat(repelem(params.stim.gabor.delta_from_ref, n_unique_cases/2/n_deltas),1); % left uncued
-                    delta_vec(conds_single_rep_merged.is_cued(noncatch_trials_idx)==2,2)  = shuffle_concat(repelem(params.stim.gabor.delta_from_ref, n_unique_cases/2/n_deltas),1); % right cued
+                    delta_vec(conds_single_rep_merged.is_cued(noncatch_trials_idx)==2,2)    = shuffle_concat(repelem(params.stim.gabor.delta_from_ref, n_unique_cases/2/n_deltas),1); % right cued
                     delta_vec(~(conds_single_rep_merged.is_cued(noncatch_trials_idx)==2),2) = shuffle_concat(repelem(params.stim.gabor.delta_from_ref, n_unique_cases/2/n_deltas),1); % right uncued
                     
                     % calculate absolute orientation of stim 2
