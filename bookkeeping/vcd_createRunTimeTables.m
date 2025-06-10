@@ -18,7 +18,7 @@ function [time_table_master, all_run_frames] = vcd_createRunTimeTables(params, v
 %                           fullfile(vcd_rootPath,'data',[subj_id])
 %  [subj_id]              :  (char) fixed string added to filename when
 %                           storing the time_table_master file. If left 
-%                           empty, subj_id will be set to 'subjXXX'.
+%                           empty, subj_id will be set to 'subj000'.
 %
 % OUTPUTS:
 %   time_table_master   :  (struct) updated condition master table with
@@ -251,12 +251,13 @@ for ses = 1:size(all_sessions,3)
                     % run duration we want
                     while 1
                         % vcd_optimizeIBIs inputs are run_dur, block_dur, ibis, nr_blocks, prepost_blank
-                        [ibis, postblank_to_add] = vcd_optimizeIBIs(total_ses_dur, block_dur, IBI_to_use, length(block_dur), 0); % prepost_blank is 0 because we already subtract this when defining total_ses_dur
+                        [ibis, postblank_to_add] = vcd_optimizeIBIs(total_ses_dur, block_dur, IBI_to_use, length(block_dur), 0, params.verbose); % prepost_blank is 0 because we already subtract this when defining total_ses_dur
                         if (total_ses_dur - sum(ibis) - sum(block_dur) - postblank_to_add) <= 0  
                             break;
                         end
                     end
-                    fprintf('[%s]: Selected IBIs (in time frames): %s \n', mfilename, num2str(ibis))
+                    % for debug purposes
+                    %fprintf('[%s]: Selected IBIs (in time frames): %s \n', mfilename, num2str(ibis))
                 end
                 % Add eyetracking block and pre-blank period
                 if total_run_frames == 0
@@ -928,24 +929,26 @@ for ses = 1:size(all_sessions,3)
             % concatenate session_time_table to time_table_master
             time_table_master  = cat(1,time_table_master,session_time_table);
             
-            if params.verbose
+            if ~verLessThan('matlab', '9.6')
+            
+                if params.verbose
 
-                figure(99); clf; set(gcf, 'Position', [1 1 1200 500])
-                imagesc([session_time_table.run_nr,session_time_table.block_nr,session_time_table.trial_nr,session_time_table.crossing_nr]')
-                set(gca,'YTick',[1:4],'YTickLabel',{'run nr','block nr', 'trial nr', 'crossing nr'})
-                colormap(cmapturbo(max([session_time_table.block_nr',session_time_table.run_nr'])))
-                colorbar
-                set(gca,'CLim', [0 32]);
-                xlabel('events (in time)')
-                sgtitle(sprintf('Session %02d %s',ses, choose(st==1,'A','B')))
-                
-                if params.store_imgs
-                    saveFigsFolder = fullfile(vcd_rootPath,'figs',sprintf('condition_master1_%s',session_env));
-                    filename = sprintf('vcd_session%02d_%s_time_table_events.png', ses, choose(st==1,'A','B'));
-                    print(gcf,'-dpng','-r300',fullfile(saveFigsFolder,filename));
+                    figure(99); clf; set(gcf, 'Position', [1 1 1200 500])
+                    imagesc([session_time_table.run_nr,session_time_table.block_nr,session_time_table.trial_nr,session_time_table.crossing_nr]')
+                    set(gca,'YTick',[1:4],'YTickLabel',{'run nr','block nr', 'trial nr', 'crossing nr'})
+                    colormap(cmapturbo(max([session_time_table.block_nr',session_time_table.run_nr'])))
+                    colorbar
+                    set(gca,'CLim', [0 32]);
+                    xlabel('events (in time)')
+                    sgtitle(sprintf('Session %02d %s',ses, choose(st==1,'A','B')))
+
+                    if params.store_imgs
+                        saveFigsFolder = fullfile(vcd_rootPath,'figs',sprintf('condition_master1_%s',session_env));
+                        filename = sprintf('vcd_session%02d_%s_time_table_events.png', ses, choose(st==1,'A','B'));
+                        print(gcf,'-dpng','-r300',fullfile(saveFigsFolder,filename));
+                    end
                 end
             end
-
 
         end % ~nan(session type)
     end % session type
@@ -957,7 +960,7 @@ end % session nr
 [time_table_master, all_run_frames] = vcd_addFIXandCDtoTimeTableMaster(params,time_table_master,session_env);
 
 %% Store tables locally, if requested
-if params.store_params
+if store_params
     if isempty(saveDir)
         saveDir = fullfile(vcd_rootPath,'data',session_env, subj_id);
     end
