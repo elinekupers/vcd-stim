@@ -53,8 +53,8 @@
 %%%%%% PARAMETERS %%%% 
 %%%%%%%%%%%%%%%%%%%%%%
 params = struct();
-params.verbose        = false; % visualize stimuli or not
-params.store_imgs     = true; % store visualization figures
+params.verbose        = true; % print text and visualize stimuli or not?
+params.store_imgs     = true; % store visualization figures or not?
 params.saveFigsFolder = fullfile(vcd_rootPath,'figs'); % where to store visualization figures
 
 % Get display params
@@ -71,7 +71,7 @@ else
 end
 
 % Get stimulus parameters
-params.load_params  = false; % load stored params or recreate them
+params.load_params  = true; % load stored params or recreate them
 params.store_params = true;
 
 % SETUP RNG
@@ -85,8 +85,8 @@ randn('seed', params.rng.randn_seed);
 % Input 2: Load prior stored parameters or not? (logical)
 % Input 3: Store generated parameters or not? (logical)
 params.stim   = vcd_getStimParams('disp_name', params.disp.name, ...
-                            'load_params', params.load_params, ...
-                            'store_params', params.store_params); 
+                                  'load_params', params.load_params, ...
+                                  'store_params', params.store_params); 
 
 %% Define/Load experiment session params
 params.exp    = vcd_getSessionParams('disp_name', params.disp.name, ...
@@ -122,9 +122,11 @@ params.exp    = vcd_getSessionParams('disp_name', params.disp.name, ...
 % * vcd_allocateBlocksToRuns
 % * vcd_createRunTimeTables
 % * vcd_addFIXandCDtoTimeTableMaster
-[params,time_table_master] = vcd_createSessions(params,'load_params',  params.load_params, ...
-                                                       'store_params', params.store_params, ...
-                                                       'session_env', session_env);
+[params,condition_master_shuffled,time_table_master_shuffled, all_subj_run_frames] = ...
+    vcd_createSessions(params,'condition_master',condition_master,...
+                               'load_params',  params.load_params, ...
+                               'store_params', params.store_params, ...
+                               'session_env', session_env);
 
 
 
