@@ -45,30 +45,25 @@ switch exp_env
         edf2asc_func = []; % assume we don't do eyetracking
 end
 
-fprintf('The following folders have been added to the path: \n')
+
+added_paths = {};
 
 % Add knkutils toolbox
 if ~exist('pton','file')
     addpath(genpath(knkutils_dir))
-    fprintf('%s\n',knkutils_dir)
-else
-    fprintf('%s already is added to paths\n',knkutils_dir)
+    added_paths = cat(1,added_paths,{knkutils_dir});
 end
 
 % Add vcd-stim toolbox
 if ~exist('vcd_singleRun','file')
     addpath(genpath(vcdcode_dir))
-    fprintf('%s\n',vcdcode_dir)
-else
-    fprintf('%s already is added to paths\n',vcdcode_dir)
+    added_paths = cat(1,added_paths,{vcdcode_dir});
 end
 
 % Add PTB toolbox
 if ~exist('Screen','file')
     addpath(genpath(ptb_dir))
-    fprintf('%s\n',ptb_dir)
-else
-    fprintf('%s already is added to paths\n',ptb_dir)
+    added_paths = cat(1,added_paths,{ptb_dir});
 end
 
 % Add location of edf2asc converter 
@@ -76,14 +71,9 @@ if ~exist('edf2asc','file') && ~isempty(edf2asc_func)
     pth = strcat([edf2asc_func ':/usr/bin/:/bin:/usr/sbin:/sbin']);
     if ~isequal(getenv('PATH'),pth)
         setenv('PATH',pth);
-        fprintf('%s\n',edf2asc_func)
-    else
-        fprintf('%s already is added to paths\n',pth)
-    end
-else
-    fprintf('%s already is added to paths\n',edf2asc_func)
+        added_paths = cat(1,added_paths,{pth});
+    end    
 end
- 
 
 % deal with setting Bits Sharp settings
 if exp_env == 2 % psychophysics room
@@ -103,9 +93,11 @@ end
 % Go to root of vcd-stim folder
 cd(vcdcode_dir)
 
-
-
-
+% Tell user what we did. If we didn't add any paths, we don't say anything..
+if ~isempty(added_paths)
+    fprintf('The following folders have been added to the path: \n')
+    fprintf('%s\n',added_paths{:})
+end
 
 
 
