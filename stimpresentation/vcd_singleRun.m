@@ -187,7 +187,7 @@ if ~exist('time_table_master','var')
             d = dir(fullfile(vcd_rootPath,'workspaces','info', sprintf('condition_master*%s*.mat', dispName)));
             a1 = load(fullfile(d(end).folder,d(end).name),'condition_master');
             
-            randfile_savedir = strsplit(params.savedir,'_ses');
+            randfile_savedir = strsplit(params.savedatadir,'_ses');
             params.randfile_savedir = randfile_savedir{1};
             clear randfile_savedir;
             
