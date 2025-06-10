@@ -170,12 +170,12 @@ else
     % timing MRI
     exp.run.pre_blank_dur_MRI          = presentationrate_hz * 4.0;         % pre-run blank period: 4 seconds in number of presentation frames
     exp.run.post_blank_dur_MRI         = presentationrate_hz * 12;          % 12 seconds in number of presentation frames
-    exp.run.total_run_dur_BEHAVIOR     = presentationrate_hz * 387.2;       % TOTAL RUN DUR = 387.2 s or 242 EPI volumes (1.6 s TR) or 23232 time frames
+    exp.run.total_run_dur_BEHAVIOR     = presentationrate_hz * 376;         % TOTAL RUN DUR = 376 s or 22,560 time frames
     
     % timing BEHAVIOR
     exp.run.pre_blank_dur_BEHAVIOR     = presentationrate_hz * 4.0;         % pre-run blank period: 4 seconds in number of presentation frames
     exp.run.post_blank_dur_BEHAVIOR    = presentationrate_hz * 12.0;        % post-blank period: 4 seconds in number of presentation frames
-    exp.run.total_run_dur_MRI          = presentationrate_hz * 387.2;       % TOTAL RUN DUR = 387.2 s or 242 EPI volumes (1.6 s TR) or 23232 time frames
+    exp.run.total_run_dur_MRI          = presentationrate_hz * 376;         % TOTAL RUN DUR = 376 s or 235 EPI volumes (1.6 s TR) or 22,560 time frames
     assert(isintnearzero(exp.run.total_run_dur_MRI/exp.TR));                % ensure MRI run duration results in an integer nr of TRs
 
    
@@ -596,9 +596,9 @@ else
     exp.nr_unique_trials_per_crossing(:,[6:7]) = (exp.nr_unique_trials_per_crossing(:,[6:7]).* [1/3, 1/3, 1/2, 1/2, 1/2]'); % ltm/img crossings have special core images only (1/3 or 1/2 nr of core), but x2.
     exp.nr_trials_per_block = exp.crossings.* cat(2,repmat(exp.block.n_trials_single_epoch,1,4),repmat(exp.block.n_trials_double_epoch,1,3),repmat(exp.block.n_trials_single_epoch,1,3));
     
-    ses_type_1_trials = ((sum(exp.session.deep.ses_blocks(:,:,:,1),3) + sum(exp.session.wide.ses_blocks(:,:,:,1),3)) .* (exp.nr_trials_per_block));
-    ses_type_2_trials = ((sum(exp.session.deep.ses_blocks(:,:,:,2),3) + sum(exp.session.wide.ses_blocks(:,:,:,2),3)) .* (exp.nr_trials_per_block));
-    exp.n_unique_trial_repeats_mri = ceil((ses_type_1_trials + ses_type_2_trials) ./  exp.nr_unique_trials_per_crossing) ;
+    ses_type_1_trials = ((sum(exp.session.mri.deep.ses_blocks(:,:,:,1),3) + sum(exp.session.mri.wide.ses_blocks(:,:,:,1),3)) .* (exp.nr_trials_per_block));
+    ses_type_2_trials = ((sum(exp.session.mri.deep.ses_blocks(:,:,:,2),3) + sum(exp.session.mri.wide.ses_blocks(:,:,:,2),3)) .* (exp.nr_trials_per_block));
+    exp.n_unique_trial_repeats_mri = ceil((ses_type_1_trials + ses_type_2_trials) .*  exp.nr_trials_per_block) ./  exp.nr_unique_trials_per_crossing;
    
     exp.n_unique_trial_repeats_behavior = ceil((exp.session.behavior.ses_blocks .*  exp.nr_trials_per_block)  ./  exp.nr_unique_trials_per_crossing);                                 
     
