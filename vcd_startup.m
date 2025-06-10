@@ -56,7 +56,7 @@ else
 end
 
 % Add vcd-stim toolbox
-if ~exist('vcd_rootPath','file')
+if ~exist('vcd_singleRun','file')
     addpath(genpath(vcdcode_dir))
     fprintf('%s\n',vcdcode_dir)
 else
