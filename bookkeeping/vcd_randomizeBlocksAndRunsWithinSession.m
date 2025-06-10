@@ -732,7 +732,8 @@ if params.store_params
     if ~exist(saveDir,'dir'), mkdir(saveDir); end    
     
     fname = sprintf('%scondition_master_%s_%s_%s.mat',[subj_id '_'],params.disp.name, datestr(now,30));
-    fprintf('\n[%s]: Storing shuffled condition master and randomization file here: %s..\n',mfilename, fullfile(saveDir,fname))
+    fprintf('\n[%s]: Storing shuffled condition master and randomization file here:\n',mfilename)
+    fprintf('\t%s', fullfile(saveDir,fname))
     save(fullfile(saveDir,fname),'condition_master_shuffled','condition_master_shuffle_idx','session_block_matrix','session_crossing_matrix','randomization_params');
 end
 
