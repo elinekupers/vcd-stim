@@ -78,8 +78,9 @@ for ses = 1:size(all_sessions,3)
     for st = 1:size(all_sessions,4) % session types
         if ~isnan(session_types(ses,st))
             %% First we check how many repeats of stim-task crossings we want to run within a session
-            fprintf('SESSION %03d, session_type %02d..\n',ses,session_types(ses,st))
-            
+            if params.verbose
+                fprintf('SESSION %03d, session_type %02d..\n',ses,session_types(ses,st))
+            end
             % also keep track of local stim-task block allocation
             stimtask_tracker_local = ones(length(params.exp.stimclassnames), length(params.exp.taskclassnames));
             
@@ -142,13 +143,14 @@ for ses = 1:size(all_sessions,3)
                                     condition_master.crossing_name(idx) = {sprintf('%s-%s',params.exp.taskclassnames{tc}, params.exp.stimclassnames{sc})};
                                     stim_class_tmp_name = stim_class_abbr{sc};
                                 end
-                                if ii == 1
-                                    fprintf('\n %s   \t: %d block(s)\n',cell2mat(unique(condition_master.crossing_name(find(idx)))),n_blocks)
+                                if params.verbose
+                                    if ii == 1
+                                        fprintf('\n %s   \t: %3.1f block(s)\n',cell2mat(unique(condition_master.crossing_name(find(idx)))),n_blocks)
+                                    end
+                                    fprintf(' %s   \t: Found %d trials, total stim-task trials in condition master = %d, %d have already been allocated\n', ...
+                                        cell2mat(unique(condition_master.crossing_name(find(idx)))), sum(idx), length(condition_master.stim_class_unique_block_nr( (condition_master.stim_class==choose(strcmp(stim_class_tmp_name,'ALL'),99,sc)) & (condition_master.task_class==tc))), ...
+                                        length(condition_master.stim_class_unique_block_nr(~isnan(condition_master.session_nr) & (condition_master.stim_class==choose(strcmp(stim_class_tmp_name,'ALL'),99,sc)) & (condition_master.task_class==tc))));
                                 end
-                                fprintf(' %s   \t: Found %d trials, total stim-task trials in condition master = %d, %d have already been allocated\n', ...
-                                    cell2mat(unique(condition_master.crossing_name(find(idx)))), sum(idx), length(condition_master.stim_class_unique_block_nr( (condition_master.stim_class==choose(strcmp(stim_class_tmp_name,'ALL'),99,sc)) & (condition_master.task_class==tc))), ...
-                                    length(condition_master.stim_class_unique_block_nr(~isnan(condition_master.session_nr) & (condition_master.stim_class==choose(strcmp(stim_class_tmp_name,'ALL'),99,sc)) & (condition_master.task_class==tc))));
-
                                 sub_idx   = find(idx);
                                 nr_trials = length(sub_idx);
                                 
@@ -400,9 +402,9 @@ for ses = 1:size(all_sessions,3)
                
             end
             
-            
-            fprintf('\nTOTAL MINIBLOCKS: %d for SESSION %03d, session_type %02d\n',bb, ses,session_types(ses,st))
-
+            if params.verbose
+                fprintf('\nTOTAL MINIBLOCKS: %d for SESSION %03d, session_type %02d\n',bb, ses,session_types(ses,st))
+            end
             % the number of blocks in the table should be equal to the number of
             % tracked stim-task-crossings allocated, as well as the sum vs vector length
             assert(isequal(stimtask_tracker_local-1,block_distr))
