@@ -1,4 +1,4 @@
-function [optimized_IBIs, postblank_to_add] = vcd_optimizeIBIs(run_dur, block_dur, ibis, nr_blocks, prepost_blank)
+function [optimized_IBIs, postblank_to_add] = vcd_optimizeIBIs(run_dur, block_dur, ibis, nr_blocks, prepost_blank, verbose)
 % VCD function to find the best combination of IBIs to allocate between
 % blocks of a given run. 
 %
@@ -20,6 +20,9 @@ function [optimized_IBIs, postblank_to_add] = vcd_optimizeIBIs(run_dur, block_du
 % Example:
 % [optimized_IBIs, preblank_to_add, postblank_to_add] = vcd_optimizeIBIs(300, 42, [5:1:9], 7, 0)
 
+if ~exist('verbose','var') || isempty(verbose)
+    verbose = false;
+end
 
 if numel(block_dur) == nr_blocks
     dur_to_optimize = run_dur - prepost_blank - sum(block_dur);
@@ -31,9 +34,11 @@ max_possible_IBI_dur = max(ibis)*(nr_blocks-1);
 if dur_to_optimize > max_possible_IBI_dur
     postblank_to_add = dur_to_optimize-max_possible_IBI_dur;
     dur_to_optimize  = max_possible_IBI_dur;
-    fprintf('[%s]: **** WARNING START ****\n', mfilename)
-    fprintf('[%s]: IBIs cannot account for the total run duration. Will increase post-blank duration by %d time frames.\n', mfilename,postblank_to_add)
-    fprintf('[%s]: **** WARNING END ****\n', mfilename)
+    if verbose
+        fprintf('[%s]: **** WARNING START ****\n', mfilename)
+        fprintf('[%s]: IBIs cannot account for the total run duration. Will increase post-blank duration by %d time frames.\n', mfilename,postblank_to_add)
+        fprintf('[%s]: **** WARNING END ****\n', mfilename)
+    end
     if postblank_to_add > 3600
         error('[%s]: **** We are adding more than a minute of blank?! That doesn''t seem right.. ****\n', mfilename)
     end
