@@ -196,23 +196,29 @@ else
     % 
     % * DURATION: For the contrast decrement, we implement an temporal
     % contrast modulation function in the shape of step function. The
-    % support of the modulation function is 6 frames [1 1 1 0.7 0.7 0.7],
-    % but the duration of the contrast decrement may be longer, because the
-    % step function is one-directional and we have a variable onset time of
-    % the stepfunction within a stimulus presentation. The earliest onset
-    % time is 9 (=12-3) time frames, such that the step down occurs at 200
-    % ms after stimulus onset (assuming a 60 Hz presentation rate). The latest
-    % onset time is 45 (=48-3) time frames, such that the stimulus onset 
-    % occurs at 800 ms after stimulus onset (assuming a 60 Hz presentation 
-    % rate).
+    % support of the modulation function is 6 frames [1 1 1 0.7 0.7 0.7].
+    % The contrast modulation function is a "one-directional" step
+    % function: once the contrast is changed, it will stay decremented
+    % until the end of the stimulus duration. The onset time of contrast
+    % decrement is variable, and is sampled uniformly between meanchange ±
+    % changeplusminus (500 ± 300 ms) by the function handle "cdsoafun". 
+    % The earliest onset time is the start of the 12th time frame after 
+    % stimulus onset (or 200 ms, assuming a 60 Hz presentation rate). 
+    % The latest onset time is the start of the 48th time frame after
+    % stimulus onset (or 800 ms, assuming a 60 Hz presentation rate).
+    % The output of feval(cdsoafun) refers to the onset of the time frame 
+    % when the contrast is changed from baseline (1) to mn_cd (0.7). In the 
+    % case of our step function, the onset time refers to the third frame 
+    % of the contrast modulation function (t_cmodfun). This means the
+    % stimulus presentation code will ignore the support values = 1;
     % 
     % * MODULATION: How quickly the contrast decrement change occurs is 
     % determined by the % modulation. Current desired modulation is 30% 
     % from the mean luminance. We will only modulate the cued stimulus
     % location for classic stimulus classes.
     stim.cd.t_support_N            = 6;                                     % support of temporal modulatin function in number of time frames (one time frame = 16.67 ms)
-    stim.cd.meanchange             = round(stim.presentationrate_hz * 0.5); % mean onset of temporal modulation function in time frames (200 ms = 12 time frames)  
-    stim.cd.changeplusminus        = (0.3/stim.framedur_s)-1;               % range of onsets: mean ± 100 ms (or 6 time frames))  
+    stim.cd.meanchange             = round(stim.presentationrate_hz * 0.5); % mean onset of temporal modulation function in time frames (500 ms = 30 time frames)  
+    stim.cd.changeplusminus        = round(stim.presentationrate_hz * 0.3); % range of onsets: 500 ± 300 ms (so min = 200 ms, max = 800 ms)  
     stim.cd.min_cd                 = 0.3;                                   % stimulus contrast is reduced by 30% of mean luminance at lowest point of temporal gaussian window (note: this corresponds to subtracting a contrast fraction of 10.^(log10(c)-0.1))
     stim.cd.cdsoafun               = @() round(stim.cd.meanchange + stim.cd.changeplusminus*(2*(rand-.5))); % onset of temporal contrast modulation function 
     
@@ -228,8 +234,8 @@ else
     % flashing a white screen for 1 second.
     % 
     % The distance between the center and 4 left/right/up/down
-    % points are set as [xc,yc] Â± 265 pixels (BOLDscreen) 
-    % or Â± 194 pixels (EIZOFLEXSCAN). This results in dots at the following
+    % points are set as [xc,yc] ± 265 pixels (BOLDscreen) 
+    % or ± 194 pixels (EIZOFLEXSCAN). This results in dots at the following
     % BOLDscreen coordinates in pixels:
     %                  [x3,y3]=[0,375]
     % [x1,y1]=[695,0]  [x0,y0]=[960,640]   [x2,y2]=[1225,0]
@@ -426,7 +432,7 @@ else
                 p.img_sz_pix      = round((p.img_sz_deg * disp_params.ppd)/2)*2; % spatial support of dot image in pixels (BOLDscreen: 88 pixels. EIZOFLEXSCAN: 64 pixels)
                 p.og_res_stim     = p.img_sz_pix;                                % resolution of stored dot stimuli (in pixels)
                 p.dres            = (( (p.img_sz_pix/disp_params.ppd) /disp_params.h_deg * disp_params.h_pix) / p.og_res_stim);  % scale factor to apply
-                p.radius_deg      = 0.5;                                         % desired dot radius in deg
+                p.radius_deg      = 0.25;                                        % desired dot radius in deg
                 p.radius_pix      = round((p.radius_deg * disp_params.ppd)/2)*2; % dot radius in pix
                 p.color           = [255 255 255];                               % white in uint8 RGB
                 p.contrast        = 1;                                           % Michelson [0-1] (fraction)
@@ -728,16 +734,15 @@ else
                 % Add params to struct
                 stim.ns = p;
                 
-                if verbose, fprintf('*** %s: dres (scale factor) = %.4f ***\n',upper(stim_class{ii}),stim.ns.dres); end
+                if verbose, fprintf('*** %s:\t\tscale factor = %.4f ***\n',upper(stim_class{ii}),stim.ns.dres); end
         end
         if verbose
             % Print out stimulus params
-            fprintf('*** %s: Using a stimulus size of %2.2f deg (%3.2f pixels). ***\n', upper(stim_class{ii}), p.img_sz_deg, p.img_sz_pix);
-            fprintf('*** %s: Using a stimulus duration of %d frames (%3.2f seconds), where one frame relates to %d monitor refreshes (%d Hz) ***\n', ...
-                upper(stim_class{ii}), p.duration, p.duration*stim.framedur_s, stim.f2f, disp_params.refresh_hz);
+            fprintf('*** %s:\tstimulus size = %2.2f deg (%3.2f pixels) ***\n', upper(stim_class{ii}), p.img_sz_deg, p.img_sz_pix);
         end
     end
-
+    
+    
     stim.all_core_im_nrs         = sort(cat(2, stim.gabor.unique_im_nrs_core, stim.rdk.unique_im_nrs_core, stim.dot.unique_im_nrs_core, stim.obj.unique_im_nrs_core, stim.ns.unique_im_nrs_core));
     stim.all_specialcore_im_nrs  = sort(cat(2, stim.gabor.unique_im_nrs_specialcore, stim.rdk.unique_im_nrs_specialcore, stim.dot.unique_im_nrs_specialcore, stim.obj.unique_im_nrs_specialcore, stim.ns.unique_im_nrs_specialcore));
     stim.all_wm_test_im_nrs      = sort(cat(2, stim.gabor.unique_im_nrs_wm_test, stim.rdk.unique_im_nrs_wm_test, stim.dot.unique_im_nrs_wm_test, stim.obj.unique_im_nrs_wm_test, stim.ns.unique_im_nrs_wm_test));
@@ -747,6 +752,21 @@ else
     stim.all_test_im_nrs         = sort(cat(2, stim.all_wm_test_im_nrs, stim.all_img_test_im_nrs, stim.all_ltm_lure_im_nrs));
     stim.all_im_nrs              = sort(cat(2, stim.all_core_im_nrs, stim.all_test_im_nrs));
 
+    % Tell the user more info
+    if verbose
+        fprintf('*** ALL STIMULI: Using a stimulus duration of %d frames (%3.2f seconds), where one frame relates to %d monitor refreshes (%d Hz) ***\n', ...
+            p.duration, p.duration*stim.framedur_s, stim.f2f, disp_params.refresh_hz);
+        fprintf('*** Number of stimuli: \n')
+        fprintf('\t %d total (%03d-%03d) \n',length(stim.all_im_nrs),min(stim.all_im_nrs), max(stim.all_im_nrs)) 
+        fprintf('\t %d core (%03d-%03d) \n',length(stim.all_core_im_nrs),min(stim.all_core_im_nrs), max(stim.all_core_im_nrs)) 
+        fprintf('\t %d WM test (%03d-%03d) \n',length(stim.all_wm_test_im_nrs),min(stim.all_wm_test_im_nrs), max(stim.all_wm_test_im_nrs))
+        fprintf('\t %d IMG test (%03d-%03d) \n',length(stim.all_img_test_im_nrs),min(stim.all_img_test_im_nrs), max(stim.all_img_test_im_nrs))
+        fprintf('\t %d LTM novel lures (%03d-%03d) \n',length(stim.all_ltm_lure_im_nrs),min(stim.all_ltm_lure_im_nrs), max(stim.all_ltm_lure_im_nrs))
+        fprintf('\t %d special core\n',length(stim.all_specialcore_im_nrs))
+        fprintf('\t %d LTM pairs \n',length(stim.all_ltm_pairs)) 
+        
+    end
+    
     
     % do some checks
     assert(isequal(1:length(stim.all_core_im_nrs),stim.all_core_im_nrs));
