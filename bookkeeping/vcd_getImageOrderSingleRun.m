@@ -158,8 +158,10 @@ stim_row    = find(ismember(run_table.event_id, [params.exp.block.stim_epoch1_ID
 
 % Loop over all stimulus rows
 if verbose; fprintf('[%s]: Load stimuli for each trial..\n',mfilename); end
-tic;
+tic; 
 for ii = 1:length(stim_row)
+    
+    fprintf('.')
     
     frame_counter = run_table.event_start(stim_row(ii))+1; % t=1 is 0, but we can't use 0 as index
     
