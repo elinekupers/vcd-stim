@@ -162,26 +162,26 @@ vcd_startup; % script will navigate to root of vcd-stim code folder
 
 %% %%%%%%%%%%%%% PARSE INPUTS %%%%%%%%%%%%%
 p = inputParser;
-p.addRequired ('subj_nr'        , @isnumeric); % subject number 
-p.addRequired ('ses_nr'         , @isnumeric); % session number 
-p.addRequired ('ses_type'       , @isnumeric); % session type (1=A or 2=B) 
-p.addRequired ('run_nr'         , @isnumeric); % nun number
-p.addRequired('dispName'        , @(x) any(strcmp(x, {'7TAS_BOLDSCREEN32','KKOFFICE_AOCQ3277','PPROOM_EIZOFLEXSCAN','EKHOME_ASUSVE247'})))
-p.addParameter('wantsynctest'       , true, @islogical);
-p.addParameter('loadparams'         , true, @islogical);
-p.addParameter('storeparams'        , true, @islogical);
-p.addParameter('savestim'           , false, @islogical);
-p.addParameter('loadstimfromrunfile', false, @islogical);
-p.addParameter('offsetpix'          , [0 0], @isnumeric); % [x,y]
-p.addParameter('movieflip'          , [0 0], @isnumeric); % up/down, left/right
-p.addParameter('stimDir'            , fullfile(vcd_rootPath,'workspaces','stimuli'), @ischar); % Where do the stimulus mat files live?
-p.addParameter('instructionsDir'    , fullfile(vcd_rootPath, 'workspaces','stimuli','instruction_images'), @ischar); % Where do the task instruction png files live?
-p.addParameter('savedatadir'        , [], @ischar);
-p.addParameter('subjfilename'       , [], @ischar);
-p.addParameter('wanteyetracking'    , false, @islogical);
-p.addParameter('ptbMaxVBLstd'       , [], @isnumeric);
+p.addRequired ('subj_nr'            , @isnumeric); % subject number 
+p.addRequired ('ses_nr'             , @isnumeric); % session number 
+p.addRequired ('ses_type'           , @isnumeric); % session type (1=A or 2=B) 
+p.addRequired ('run_nr'             , @isnumeric); % nun number
+p.addRequired('dispName'            , @(x) any(strcmp(x, {'7TAS_BOLDSCREEN32','KKOFFICE_AOCQ3277','PPROOM_EIZOFLEXSCAN','EKHOME_ASUSVE247'}))); % display name
+p.addParameter('wantsynctest'       , true    , @islogical);
+p.addParameter('loadparams'         , true    , @islogical);
+p.addParameter('storeparams'        , true    , @islogical);
+p.addParameter('savestim'           , false   , @islogical);
+p.addParameter('loadstimfromrunfile', false   , @islogical);
+p.addParameter('offsetpix'          , [0 0]   , @isnumeric); % [x,y]
+p.addParameter('movieflip'          , [0 0]   , @isnumeric); % up/down, left/right
+p.addParameter('savedatadir'        , ''      , @ischar);
+p.addParameter('subjfilename'       , ''      , @ischar);
+p.addParameter('wanteyetracking'    , false   , @islogical);
+p.addParameter('ptbMaxVBLstd'       , []      , @isnumeric);
 p.addParameter('all_images'         , struct(), @isstruct);
-p.addParameter('randomization_file' , [], @ischar);
+p.addParameter('randomization_file' , ''      , @ischar);
+p.addParameter('stimDir'            , fullfile(vcd_rootPath,'workspaces','stimuli'), @ischar); % Where do the stimulus mat files live?
+p.addParameter('instructionsDir'    , fullfile(vcd_rootPath,'workspaces','stimuli','instruction_images'), @ischar); % Where do the task instruction png files live?
 
 % Parse inputs
 p.parse(subj_nr, ses_nr, ses_type, run_nr, dispName, varargin{:});
