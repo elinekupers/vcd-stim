@@ -186,7 +186,10 @@ if ~exist('time_table_master','var')
         else
             d = dir(fullfile(vcd_rootPath,'workspaces','info', sprintf('condition_master*%s*.mat', dispName)));
             a1 = load(fullfile(d(end).folder,d(end).name),'condition_master');
-            saveDir = fullfile(vcd_rootPath,'data',sprintf('vcd_subj%03d',params.subj_nr));
+            
+            randfile_savedir = strsplit(params.savedir,'_ses');
+            params.randfile_savedir = randfile_savedir{1};
+            clear randfile_savedir;
             
             % make randomization file!
             [~,~, ...
@@ -196,7 +199,7 @@ if ~exist('time_table_master','var')
                 'store_params',true, ...
                 'condition_master',a1.condition_master,...
                 'session_env',params.env_type, ...
-                'saveDir',saveDir, ...
+                'saveDir',params.randfile_savedir, ...
                 'subj_id',sprintf('vcd_subj%03d',params.subj_nr));
             
             % clear up
