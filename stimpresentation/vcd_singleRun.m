@@ -487,7 +487,8 @@ clear rects_shortlist centers_shortlist apsize_shortlist
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%% TASK INSTRUCTIONS %%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 introscript.im   = all_images.instr(:,:,:,1);
-introscript.rect = CenterRectOnPoint([0 0 size(introscript.im,1) size(introscript.im,2)], size(introscript.im,1) + params.stim.xc, size(introscript.im,2) + params.stim.yc);
+introscript.rect = CenterRectOnPoint([0 0 size(introscript.im,1) size(introscript.im,2)], ...
+                    params.stim.xc, params.stim.yc);
 
 % Find the crossing_nrs for each stimulus block
 taskIDs   = unique(run_table.crossing_nr);
@@ -503,7 +504,7 @@ taskscript.rect = cell(1,length(taskIDs));
 for nn = 1:length(taskIDs)
     % load in instruction image
     taskscript.im{nn}   = all_images.instr(:,:,:,taskIDs(nn)+1);  % +1 because introtext is first image
-    taskscript.rect{nn} = CenterRectOnPoint([0 0 size(taskscript.im{nn},1) size(taskscript.im{nn},2)], size(taskscript.im{nn},1) + params.stim.xc, size(taskscript.im{nn},2) + params.stim.yc);
+    taskscript.rect{nn} = CenterRectOnPoint([0 0 size(taskscript.im{nn},1) size(taskscript.im{nn},2)], params.stim.xc, params.stim.yc);
     
     % Check we got the right file
     taskName = strrep(taskNames{nn},'-','_');

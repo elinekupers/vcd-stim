@@ -92,6 +92,7 @@ fprintf('');
 %%%%%%%%%%%%%%%%%%%%%%%%%% CREATE TEXTURES  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+
 % Create fixation textures prior to exp onset (as we need them throughout the experiment)
 % We make fixation dot textures for each luminance value and rim thickness.
 fix_texture.thin_full   = cell(1,size(fix.fix_thin_full,2));
@@ -221,7 +222,9 @@ for nn = 1:size(run_frames.frame_event_nr,1)
     end
 end
 
-
+% Use thin rim fixation circle for pre-run instruction screen.
+fix_tex_preruninstr  = fix_texture.thin_full{6}; % mid gray luminance (128)
+fix_rect_preruninstr = fix.fix_thin_rect{1};
 
 
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -339,13 +342,14 @@ end
 %%%%%%%%%%%%%%% LOAD PRE-RUN INSTRUCTION SCREEN %%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+
 % Draw background (gray screen) 
 Screen('FillRect',win,params.stim.bckgrnd_grayval,rect); % Previously: Screen('DrawTexture',win, bckrgound_texture,[], bckground_rect,[], 0, 1, 255*ones(1,3));
 
 % Make and draw pre-run intructions from png file + fixation circle
 intro_tex  = Screen('MakeTexture', win, introscript.im);
 Screen('DrawTexture',win,intro_tex,[], introscript.rect, 0, [], 1, 255*ones(1,3)); % draw intro text
-Screen('DrawTexture',win,fix_tex(1),[], fix_rect(1), 0, [], 1, 255*ones(1,3)); % draw thin fix circle
+Screen('DrawTexture',win,fix_preruninstr,[], fix_rect_preruninstr, 0, [], 1, 255*ones(1,3)); % draw thin fix circle
 
 % Show the subject the intro screen (pre-trigger)
 Screen('Flip',win);
@@ -613,8 +617,6 @@ dur = (timeframes(end)-timeframes(1)) * (length(timeframes)/(length(timeframes)-
 fprintf('projected total run duration: %.10f\n',dur);
 fprintf('frames per second: %.10f\n',length(timeframes)/dur);
 
-% prepare output
-digitrecord = {digitrecord digitframe digitpolarity};
 
 % Add button presses and monitor timing to data struct
 data = struct();
@@ -629,7 +631,6 @@ data.timing.starttime       = starttime;
 data.timing.endtime         = dur;
 data.timing.empiricalfps    = length(timeframes)/dur;
 data.timing.frameduration   = frameduration;
-data.digitrecord            = digitrecord;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%% STORING DATA    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
