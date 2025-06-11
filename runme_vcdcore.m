@@ -122,8 +122,8 @@ function [data,all_images] = runme_vcdcore(subj_nr,ses_nr,ses_type,run_nr, dispN
 %                          If the measurement error is larger than the desired monitor refresh rate, psychtoolbox throws an error during the synctest.
 %                          Default: 0.0004 s. Larger standard deviations are more forgiving and less likely for psychtoolbox to throw an error.
 %   [all_images]         : struct with all VCD images, to avoid extra load time.
-%   [randomization_file] : mat-file specifying the time_table_master based on the subject's shuffled condition_master table.
-%                          Default: []. No file means that the runme_vcdcore code will generate a new randomization file on the fly.
+%   [timetable_file]     : mat-file specifying the time_table_master based on the subject's shuffled condition_master table.
+%                          Default: []. No file means that the runme_vcdcore code will generate a new time_table_master file on the fly.
 %
 % OUTPUTS:
 %   data                 : struct with behavioral button presses and monitor
@@ -139,13 +139,13 @@ function [data,all_images] = runme_vcdcore(subj_nr,ses_nr,ses_type,run_nr, dispN
 %  [data,all_images] = runme_vcdcore(1, 1, 1, 1, '7TAS_BOLDSCREEN32'  , 'wantsynctest', false);
 %  [data,all_images] = runme_vcdcore(1, 1, 1, 1, 'KKOFFICE_AOCQ3277'  , 'wantsynctest', true);
 %  [data,all_images] = runme_vcdcore(1, 1, 1, 1, 'EKHOME_ASUSVE247'   , 'wantsynctest', false);
-%  [data,all_images] = runme_vcdcore(1, 1, 1, 1, 'PPROOM_EIZOFLEXSCAN', 'randomization_file',[])
-%  [data,all_images] = runme_vcdcore(1, 1, 1, 1, 'PPROOM_EIZOFLEXSCAN','randomization_file', fullfile(vcd_rootPath,'data','BEHAVIOR','vcd_subj000','vcd_subj000_time_table_master_PPROOM_EIZOFLEXSCAN_20250610T110319.mat'))
+%  [data,all_images] = runme_vcdcore(1, 1, 1, 1, 'PPROOM_EIZOFLEXSCAN', 'timetable_file',[])
+%  [data,all_images] = runme_vcdcore(1, 1, 1, 1, 'PPROOM_EIZOFLEXSCAN','timetable_file', fullfile(vcd_rootPath,'data','BEHAVIOR','vcd_subj000','vcd_subj000_time_table_master_PPROOM_EIZOFLEXSCAN_20250610T110319.mat'))
 
 % DEPENDENCIES:
 %  * Psychtoolbox-3 (https://github.com/Psychtoolbox/Psychtoolbox-3) 
 %       7TAS   : v. 3.0.14 commit ef093cbf296115badddb995fa06452e34c8c7d02 (origin/master). build date Nov 17 19:46:08 2020 +0100
-%       PP room: v. 3.0.14 — build date 0ct 3, 2017
+%       PP room: v. 3.0.14 build date 0ct 3, 2017
 %
 %  * knkutils (https://github.com/cvnlab/knkutils)
 %     commit 27dd66770edcf0ef3adbd73e1892678a275e2383 (origin/master)
@@ -180,7 +180,7 @@ p.addParameter('subjfilename'       , ''      , @ischar);
 p.addParameter('wanteyetracking'    , false   , @islogical);
 p.addParameter('ptbMaxVBLstd'       , 0.0006  , @isnumeric);
 p.addParameter('all_images'         , struct(), @isstruct);
-p.addParameter('randomization_file' , ''      , @ischar);
+p.addParameter('timetable_file' , ''      , @ischar);
 p.addParameter('stimDir'            , fullfile(vcd_rootPath,'workspaces','stimuli'), @ischar); % Where do the stimulus mat files live?
 p.addParameter('instructionsDir'    , fullfile(vcd_rootPath,'workspaces','stimuli','instruction_images'), @ischar); % Where do the task instruction png files live?
 
@@ -268,10 +268,10 @@ fprintf('[%s]: Running VCD core %s experiment: subj_nr %03d - session %02d %s - 
     mfilename, env_type, subj_nr,ses_nr,choose(ses_type==1,'A','B'),run_nr)
 fprintf('[%s]: %s eyetracking \n', mfilename, choose(wanteyetracking,'YES','NO'))
 fprintf('[%s]: Running experiment with images optimized for %s\n', mfilename, dispName)
-if isempty(randomization_file)
+if isempty(timetable_file)
     fprintf('[%s]: Subject''s randomization file was NOT specified. Will create one on the fly. \n', mfilename)
 else
-    fprintf('[%s]: Will load subject''s randomization file: %s \n', mfilename, randomization_file)
+    fprintf('[%s]: Will load subject''s randomization file: %s \n', mfilename, timetable_file)
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -294,6 +294,6 @@ end
     'savestim',        savestim, ...
     'loadstimfromrunfile', loadstimfromrunfile, ...
     'ptbMaxVBLstd',    ptbMaxVBLstd, ...
-    'randomization_file', randomization_file, ...
+    'timetable_file', timetable_file, ...
     'all_images',      all_images); 
 
