@@ -342,13 +342,16 @@ end
 % Draw background (gray screen) 
 Screen('FillRect',win,params.stim.bckgrnd_grayval,rect); % Previously: Screen('DrawTexture',win, bckrgound_texture,[], bckground_rect,[], 0, 1, 255*ones(1,3));
 
-% Get pre-run intructions from png file
+% Make and draw pre-run intructions from png file + fixation circle
 intro_tex  = Screen('MakeTexture', win, introscript.im);
-Screen('DrawTexture',win,intro_tex,[], introscript.rect, 0, [], 1, 255*ones(1,3));
-Screen('Close',intro_tex);
+Screen('DrawTexture',win,intro_tex,[], introscript.rect, 0, [], 1, 255*ones(1,3)); % draw intro text
+Screen('DrawTexture',win,fix_tex(1),[], fix_rect(1), 0, [], 1, 255*ones(1,3)); % draw thin fix circle
 
 % Show the subject the intro screen (pre-trigger)
 Screen('Flip',win);
+
+% Close intro texture
+Screen('Close',intro_tex);
 
 fprintf('Instructions are on screen, waiting for trigger...\n');
 
@@ -584,7 +587,7 @@ if params.wanteyetracking
         else
             fprintf('Data file ''%s'' can be found in ''%s''\n', params.eyelinkfile, pwd);
         end
-        Eyelink('ShutDown'); % Here "ShutDown" means close the TCP/IP link, not actually shutting down the OS on the eyelink host machine
+        Eyelink('ShutDown'); % Here "ShutDown" means close the TCP/IP link, not actually shutting down the OS of the eyelink host machine
         
     end
 end
@@ -669,7 +672,7 @@ if params.wanteyetracking
 end
 
 % Let the user decide when to end the experiment
-fprintf('PRESS SPACE BAR TO END RUN.\n');
+fprintf(' *** PRESS SPACE BAR TO END RUN. *** \n');
 while 1
     [~,keyCode,~] = KbWait(deviceNr,2); % deviceNr = -3; KbWait outputs are secs,keyCode,deltaSecs
     kn = KbName(keyCode);
