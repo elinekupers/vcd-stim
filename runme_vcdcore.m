@@ -141,7 +141,9 @@ function [data,all_images] = runme_vcdcore(subj_nr,ses_nr,ses_type,run_nr, dispN
 %  [data,all_images] = runme_vcdcore(1, 1, 1, 1, 'EKHOME_ASUSVE247'   , 'wantsynctest', false);
 %  [data,all_images] = runme_vcdcore(1, 1, 1, 1, 'PPROOM_EIZOFLEXSCAN', 'timetable_file',[])
 %  [data,all_images] = runme_vcdcore(1, 1, 1, 1, 'PPROOM_EIZOFLEXSCAN','timetable_file', fullfile(vcd_rootPath,'data','BEHAVIOR','vcd_subj000','vcd_subj000_time_table_master_PPROOM_EIZOFLEXSCAN_20250610T110319.mat'))
-
+%  [data,all_images] = runme_vcdcore(1, 1, 1, 2, 'PPROOM_EIZOFLEXSCAN','timetable_file', fullfile(vcd_rootPath,'data','BEHAVIOR','vcd_subj001','vcd_subj001_time_table_master_PPROOM_EIZOFLEXSCAN_20250611T170541.mat'), 'all_images', all_images)
+% 
+%
 % DEPENDENCIES:
 %  * Psychtoolbox-3 (https://github.com/Psychtoolbox/Psychtoolbox-3) 
 %       7TAS   : v. 3.0.14 commit ef093cbf296115badddb995fa06452e34c8c7d02 (origin/master). build date Nov 17 19:46:08 2020 +0100
@@ -239,7 +241,7 @@ end
 if ~exist(savedatadir, 'dir'); mkdir(savedatadir); end
 
 
-if isempty(timetable_file)
+if isempty(timetable_file) %#ok<NODEF>
    load_existing_timetable = input('No timetable_file was specified, do you want to regenerate the file?  1: YES   2: NO \n');
 
    if load_existing_timetable == 1
@@ -290,9 +292,10 @@ fprintf('[%s]: Running VCD core %s experiment: subj_nr %03d - session %02d %s - 
 fprintf('[%s]: %s eyetracking \n', mfilename, choose(wanteyetracking,'YES','NO'))
 fprintf('[%s]: Running experiment with images optimized for %s\n', mfilename, dispName)
 if isempty(timetable_file)
-    fprintf('[%s]: Subject''s randomization file was NOT specified. Will create one on the fly. \n', mfilename)
+    fprintf('[%s]: Subject''s time table file was NOT specified. Will create one on the fly. \n', mfilename)
 else
-    fprintf('[%s]: Will load subject''s randomization file: %s \n', mfilename, timetable_file)
+    fprintf('[%s]: Will load subject''s time table file: %s \n', mfilename)
+    fprintf('[%s]: \t %s\n',mfilename, timetable_file)
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -316,5 +319,5 @@ end
     'loadstimfromrunfile', loadstimfromrunfile, ...
     'ptbMaxVBLstd',    ptbMaxVBLstd, ...
     'timetable_file', timetable_file, ...
-    'all_images',      all_images); 
+    'all_images',      all_images);  %#ok<NODEF>
 
