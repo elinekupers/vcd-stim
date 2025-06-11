@@ -4,11 +4,34 @@ function disp = vcd_getDisplayParams(dispname, varargin)
 %     disp = vcd_getDisplayParams(dispname, ['ppd_eccen_range_deg', <eccen>])
 %
 % INPUTS:
-% * dispname
-% * [ppd_eccen_range_deg]
+% * dispname  : (char) display name to load display params. Choose from: 
+%                 '7TAS_BOLDSCREEN32'   : 27-inch iMac + 32-inch BOLDSCREEN LCD monitor @ CMRR's 7T MRI operator room 
+%                                         - iMac (Retina 5K, 27-inch, 2017) 
+%                                         - macOS High Sierra, Version 10.13.6
+%                                         - Processor 4.2 GHz Intel Core i7
+%                                         - Memory 16 GB 2400 MHz DDR4
+%                                         - Graphics Radeon Pro 575 4096 MB
+%                                         - Eyelink 1000 eyetracking system
+%                 'PPROOM_EIZOFLEXSCAN' : Mac Pro tower + 22-inch EIZO FlexScan SX2462W LCD monitor @ CMRR's psychophysics lab (room 1-149B)
+%                                         - Mac Pro (??? VERSION)
+%                                         - macOS El Capitan, Version 10.11.6
+%                                         - NVIDIA GeForce GT650M graphics card with 8 bit DVI output
+%                                         - Cambridge Research Systems Bits# Stimulus Processor
+%                                         - Eyelink 1000 eyetracking system
+%                 'KKOFFICE_AOCQ3277'   : For debugging purposes only. 
+%                                         Used as external monitor + EK's old MacbookPro laptop (macOS Mojave, build late 2013)            
+%                 'EKHOME_ASUSVE247'    : For debugging purposes only. 
+%                                         Used as external monitor + EK's old MacbookPro laptop (macOS Mojave, build late 2013) 
+%                 'CCNYU_VIEWPIXX3D'    : A 23.5-inch ViewPixx display @ psychophysics room of Clay Curtis' lab @ NYU
+%                                         - 24-inch iMac, M1, 2021. 
+%
+% * [ppd_eccen_range_deg]    : (double) eccentricity range in degrees visual
+%                               angle to calculate the pixels per degree.
+%                               Default: 4 degrees.
 %
 % OUTPUTS:
-% * disp          : (struct) display parameters with the following fields:
+% * disp        : (struct) display parameters with the following fields:
+%                               
 %   disp.name                : (str) name of the display
 %   disp.ppd_eccen_range_deg : (double) What extent of visual angle
 %                               do we want to calculate the pixel per 
@@ -34,11 +57,12 @@ function disp = vcd_getDisplayParams(dispname, varargin)
 %                               pton.m to set linear color look up table.
 %   disp.fontsize            : (double) fontsize of text (in points???).
 %
-% We follow PTB coordinate convention where [0,0] is the outer left and top 
-% edge of the first pixel in the upper left part of the screen. This means
-% that [1,1] is the outer right and lower edge of the first pixel. 
-% Screen rect will be [0 0 w_pix h_pix], where xc and yc are in between two
-% pixels. For BOLD screen, this is in between pixel 960 and 961. 
+% We follow Psychtoolbox-3 (PTB) coordinate convention where [0,0] is the
+% outer left and top edge of the first pixel in the upper left part of the
+% screen. This means that [1,1] is the outer right and lower edge of the
+% first pixel. Screen rect will be [0 0 w_pix h_pix], where xc and yc are
+% in between two pixels. For BOLD screen, this is in between pixel 960 and
+% 961.
 %
 % Therefore, we work with even sized number of pixels (this is enforced in
 % vcd_getStimulusParams.m) and try to get the center on the stimulus
@@ -62,12 +86,13 @@ function disp = vcd_getDisplayParams(dispname, varargin)
 %      ppd = numpixels / eccen_deg;
 %   For example, for the pp room: ppd = numpixels / 4;
 %
+% Written by E Kupers @ UMN 2024/11, updated 2025/06
 
 %% Parse inputs
 
 p = inputParser;
 % MANDATORY INPUTS
-p.addRequired('dispname', @(x) ismember(x,{'7TAS_BOLDSCREEN32','KKOFFICE_AOCQ3277','PPROOM_EIZOFLEXSCAN','EKHOME_ASUSVE247'})) % display name to get the right display params. Choose from: 7TAS_BOLDSCREEN32, KKOFFICE_AOCQ3277, PPROOM_EIZOFLEXSCAN, 'EKHOME_ASUSVE247'
+p.addRequired('dispname', @(x) ismember(x,{'7TAS_BOLDSCREEN32','KKOFFICE_AOCQ3277','PPROOM_EIZOFLEXSCAN','EKHOME_ASUSVE247','CCNYU_VIEWPIXX3D'}))
 % OPTIONAL INPUTS
 p.addParameter('ppd_eccen_range_deg' , 4, @isnumeric); % (degrees). 
 
@@ -84,13 +109,14 @@ clear rename_me ff p
 %% Create display parameter struct
 disp      = struct(); 
 
-% Add display name
+% Add display name & eccentricity range to calculate pixels per degree
 disp.name                = dispname;
-disp.ppd_eccen_range_deg = 4;  % degrees
+disp.ppd_eccen_range_deg = ppd_eccen_range_deg;  % degrees
 
 % Switch parameters according to input display name
 switch dispname
-    case '7TAS_BOLDSCREEN32'                    % MATLAB version 2016b, psychtoolbox version 3.0.14 December 30th 2016
+    case '7TAS_BOLDSCREEN32'                    
+        % 21-inch iMac MATLAB version 2016b and R2017b, psychtoolbox version 3.0.14 December 30th 2016
         disp.w_cm        = 69.84;               % cm wide; note: beyond what subject can actaully see.
         disp.h_cm        = 39.29;               % cm high;
         disp.dist_cm     = 176+2+5.5;           % 176 cm from the mirror to glass of BOLDScreen,
@@ -105,7 +131,8 @@ switch dispname
         disp.clut        = 0;                   % linear clut
         disp.fontsize    = 25;                  % fontsize of text
     
-    case 'PPROOM_EIZOFLEXSCAN'                  % MATLAB version 2016b, psychtoolbox version 3.0.14 December 30th 2014
+    case 'PPROOM_EIZOFLEXSCAN'                  
+        % Mac tower has MATLAB version 2016b, psychtoolbox version 3.0.14 December 30th 2014
         disp.w_cm        = 52;                  % width in cm
         disp.h_cm        = 32.5;                % height in cm
         disp.dist_cm     = 99.0;                % eye to screen viewing distance in cm
@@ -119,7 +146,9 @@ switch dispname
         disp.clut        = 0;                   % linear clut: amazingly, no lookup table needed!! when using user3 - gamma 2.2
         disp.fontsize    = 18;                  % fontsize of text
         
-    case 'KKOFFICE_AOCQ3277'                    % EK stimlaptop uses MATLAB version 2018b, psychtoolbox version ??? Nov 17 2020 (git commit ef093cbf296115badddb995fa06452e34c8c7d02)
+    case 'KKOFFICE_AOCQ3277'                    
+        % Used as external monitor + EK stimulus laptop
+        % MATLAB version 2018b, psychtoolbox version ??? Nov 17 2020 (git commit ef093cbf296115badddb995fa06452e34c8c7d02)
         disp.w_cm        = 71;                  % cm wide; 
         disp.h_cm        = 40;                  % cm high;
         disp.dist_cm     = 100;                 % from eye to display.
@@ -134,7 +163,9 @@ switch dispname
         disp.clut        = 0;                   % linear clut
         disp.fontsize    = 12;                  % fontsize of text
         
-     case 'EKHOME_ASUSVE247'                    % EK stimlaptop uses MATLAB version 2018b, psychtoolbox version ??? Nov 17 2020 (git commit ef093cbf296115badddb995fa06452e34c8c7d02)
+     case 'EKHOME_ASUSVE247'                    
+        % Used as external monitor + EK stimulus laptop
+        % MATLAB version 2018b, Psychtoolbox-3 version ??? Nov 17 2020 (git commit ef093cbf296115badddb995fa06452e34c8c7d02)
         disp.w_cm        = 71;                  % cm wide; 
         disp.h_cm        = 40;                  % cm high;
         disp.dist_cm     = 100;                 % from eye to display.
@@ -147,6 +178,22 @@ switch dispname
         disp.xc          = disp.w_pix/2;        % x-center relative to upper left corner (pixels)
         disp.yc          = disp.h_pix/2;        % y-center relative to upper left corner (pixels)       
         disp.clut        = 0;                   % linear clut
+        disp.fontsize    = 12;                  % fontsize of text
+        
+    case 'CCNYU_VIEWPIXX3D'                     
+        % A 23.5-inch ViewPixx display + iMac, 24in, M1, 2021. Psychtoolbox-3 version 3.0.19 on MATLAB 9.13
+        disp.w_cm        = 30.1625;             % cm wide; (11.875in)
+        disp.h_cm        = 53.34;               % cm high; (21 in)
+        disp.dist_cm     = 100;                 % from eye to display.
+        disp.h_pix       = 1080;                % height in pixels 
+        disp.w_pix       = 1920;                % width in pixels
+        disp.h_deg       = pix2deg(disp.h_pix,disp.h_pix,disp.h_cm,disp.dist_cm); % in degrees 
+        disp.w_deg       = pix2deg(disp.w_pix,disp.w_pix,disp.w_cm,disp.dist_cm); % in degrees
+        disp.refresh_hz  = 120;                 % desired (native) refreshrate of monitor in Hz
+        disp.ppd         = disp.h_pix/disp.h_deg; % pixels per degree
+        disp.xc          = disp.w_pix/2;        % x-center relative to upper left corner (pixels)
+        disp.yc          = disp.h_pix/2;        % y-center relative to upper left corner (pixels)       
+        disp.clut        = 0;                   % assume linear clut (Check!!)
         disp.fontsize    = 12;                  % fontsize of text
 end
 
