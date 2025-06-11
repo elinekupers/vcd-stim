@@ -211,8 +211,6 @@ else
         d = dir(fullfile(vcd_rootPath,'workspaces','info', sprintf('condition_master*%s*.mat', dispName)));
         a1 = load(fullfile(d(end).folder,d(end).name),'condition_master');
         
-
-        
         % make randomization file!
         [~,~, ...
             time_table_master, ...
@@ -245,6 +243,11 @@ run_table = time_table_master(time_table_master.session_nr==params.ses_nr & ...
     time_table_master.run_nr==params.run_nr,:);
 
 clear time_table_master all_run_frames
+
+% Tell the user how many frames we expect for this run
+fprintf(' *** Expected duration of this run is:\n')
+fprintf(' %d time frames (%d Hz) \n',size(run_frames,1), params.stim.presentationrate_hz);
+fprintf(' Time: %03d minutes and %02d seconds %d \n',floor(size(run_frames,1)/3600),rem(size(run_frames,1),3600)/60);
 
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%% LOAD RUN STIMULI    %%%%%%%%%%%%%%%%%%%%%%%%%%%
