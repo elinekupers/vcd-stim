@@ -379,7 +379,6 @@ end
 
 % Draw background (gray screen) + thin rim fixation circle
 Screen('FillRect',win,params.stim.bckgrnd_grayval,rect); 
-Screen('DrawTexture',win,intro_tex,[], introscript.rect, 0, [], 1, 255*ones(1,3)); % draw intro text
 Screen('DrawTexture',win,fix_tex_preruninstr,[], fix_rect_preruninstr, 0, [], 1, 255*ones(1,3)); % draw thin fix circle
 Screen('Flip',win);
 

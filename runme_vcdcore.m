@@ -180,7 +180,7 @@ p.addParameter('subjfilename'       , ''      , @ischar);
 p.addParameter('wanteyetracking'    , false   , @islogical);
 p.addParameter('ptbMaxVBLstd'       , 0.0006  , @isnumeric);
 p.addParameter('all_images'         , struct(), @isstruct);
-p.addParameter('timetable_file' , ''      , @ischar);
+p.addParameter('timetable_file'     , ''      , @ischar);
 p.addParameter('stimDir'            , fullfile(vcd_rootPath,'workspaces','stimuli'), @ischar); % Where do the stimulus mat files live?
 p.addParameter('instructionsDir'    , fullfile(vcd_rootPath,'workspaces','stimuli','instruction_images'), @ischar); % Where do the task instruction png files live?
 
@@ -195,6 +195,7 @@ end
 clear rename_me ff p
 
 %% Check environment and input parameters:
+       
 % Are we running the behavioral or MRI experiment? Or are we testing on an office monitor?
 if isnumeric(dispName)
     if isequal(dispName,1)
@@ -237,10 +238,30 @@ if isempty(savedatadir) %#ok<NODEF>
 end
 if ~exist(savedatadir, 'dir'); mkdir(savedatadir); end
 
-% We will not spit out tempfiles to avoid overcrowding command window 
-% tempfiles = matchfiles(fullfile(savedatadir,sprintf('*_vcd_subj%03d_ses%02d_%s_run%02d.mat',subj_nr, ses_nr, choose(ses_type==1,'A','B'), run_nr)));
-% fprintf('\nIt appears you have completed the following runs already:\n');
-% tempfiles %#ok<NOPRT>
+
+if isempty(timetable_file)
+   load_existing_timetable = input('No timetable_file was specified, do you want to regenerate the file?  1: YES   2: NO \n');
+
+   if load_existing_timetable == 1
+       fprintf('OK, will regenerate new time table for this subject''s session and run.\n')
+   elseif load_existing_timetable == 2
+       tmp_timetable_dir = fullfile(vcd_rootPath,'data',env_type, sprintf('vcd_subj%03d',subj_nr));
+       tempfiles = matchfiles(fullfile(tmp_timetable_dir,sprintf('vcd_subj%03d_time_table_master_%s*.mat',subj_nr, dispName)));
+       tempfiles_short = strrep(tempfiles, tmp_timetable_dir, '.');
+       fprintf('\nIt appears you have the following time tables already:\n');
+
+       for mm = 1:length(tempfiles_short)
+            fprintf('  %d: %s\n', mm, tempfiles_short{mm})
+       end
+       
+       timetable_idx = input('Type nr of time table file you want to use: \n');
+
+       timetable_file = tempfiles{timetable_idx}; 
+       fprintf('\nWill use timetable_file = %s\n',timetable_file);
+       clear timetable_idx tempfiles_short tmp_timetable_dir load_existing_timetable
+   end
+
+end
 
 % Where do we store behavioral and eyetracking data?
 ts0 = gettimestring;
