@@ -375,11 +375,11 @@ if isempty(vcd_info) || ~exist('vcd_info','var')
         if verbose
         fprintf('[%s]: Found %d vcd info file(s)\n',mfilename,length(d));
             if length(d) > 1
-                warning('[%s]: Multiple files with the same name exist! Will pick the most recent one', mfilename);
+                fprintf('[%s]: *** WARNING *** Multiple files with the same name exist! Will pick the most recent one', mfilename);
             end
             fprintf('[%s]: Loading exp params .mat file: %s\n', mfilename, d(end).name);
         end
-        vcd_info = load(fullfile(d(end).folder,d(end).name),'time_table_master');
+        vcd_info = load(fullfile(d(end).folder,d(end).name),'condition_master');
     end
 end
 
