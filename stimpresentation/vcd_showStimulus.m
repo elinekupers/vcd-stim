@@ -223,8 +223,8 @@ for nn = 1:size(run_frames.frame_event_nr,1)
 end
 
 % Use thin rim fixation circle for pre-run instruction screen.
-fix_tex_preruninstr  = fix_texture.thin_full{6}; % mid gray luminance (128)
-fix_rect_preruninstr = fix.fix_thin_rect{1};
+fix_tex_preruninstr  = fix_texture.thick_full{6}; % mid gray luminance (128)
+fix_rect_preruninstr = fix.fix_thick_rect{1};
 
 
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -374,6 +374,12 @@ while 1
     end
   end
 end
+
+% Draw background (gray screen) + thin rim fixation circle
+Screen('FillRect',win,params.stim.bckgrnd_grayval,rect); 
+Screen('DrawTexture',win,intro_tex,[], introscript.rect, 0, [], 1, 255*ones(1,3)); % draw intro text
+Screen('DrawTexture',win,fix_tex_preruninstr,[], fix_rect_preruninstr, 0, [], 1, 255*ones(1,3)); % draw thin fix circle
+Screen('Flip',win);
 
 fprintf('Press trigger key to begin the movie. (consider turning off network, energy saver, software updates, psychopy.)\n');
 
