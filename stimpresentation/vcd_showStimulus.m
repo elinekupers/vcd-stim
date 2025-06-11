@@ -43,6 +43,8 @@ detectinput       = true;   % do we want detect the button presses prior to the 
 timekeys          = {};
 frameorder        = 1:size(stim.im,1);
 timeframes        = NaN(1, floor(size(frameorder,2)-1)+1);
+stim_texture      = [];
+stim_textures     = [];
 
 % make tmpdir
 if wantframefiles
@@ -463,12 +465,12 @@ while 1
             if  sides == 1 % Make and draw one stimulus texture
                 stim_texture = Screen('MakeTexture',win, stim.im{run_frames.im_IDs(framecnt,sides),sides});
                 Screen('DrawTexture',win,stim_texture,[], stim.rects{run_frames.im_IDs(framecnt,sides),sides}, 0,[],1, 255*ones(1,3));
-                Screen('Close',stim_texture);
+                Screen('Close',stim_texture); stim_texture = [];
             elseif sides == 2  % Make and draw two stimulus textures
                 stim_textures(1) = Screen('MakeTexture',win, stim.im{run_frames.im_IDs(framecnt,1),1});
                 stim_textures(2) = Screen('MakeTexture',win, stim.im{run_frames.im_IDs(framecnt,2),2});
                 Screen('DrawTextures',win,stim_textures',[], catcell(1,stim.rects(run_frames.im_IDs(framecnt,1),:))', [0;0],[], [1;1], 255*ones(2,3)');
-                Screen('Close',stim_textures);
+                Screen('Close',stim_textures); stim_textures = [];
             end
 
             % Draw fix dot on top
@@ -643,12 +645,20 @@ data.timing.frameduration   = frameduration;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%% STORING DATA    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% clear memory from stuff we don't need
+clear fix_tex fix_rect fix_texture ...
+      task_tex task_rect stim_textures taskscript nn lum_idx ll kn ...
+      intro_tex im_tex im_rect framecolor fix_rect_preruninstr ...
+      fix_tex_preruninstr sides temp
+
 % figure out names of all variables except uint8 images
 vars = whos;
 vars = {vars.name};
-vars = vars(cellfun(@(x) ~ismember(x,{'fix_im','bckground','stim','eye_im' ...
+vars = vars(cellfun(@(x) ~ismember(x,{'fix', ...
+    'stim', 'all_images', ...
   'wantframefiles' 'detectinput' 'forceglitch' 'timekeys' 'mfi' 'glitchcnt' ...
-  'timeframes' 'starttime' 'dur' 'frameduration' 'digitrecord'}),vars)); 
+  'timeframes' 'starttime' 'dur' 'frameduration'}),vars)); 
 
 % Save data (button presses, params, etc)
 save(fullfile(params.savedatadir,params.behaviorfile),vars{:});  % '-v7.3'
