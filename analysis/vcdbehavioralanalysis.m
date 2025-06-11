@@ -369,7 +369,7 @@ end
 % - the next event also starts at t=60.
 
 % check that the total duration of all events + one extra frame at the end is exactly the number of time frames
-assert((sum(a1.run_table.event_dur)+1)==length(timeframes));
+assert((sum(a1.run_table.event_dur))==length(timeframes));
 
 % check that the timing field in run_frames is exactly 0:X
 assert(isequal(a1.run_frames.timing(:),(1:length(a1.run_frames.timing))'-1));
