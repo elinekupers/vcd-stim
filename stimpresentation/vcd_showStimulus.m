@@ -117,7 +117,7 @@ framecolor = fix_tex;
 task_tex   = fix_tex;
 task_rect  = fix_tex;
 
-unique_crossingIDs = unique(run_frames.crossingIDs, 'stable');
+unique_crossingIDs = unique(run_frames.crossingIDs);
 unique_crossingIDs(ismember(unique_crossingIDs,[999,0])) = [];
 
 for nn = 1:size(run_frames.frame_event_nr,1)
@@ -349,7 +349,7 @@ Screen('FillRect',win,params.stim.bckgrnd_grayval,rect); % Previously: Screen('D
 % Make and draw pre-run intructions from png file + fixation circle
 intro_tex  = Screen('MakeTexture', win, introscript.im);
 Screen('DrawTexture',win,intro_tex,[], introscript.rect, 0, [], 1, 255*ones(1,3)); % draw intro text
-Screen('DrawTexture',win,fix_preruninstr,[], fix_rect_preruninstr, 0, [], 1, 255*ones(1,3)); % draw thin fix circle
+Screen('DrawTexture',win,fix_tex_preruninstr,[], fix_rect_preruninstr, 0, [], 1, 255*ones(1,3)); % draw thin fix circle
 
 % Show the subject the intro screen (pre-trigger)
 Screen('Flip',win);
