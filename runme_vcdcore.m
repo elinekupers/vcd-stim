@@ -178,7 +178,7 @@ p.addParameter('movieflip'          , [0 0]   , @isnumeric); % up/down, left/rig
 p.addParameter('savedatadir'        , ''      , @ischar);
 p.addParameter('subjfilename'       , ''      , @ischar);
 p.addParameter('wanteyetracking'    , false   , @islogical);
-p.addParameter('ptbMaxVBLstd'       , []      , @isnumeric);
+p.addParameter('ptbMaxVBLstd'       , 0.0006  , @isnumeric);
 p.addParameter('all_images'         , struct(), @isstruct);
 p.addParameter('randomization_file' , ''      , @ischar);
 p.addParameter('stimDir'            , fullfile(vcd_rootPath,'workspaces','stimuli'), @ischar); % Where do the stimulus mat files live?
