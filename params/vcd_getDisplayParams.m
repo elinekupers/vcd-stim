@@ -7,15 +7,17 @@ function disp = vcd_getDisplayParams(dispname, varargin)
 % * dispname  : (char) display name to load display params. Choose from: 
 %                 '7TAS_BOLDSCREEN32'   : 27-inch iMac + 32-inch BOLDSCREEN LCD monitor @ CMRR's 7T MRI operator room 
 %                                         - iMac (Retina 5K, 27-inch, 2017) 
-%                                         - macOS High Sierra, Version 10.13.6
+%                                         - macOSX High Sierra, Version 10.13.6
 %                                         - Processor 4.2 GHz Intel Core i7
 %                                         - Memory 16 GB 2400 MHz DDR4
 %                                         - Graphics Radeon Pro 575 4096 MB
 %                                         - Eyelink 1000 eyetracking system
 %                 'PPROOM_EIZOFLEXSCAN' : Mac Pro tower + 22-inch EIZO FlexScan SX2462W LCD monitor @ CMRR's psychophysics lab (room 1-149B)
-%                                         - Mac Pro (??? VERSION)
-%                                         - macOS El Capitan, Version 10.11.6
-%                                         - NVIDIA GeForce GT650M graphics card with 8 bit DVI output
+%                                         - Mac Pro (late 2013)
+%                                         - macOSX El Capitan, Version 10.11.6
+%                                         - Processor: 3.50 GHz 6-core Intel Xeon E5
+%                                         - Memory: 16 GB 1866 MHz DDR3 ECC
+%                                         - Graphics: AMD FirePrio D500 3072 MB
 %                                         - Cambridge Research Systems Bits# Stimulus Processor
 %                                         - Eyelink 1000 eyetracking system
 %                 'KKOFFICE_AOCQ3277'   : For debugging purposes only. 
