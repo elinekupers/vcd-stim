@@ -502,6 +502,7 @@ taskscript = struct();
 taskscript.im   = cell(1,length(taskIDs));
 taskscript.rect = cell(1,length(taskIDs));
 for nn = 1:length(taskIDs)
+    
     % load in instruction image
     taskscript.im{nn}   = all_images.instr(:,:,:,taskIDs(nn)+1);  % +1 because introtext is first image
     taskscript.rect{nn} = CenterRectOnPoint([0 0 size(taskscript.im{nn},1) size(taskscript.im{nn},2)], params.stim.xc, params.stim.yc);
