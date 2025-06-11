@@ -684,15 +684,14 @@ if nr_reps > 0
 
                     while 1
                         % create shuffled delta vector
-                        shuffle_delta       = NaN(size(conds_single_rep_merged.orient_dir));
-                        delta_vec(conds_single_rep_merged.is_cued(noncatch_trials_idx)==1,1) = shuffle_concat(repelem(params.stim.dot.delta_from_ref, (n_unique_cases/2/n_deltas)),1); % left cued
-                        delta_vec(~(conds_single_rep_merged.is_cued(noncatch_trials_idx)==1),1) = shuffle_concat(repelem(params.stim.dot.delta_from_ref, (n_unique_cases/2/n_deltas)),1); % left uncued
-                        delta_vec(conds_single_rep_merged.is_cued(noncatch_trials_idx)==2,2) = shuffle_concat(repelem(params.stim.dot.delta_from_ref, (n_unique_cases/2/n_deltas)),1); % right cued
-                        delta_vec(~(conds_single_rep_merged.is_cued(noncatch_trials_idx)==2),2) = shuffle_concat(repelem(params.stim.dot.delta_from_ref, (n_unique_cases/2/n_deltas)),1); % right uncued
+                        delta_vec0(conds_single_rep_merged.is_cued(noncatch_trials_idx)==1,1) = shuffle_concat(repelem(params.stim.dot.delta_from_ref, (n_unique_cases/2/n_deltas)),1); % left cued
+                        delta_vec0(~(conds_single_rep_merged.is_cued(noncatch_trials_idx)==1),1) = shuffle_concat(repelem(params.stim.dot.delta_from_ref, (n_unique_cases/2/n_deltas)),1); % left uncued
+                        delta_vec0(conds_single_rep_merged.is_cued(noncatch_trials_idx)==2,2) = shuffle_concat(repelem(params.stim.dot.delta_from_ref, (n_unique_cases/2/n_deltas)),1); % right cued
+                        delta_vec0(~(conds_single_rep_merged.is_cued(noncatch_trials_idx)==2),2) = shuffle_concat(repelem(params.stim.dot.delta_from_ref, (n_unique_cases/2/n_deltas)),1); % right uncued
                         
                         % calculate absolute angle of stim 2 (test stim)
-                        orient_dir2   = conds_single_rep_merged.orient_dir + delta_vec;
-                    
+                        orient_dir2   = conds_single_rep_merged.orient_dir + delta_vec0;
+                        
                         % Ensure that absolute angles of left and right test
                         % stimuli don't overlap (here we use a threshold of
                         % an angle that is more than 20 degrees difference between the two stimuli)
@@ -703,6 +702,8 @@ if nr_reps > 0
                         end
                     end
                     
+                    delta_vec(noncatch_trials_idx,:) = delta_vec0;
+                    
                     % find unique WM test im nr
                     idx_wm      = reshape(params.stim.dot.unique_im_nrs_wm_test,4,[]);
                     [~,idx_l]   = ismember(conds_single_rep_merged.stim_nr_left(noncatch_trials_idx),params.stim.dot.unique_im_nrs_core);
@@ -710,7 +711,7 @@ if nr_reps > 0
                     assert(isequal(length(idx_l),length(idx_r)))
 
                     stim2_im_nr = NaN(size(conds_single_rep_merged,1),2);
-                    [~,shuffle_delta] = ismember(delta_vec,params.stim.dot.delta_from_ref);
+                    [~,shuffle_delta] = ismember(delta_vec0,params.stim.dot.delta_from_ref);
                     non_nan_trials = find(noncatch_trials_idx);
                     clear tmp;
                     for kk = 1:length(idx_l)
@@ -969,13 +970,16 @@ if nr_reps > 0
                     n_deltas            = length(params.stim.obj.delta_from_ref);
                     noncatch_trials_idx = ~isnan(conds_single_rep_merged.orient_dir(:,1));
                     shuffle_delta       = NaN(size(conds_single_rep_merged.orient_dir));
-                    delta_vec(conds_single_rep_merged.is_cued(noncatch_trials_idx)==1,1) = shuffle_concat(repelem(params.stim.obj.delta_from_ref, (n_unique_cases/2/n_deltas)),1); % left cued
-                    delta_vec(~(conds_single_rep_merged.is_cued(noncatch_trials_idx)==1),1) = shuffle_concat(repelem(params.stim.obj.delta_from_ref, (n_unique_cases/2/n_deltas)),1); % left uncued
-                    delta_vec(conds_single_rep_merged.is_cued(noncatch_trials_idx)==2,2) = shuffle_concat(repelem(params.stim.obj.delta_from_ref, (n_unique_cases/2/n_deltas)),1); % right cued
-                    delta_vec(~(conds_single_rep_merged.is_cued(noncatch_trials_idx)==2),2) = shuffle_concat(repelem(params.stim.obj.delta_from_ref, (n_unique_cases/2/n_deltas)),1); % right uncued
-
-                    facing_dir2   = conds_single_rep_merged.orient_dir + delta_vec;
+                    delta_vec0(conds_single_rep_merged.is_cued(noncatch_trials_idx)==1,1) = shuffle_concat(repelem(params.stim.obj.delta_from_ref, (n_unique_cases/2/n_deltas)),1); % left cued
+                    delta_vec0(~(conds_single_rep_merged.is_cued(noncatch_trials_idx)==1),1) = shuffle_concat(repelem(params.stim.obj.delta_from_ref, (n_unique_cases/2/n_deltas)),1); % left uncued
+                    delta_vec0(conds_single_rep_merged.is_cued(noncatch_trials_idx)==2,2) = shuffle_concat(repelem(params.stim.obj.delta_from_ref, (n_unique_cases/2/n_deltas)),1); % right cued
+                    delta_vec0(~(conds_single_rep_merged.is_cued(noncatch_trials_idx)==2),2) = shuffle_concat(repelem(params.stim.obj.delta_from_ref, (n_unique_cases/2/n_deltas)),1); % right uncued
+                    
+                    facing_dir2   = conds_single_rep_merged.orient_dir(noncatch_trials_idx,:) + delta_vec0;
                    
+                    delta_vec = NaN(size(conds_single_rep_merged.orient_dir));
+                    delta_vec(noncatch_trials_idx,:) = delta_vec0; clear delta_vec0;
+                    
                     % find unique WM test im nr
                     idx_wm = reshape(params.stim.obj.unique_im_nrs_wm_test,4,[]);
                     [~,idx_l] = ismember(conds_single_rep_merged.stim_nr_left(noncatch_trials_idx),params.stim.obj.unique_im_nrs_core);
