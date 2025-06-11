@@ -92,7 +92,8 @@ function [data,all_images] = runme_vcdcore(subj_nr,ses_nr,ses_type,run_nr, dispN
 %                          Choose: '7TAS_BOLDSCREEN32'   - BOLD screen at the 7TAS MRI scanner
 %                                  'KKOFFICE_AOSQ3277'   - external monitor in kendrick's CMRR office
 %                                  'EKHOME_ASUSVE247'    - external monitor at Eline's home
-%                                  'PPROOM_EIZOFLEXSCAN' - CMRR's Psychophysics room monitor                      
+%                                  'PPROOM_EIZOFLEXSCAN' - EizoFlexscan monitor @ CMRR's psychophysics room
+%                                  'CCNYU_VIEWPIXX3D'    - ViewPixx monitor in Clay Curtis' psychophysics room                   
 %   [wantsynctest]       : if true, we do the PTB monitor sync test. 
 %                          Default: false
 %   [loadparams]         : if true, load stored parameter values. 

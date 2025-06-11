@@ -315,7 +315,6 @@ f_conditionname = @(x) all(vcd_conditionName2Number(x)~=0);
 
 % General
 p0.addParameter('verbose'               , true, @islogical);  
-% p0.addParameter('displayname'           , '7TAS_BOLDSCREEN32', @(x) any(strcmp(x,{'7TAS_BOLDSCREEN32', 'KKOFFICE_AOCQ3277', 'PPROOM_EIZOFLEXSCAN', 'EKHOME_ASUSVE247'})));                   
 
 % Broad stimulus class & task class names and numbers
 p0.addParameter('stimulusclassnames'    , [], @(x) choose_isempty(x) || isstimclassnr(x));    

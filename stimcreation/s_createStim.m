@@ -4,14 +4,16 @@
 % core experiment, as well as the background and small fixation circle at
 % the center of the screen. This script will do the following: 
 %
-% % 1. Load or define display parameters.
-%      Users can pick from a list of 4 environments:
+% % 1. Define display to load correct parameters.
+%      Users can pick from a list of 5 displays (or add their own in vcd_getDisplayParams):
 %      * '7TAS_BOLDSCREEN32'  : BOLDscreen at the CMRR's 7 Tesla Actively Shielded MRI.
 %      * 'PPROOM_EIZOFLEXSCAN': Eizo Flexscan monitor at the CMRR's psychophysics lab.
 %      * 'KKOFFICE_AOCQ3277'  : AOC monitor in Kay office at CMRR (only used for testing purposes).
 %      * 'EKHOME_ASUSVE247'   : ASUS monitor in Eline's home (only used for testing purposes).
-%   This adjust stimulus parameters such that stimuli are the intended size.
-% 2. Create background images (BCKGRND)
+%      * 'CCNYU_VIEWPIXX3D'   : ViewPixx monitor in Curtis Lab psychophysics room.
+%      The vcd_getDisplayParams function will use field of view and native 
+%      refresh rate of monitor to adjust stimulus pixel size and time frame duration.
+% 2. Create eyetracking targets (ET)
 % 3. Create small, central, fixation circle images (FIX)
 % 4. Create gabor images (GBR)
 % 5. Create rdk movies (RDK)
@@ -29,13 +31,6 @@ params.verbose      = true; % visualize stimuli (true) or not (false)
 params.store_imgs   = true; % store visualization figures (true) or not (false)
 
 % Get display params
-% Users can pick from a list of 4 environments (or add their own):
-%  * '7TAS_BOLDSCREEN32'  : BOLDscreen at the CMRR's 7 Tesla Actively Shielded MRI.
-%  * 'PPROOM_EIZOFLEXSCAN': Eizo Flexscan monitor at the CMRR's psychophysics lab.
-%  * 'KKOFFICE_AOCQ3277'  : AOC monitor in Kay office at CMRR (only used for testing purposes).
-%  * 'EKHOME_ASUSVE247'   : ASUS monitor in Eline's home (only used for testing purposes).
-% This function will use field of view and native refresh rate of monitor
-% to adjust stimulus pixel size and frame duration.
 dispname    = 'PPROOM_EIZOFLEXSCAN';
 params.disp = vcd_getDisplayParams(dispname);
 
@@ -112,7 +107,7 @@ params.exp    = vcd_getSessionParams('disp_name', params.disp.name, ...
 %  pupil_im_white   : (uint8) white background pupil trial stimulus (height in pixels x width in pixels x 3)
 %  pupil_im_black   : (uint8) black background pupil trial stimulus (height in pixels x width in pixels x 3)
 
-[sac_im,pupil_im_white,pupil_im_black] = vcd_createEyeTrackingBlockTargets(params);
+[sac_im, pupil_im_white, pupil_im_black] = vcd_createEyeTrackingBlockTargets(params);
                                  
 %% Fixation circle
 % vcd_fixationDot function creates 30 different fixation circle images, 
@@ -126,15 +121,16 @@ params.exp    = vcd_getSessionParams('disp_name', params.disp.name, ...
 % * params      : parameter struct (requires display and stimulus parameters)
 %
 % OUTPUTS:
-% * fix_im      : (uint8) unique fixation circle images, 5D array: 
+% * fix         : (uint8) unique fixation circle images, 5D array: 
 %                   height (24 pixels) x width (24 pixels) x 3 (rgb) 
 %                   x 6 luminance levels x 5 dot rims types 
 %                   Rim types are 1: thin white, 2: thick white, 
 %                   3: thick-red left, 4: thick-red right, 5: thick-red both
-% * fix_mask    : (uint8) alpha transparency masks, 4D array: 
+% * mask        : (uint8) alpha transparency masks, 4D array: 
 %                   height (24 pixels) x width (24 pixels) x 2 dot rims types (thin, thick)
-
-[fix_im, fix_mask, fix_info] = vcd_fixationDot(params);
+% * info        : (table) table with specs about the different types of dot
+%                   rims and luminance values.
+[fix, mask, info] = vcd_fixationDot(params);
 
 %% Gabors
 % vcd_gabor function creates 56 Gabor stimuli: 24 core and 32 working

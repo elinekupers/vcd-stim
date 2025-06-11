@@ -9,7 +9,9 @@ function [data, all_images] = vcd_singleRun(subj_nr, ses_nr, ses_type, run_nr, d
 %  ses_nr       : session number (integral number between 1-27)
 %  ses_type     : session type (either 1 for version A, 2 for version B)
 %  run_nr       : run number (integral number between 1-15)
-%  dispName     : display name to load display params. Choose from: 7TAS_BOLDSCREEN32, KKOFFICE_AOCQ3277, PPROOM_EIZOFLEXSCAN, 'EKHOME_ASUSVE247'
+%  dispName     : display name to load display params. Choose from: 
+%                 '7TAS_BOLDSCREEN32', 'KKOFFICE_AOCQ3277',
+%                 'PPROOM_EIZOFLEXSCAN', 'EKHOME_ASUSVE247','CCNYU_VIEWPIXX3D'
 %
 % OUTPUTS:
 %   data        : struct with behavioral button presses and monitor
@@ -29,7 +31,7 @@ p.addRequired('subj_nr' , @isnumeric); % subject number (integral number between
 p.addRequired('ses_nr'  , @isnumeric); % session number (integral number between 1-27)
 p.addRequired('ses_type', @isnumeric); % session type (either 1 for version A, 2 for version B)
 p.addRequired('run_nr'  , @isnumeric); % run number (integral number between 1-15)
-p.addRequired('dispName', @(x) ismember(x,{'7TAS_BOLDSCREEN32','KKOFFICE_AOCQ3277','PPROOM_EIZOFLEXSCAN','EKHOME_ASUSVE247'})) % display name to get the right display params. Choose from: 7TAS_BOLDSCREEN32, KKOFFICE_AOCQ3277, PPROOM_EIZOFLEXSCAN, 'EKHOME_ASUSVE247'
+p.addRequired('dispName', @(x) ismember(x,{'7TAS_BOLDSCREEN32','KKOFFICE_AOCQ3277','PPROOM_EIZOFLEXSCAN','EKHOME_ASUSVE247','CCNYU_VIEWPIXX3D'})) % display name to get the right display params
 
 % OPTIONAL INPUTS
 p.addParameter('savedatadir'        , ''        , @ischar);                      % place to store data with today's date
@@ -111,7 +113,7 @@ if strcmp(params.disp.name, 'PPROOM_EIZOFLEXSCAN')
     % apparently PP room monitor native refresh rate shows up as 0 (but is actually 60 Hz)
     % PProom EIZOFLEXScan screen ptonparams are expected to be {[1920 1200 0 24],[], 0, 0}
     ptonparams = {[params.disp.w_pix params.disp.h_pix 0 24],[],params.disp.clut, skipsync};
-else % '7TAS_BOLDSCREEN32','KKOFFICE_AOCQ3277','EKHOME_ASUSVE247'
+else % '7TAS_BOLDSCREEN32','KKOFFICE_AOCQ3277','EKHOME_ASUSVE247', 'CCNYU_VIEWPIXX3D'
     % Nova1x32 coil with BOLDscreen and big eye mirrors ptonparams are expected to be {[1920 1080 120 24],[], 0, 0}
     ptonparams = {[params.disp.w_pix params.disp.h_pix params.disp.refresh_hz 24],[],params.disp.clut, skipsync};
 end

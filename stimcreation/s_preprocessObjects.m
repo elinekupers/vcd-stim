@@ -41,8 +41,13 @@
 %% DEAL WITH CONSTANTS
 
 % Get display params
-dispname = '7TAS_BOLDSCREEN32'; % Choose from: '7TAS_BOLDSCREEN32';'KKOFFICE_AOCQ3277';'EKHOME_ASUSVE247';'PPROOM_EIZOFLEXSCAN'
-disp_params   = vcd_getDisplayParams(dispname);
+% Choose: '7TAS_BOLDSCREEN32'   - BOLD screen at the 7TAS MRI scanner
+%         'KKOFFICE_AOSQ3277'   - external monitor in kendrick's CMRR office
+%         'EKHOME_ASUSVE247'    - external monitor at Eline's home
+%         'PPROOM_EIZOFLEXSCAN' - EizoFlexscan monitor @ CMRR's psychophysics room
+%         'CCNYU_VIEWPIXX3D'    - ViewPixx monitor in Clay Curtis' psychophysics room 
+dispname    = '7TAS_BOLDSCREEN32'; 
+disp_params = vcd_getDisplayParams(dispname);
 
 %% Define/Load stimulus params
 % !!WARNING!! There is a randomization component involved in creating some
