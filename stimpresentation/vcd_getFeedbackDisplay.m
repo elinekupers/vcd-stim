@@ -7,7 +7,10 @@ txt = sprintf('%s\n',phrase_of_the_run);
 
 for nn = 1:length(behavioral_results.summary.crossing_nr)
     
-    script     = taskscript{~cellfun(@isempty,regexp(taskscript,sprintf('%02d',behavioral_results.summary.crossing_nr(nn)),'match'))};
+    taskName = strrep(params.exp.crossingnames{behavioral_results.summary.crossing_nr(nn)},'-','_');
+    d = dir(fullfile(vcd_rootPath,'workspaces','instructions',sprintf('%02d_runvcdcore_%s.txt', behavioral_results.summary.crossing_nr(nn), taskName)));
+    
+    script     = d(1).name;
     task_instr = vcd_getInstructionText(params, script, rect);
       
     task_name = task_instr(1: (regexp(task_instr, 'task')+3));
