@@ -54,7 +54,7 @@ p.addParameter('savestim'           , false     , @islogical)                   
 p.addParameter('loadstimfromrunfile', false , @islogical)                    % whether we want to load stim from run file
 p.addParameter('ptbMaxVBLstd'       , 0.0008    , @isnumeric)                    % what standard deviation for screen flip duration do we allow?
 p.addParameter('env_type'           , []        , @(x) ismember(x, {'MRI','BEHAVIOR', 'TEST'})); % are we running the behavioral (PProom), MRI (7TAS), or a TEST (office monitors) version of the VCD core experiment?
-p.addParameter('randomization_file' , ''        , @ischar);                      % what randomization file are we loading? file should exist in   
+p.addParameter('timetable_file'     , ''        , @ischar);                      % what randomization file are we loading? file should exist in   
 p.addParameter('all_images'         , struct()  , @isstruct);                    % preloaded all_images in a single struct (to save time)
 p.addParameter('infofolder'         , fullfile(vcd_rootPath,'workspaces','info')        , @ischar); % where are the *_info.csv file(s)?
 p.addParameter('stimfolder'         , fullfile(vcd_rootPath,'workspaces','stimuli')     , @ischar); % where are the mat-files with store stimuli?
@@ -175,44 +175,60 @@ end
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%% LOAD TIME TABLE MASTER %%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-if ~exist('time_table_master','var') 
-    if ~isempty(params.randomization_file)
-        d = dir(fullfile(params.randomization_file));
-        if ~isempty(d)
-            load(fullfile(d(end).folder,d(end).name),'time_table_master','all_run_frames');
-        else
-            error('[%s]: Can''t find time table master!!',mfilename)    
-        end
+
+% First we look user added a timetable_file
+if ~isempty(params.timetable_file)
+    d = dir(fullfile(params.timetable_file));
+    if ~isempty(d)
+        load(fullfile(d(end).folder,d(end).name),'time_table_master','all_run_frames');
     else
-        d = dir(fullfile(vcd_rootPath,'data',sprintf('vcd_subj%03d',params.subj_nr), '%s_time_table_master*.mat',sprintf('vcd_subj%03d',params.subj_nr)));
-        if ~isempty(d)
-            load(fullfile(d(end).folder,d(end).name),'time_table_master','all_run_frames');
-        else
-            d = dir(fullfile(vcd_rootPath,'workspaces','info', sprintf('condition_master*%s*.mat', dispName)));
-            a1 = load(fullfile(d(end).folder,d(end).name),'condition_master');
-            
-            randfile_savedir = strsplit(params.savedatadir,'_ses');
-            params.randfile_savedir = randfile_savedir{1};
-            clear randfile_savedir;
-            
-            % make randomization file!
-            [~,~, ...
-               time_table_master, ...
-               all_run_frames] = vcd_createSessions(params,...
-                'load_params',false, ...
-                'store_params',true, ...
-                'condition_master',a1.condition_master,...
-                'session_env',params.env_type, ...
-                'saveDir',params.randfile_savedir, ...
-                'subj_id',sprintf('vcd_subj%03d',params.subj_nr));
-            
-            % clear up
-            clear a1 d
-        end
+        error('[%s]: Can''t find time table master!!',mfilename)
     end
-else
+else 
+    % create folder to store tables once we've created them
+    timetablefiledir = strsplit(params.savedatadir,'_ses');
+    params.timetablefiledir = timetablefiledir{1};
+    clear timetablefiledir;
     
+    % if not, we see if there is a subject condition_master_shuffled, and
+    % create the time_table_master from there..
+    d = dir(fullfile(vcd_rootPath,'data',sprintf('vcd_subj%03d',params.subj_nr), '%s_condition_master*.mat',sprintf('vcd_subj%03d',params.subj_nr)));
+    if ~isempty(d)
+        load(fullfile(d(end).folder,d(end).name),'condition_master_shuffled');
+        
+        [time_table_master,all_run_frames] = ...
+            vcd_createRunTimeTables(params, ...
+            'load_params',false, ...
+            'store_params',true, ...
+            'condition_master',condition_master_shuffled,...
+            'session_env',params.env_type, ...
+            'saveDir',params.timetablefiledir, ...
+            'subj_id',sprintf('vcd_subj%03d',params.subj_nr));
+        
+    else
+        % if there is no condition_master_shuffled for this subject, then
+        % we create both tables on the spot.
+        d = dir(fullfile(vcd_rootPath,'workspaces','info', sprintf('condition_master*%s*.mat', dispName)));
+        a1 = load(fullfile(d(end).folder,d(end).name),'condition_master');
+        
+
+        
+        % make randomization file!
+        [~,~, ...
+            time_table_master, ...
+            all_run_frames] = vcd_createSessions(params,...
+            'load_params',false, ...
+            'store_params',true, ...
+            'condition_master',a1.condition_master,...
+            'session_env',params.env_type, ...
+            'saveDir',params.timetablefiledir, ...
+            'subj_id',sprintf('vcd_subj%03d',params.subj_nr));
+        
+        % clear up
+        clear a1 d
+    end
 end
+
 
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%% TRUNCATE TIME_TABLE_MASTER %%%%%%%%%%%%%%%%%%%%%%%
