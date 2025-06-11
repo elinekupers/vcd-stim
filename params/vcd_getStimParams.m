@@ -401,7 +401,7 @@ else
                 p.unique_im_nrs_specialcore    = p.unique_im_nrs_core(17:end);       % SELECTED UNIQUE IMAGES (SUBSET of all 24) (only high coherence) 
                 p.imagery_sz_deg               = 5.658;                              % desired diameter (degree) of the second, quiz dots image in an imagery trial to encourage subjects to create a vidid mental image.
                 p.imagery_sz_pix               = (round(p.img_sz_deg* disp_params.ppd)/2)*2; % diameter of quiz dot image (pixels) (ensure even nr of pixels)
-                p.unique_im_nrs_img_test  	   = [583:741];                          % Unique image nrs associated with the 8*20=160 IMG RDK test dot images
+                p.unique_im_nrs_img_test  	   = [583:742];                          % Unique image nrs associated with the 8*20=160 IMG RDK test dot images
                 p.imagery_quiz_images          = [ones(1,10),2.*ones(1,10)];         % quiz dots overlap (1) or not (2)
                 
                 % Add params to struct
@@ -499,7 +499,7 @@ else
                 % IMAGERY: QUIZ DOT PARAMS
                 p.imagery_sz_deg   = [disp_params.w_deg/2, disp_params.h_deg];   % desired diameter (deg) of the second, quiz dots image in an imagery trial to encourage subjects to create a vidid mental image.
                 p.imagery_sz_pix   = [disp_params.xc,disp_params.h_pix];         % diameter of quiz dot image (pixels) (we already ensured even nr of pixels in display params function)
-                p.unique_im_nrs_img_test = [742:901];                            % Unique image nrs associated with the 8*20=160 IMG DOT test dot images
+                p.unique_im_nrs_img_test = [743:902];                            % Unique image nrs associated with the 8*20=160 IMG DOT test dot images
                 p.imagery_quiz_images    = [ones(1,10),2.*ones(1,10)];           % quiz dots overlap (1) or not (2)
                 
                 % Add params to struct
@@ -629,7 +629,7 @@ else
                 % IMAGERY QUIZ DOT PARAMS
                 p.imagery_sz_deg         = 5.658;                              % desired diameter (degree) of the second, quiz dots image in an imagery trial to encourage subjects to create a vidid mental image.
                 p.imagery_sz_pix         = (round(p.img_sz_deg* disp_params.ppd)/2)*2; % pixel diameter of quiz dot image (ensure even nr of pixels)
-                p.unique_im_nrs_img_test = [902:1061];                         % Unique image nrs associated with the 8*20=160 IMG OBJ test dot images
+                p.unique_im_nrs_img_test = [903:1062];                         % Unique image nrs associated with the 8*20=160 IMG OBJ test dot images
                 p.imagery_quiz_images    = [ones(1,10),2.*ones(1,10)];         % quiz dots overlap (1) or not (2)
                 
                 % LTM PAIR
@@ -721,12 +721,12 @@ else
                 p.unique_im_nrs_specialcore = p.unique_im_nrs_core([2,4,5,8,10,11,13,15,18,20,21,23,26,27,30]); % Half of the images will be used for  IMG/LTM pairing (these are carefully handpicked! see scene_info csv file)
                 p.imagery_sz_deg            = p.img_sz_deg;                                                     % desired diameter (degree) of the second, quiz dots image in an imagery trial to encourage subjects to create a vidid mental image.
                 p.imagery_sz_pix            = p.img_sz_pix;                                                     % diameter of quiz dot image (pixels) (we already ensured even nr of pixels)
-                p.unique_im_nrs_img_test    = [1062:1361];                                                      % Unique image nrs associated with the 15*20=300 IMG NS test dot images
+                p.unique_im_nrs_img_test    = [1063:1362];                                                      % Unique image nrs associated with the 15*20=300 IMG NS test dot images
                 p.imagery_quiz_images       = [ones(1,10),2.*ones(1,10)];                                       % Quiz dots overlap (1) or not (2)
                 
                 % FOR LTM incorrect trials, we have very similar looking images called "lures":
                 p.lure_im                   = {'lure01', 'lure02', 'lure03', 'lure04'};
-                p.unique_im_nrs_ltm_lures   = [1362:1421];                                                      % Unique image nrs associated with the 15*4=60 WM NS lure images
+                p.unique_im_nrs_ltm_lures   = [1363:1422];                                                      % Unique image nrs associated with the 15*4=60 WM NS lure images
                 
                 % LTM PAIRED ASSOCIATES
                 p.ltm_pairs                 = [];
