@@ -15,6 +15,8 @@ function [data,getoutearly,run_frames,run_table] = vcd_showStimulus(...
 % Inputs to MakeTextures/DrawTextures (plural) instead of DrawTexture (single): 
 %   * texturePointers need to be: n vector (where n is the number of textures)
 %   * destinationRects need to be: 4 row x n columns (where n is the number of textures)
+%   * Make sure to adjust have n x alpha and n x color inputs.
+%  example: Screen('DrawTextures',win, stim_textures', [], catcell(1,stim.rects(run_frames.im_IDs(framecnt,1),:))', [0;0],[], [1;1], 255*ones(2,3)');
 % Inputs to DrawFormattedText inputs are winptr, tstring, [sx], [sy], [color], [wrapat], [flipHorizontal], [flipVertical], [vSpacing], [righttoleft], [winRect]
 %
 %  <framecolor> can also be size(<frameorder>,2) x 1 with values in [0,1] indicating an alpha change.
@@ -458,8 +460,9 @@ while 1
                 Screen('DrawTexture',win,stim_texture,[], stim.rects{run_frames.im_IDs(framecnt,sides),sides}, 0,[],1, 255*ones(1,3));
                 Screen('Close',stim_texture);
             elseif sides == 2  % Make and draw two stimulus textures
-                stim_textures = Screen('MakeTextures',win, stim.im{run_frames.im_IDs(framecnt,:),:});
-                Screen('DrawTextures',win,stim_textures',[], stim.rects{run_frames.im_IDs(framecnt,:),:}', 0,[],1, 255*ones(2,3));
+                stim_textures(1) = Screen('MakeTexture',win, stim.im{run_frames.im_IDs(framecnt,1),1});
+                stim_textures(2) = Screen('MakeTexture',win, stim.im{run_frames.im_IDs(framecnt,2),2});
+                Screen('DrawTextures',win,stim_textures',[], catcell(1,stim.rects(run_frames.im_IDs(framecnt,1),:))', [0;0],[], [1;1], 255*ones(2,3)');
                 Screen('Close',stim_textures);
             end
 
