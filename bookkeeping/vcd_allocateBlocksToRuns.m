@@ -343,7 +343,7 @@ for ses = 1:size(all_sessions,3)
                                 
                                 bb = bb+1;
                                 
-                                if mod(bb,7+1)==0 
+                                if mod(bb,7)==0 % every 6 blocks we add a run 
                                     run_nr = run_nr + 1; 
                                 end
                             end
@@ -377,10 +377,17 @@ for ses = 1:size(all_sessions,3)
                                                 condition_master.session_type==condition_master.session_type(trial_idx(1)) & ...
                                                 condition_master.run_nr==condition_master.run_nr(trial_idx(1))));
                         all_block_nrs = setdiff(all_block_nrs, condition_master.block_nr(trial_idx));
-                        if all(all_block_nrs~=1) && all(all_block_nrs<8)
+                        if any(all_block_nrs~=1) && all(all_block_nrs<8)
                             allocated_block_nr = setdiff([1:max(all_block_nrs)],all_block_nrs);
                         else
-                            allocated_block_nr = setdiff([min(all_block_nrs):max(all_block_nrs)],all_block_nrs);
+                            if isequal([min(all_block_nrs):max(all_block_nrs)]',all_block_nrs)
+                                unused_block_nrs = setdiff([1:max(condition_master.block_nr(~isnan(condition_master.block_nr)))]', unique(sort(condition_master.block_nr(~isnan(condition_master.block_nr)))));
+                                mi0 = min(abs(all_block_nrs-unused_block_nrs'));
+                                [~,mi1] = min(mi0);
+                                allocated_block_nr = unused_block_nrs(mi1);
+                            else
+                                allocated_block_nr = setdiff([min(all_block_nrs):max(all_block_nrs)],all_block_nrs);
+                            end
                         end
                         condition_master.block_nr(trial_idx) = repmat(allocated_block_nr,size(trial_idx,1),1);
                         condition_master.trial_nr(trial_idx) = [1:params.exp.block.n_trials_single_epoch]';

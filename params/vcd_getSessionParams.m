@@ -194,7 +194,7 @@ else
     
     % ----- timing ---
     exp.block.eye_gaze_fix0        = presentationrate_hz * 1.0;             % start with 1 second fixation period
-    exp.block.eye_gaze_sac_target  = presentationrate_hz * 1.5;             % then 5x1.2 = 6 seconds of saccades (mimicing EL HV5 grid,±3 deg in all directions)
+    exp.block.eye_gaze_sac_target  = presentationrate_hz * 2.0;             % then 5x2 = 8 seconds of saccades (mimicing EL HV5 grid, ±4 deg in all directions)
     exp.block.eye_gaze_fix1        = presentationrate_hz * 2.0;             % then a 2-seconds rest trial
     exp.block.eye_gaze_pupil_black = presentationrate_hz * 3.0;             % then a 4-seconds pupil trial: 3-s black adaptation, 1-s white screen to evoke max pupil response.
     exp.block.eye_gaze_pupil_white = presentationrate_hz * 1.0;             % followed by a 1-s white screen to evoke max pupil response.

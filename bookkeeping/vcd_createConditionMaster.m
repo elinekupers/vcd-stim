@@ -152,25 +152,26 @@ if nr_reps > 0
                 % Loop over stimulus locations being cued 
                 for loc = 1:n_cued_stimlocs % cued vs uncued
 
-                    % shuffle 8 orientations within every 8 unique images
-                    shuffle_ori = shuffle_concat([1:n_ori_bins],n_contrasts);
-                    shuffle_ori = shuffle_ori' + repelem([0:n_ori_bins:(n_unique_cases-1)],n_ori_bins)';
-                    assert(isequal(unique(shuffle_ori),[1:(n_ori_bins*n_contrasts)]'))
-
-                    % create a contrast case vector where im 1-8 is low contrast, 9-17 is mid and 18-24 is high
-                    contrast_vec0 = reshape(1:n_unique_cases,[],n_contrasts);
-                    contrast_vec0 = contrast_vec0';
-                    contrast_vec0 = contrast_vec0(:); % we want low,mid,high followed by low,mid,high, etc.
-
-                    % shuffle contrasts every 3 trials
-                    shuffle_c  = shuffle_concat(1:n_contrasts,n_unique_cases/n_contrasts);
-                    shuffle_c  = contrast_vec0(shuffle_c + repelem([0:n_contrasts:(n_unique_cases-1)],n_contrasts));
-
-                    assert(isequal(unique(shuffle_c),[1:n_unique_cases]'))
-
                     % SHUFFLE ORDER OF UNIQUE IMAGES
-                    conds_shuffle0 = cond_table(shuffle_ori,:); % <-- first shuffle based on unique nr of orientations
-                    conds_shuffle0 = conds_shuffle0(shuffle_c,:); % <-- then shuffle based on unique nr of contrasts, such that new trial order prioritizes contrast order
+                    
+                    % % PREVIOUSLY: shuffle contrasts every 3 trials
+                    % % shuffle 8 orientations within every 8 unique images
+                    % shuffle_ori = shuffle_concat([1:n_ori_bins],n_contrasts);
+                    % shuffle_ori = shuffle_ori' + repelem([0:n_ori_bins:(n_unique_cases-1)],n_ori_bins)';
+                    % assert(isequal(unique(shuffle_ori),[1:(n_ori_bins*n_contrasts)]'))
+                    % % create a contrast case vector where im 1-8 is low contrast, 9-17 is mid and 18-24 is high
+                    % contrast_vec0 = reshape(1:n_unique_cases,[],n_contrasts);
+                    % contrast_vec0 = contrast_vec0';
+                    % contrast_vec0 = contrast_vec0(:); % we want low,mid,high followed by low,mid,high, etc.
+                    % shuffle_c  = shuffle_concat(1:n_contrasts,n_unique_cases/n_contrasts);
+                    % shuffle_c  = contrast_vec0(shuffle_c + repelem([0:n_contrasts:(n_unique_cases-1)],n_contrasts));
+                    % assert(isequal(unique(shuffle_c),[1:n_unique_cases]'))
+                    % conds_shuffle0 = cond_table(shuffle_ori,:); % <-- first shuffle based on unique nr of orientations
+                    % conds_shuffle0 = conds_shuffle0(shuffle_c,:); % <-- then shuffle based on unique nr of contrasts, such that new trial order prioritizes contrast order
+
+                    % NOW: we shuffle all conditions, without constraints.
+                    shuffle_c      = randperm(size(cond_table,1),size(cond_table,1));
+                    conds_shuffle0 = cond_table(shuffle_c,:);
 
                     % Add catch trial vector
                     conds_shuffle0.is_catch = false(size(conds_shuffle0,1),1);
@@ -189,7 +190,7 @@ if nr_reps > 0
                     assert(isequal(sort(conds_shuffle0.gbr_phase,'ascend'),repelem(params.stim.gabor.ph_deg,n_unique_cases/length(params.stim.gabor.ph_deg))')); % Check phase
                     if ~ismember(taskClass{:}, {'ltm','img'})
                         assert(isequal(sort(conds_shuffle0.contrast,'ascend'),repelem(params.stim.gabor.contrast,n_ori_bins)')); % Check contrast levels
-                        assert(isequal(sort(reshape(conds_shuffle0.contrast,n_contrasts,[])),repmat(params.stim.gabor.contrast',1,n_ori_bins))); % Check contrast order
+%                         assert(isequal(sort(reshape(conds_shuffle0.contrast,n_contrasts,[])),repmat(params.stim.gabor.contrast',1,n_ori_bins))); % Check contrast order
                     else
                         assert(isequal(conds_shuffle0.contrast,repelem(params.stim.gabor.contrast(3),n_ori_bins)')); % Check contrast
                     end
@@ -243,6 +244,7 @@ if nr_reps > 0
 
                 % Add WM change
                 if strcmp(taskClass{:},'wm')
+                    
                     % create offset vector
                     n_deltas            = length(params.stim.gabor.delta_from_ref);
                     delta_vec           = NaN(size(conds_single_rep_merged.orient_dir));
@@ -380,26 +382,28 @@ if nr_reps > 0
 
                 cue_vec = []; im_cue_vec_loc1 = [];
                 for loc = 1:n_cued_stimlocs % cued vs uncued
-
-                    % shuffle orientation every 8 trials
-                    shuffle_motdir = shuffle_concat([1:n_motdir],n_coh);
-                    shuffle_motdir = shuffle_motdir' + repelem([0:n_motdir:(n_unique_cases-1)],n_motdir)';
-
-                    % shuffle coherence every 3 trials
-                    shuffle_c = shuffle_concat(1:n_coh,n_unique_cases/n_coh);
-                    case_vec  = reshape(1:n_unique_cases,[],n_coh);
-
-                    % Reshape number of unique image cases, such that we can
-                    % allocate unique image nrs across combinations of coh and
-                    % motdir
-                    case_vec = case_vec';
-                    case_vec = case_vec(:);
-                    shuffled_c = case_vec(shuffle_c + repelem([0:n_coh:(n_unique_cases-1)],n_coh),:);
-
+                    
                     % SHUFFLE ORDER OF UNIQUE IMAGES
-                    conds_shuffle0 = cond_table(shuffle_motdir,:); % <-- first shuffle based on unique nr of orientations
-                    conds_shuffle0 = conds_shuffle0(shuffled_c,:); % <-- then shuffle based on unique nr of coh, such that new trial order prioritized coh order
+                    % PREVIOUSLY: 
+                    % % shuffle orientation every 8 trials
+                    % shuffle_motdir = shuffle_concat([1:n_motdir],n_coh);
+                    % shuffle_motdir = shuffle_motdir' + repelem([0:n_motdir:(n_unique_cases-1)],n_motdir)';
+                    % % shuffle coherence every 3 trials
+                    % shuffle_c = shuffle_concat(1:n_coh,n_unique_cases/n_coh);
+                    % case_vec  = reshape(1:n_unique_cases,[],n_coh);
+                    % % Reshape number of unique image cases, such that we can
+                    % % allocate unique image nrs across combinations of coh and
+                    % % motdir
+                    % case_vec = case_vec';
+                    % case_vec = case_vec(:);
+                    % shuffled_c = case_vec(shuffle_c + repelem([0:n_coh:(n_unique_cases-1)],n_coh),:);
+                    % conds_shuffle0 = cond_table(shuffle_motdir,:); % <-- first shuffle based on unique nr of orientations
+                    % conds_shuffle0 = conds_shuffle0(shuffled_c,:); % <-- then shuffle based on unique nr of coh, such that new trial order prioritized coh order
 
+                    % NOW: we shuffle all conditions, without constraints.
+                    shuffle_c      = randperm(size(cond_table,1),size(cond_table,1));
+                    conds_shuffle0 = cond_table(shuffle_c,:);
+                    
                     % get covert spatial attention cuing direction vector
                     [cue_vec,im_cue_vec_loc1] = vcd_getSpatialAttCueingDir(loc,cue_vec,im_cue_vec_loc1,conds_shuffle0, stimloc_cues, taskClass);
 
@@ -416,9 +420,9 @@ if nr_reps > 0
                     assert(isequal(sort(conds_shuffle0.orient_dir,'ascend'),repelem(params.stim.rdk.dots_direction,n_coh)')); % Check motdir
                     if ~ismember(taskClass{:}, {'ltm','img'})
                         assert(isequal(sort(conds_shuffle0.rdk_coherence,'ascend'),repelem(params.stim.rdk.dots_coherence,n_motdir)')); % Check coherence levels
-                        assert(isequal(sort(reshape(conds_shuffle0.rdk_coherence,n_coh,[])),repmat(params.stim.rdk.dots_coherence',1,n_motdir))); % Check coherence order
+%                         assert(isequal(sort(reshape(conds_shuffle0.rdk_coherence,n_coh,[])),repmat(params.stim.rdk.dots_coherence',1,n_motdir))); % Check coherence order
                     else
-                        assert(isequal(conds_shuffle0.rdk_coherence,repelem(params.stim.rdk.dots_coherence(3),n_motdir)')); % Check contrast
+                        assert(isequal(conds_shuffle0.rdk_coherence,repelem(params.stim.rdk.dots_coherence(3),n_motdir)')); % Check coherence
                     end
 
 
@@ -603,12 +607,16 @@ if nr_reps > 0
                 cue_vec = []; im_cue_vec_loc1 = [];
                 for loc = 1:n_cued_stimlocs % cued vs uncued
 
-                    % shuffle dot angle every 8 trials
-                    shuffle_loc = shuffle_concat([1:n_dot_loc],1);
+                    % % PREVIOUSLY
+                    % % shuffle dot angle every 8 trials
+                    % shuffle_loc = shuffle_concat([1:n_dot_loc],1);
+                    % % SHUFFLE TRIALS
+                    % conds_shuffle0 = cond_table(shuffle_loc,:); % <-- shuffle based on unique nr of orientations
 
-                    % SHUFFLE TRIALS
-                    conds_shuffle0 = cond_table(shuffle_loc,:); % <-- shuffle based on unique nr of orientations
-
+                    % NOW: we shuffle all conditions, without constraints.
+                    shuffle_c      = randperm(size(cond_table,1),size(cond_table,1));
+                    conds_shuffle0 = cond_table(shuffle_c,:);
+                    
                     % get covert spatial attention cuing direction vector
                     [cue_vec,im_cue_vec_loc1] = vcd_getSpatialAttCueingDir(loc,cue_vec,im_cue_vec_loc1,conds_shuffle0, stimloc_cues, taskClass);
 
@@ -684,15 +692,14 @@ if nr_reps > 0
 
                     while 1
                         % create shuffled delta vector
-                        shuffle_delta       = NaN(size(conds_single_rep_merged.orient_dir));
-                        delta_vec(conds_single_rep_merged.is_cued(noncatch_trials_idx)==1,1) = shuffle_concat(repelem(params.stim.dot.delta_from_ref, (n_unique_cases/2/n_deltas)),1); % left cued
-                        delta_vec(~(conds_single_rep_merged.is_cued(noncatch_trials_idx)==1),1) = shuffle_concat(repelem(params.stim.dot.delta_from_ref, (n_unique_cases/2/n_deltas)),1); % left uncued
-                        delta_vec(conds_single_rep_merged.is_cued(noncatch_trials_idx)==2,2) = shuffle_concat(repelem(params.stim.dot.delta_from_ref, (n_unique_cases/2/n_deltas)),1); % right cued
-                        delta_vec(~(conds_single_rep_merged.is_cued(noncatch_trials_idx)==2),2) = shuffle_concat(repelem(params.stim.dot.delta_from_ref, (n_unique_cases/2/n_deltas)),1); % right uncued
+                        delta_vec0(conds_single_rep_merged.is_cued(noncatch_trials_idx)==1,1) = shuffle_concat(repelem(params.stim.dot.delta_from_ref, (n_unique_cases/2/n_deltas)),1); % left cued
+                        delta_vec0(~(conds_single_rep_merged.is_cued(noncatch_trials_idx)==1),1) = shuffle_concat(repelem(params.stim.dot.delta_from_ref, (n_unique_cases/2/n_deltas)),1); % left uncued
+                        delta_vec0(conds_single_rep_merged.is_cued(noncatch_trials_idx)==2,2) = shuffle_concat(repelem(params.stim.dot.delta_from_ref, (n_unique_cases/2/n_deltas)),1); % right cued
+                        delta_vec0(~(conds_single_rep_merged.is_cued(noncatch_trials_idx)==2),2) = shuffle_concat(repelem(params.stim.dot.delta_from_ref, (n_unique_cases/2/n_deltas)),1); % right uncued
                         
                         % calculate absolute angle of stim 2 (test stim)
-                        orient_dir2   = conds_single_rep_merged.orient_dir + delta_vec;
-                    
+                        orient_dir2   = conds_single_rep_merged.orient_dir + delta_vec0;
+                        
                         % Ensure that absolute angles of left and right test
                         % stimuli don't overlap (here we use a threshold of
                         % an angle that is more than 20 degrees difference between the two stimuli)
@@ -703,6 +710,8 @@ if nr_reps > 0
                         end
                     end
                     
+                    delta_vec(noncatch_trials_idx,:) = delta_vec0;
+                    
                     % find unique WM test im nr
                     idx_wm      = reshape(params.stim.dot.unique_im_nrs_wm_test,4,[]);
                     [~,idx_l]   = ismember(conds_single_rep_merged.stim_nr_left(noncatch_trials_idx),params.stim.dot.unique_im_nrs_core);
@@ -710,7 +719,7 @@ if nr_reps > 0
                     assert(isequal(length(idx_l),length(idx_r)))
 
                     stim2_im_nr = NaN(size(conds_single_rep_merged,1),2);
-                    [~,shuffle_delta] = ismember(delta_vec,params.stim.dot.delta_from_ref);
+                    [~,shuffle_delta] = ismember(delta_vec0,params.stim.dot.delta_from_ref);
                     non_nan_trials = find(noncatch_trials_idx);
                     clear tmp;
                     for kk = 1:length(idx_l)
@@ -802,6 +811,7 @@ if nr_reps > 0
             n_super_cat = length(unique(cond_table.super_cat));
             assert(isequal(length(params.stim.obj.super_cat),n_super_cat));
 
+            % PREVIOUSLY
             % UNIQUE COBJ array dims: 8 basic categories
             basic_cat_vec = []; n_basic_cat = [];
             for ni = 1:n_super_cat
@@ -872,60 +882,64 @@ if nr_reps > 0
                 cue_vec = []; im_cue_vec_loc1 = [];
                 for loc = 1:n_cued_stimlocs % cued vs uncued
 
-                    % Make sure every 8 trials, subject sees images from at least 4 super
-                    % classes
-                    super_cat_shuffle_idx = randperm(length(super_cat_vec),length(super_cat_vec));
-                    shuffled_super_cat    = super_cat_vec(super_cat_shuffle_idx);
-                    for jj = 1:n_trials_per_block:(length(shuffled_super_cat))
+                    % PREVIOUSLY
+                    % % Make sure every 8 trials, subject sees images from at least 4 super
+                    % % classes
+                    % super_cat_shuffle_idx = randperm(length(super_cat_vec),length(super_cat_vec));
+                    % shuffled_super_cat    = super_cat_vec(super_cat_shuffle_idx);
+                    % for jj = 1:n_trials_per_block:(length(shuffled_super_cat))
+                    % 
+                    %     while 1
+                    %         if isempty(setdiff([1:n_super_cat],unique(shuffled_super_cat(jj:(jj+n_trials_per_block-1)),'legacy'))) || ...
+                    %                 isequal(setdiff([1:n_super_cat],unique(shuffled_super_cat(jj:(jj+n_trials_per_block-1)),'legacy')),1)
+                    %             break;
+                    %         end
+                    %         super_cat_shuffle_idx = randperm(length(super_cat_vec),length(super_cat_vec));
+                    %         shuffled_super_cat = super_cat_vec(super_cat_shuffle_idx);
+                    % 
+                    %     end
+                    % end
+                    % % Check if n_sub_cat still holds
+                    % assert(isequal(histcounts(shuffled_super_cat),n_sub_cat));
+                    % NOW SHUFFLE
+                    % conds_shuffle0 = cond_table(basic_cat_shuffle_idx,:); % <-- shuffle based on basic category
+                    % conds_shuffle1 = conds_shuffle0(super_cat_shuffle_idx,:); % <-- shuffle based on super category, last one to give it priority
 
-                        while 1
-                            if isempty(setdiff([1:n_super_cat],unique(shuffled_super_cat(jj:(jj+n_trials_per_block-1)),'legacy'))) || ...
-                                    isequal(setdiff([1:n_super_cat],unique(shuffled_super_cat(jj:(jj+n_trials_per_block-1)),'legacy')),1)
-                                break;
-                            end
-                            super_cat_shuffle_idx = randperm(length(super_cat_vec),length(super_cat_vec));
-                            shuffled_super_cat = super_cat_vec(super_cat_shuffle_idx);
-
-                        end
-                    end
-                    % Check if n_sub_cat still holds
-                    assert(isequal(histcounts(shuffled_super_cat),n_sub_cat));
-
-                    % NOW SHUFFLE!
-                    conds_shuffle0 = cond_table(basic_cat_shuffle_idx,:); % <-- shuffle based on basic category
-                    conds_shuffle1 = conds_shuffle0(super_cat_shuffle_idx,:); % <-- shuffle based on super category, last one to give it priority
-
+                    % NOW: we shuffle all conditions, without constraints.
+                    shuffle_c      = randperm(size(cond_table,1),size(cond_table,1));
+                    conds_shuffle0 = cond_table(shuffle_c,:);
+                    
                     % get covert spatial attention cuing direction vector
-                    [cue_vec,im_cue_vec_loc1] = vcd_getSpatialAttCueingDir(loc,cue_vec,im_cue_vec_loc1,conds_shuffle1, stimloc_cues, taskClass);
+                    [cue_vec,im_cue_vec_loc1] = vcd_getSpatialAttCueingDir(loc,cue_vec,im_cue_vec_loc1,conds_shuffle0, stimloc_cues, taskClass);
 
                     % Add cue vec
-                    conds_shuffle1.is_cued = cue_vec;
+                    conds_shuffle0.is_cued = cue_vec;
 
                     % Add catch trial vector
-                    conds_shuffle1.is_catch = false(size(conds_shuffle1,1),1);
+                    conds_shuffle0.is_catch = false(size(conds_shuffle0,1),1);
 
                     % Do some checks:
                     assert(isequal(length(conds_shuffle0.unique_im_nr),n_unique_cases)); % Check unique image nr
-                    assert(isequal(sum(conds_shuffle1.stimloc==1),n_unique_cases/2));  % Check left stim loc
-                    assert(isequal(sum(conds_shuffle1.stimloc==2),n_unique_cases/2));  % Check right stim loc
-                    assert(isequal(sort(conds_shuffle1.super_cat_name),sort(repelem(params.stim.obj.super_cat,n_sub_cat)'))); % Check supercat
+                    assert(isequal(sum(conds_shuffle0.stimloc==1),n_unique_cases/2));  % Check left stim loc
+                    assert(isequal(sum(conds_shuffle0.stimloc==2),n_unique_cases/2));  % Check right stim loc
+                    assert(isequal(sort(conds_shuffle0.super_cat_name),sort(repelem(params.stim.obj.super_cat,n_sub_cat)'))); % Check supercat
                     if ~ismember(taskClass{:}, {'ltm','img'})
-                        assert(isequal(sort(conds_shuffle1.orient_dir,'ascend'),sort(params.stim.obj.facing_dir_deg,'ascend')')); % Check object facing dir
+                        assert(isequal(sort(conds_shuffle0.orient_dir,'ascend'),sort(params.stim.obj.facing_dir_deg,'ascend')')); % Check object facing dir
                     else
-                        assert(isequal(sort(conds_shuffle1.orient_dir,'ascend'),sort(params.stim.obj.facing_dir_deg(ismember(params.stim.obj.unique_im_nrs_core,params.stim.obj.unique_im_nrs_specialcore))','ascend'))); % Check contrast
+                        assert(isequal(sort(conds_shuffle0.orient_dir,'ascend'),sort(params.stim.obj.facing_dir_deg(ismember(params.stim.obj.unique_im_nrs_core,params.stim.obj.unique_im_nrs_specialcore))','ascend'))); % Check contrast
                     end
 
 
                      % Add catch trials
-                    if sum(isnan(cue_vec)) == size(conds_shuffle1.stimloc,1)
+                    if sum(isnan(cue_vec)) == size(conds_shuffle0.stimloc,1)
                         cue_dir_for_catch_trial = [];
-                    elseif sum(conds_shuffle1.stimloc==3)==size(conds_shuffle1.stimloc,1)
+                    elseif sum(conds_shuffle0.stimloc==3)==size(conds_shuffle0.stimloc,1)
                         cue_dir_for_catch_trial = [];
-                    elseif sum(conds_shuffle1.stimloc==1 & conds_shuffle1.is_cued==1) > sum(conds_shuffle1.stimloc==2 & conds_shuffle1.is_cued==1)  % if we have more lefts than rights
+                    elseif sum(conds_shuffle0.stimloc==1 & conds_shuffle0.is_cued==1) > sum(conds_shuffle0.stimloc==2 & conds_shuffle0.is_cued==1)  % if we have more lefts than rights
                         cue_dir_for_catch_trial = 2; % catch trial will cue right
-                    elseif sum(conds_shuffle1.stimloc==2 & conds_shuffle1.is_cued==1) > sum(conds_shuffle1.stimloc==1 & conds_shuffle1.is_cued==1)   % if we have more rights than lefts
+                    elseif sum(conds_shuffle0.stimloc==2 & conds_shuffle0.is_cued==1) > sum(conds_shuffle0.stimloc==1 & conds_shuffle0.is_cued==1)   % if we have more rights than lefts
                         cue_dir_for_catch_trial = 1; % catch trial will cue right
-                    elseif sum(conds_shuffle1.stimloc==2 & conds_shuffle1.is_cued==1) == sum(conds_shuffle1.stimloc==1 & conds_shuffle1.is_cued==1) 
+                    elseif sum(conds_shuffle0.stimloc==2 & conds_shuffle0.is_cued==1) == sum(conds_shuffle0.stimloc==1 & conds_shuffle0.is_cued==1) 
                         if ~isempty(prior_cue_dir_for_catch_trial)
                             cue_dir_for_catch_trial = setdiff([1,2],prior_cue_dir_for_catch_trial); % do the opposite of previous trial
                         else
@@ -947,14 +961,14 @@ if nr_reps > 0
                     
                     if  n_catch_trials > 0
                         % create catch trial
-                        conds_shuffle2 = vcd_addCatchTrials(conds_shuffle1, n_catch_trials, cue_dir_for_catch_trial);
+                        conds_shuffle1 = vcd_addCatchTrials(conds_shuffle0, n_catch_trials, cue_dir_for_catch_trial);
                         prior_cue_dir_for_catch_trial = cue_dir_for_catch_trial;
                     else
-                        conds_shuffle2 = conds_shuffle1;
+                        conds_shuffle1 = conds_shuffle0;
                     end
 
                     % Vert cat tables
-                    conds_master_single_rep = [conds_master_single_rep;conds_shuffle2];
+                    conds_master_single_rep = [conds_master_single_rep;conds_shuffle1];
 
                     clear conds_shuffle0 conds_shuffle1 conds_shuffle2
                 end
@@ -968,14 +982,16 @@ if nr_reps > 0
                     % create shuffled delta vector
                     n_deltas            = length(params.stim.obj.delta_from_ref);
                     noncatch_trials_idx = ~isnan(conds_single_rep_merged.orient_dir(:,1));
-                    shuffle_delta       = NaN(size(conds_single_rep_merged.orient_dir));
-                    delta_vec(conds_single_rep_merged.is_cued(noncatch_trials_idx)==1,1) = shuffle_concat(repelem(params.stim.obj.delta_from_ref, (n_unique_cases/2/n_deltas)),1); % left cued
-                    delta_vec(~(conds_single_rep_merged.is_cued(noncatch_trials_idx)==1),1) = shuffle_concat(repelem(params.stim.obj.delta_from_ref, (n_unique_cases/2/n_deltas)),1); % left uncued
-                    delta_vec(conds_single_rep_merged.is_cued(noncatch_trials_idx)==2,2) = shuffle_concat(repelem(params.stim.obj.delta_from_ref, (n_unique_cases/2/n_deltas)),1); % right cued
-                    delta_vec(~(conds_single_rep_merged.is_cued(noncatch_trials_idx)==2),2) = shuffle_concat(repelem(params.stim.obj.delta_from_ref, (n_unique_cases/2/n_deltas)),1); % right uncued
-
-                    facing_dir2   = conds_single_rep_merged.orient_dir + delta_vec;
+                    delta_vec0(conds_single_rep_merged.is_cued(noncatch_trials_idx)==1,1) = shuffle_concat(repelem(params.stim.obj.delta_from_ref, (n_unique_cases/2/n_deltas)),1); % left cued
+                    delta_vec0(~(conds_single_rep_merged.is_cued(noncatch_trials_idx)==1),1) = shuffle_concat(repelem(params.stim.obj.delta_from_ref, (n_unique_cases/2/n_deltas)),1); % left uncued
+                    delta_vec0(conds_single_rep_merged.is_cued(noncatch_trials_idx)==2,2) = shuffle_concat(repelem(params.stim.obj.delta_from_ref, (n_unique_cases/2/n_deltas)),1); % right cued
+                    delta_vec0(~(conds_single_rep_merged.is_cued(noncatch_trials_idx)==2),2) = shuffle_concat(repelem(params.stim.obj.delta_from_ref, (n_unique_cases/2/n_deltas)),1); % right uncued
+                    
+                    facing_dir2   = conds_single_rep_merged.orient_dir(noncatch_trials_idx,:) + delta_vec0;
                    
+                    delta_vec = NaN(size(conds_single_rep_merged.orient_dir));
+                    delta_vec(noncatch_trials_idx,:) = delta_vec0; clear delta_vec0;
+                    
                     % find unique WM test im nr
                     idx_wm = reshape(params.stim.obj.unique_im_nrs_wm_test,4,[]);
                     [~,idx_l] = ismember(conds_single_rep_merged.stim_nr_left(noncatch_trials_idx),params.stim.obj.unique_im_nrs_core);
@@ -1116,72 +1132,79 @@ if nr_reps > 0
 
                 conds_master_single_rep = [];
 
-                % Make sure every block, subject sees images from 5 super
-                % classes
-                super_cat_shuffle_idx = randperm(length(super_cat_vec),length(super_cat_vec));
-                shuffled_super_cat    = super_cat_vec(super_cat_shuffle_idx);
+                % PREVIOUSLY
+%                 % Make sure every block, subject sees images from 5 super
+%                 % classes
+%                 super_cat_shuffle_idx = randperm(length(super_cat_vec),length(super_cat_vec));
+%                 shuffled_super_cat    = super_cat_vec(super_cat_shuffle_idx);
+% 
+%                 good_blocks = 0;
+%                 block_start_idx = 1:n_trials_per_block:(length(shuffled_super_cat));
+%                 if n_trials_per_block < n_super_cat
+%                     allowed_mismatch0 = diff([n_trials_per_block,n_super_cat])*2;
+%                 else
+%                     allowed_mismatch0 = 0;
+%                 end
+% 
+%                 while 1
+%                     super_cat_shuffle_idx = shuffle_concat(super_cat_shuffle_idx,1);
+%                     shuffled_super_cat = super_cat_vec(super_cat_shuffle_idx);
+% 
+%                     good_blocks = 0;
+% 
+%                     for jj = block_start_idx
+%                         idx = jj:(jj+n_trials_per_block-1);
+% 
+%                         if idx(end)>length(shuffled_super_cat)
+%                             idx(idx>length(shuffled_super_cat)) = [];
+%                             mismatch = diff([length(idx),n_super_cat])*2;
+%                         else
+%                             mismatch = allowed_mismatch0;
+%                         end
+%                         missing_conditions = setdiff([1:n_super_cat],unique(shuffled_super_cat(idx),'legacy'));
+% 
+%                         if isempty(missing_conditions) || length(missing_conditions) <= mismatch
+%                             good_blocks = good_blocks+1;
+%                         end
+%                     end
+%                     if good_blocks == length(block_start_idx)-1
+%                         break;
+%                     end
+%                 end            
+% 
+%                 % Check if n_sub_cat still holds
+%                 if ismember(taskClass{:},{'ltm','img'})
+%                     assert(isequal(histcounts(shuffled_super_cat),n_sub_cat))
+%                 else
+%                     assert(isequal(histcounts(shuffled_super_cat),sum(n_sub_cat,2)'))
+%                 end
+% 
+% 
+%                 % shuffle basic category (so shuffle every other image)
+%     %             basic_cat_vec = cond_table.basic_cat;
+%                 basic_cat_shuffle_idx = [];
+%                 for ii = 1:length(n_basic_cat)
+%                     % create [ 0 0 2 2 4 4 ] vector
+%                     curr_im = repelem(length(basic_cat_shuffle_idx): 2 : length(basic_cat_shuffle_idx)+2*n_basic_cat(ii),n_basic_cat(ii));
+%                     if ismember(taskClass{:},{'ltm','img'})
+%                         basic_cat_shuffle_idx = cat(2, basic_cat_shuffle_idx, curr_im + shuffle_concat([1:n_basic_cat(ii)],n_sub_cat(ii)));
+%                     else
+%                         % add shuffled [1,2,1,2,1,2] vector
+%                         basic_cat_shuffle_idx = cat(2, basic_cat_shuffle_idx, curr_im + shuffle_concat([1:n_basic_cat(ii)],n_sub_cat(ii,1)));
+%                     end
+%                 end
+%                 if ismember(taskClass{:},{'ltm','img'})
+%                     basic_cat_shuffle_idx = basic_cat_shuffle_idx(ismember(basic_cat_shuffle_idx,1:length(basic_cat_shuffle_idx)/2));
+%                 end
+%                 % NOW SHUFFLE!
+%                 conds_shuffle0 = cond_table(basic_cat_shuffle_idx,:); % <-- shuffle based on basic category
+%                 conds_master_single_rep = conds_shuffle0(super_cat_shuffle_idx,:); % <-- shuffle based on super category, last one to give it priority
 
-                good_blocks = 0;
-                block_start_idx = 1:n_trials_per_block:(length(shuffled_super_cat));
-                if n_trials_per_block < n_super_cat
-                    allowed_mismatch0 = diff([n_trials_per_block,n_super_cat])*2;
-                else
-                    allowed_mismatch0 = 0;
-                end
 
-                while 1
-                    super_cat_shuffle_idx = shuffle_concat(super_cat_shuffle_idx,1);
-                    shuffled_super_cat = super_cat_vec(super_cat_shuffle_idx);
+                % NOW we shuffle all conditions, without constraints, regardless of superordinate category class
+                shuffle_c               = randperm(size(cond_table,1),size(cond_table,1));
+                conds_master_single_rep = cond_table(shuffle_c,:);
 
-                    good_blocks = 0;
-
-                    for jj = block_start_idx
-                        idx = jj:(jj+n_trials_per_block-1);
-
-                        if idx(end)>length(shuffled_super_cat)
-                            idx(idx>length(shuffled_super_cat)) = [];
-                            mismatch = diff([length(idx),n_super_cat])*2;
-                        else
-                            mismatch = allowed_mismatch0;
-                        end
-                        missing_conditions = setdiff([1:n_super_cat],unique(shuffled_super_cat(idx),'legacy'));
-
-                        if isempty(missing_conditions) || length(missing_conditions) <= mismatch
-                            good_blocks = good_blocks+1;
-                        end
-                    end
-                    if good_blocks == length(block_start_idx)-1
-                        break;
-                    end
-                end            
-
-                % Check if n_sub_cat still holds
-                if ismember(taskClass{:},{'ltm','img'})
-                    assert(isequal(histcounts(shuffled_super_cat),n_sub_cat))
-                else
-                    assert(isequal(histcounts(shuffled_super_cat),sum(n_sub_cat,2)'))
-                end
-
-
-                % shuffle basic category (so shuffle every other image)
-    %             basic_cat_vec = cond_table.basic_cat;
-                basic_cat_shuffle_idx = [];
-                for ii = 1:length(n_basic_cat)
-                    % create [ 0 0 2 2 4 4 ] vector
-                    curr_im = repelem(length(basic_cat_shuffle_idx): 2 : length(basic_cat_shuffle_idx)+2*n_basic_cat(ii),n_basic_cat(ii));
-                    if ismember(taskClass{:},{'ltm','img'})
-                        basic_cat_shuffle_idx = cat(2, basic_cat_shuffle_idx, curr_im + shuffle_concat([1:n_basic_cat(ii)],n_sub_cat(ii)));
-                    else
-                        % add shuffled [1,2,1,2,1,2] vector
-                        basic_cat_shuffle_idx = cat(2, basic_cat_shuffle_idx, curr_im + shuffle_concat([1:n_basic_cat(ii)],n_sub_cat(ii,1)));
-                    end
-                end
-                if ismember(taskClass{:},{'ltm','img'})
-                    basic_cat_shuffle_idx = basic_cat_shuffle_idx(ismember(basic_cat_shuffle_idx,1:length(basic_cat_shuffle_idx)/2));
-                end
-                % NOW SHUFFLE!
-                conds_shuffle0 = cond_table(basic_cat_shuffle_idx,:); % <-- shuffle based on basic category
-                conds_master_single_rep = conds_shuffle0(super_cat_shuffle_idx,:); % <-- shuffle based on super category, last one to give it priority
 
                 % Add catch trial vector
                 conds_master_single_rep.is_catch = false(size(conds_master_single_rep,1),1);

@@ -193,7 +193,7 @@ for tt = 1:length(cmodfun)
         else
             mask_idx = (double(tmp_mask)./255)>0;
         end
-        if ndims(mask_idx)==2 && ndims(tmp_im)==3
+        if ismatrix(mask_idx) && ndims(tmp_im)==3
             mask_idx = repmat(mask_idx, 1,1,3);
         end
         tmp_im0   = double(tmp_im);

@@ -122,8 +122,8 @@ switch stimClass
         stimloc_vec = repmat(loc_stim,              1,  n_unique_cases/n_stim_loc);  % stimulus location: machine readible
         stimloc_name_vec = repmat({'left','right'}, 1,  n_unique_cases/n_stim_loc);  % stimulus location: human readible
         con_vec     = repelem(p.stim.gabor.contrast,    n_unique_cases/n_contrasts); % contrast
-        im_nr_vec   = p.stim.gabor.unique_im_nrs_core;                                    % allocated unique image nrs
-        special_core_vec     = false(size(con_vec));                                          % if image is part of imagery subset
+        im_nr_vec   = p.stim.gabor.unique_im_nrs_core;                               % allocated unique image nrs
+        special_core_vec     = false(size(con_vec));                                 % if image is part of imagery subset
         special_core_vec(ismember(p.stim.gabor.unique_im_nrs_core,p.stim.gabor.unique_im_nrs_specialcore)) = true;
         
         nan_vec = NaN(size(con_vec))';
