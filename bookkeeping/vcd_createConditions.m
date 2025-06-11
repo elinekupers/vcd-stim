@@ -226,7 +226,7 @@ else % Recreate conditions and blocks and trials
             % contrasts within a block at least once.
             tbl = vcd_createConditionMaster(params, t_cond, n_trials_per_block,session_env);
             
-            % --- Allocate trials to blocks ---
+            % --- Allocate space for block nr ---
             tbl.stim_class_unique_block_nr = NaN(size(tbl,1),1);
             tbl.trial_nr = NaN(size(tbl,1),1);
             
@@ -373,15 +373,14 @@ else % Recreate conditions and blocks and trials
     % exactly 20% chance of a contrast decrement change to stimulus 
     % (defined by params.exp.trial.cd.prob_change).
     % For the uncued side, we do not change contrast.
-    cd_blocks             = find(condition_master.task_class == 2); % get CD blocks
-    cd_blocks_cue         = condition_master.is_cued(cd_blocks); % what side is cued for each CD trial?
-    nr_cued_cd_trials     = length(cd_blocks_cue); % nr of cued trials across all CD blocks
-    when                  = floor(linspace(1,nr_cued_cd_trials,nr_cued_cd_trials*params.exp.trial.cd.prob_change)); % when do we (roughly) expect a CD change?
-    when                  = round(when+rand(1,8)); % add some jitter selected trials
-    when(when>nr_cued_cd_trials) = nr_cued_cd_trials;
-    assert(isequal(length(unique(when)),length(when)));
+    cd_blocks                    = find(condition_master.task_class == 2); % get CD blocks
+    cd_blocks_cue                = condition_master.is_cued(cd_blocks); % what side is cued for each CD trial?
+    nr_cued_cd_trials            = length(cd_blocks_cue); % nr of cued trials across all CD blocks
+    when                         = floor(linspace(1,nr_cued_cd_trials,nr_cued_cd_trials*params.exp.trial.cd.prob_change)); % when do we expect a CD change?
+    when(when>nr_cued_cd_trials) = nr_cued_cd_trials; % we don't care about order of trials for now, we will shuffle trials in a block later.
+    assert(isequal(length(unique(when)),length(when))); % make sure we selected the nr of trials we expect for the given probability.
+    expected_cue_cnt             = round(histcounts(cd_blocks_cue)*params.exp.trial.cd.prob_change); % round this probability as we can only deal with integer nr of trials.
     
-    expected_cue_cnt      = round(histcounts(cd_blocks_cue)*params.exp.trial.cd.prob_change); % round this probability as we can only deal with integer nr of trials.
     while 1 % Do some voodoo trying to balance the nr of cd changes across spatial cueing conditions..
         cue_cnt = histcounts(cd_blocks_cue(when));
         if any(cue_cnt < expected_cue_cnt)
