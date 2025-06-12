@@ -933,7 +933,7 @@ for ses = 1:size(all_sessions,3)
             
             if ~verLessThan('matlab', '9.6') % if we have an old MATLAB version, don't even bother making figures (this code is not compatible)
             
-                if params.verbose
+                if verbose
 
                     figure(99); clf; set(gcf, 'Position', [1 1 1200 500])
                     imagesc([session_time_table.run_nr,session_time_table.block_nr,session_time_table.trial_nr,session_time_table.crossing_nr]')
@@ -944,7 +944,7 @@ for ses = 1:size(all_sessions,3)
                     xlabel('events (in time)')
                     sgtitle(sprintf('Session %02d %s',ses, choose(st==1,'A','B')))
 
-                    if params.store_imgs
+                    if store_imgs
                         saveFigsFolder = fullfile(vcd_rootPath,'figs',sprintf('condition_master1_%s',session_env));
                         filename = sprintf('vcd_session%02d_%s_time_table_events.png', ses, choose(st==1,'A','B'));
                         print(gcf,'-dpng','-r300',fullfile(saveFigsFolder,filename));
