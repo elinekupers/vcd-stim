@@ -33,7 +33,7 @@ switch exp_env
         ptb_dir      = '/Applications/Psychtoolbox';
         edf2asc_func = '/Applications/Eyelink/EDF_Access_API/Example';
     case 3 % NYU psychophysics room
-        vcdcode_dir  = '/Users/zlu/Documents/MATLAB/vcd-stim-0.2';
+        vcdcode_dir  = '/Users/zlu/Documents/MATLAB/vcd-stim-0.21';
         knkutils_dir = '/Users/zlu/Documents/MATLAB/knkutils-master';
         ptb_dir      = '/Users/zlu/Documents/MATLAB/Psychtoolbox';
         edf2asc_func = '/Applications/Eyelink/EDF_Access_API/Example';
