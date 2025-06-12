@@ -57,6 +57,7 @@ p.addParameter('env_type'           , []        , @(x) ismember(x, {'MRI','BEHAV
 p.addParameter('timetable_file'     , ''        , @ischar);                      % what randomization file are we loading? file should exist in   
 p.addParameter('all_images'         , struct()  , @isstruct);                    % preloaded all_images in a single struct (to save time)
 p.addParameter('verbose'            , true      , @islogical)                    % (boolean) whether to print out text in command window. Default = true. 
+p.addParameter('store_imgs'         , false     , @islogical)                    % (boolean) whether to save figures locally. Default = false.    
 p.addParameter('infofolder'         , fullfile(vcd_rootPath,'workspaces','info')        , @ischar); % where are the *_info.csv file(s)?
 p.addParameter('stimfolder'         , fullfile(vcd_rootPath,'workspaces','stimuli')     , @ischar); % where are the mat-files with store stimuli?
 p.addParameter('instrfolder'        , fullfile(vcd_rootPath,'workspaces','instructions'), @ischar); % where are the txt and png files with task instructions?
@@ -125,7 +126,9 @@ params.rng.rand  = rand;
 params.rng.randn = randn;
 
 % If we are testing the experiment, change disp name to load stimuli
-if strcmp(params.env_type,'TEST')
+if strcmp(params.env_type,'BEHAVIOR') && strcmp(params.disp.name,'CCNYU_VIEWPIXX3D')
+    params.disp.name = 'PPROOM_EIZOFLEXSCAN';
+elseif strcmp(params.env_type,'TEST')
     params.disp.name = 'PPROOM_EIZOFLEXSCAN';
 end
 
@@ -208,7 +211,7 @@ else
     else
         % if there is no condition_master_shuffled for this subject, then
         % we create both tables on the spot.
-        d = dir(fullfile(vcd_rootPath,'workspaces','info', sprintf('condition_master*%s*.mat', dispName)));
+        d = dir(fullfile(vcd_rootPath,'workspaces','info', sprintf('condition_master*%s*.mat', params.disp.name)));
         a1 = load(fullfile(d(end).folder,d(end).name),'condition_master');
         
         % make randomization file!
