@@ -252,7 +252,11 @@ if isempty(timetable_file) %#ok<NODEF>
        fprintf('OK, will regenerate new time table for this subject''s session and run.\n')
    elseif load_existing_timetable == 2
        tmp_timetable_dir = fullfile(vcd_rootPath,'data',env_type, sprintf('vcd_subj%03d',subj_nr));
-       tempfiles = matchfiles(fullfile(tmp_timetable_dir,sprintf('vcd_subj%03d_time_table_master_%s*.mat',subj_nr, dispName)));
+       if strcmp(dispName,'CCNYU_VIEWPIXX3D')
+           tempfiles = matchfiles(fullfile(tmp_timetable_dir,sprintf('vcd_subj%03d_time_table_master_%s*.mat',subj_nr, 'PPROOM_EIZOFLEXSCAN')));
+       else
+           tempfiles = matchfiles(fullfile(tmp_timetable_dir,sprintf('vcd_subj%03d_time_table_master_%s*.mat',subj_nr, dispName)));
+       end
        tempfiles_short = strrep(tempfiles, tmp_timetable_dir, '.');
        fprintf('\nIt appears you have the following time tables already:\n');
 
