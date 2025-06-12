@@ -38,6 +38,10 @@ total_nr_of_sessions = unique(condition_master.session_nr);
 total_nr_of_runs     = max(condition_master.global_run_nr);
 total_nr_of_blocks   = max(condition_master.global_block_nr);
 total_nr_of_trials   = max(condition_master.global_trial_nr);
+total_nr_of_taskclasses = max(condition_master.global_trial_nr);
+
+assert(total_nr_of_runs
+
 
 % More specific stats
 total_nr_of_unique_conditions = length(unique(condition_master.condition_nr(~isnan(condition_master.condition_nr))));
@@ -51,6 +55,11 @@ trials_per_run = zeros(1,total_nr_of_sessions);
 for rr = 1:length(run_start)-1
     trials_per_run(rr) = length(condition_master.trial_nr(run_start(rr):(run_start(rr+1)-1)));
 end
+
+trials_per_taskclass = zeros(1,total_nr_of_sessions);
+for rr = 1:length(run_start)-1
+    trials_per_run(rr) = length(condition_master.trial_nr(run_start(rr):(run_start(rr+1)-1)));
+end
    
 
 % Tell the user!
@@ -60,7 +69,7 @@ fprintf('Total number of runs: \t\t\t%03d\n', total_nr_of_runs);
 fprintf('Total number of block: \t\t\t%03d\n', total_nr_of_blocks);
 fprintf('Total number of trials: \t\t%03d\n', total_nr_of_trials);
 fprintf('Total number of unique conditions: \t%03d\n', total_nr_of_unique_conditions);
-fprintf('Total number of trials for runs 1-%d: \t%s \n',  total_nr_of_runs,num2str(trials_per_run))
+fprintf('Total number of trials for runs 1-%d: \t%s \n', total_nr_of_runs,num2str(trials_per_run))
 
-
+fprintf('Total number of trials and blocks per task class?', 
 

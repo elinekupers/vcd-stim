@@ -58,7 +58,9 @@ params.store_imgs     = true; % store visualization figures or not?
 params.saveFigsFolder = fullfile(vcd_rootPath,'figs'); % where to store visualization figures
 
 % Get display params
-dispname    = 'PPROOM_EIZOFLEXSCAN'; % Choose from: '7TAS_BOLDSCREEN32' or 'KKOFFICE_AOCQ3277' or 'EKHOME_ASUSVE247' or 'PPROOM_EIZOFLEXSCAN'
+% Choose from: '7TAS_BOLDSCREEN32','KKOFFICE_AOCQ3277','EKHOME_ASUSVE247',
+%              'PPROOM_EIZOFLEXSCAN','CCNYU_VIEWPIXX3D'
+dispname    = 'PPROOM_EIZOFLEXSCAN'; 
 params.disp = vcd_getDisplayParams(dispname);
 
 % Infer session type
@@ -71,7 +73,7 @@ else
 end
 
 % Get stimulus parameters
-params.load_params  = true; % load stored params or recreate them
+params.load_params  = false; % load stored params or recreate them
 params.store_params = true;
 
 % SETUP RNG
