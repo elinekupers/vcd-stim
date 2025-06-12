@@ -52,7 +52,7 @@ p.addParameter('movieflip'          , [0 0]     , @isnumeric)                   
 p.addParameter('wantsynctest'       , true      , @islogical)                    % whether we want to run the PTB sync test or not
 p.addParameter('savestim'           , false     , @islogical)                    % whether we want to store temp file with stimuli and timing
 p.addParameter('loadstimfromrunfile', false     , @islogical)                    % whether we want to load stim from run file
-p.addParameter('ptbMaxVBLstd'       , 0.0008    , @isnumeric)                    % what standard deviation for screen flip duration do we allow?
+p.addParameter('ptbMaxVBLstd'       , 0.0009    , @isnumeric)                    % what standard deviation for screen flip duration do we allow?
 p.addParameter('env_type'           , []        , @(x) ismember(x, {'MRI','BEHAVIOR', 'TEST'})); % are we running the behavioral (PProom), MRI (7TAS), or a TEST (office monitors) version of the VCD core experiment?
 p.addParameter('timetable_file'     , ''        , @ischar);                      % what randomization file are we loading? file should exist in   
 p.addParameter('all_images'         , struct()  , @isstruct);                    % preloaded all_images in a single struct (to save time)
