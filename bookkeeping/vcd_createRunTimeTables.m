@@ -72,6 +72,8 @@ p0.addRequired('params'           , @isstruct);
 p0.addParameter('condition_master', [], @istable);
 p0.addParameter('load_params'     , true, @islogical);
 p0.addParameter('store_params'    , true, @islogical);
+p0.addParameter('store_imgs'      , false, @islogical);
+p0.addParameter('verbose'         , false, @islogical);
 p0.addParameter('session_env'     , 'MRI', @(x) any(strcmp(x,{'BEHAVIOR','MRI'})));
 p0.addParameter('saveDir'         , fullfile(vcd_rootPath,'data'), @ischar);
 p0.addParameter('subj_id'          , 'vcd_subj000', @ischar);
@@ -929,7 +931,7 @@ for ses = 1:size(all_sessions,3)
             % concatenate session_time_table to time_table_master
             time_table_master  = cat(1,time_table_master,session_time_table);
             
-            if ~verLessThan('matlab', '9.6')
+            if ~verLessThan('matlab', '9.6') % if we have an old MATLAB version, don't even bother making figures (this code is not compatible)
             
                 if params.verbose
 
