@@ -10,9 +10,9 @@ workspaces/info/*
 !workspaces/info/condition_master_*.mat
 !workspaces/info/*.csv
 !workspaces/instructions/
-!workspaces/stimuli/
-workspaces/stimuli/*
-!workspaces/stimuli/instruction_images/
+!workspaces/instructions/instruction_images/
+!workspaces/instructions/instruction_txt/
+!workspaces/instructions/performance_phrases/
 figs/*
 data/*
 
