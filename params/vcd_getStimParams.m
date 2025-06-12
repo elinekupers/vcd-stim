@@ -38,7 +38,7 @@ function stim = vcd_getStimParams(varargin)
 
 %% %%%%%%%%%%%%% PARSE INPUTS %%%%%%%%%%%%%
 p0 = inputParser;
-p0.addParameter('disp_name'    , '7TAS_BOLDSCREEN32', @(x) any(strcmp(x,{'7TAS_BOLDSCREEN32', 'KKOFFICE_AOCQ3277', 'PPROOM_EIZOFLEXSCAN', 'EKHOME_ASUSVE247'})));                   
+p0.addParameter('disp_name'    , '7TAS_BOLDSCREEN32', @(x) any(strcmp(x,{'7TAS_BOLDSCREEN32', 'KKOFFICE_AOCQ3277', 'PPROOM_EIZOFLEXSCAN', 'EKHOME_ASUSVE247','CCNYU_VIEWPIXX3D'})));                   
 p0.addParameter('load_params'  , true, @islogical);                    
 p0.addParameter('store_params' , true, @islogical); 
 p0.addParameter('save_info_dir', fullfile(vcd_rootPath,'workspaces','info'), @ischar);
