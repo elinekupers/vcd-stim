@@ -380,10 +380,11 @@ while 1
   end
 end
 
-% Draw background (gray screen) + thin rim fixation circle
-Screen('FillRect',win,params.stim.bckgrnd_grayval,rect); 
-Screen('DrawTexture',win,fix_tex_preruninstr,[], fix_rect_preruninstr, 0, [], 1, 255*ones(1,3)); % draw thin fix circle
+% Once button is detected, we draw center saccade target circle on mean luminance gay background
+pre_et_tex = Screen('MakeTexture',win, stim.eye(:,:,:,1));
+Screen('DrawTexture',win,pre_et_tex,[], rect, 0, [], 1, 255*ones(1,3)); % draw thick black fix circle
 Screen('Flip',win);
+clear pre_et_tex
 
 fprintf('Press trigger key to begin the movie. (consider turning off network, energy saver, software updates, psychopy.)\n');
 
