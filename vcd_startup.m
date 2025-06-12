@@ -2,20 +2,20 @@ function [] = vcd_startup(exp_env)
 % 
 % Script to add paths and toolbox dependencies prior to running the
 % experiment. Requires user to tell what environment we are in: 7TAS (1),
-% psychophysics room (2) or other (3). if other, user needs to be change 
+% CMRR psychophysics room (2),  NYU psychophysics room (3), or other environments like KK office (4). if other, user needs to be change 
 % the path in Matlab to the root of their local vcd-stim code folder
 
 if ~exist('exp_env','var')
-    exp_env = []; % can be 1:'7tas', 2:'pproom', 3:'other'
+    exp_env = []; % can be 1:'7tas', 2:'cmrr pproom', 2:'nyu pproom', 4:'other'
 end
 
 % Ask the user what environment we are in
 if isempty(exp_env)
-   exp_env = input('Where are we running the core VCD experiment?  1: 7TAS   2: psychophysics room   3: other \n');
+   exp_env = input('Where are we running the core VCD experiment?  1: 7TAS   2: CMRR psychophysics room   3: NYU psychophysics room   4: other \n');
 elseif ~isempty(exp_env) 
     % Check if inputs are either 1, 2, or 3
     assert(isequal(length(exp_env),1))
-    assert(ismember(exp_env,[1,2,3]))
+    assert(ismember(exp_env,[1,2,3,4]))
 end
     
 
@@ -26,13 +26,18 @@ switch exp_env
         vcdcode_dir  = '/Users/7tasuser/Desktop/cvnlab/VCD/vcd-stim';             % where does vcd stim code live?
         knkutils_dir = '/Users/7tasuser/Desktop/cvnlab/kendrick/knkutils-master'; % where does knk utils code live?
         ptb_dir      = '/Applications/Psychtoolbox';                              % where does ptb code live?
-        edf2asc_func = '/Applications/Eyelink/EDF_Access_API/Example';
-    case 2 % psychophysics room
+        edf2asc_func = '/Applications/Eyelink/EDF_Access_API/Example';            % where does edf2asc converter function live?
+    case 2 % CMRR psychophysics room
         vcdcode_dir  = '/Users/psphuser/Desktop/cvnlab/VCD/vcd-stim';
         knkutils_dir = '/Users/psphuser/Desktop/cvnlab/VCD/knkutils';
         ptb_dir      = '/Applications/Psychtoolbox';
         edf2asc_func = '/Applications/Eyelink/EDF_Access_API/Example';
-    case 3 % other
+    case 3 % NYU psychophysics room
+        vcdcode_dir  = '/Users/zlu/Documents/MATLAB/vcd-stim-0.2';
+        knkutils_dir = '/Users/zlu/Documents/MATLAB/knkutils-master';
+        ptb_dir      = '/Users/zlu/Documents/MATLAB/Psychtoolbox';
+        edf2asc_func = '/Applications/Eyelink/EDF_Access_API/Example';
+    case 4 % other
         if exist('vcd_rootPath','file')
             vcdcode_dir = vcd_rootPath;
         else
@@ -76,7 +81,7 @@ if ~exist('edf2asc','file') && ~isempty(edf2asc_func)
 end
 
 % deal with setting Bits Sharp settings
-if exp_env == 2 % psychophysics room
+if exp_env == 2 % CMRR psychophysics room
     smatch = matchfiles('/dev/tty.usbmodem*');
     assert(length(smatch)==1);
     s1 = serial(smatch{1}); fopen(s1);
