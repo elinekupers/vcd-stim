@@ -638,12 +638,13 @@ if size(timekeys,1) > 0
 end
 timekeys = [{absnowtime 'absolutetimefor0'}; timekeys];
 
-% report basic timing information to stdout
-fprintf('we had %d glitches!\n',glitchcnt);
-fprintf('we had %d dropped frames!\n',sum(isnan(timeframes)));
-dur = (timeframes(end)-timeframes(1)) * (length(timeframes)/(length(timeframes)-1));
-fprintf('projected total run duration: %.10f\n',dur);
-fprintf('frames per second: %.10f\n',length(timeframes)/dur);
+% NOT NECESSARY BECAUSE vcdbehavioralanalysis.m deals with this kind of stuff.
+% % report basic timing information to stdout
+% fprintf('we had %d glitches!\n',glitchcnt);
+% fprintf('we had %d dropped frames!\n',sum(isnan(timeframes)));
+% dur = (timeframes(end)-timeframes(1)) * (length(timeframes)/(length(timeframes)-1));
+% fprintf('projected total run duration: %.10f\n',dur);
+% fprintf('frames per second: %.10f\n',length(timeframes)/dur);
 
 
 % Add button presses and monitor timing to data struct
@@ -656,8 +657,8 @@ data.timing.mfi             = mfi;
 data.timing.glitchcnt       = glitchcnt;
 data.timing.timeframes      = timeframes;
 data.timing.starttime       = starttime;
-data.timing.endtime         = dur;
-data.timing.empiricalfps    = length(timeframes)/dur;
+%data.timing.endtime         = dur;
+%data.timing.empiricalfps    = length(timeframes)/dur;
 data.timing.frameduration   = frameduration;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
