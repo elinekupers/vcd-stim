@@ -44,7 +44,7 @@ clear rename_me ff p0
 % Check if subject nr is member of total subjects
 subj_ok = ismember([1:params.exp.total_subjects],subj_nr);
 if isempty(subj_ok)
-    error('[%s]: Subject number is outside the range!\n',mfilename);
+    error('\n[%s]: Subject number is outside the range!\n',mfilename);
 end
 
 % Check if ses nr is member of all sessions
@@ -65,18 +65,18 @@ elseif strcmp(session_env, 'TEST')
 end
 
 if isempty(ses_ok)
-    error('[%s]: Session number is outside the range!\n',mfilename);
+    error('\n[%s]: Session number is outside the range!\n',mfilename);
 end
 
 % If left undefined, we will load images for first session
 if isempty(run_ok)
-    error('[%s]: Run number is outside the range!\n',mfilename);
+    error('\n[%s]: Run number is outside the range!\n',mfilename);
 end
 
 
 %% Load params if requested and we can find the file
 
-fprintf('[%s]: Loading stimuli..\n',mfilename);
+fprintf('\n[%s]: Loading stimuli..\n',mfilename);
     
 
 % Check if we need to load more images
