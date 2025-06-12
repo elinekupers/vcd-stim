@@ -369,7 +369,7 @@ fprintf('Instructions are on screen, waiting for trigger...\n');
 fprintf('Please have participant press a button to confirm they are ready.\n');
 
 while 1
-  [keyIsDown,~,keyCode,~] = KbCheck(deviceNr,2);
+  [keyIsDown,~,keyCode,~] = KbCheck(deviceNr);
   if keyIsDown
     temp = KbName(keyCode);
     if any(strcmp(temp(1), params.userkeys))
@@ -493,6 +493,7 @@ while 1
                 % get the name of the key and record it
                 kn = KbName(keyCode);
                 timekeys = [timekeys; {secs kn}]; %#ok<AGROW>
+                fprintf('[%s]\n',kn(1));
                 
                 % check if ESCAPE was pressed
                 if isequal(kn,'ESCAPE')
