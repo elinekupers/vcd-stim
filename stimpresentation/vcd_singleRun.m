@@ -111,7 +111,8 @@ deviceNr = -3; % previously: vcd_checkDevices(params.deviceNr, params.device_che
 % 4: skipsync (bool: 0 is false -- do not skip the text, 1 is true -- skip the test)
 % 5: wantstereo (bool: default is false)
 if strcmp(params.disp.name, 'PPROOM_EIZOFLEXSCAN')
-    % apparently PP room monitor native refresh rate shows up as 0 (but is actually 60 Hz)
+    % apparently PP room monitor native refresh rate shows up as 0 (but is
+    % actually 60 Hz), due to the Bits# stimulus processor.
     % PProom EIZOFLEXScan screen ptonparams are expected to be {[1920 1200 0 24],[], 0, 0}
     ptonparams = {[params.disp.w_pix params.disp.h_pix 0 24],[],params.disp.clut, skipsync};
 else % '7TAS_BOLDSCREEN32','KKOFFICE_AOCQ3277','EKHOME_ASUSVE247', 'CCNYU_VIEWPIXX3D'
@@ -125,13 +126,17 @@ randn('seed', sum(100*clock)); %#ok<RAND>
 params.rng.rand  = rand;
 params.rng.randn = randn;
 
-% If we are testing the experiment, change disp name to load stimuli
+% Very hacky but alais.. If we want to run the vcd-core experiment in a 
+%  different environment without generating the stimuli for that particular 
+%  display setup, we need to change disp name to load the stimulusfiles
+%  that are default on VCD Google drive / Github.
+%  For example, if we want to run the PPROOM_EIZOFLEXSCAN stimuli on 
+%  CCNYU_VIEWPIXX3D..
 if strcmp(params.env_type,'BEHAVIOR') && strcmp(params.disp.name,'CCNYU_VIEWPIXX3D')
     params.disp.name = 'PPROOM_EIZOFLEXSCAN';
 elseif strcmp(params.env_type,'TEST')
     params.disp.name = 'PPROOM_EIZOFLEXSCAN';
 end
-
 
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%% LOAD STIM & EXP PARAMS %%%%%%%%%%%%%%%%%%%%%%%%%%

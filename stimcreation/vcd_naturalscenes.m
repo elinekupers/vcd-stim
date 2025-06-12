@@ -385,7 +385,7 @@ if params.verbose
 end
 
 %% For monitors acting linearly, square pixel values
-if any(strcmp(params.disp.name, {'7TAS_BOLDSCREEN32', 'PPROOM_EIZOFLEXSCAN'}))
+if any(strcmp(params.disp.name, {'7TAS_BOLDSCREEN32', 'PPROOM_EIZOFLEXSCAN','CCNYU_VIEWPIXX3D'}))
     fprintf('[%]: Square pixel values given using %s with linear gamma CLUT',mfilename, params.disp.name);
     
     % collapse og scenes category dim (w x h x 3 x 30)
