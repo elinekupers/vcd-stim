@@ -403,6 +403,7 @@ fprintf('EXP START.\n');
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%% DRAW THE TEXTURES %%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
 framecnt = 0;
+prevlinecnt = NaN;
 while 1
     
     framecnt = framecnt +1;    % NOTE: framecnt seems to track frame
@@ -488,12 +489,16 @@ while 1
         % try to read input (instantaneous)
         if detectinput
             [keyIsDown,secs,keyCode,~] = KbCheck(deviceNr);  % previously -3 listen to all devices
+            if floor(secs/5) ~= prevlinecnt  % every 5 seconds, fprintf a new line
+              fprintf('\n');
+              prevlinecnt = floor(secs/5);
+            end
             if keyIsDown
                 
                 % get the name of the key and record it
                 kn = KbName(keyCode);
                 timekeys = [timekeys; {secs kn}]; %#ok<AGROW>
-                fprintf('[%s]\n',kn(1));
+                fprintf('[%s]',kn(1));
                 
                 % check if ESCAPE was pressed
                 if isequal(kn,'ESCAPE')
