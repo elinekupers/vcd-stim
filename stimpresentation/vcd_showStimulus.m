@@ -367,6 +367,7 @@ fprintf('Instructions are on screen, waiting for trigger...\n');
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%% CORE EXP CODE! %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 fprintf('Please have participant press a button to confirm they are ready.\n');
+ListenChar(2);
 
 while 1
   [keyIsDown,~,keyCode,~] = KbCheck(deviceNr);
@@ -404,6 +405,7 @@ fprintf('EXP START.\n');
 %%%%%%%%%%%%%%%%%%%%%%%%%%% DRAW THE TEXTURES %%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
 framecnt = 0;
 prevlinecnt = NaN;
+prevreportcnt = NaN;
 while 1
     
     framecnt = framecnt +1;    % NOTE: framecnt seems to track frame
@@ -490,7 +492,7 @@ while 1
         if detectinput
             [keyIsDown,secs,keyCode,~] = KbCheck(deviceNr);  % previously -3 listen to all devices
             if floor(secs/5) ~= prevlinecnt  % every 5 seconds, fprintf a new line
-              fprintf('\n');
+              fprintf('$\n');
               prevlinecnt = floor(secs/5);
             end
             if keyIsDown
@@ -498,7 +500,16 @@ while 1
                 % get the name of the key and record it
                 kn = KbName(keyCode);
                 timekeys = [timekeys; {secs kn}]; %#ok<AGROW>
-                fprintf('[%s]',kn(1));
+                if floor(secs/0.1) ~= prevreportcnt
+                    if iscell(kn)
+                        for kk=1:length(kn)
+                            fprintf('%s',kn{kk}(1));
+                        end
+                    else                   
+                     fprintf('%s',kn(1));
+                    end
+                    prevreportcnt = floor(secs/0.1);
+                end
                 
                 % check if ESCAPE was pressed
                 if isequal(kn,'ESCAPE')
@@ -585,7 +596,7 @@ while 1
 end
 
 fprintf('RUN ENDED.\n');
-
+ListenChar(0);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%% SAVE EYELINK DATA %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
