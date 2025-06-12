@@ -245,9 +245,9 @@ run_table = time_table_master(time_table_master.session_nr==params.ses_nr & ...
 clear time_table_master all_run_frames
 
 % Tell the user how many frames we expect for this run
-fprintf(' *** Expected duration of this run is:\n')
+fprintf(' *** Expected duration of this run is ***\n')
 fprintf(' %d time frames (%d Hz) \n',size(run_frames,1), params.stim.presentationrate_hz);
-fprintf(' %3.2f seconds (or %03d minutes and %02d seconds %d) \n',size(run_frames,1)/60, floor(size(run_frames,1)/3600),rem(size(run_frames,1),3600)/60);
+fprintf(' %3.2f seconds (or %d minutes and %02d seconds %d) \n',size(run_frames,1)/60, floor(size(run_frames,1)/3600),rem(size(run_frames,1),3600)/60);
 
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%% LOAD RUN STIMULI    %%%%%%%%%%%%%%%%%%%%%%%%%%%
