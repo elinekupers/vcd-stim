@@ -169,12 +169,14 @@ p.addRequired ('subj_nr'            , @isnumeric); % subject number
 p.addRequired ('ses_nr'             , @isnumeric); % session number 
 p.addRequired ('ses_type'           , @isnumeric); % session type (1=A or 2=B) 
 p.addRequired ('run_nr'             , @isnumeric); % nun number
-p.addRequired('dispName'            , @(x) any(strcmp(x, {'7TAS_BOLDSCREEN32','KKOFFICE_AOCQ3277','PPROOM_EIZOFLEXSCAN','EKHOME_ASUSVE247'}))); % display name
+p.addRequired('dispName'            , @(x) any(strcmp(x, {'7TAS_BOLDSCREEN32','KKOFFICE_AOCQ3277','PPROOM_EIZOFLEXSCAN','EKHOME_ASUSVE247', 'CCNYU_VIEWPIXX3D'}))); % display name
 p.addParameter('wantsynctest'       , true    , @islogical);
 p.addParameter('loadparams'         , true    , @islogical);
 p.addParameter('storeparams'        , true    , @islogical);
 p.addParameter('savestim'           , false   , @islogical);
 p.addParameter('loadstimfromrunfile', false   , @islogical);
+p.addParameter('verbose'            , false   , @islogical);    
+p.addParameter('storeimgs'          , false   , @islogical);
 p.addParameter('offsetpix'          , [0 0]   , @isnumeric); % [x,y]
 p.addParameter('movieflip'          , [0 0]   , @isnumeric); % up/down, left/right
 p.addParameter('savedatadir'        , ''      , @ischar);
@@ -202,7 +204,7 @@ clear rename_me ff p
 if isnumeric(dispName)
     if isequal(dispName,1)
         env_type = 'MRI';
-    elseif isequal(dispName,2)
+    elseif ismember(dispName,[2,3])
         env_type = 'BEHAVIOR';
     else
         env_type = 'TEST';
@@ -211,6 +213,8 @@ elseif ischar(dispName)
     if strcmp(dispName,'7TAS_BOLDSCREEN32')
         env_type = 'MRI';
     elseif strcmp(dispName,'PPROOM_EIZOFLEXSCAN')
+        env_type = 'BEHAVIOR';
+    elseif strcmp(dispName,'CCNYU_VIEWPIXX3D')
         env_type = 'BEHAVIOR';
     else
         env_type = 'TEST';
@@ -312,6 +316,8 @@ end
     'wanteyetracking', wanteyetracking, ...
     'loadparams',      loadparams, ...
     'storeparams',     storeparams, ...
+    'store_imgs',      storeimgs, ...
+    'verbose',         verbose, ...
     'offsetpix',       offsetpix, ...
     'movieflip',       movieflip, ...
     'instrfolder',     instrfolder, ...
