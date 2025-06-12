@@ -690,7 +690,7 @@ save(fullfile(params.savedatadir,params.behaviorfile),vars{:});  % '-v7.3'
 performance = vcdbehavioralanalysis(fullfile(params.savedatadir,params.behaviorfile));
 
 % Get feedback display text
-[fb_txt, fbtext_rect] = vcd_getFeedbackDisplay(params, rect, performance, taskscript);
+[fb_txt, fbtext_rect] = vcd_getFeedbackDisplay(params, rect, performance);
 
 % Show performance to subject (draw text on gray background)
 Screen('FillRect', win, params.stim.bckgrnd_grayval, rect);

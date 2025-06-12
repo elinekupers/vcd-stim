@@ -91,7 +91,7 @@ end
 if ~isfield(all_images,'instr') || isempty(all_images.instr) || ~isfield(all_images.instr,'im')
     if verbose; fprintf('[%s]: Loading instruction images (text + icons)..\n',mfilename); end
     
-    d = dir(fullfile(params.stimfolder,'instruction_images', '*.png'));
+    d = dir(fullfile(params.instrfolder,'instruction_images', '*.png'));
     
     %  instr_im: 4D array: [x,y, 3, nr_crossings]ß
     all_images.instr = uint8(zeros(700,700,3,length(params.exp.crossings)+1));

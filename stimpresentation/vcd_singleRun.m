@@ -51,15 +51,15 @@ p.addParameter('offsetpix'          , [0 0]     , @isnumeric);                  
 p.addParameter('movieflip'          , [0 0]     , @isnumeric)                    % whether to flip up-down, whether to flip left-right
 p.addParameter('wantsynctest'       , true      , @islogical)                    % whether we want to run the PTB sync test or not
 p.addParameter('savestim'           , false     , @islogical)                    % whether we want to store temp file with stimuli and timing
-p.addParameter('loadstimfromrunfile', false , @islogical)                    % whether we want to load stim from run file
+p.addParameter('loadstimfromrunfile', false     , @islogical)                    % whether we want to load stim from run file
 p.addParameter('ptbMaxVBLstd'       , 0.0008    , @isnumeric)                    % what standard deviation for screen flip duration do we allow?
 p.addParameter('env_type'           , []        , @(x) ismember(x, {'MRI','BEHAVIOR', 'TEST'})); % are we running the behavioral (PProom), MRI (7TAS), or a TEST (office monitors) version of the VCD core experiment?
 p.addParameter('timetable_file'     , ''        , @ischar);                      % what randomization file are we loading? file should exist in   
 p.addParameter('all_images'         , struct()  , @isstruct);                    % preloaded all_images in a single struct (to save time)
+p.addParameter('verbose'            , true      , @islogical)                    % (boolean) whether to print out text in command window. Default = true. 
 p.addParameter('infofolder'         , fullfile(vcd_rootPath,'workspaces','info')        , @ischar); % where are the *_info.csv file(s)?
 p.addParameter('stimfolder'         , fullfile(vcd_rootPath,'workspaces','stimuli')     , @ischar); % where are the mat-files with store stimuli?
-p.addParameter('instrtextdir'       , fullfile(vcd_rootPath,'workspaces','stimuli','instruction_images'), @ischar); % where are the png-files with task instructions?
-p.addParameter('verbose'            , true      , @islogical)                    % (boolean) whether to print out text in command window. Default = true. 
+p.addParameter('instrfolder'        , fullfile(vcd_rootPath,'workspaces','instructions'), @ischar); % where are the txt and png files with task instructions?
 
 % Parse inputs
 p.parse(subj_nr, ses_nr, ses_type, run_nr, dispName, varargin{:});

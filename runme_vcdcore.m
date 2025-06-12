@@ -110,7 +110,7 @@ function [data,all_images] = runme_vcdcore(subj_nr,ses_nr,ses_type,run_nr, dispN
 %                          Default: no flipping: [0,0].
 %   [stimdir]            : folder where pre-made stimuli are stored.
 %                          Default: fullfile(vcd_rootPath,'workspaces','info')
-%   [instructionsDir]    : folder where the instruction txt files are stored.
+%   [instrfolder]        : folder where the instruction ong and txt files are stored.
 %                          Default: fullfile(vcd_rootPath,'workspaces','instructions')
 %   [savedatadir]        : folder where subject's button presses and stim timing are stored. 
 %                          Default: [], which will turn into: sprintf('vcd_subj%03d_ses%02d',subj_nr,sesID);
@@ -184,7 +184,7 @@ p.addParameter('ptbMaxVBLstd'       , 0.0006  , @isnumeric);
 p.addParameter('all_images'         , struct(), @isstruct);
 p.addParameter('timetable_file'     , ''      , @ischar);
 p.addParameter('stimDir'            , fullfile(vcd_rootPath,'workspaces','stimuli'), @ischar); % Where do the stimulus mat files live?
-p.addParameter('instructionsDir'    , fullfile(vcd_rootPath,'workspaces','stimuli','instruction_images'), @ischar); % Where do the task instruction png files live?
+p.addParameter('instrfolder'        , fullfile(vcd_rootPath,'workspaces','instructions'), @ischar); % Where do the task instruction txt and png files live?
 
 % Parse inputs
 p.parse(subj_nr, ses_nr, ses_type, run_nr, dispName, varargin{:});
@@ -314,7 +314,7 @@ end
     'storeparams',     storeparams, ...
     'offsetpix',       offsetpix, ...
     'movieflip',       movieflip, ...
-    'instrtextdir',    instructionsDir, ...
+    'instrfolder',     instrfolder, ...
     'savestim',        savestim, ...
     'loadstimfromrunfile', loadstimfromrunfile, ...
     'ptbMaxVBLstd',    ptbMaxVBLstd, ...

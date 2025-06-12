@@ -1,4 +1,4 @@
-function instrtext = vcd_getMotivationText(percent_correct)
+function instrtext = vcd_getMotivationText(percent_correct, textfolder)
 % VCD function to get additional motivation phrase with feedback at the end of the run
 % 
 %  [instrtext, txt_rect, params] = vcd_getMotivationText(params, percent_correct)
@@ -13,9 +13,6 @@ function instrtext = vcd_getMotivationText(percent_correct)
 % Takes the percent correct and randomly grabs and loads a text file. There
 % are 10 'good' (80% +); 10 'medium' (60-80%); 10 'bad' (60% or below); 
 % and 1 'bug' if percentCorrect is empty or does not exist.
-
-% file path to phrases
-textfolder = fullfile(vcd_rootPath,'workspaces','instructions','performance_phrases');
 
 % Percent correct into keyword
 if exist('percent_correct', 'var')
