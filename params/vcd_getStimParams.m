@@ -177,7 +177,7 @@ else
     dotlum_sq                       = round(255*(dotlum_lin.^2));           % dot luminance values adjusted for monitor with linearized gamma, ranging between [1-255],
     stim.fix.dotlum                 = [dotlum_sq, stim.bckgrnd_grayval];
     stim.fix.dotopacity             = 0.5;                                 % dot and border have 50% opacity
-    stim.fix.color                  = [255, 255, 255; 255 0 0];            % white and red (for spatial cue)
+    stim.fix.color                  = [255, 255, 255; 255 0 0; 0 0 0];     % white and red (for spatial cue) and black (pre eyetracking run) 
 
     if verbose
         fprintf('*** FIXATION CIRCLE: inner center diameter = %d, inner+thin rim = %d, inner+thick rim = %d pixels ***\n', ...
@@ -219,7 +219,7 @@ else
     stim.cd.t_support_N            = 6;                                     % support of temporal modulatin function in number of time frames (one time frame = 16.67 ms)
     stim.cd.meanchange             = round(stim.presentationrate_hz * 0.5); % mean onset of temporal modulation function in time frames (500 ms = 30 time frames)  
     stim.cd.changeplusminus        = round(stim.presentationrate_hz * 0.3); % range of onsets: 500 ± 300 ms (so min = 200 ms, max = 800 ms)  
-    stim.cd.min_cd                 = 0.3;                                   % stimulus contrast is reduced by 30% of mean luminance at lowest point of temporal gaussian window (note: this corresponds to subtracting a contrast fraction of 10.^(log10(c)-0.1))
+    stim.cd.min_cd                 = 0.2;                                   % stimulus contrast is reduced by 20% of mean luminance at lowest point of temporal gaussian window (note: this corresponds to subtracting a contrast fraction of 10.^(log10(c)-0.1))
     stim.cd.cdsoafun               = @() round(stim.cd.meanchange + stim.cd.changeplusminus*(2*(rand-.5))); % onset of temporal contrast modulation function 
     
     % Create 1D step function downward

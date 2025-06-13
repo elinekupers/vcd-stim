@@ -4,8 +4,9 @@ function [fix_im, mask, info] = vcd_fixationDot(params)
 %
 % Purpose:
 %   Create a set of fixation dot images for experimental display. We want a
-%   dot that will change between luminance between 5 (or more?) levels up 
-%   or down. See vcd_setStimParams.m for fixation parameters.
+%   dot that will change between luminance between 5 levels up 
+%   or down + 6th level: mean luminance. See vcd_setStimParams.m for 
+%   fixation parameters.
 %
 % INPUTS:
 %   params  : params stuct (see vcd_setStimParams.m)
@@ -17,7 +18,7 @@ function [fix_im, mask, info] = vcd_fixationDot(params)
 %
 % OUTPUTS:
 %   fix_im  : fixation dot images, 5-dim array:
-%               w (pixels) x h (pixels) x 3 x 5 luminance levels x 2 rim widths
+%               w (pixels) x h (pixels) x 3 x 6 luminance levels x 6 rim widths
 %   mask    : alpha mask for ptb: w (pixels) x h (pixels) x 2 (one gray
 %                   layer, one transparency layer)
 %   info    : table with information about fixation dot conditions 
@@ -29,7 +30,7 @@ function [fix_im, mask, info] = vcd_fixationDot(params)
 support_x = 2*params.stim.fix.dotcenterdiam_pix;
 support_y = support_x; 
 
-fix_im  = uint8(zeros([support_x, support_y, 3, length(params.stim.fix.dotlum), 5])); 
+fix_im  = uint8(zeros([support_x, support_y, 3, length(params.stim.fix.dotlum), 6])); 
 
 x = [1:(2*params.stim.fix.dotcenterdiam_pix)]-params.stim.fix.dotcenterdiam_pix;
 [XX,~] = meshgrid(x,x);
@@ -57,45 +58,50 @@ for lum = 1:length(params.stim.fix.dotlum)
     % everything is initially gray
     temp0 = params.stim.bckgrnd_grayval*ones(support_x*support_y, 3);        
     fixation_rimthin  = temp0; 
-    fixation_rimthick = temp0;
-
+    fixation_rimthick_white = temp0;
+    fixation_rimthick_black = temp0;
+    
     % full thin and thick rim base
     fixation_rimthin(fixationmask_rimthin,:)   = params.stim.fix.color(1,:) .* ones(size(fixationmask_rimthin,1), 3);  % add white rim
-    fixation_rimthick(fixationmask_rimthick,:) = params.stim.fix.color(1,:) .* ones(size(fixationmask_rimthick,1), 3);  % add white rim
-    
+    fixation_rimthick_white(fixationmask_rimthick,:) = params.stim.fix.color(1,:) .* ones(size(fixationmask_rimthick,1), 3);  % add white rim
+    fixation_rimthick_black(fixationmask_rimthick,:) = params.stim.fix.color(3,:) .* ones(size(fixationmask_rimthick,1), 3);  % add white rim
+
     % left half red rim base
-    fixation_rimthick_left = fixation_rimthick;
+    fixation_rimthick_left = fixation_rimthick_white;
     fixation_rimthick_left(fixationmask_rimthick_left,:) = params.stim.fix.color(2,:) .* ones(size(fixationmask_rimthick_left,1), 3); 
     
     % right half red rim base
-    fixation_rimthick_right = fixation_rimthick;
+    fixation_rimthick_right = fixation_rimthick_white;
     fixation_rimthick_right(fixationmask_rimthick_right,:) = params.stim.fix.color(2,:) .* ones(size(fixationmask_rimthick_right,1),3);  
     
     % both left&right sides black rim base (for ns)
-    fixation_rimthick_both = fixation_rimthick;
+    fixation_rimthick_both = fixation_rimthick_white;
     fixation_rimthick_both([fixationmask_rimthick_right;fixationmask_rimthick_left],:) = ...
                         params.stim.fix.color(2,:) .* ones(size(fixationmask_rimthick_right,1)+size(fixationmask_rimthick_left,1), 3);  
 
     % Fill inner circle with the specified luminance 
     fixation_rimthin(fixationmask_inner,:)          = repmat(params.stim.fix.dotlum(lum),[length(fixationmask_inner) 3]);
-    fixation_rimthick(fixationmask_inner,:)         = repmat(params.stim.fix.dotlum(lum),[length(fixationmask_inner) 3]);
+    fixation_rimthick_white(fixationmask_inner,:)   = repmat(params.stim.fix.dotlum(lum),[length(fixationmask_inner) 3]);
+    fixation_rimthick_black(fixationmask_inner,:)   = repmat(params.stim.fix.dotlum(lum),[length(fixationmask_inner) 3]);
     fixation_rimthick_right(fixationmask_inner,:)   = repmat(params.stim.fix.dotlum(lum),[length(fixationmask_inner) 3]);
     fixation_rimthick_left(fixationmask_inner,:)    = repmat(params.stim.fix.dotlum(lum),[length(fixationmask_inner) 3]);
     fixation_rimthick_both(fixationmask_inner,:)    = repmat(params.stim.fix.dotlum(lum),[length(fixationmask_inner) 3]);
     
     % Repmat to get RGB, reshape back to square image
     fixation_rimthin1        = reshape(fixation_rimthin, [support_x, support_y, 3]);
-    fixation_rimthick1       = reshape(fixation_rimthick,[support_x, support_y, 3]);
+    fixation_rimthick_white1 = reshape(fixation_rimthick_white,[support_x, support_y, 3]);
+    fixation_rimthick_black1 = reshape(fixation_rimthick_black,[support_x, support_y, 3]);
     fixation_rimthick_left1  = reshape(fixation_rimthick_left, [support_x, support_y, 3]);
     fixation_rimthick_right1 = reshape(fixation_rimthick_right,[support_x, support_y, 3]);
     fixation_rimthick_both1  = reshape(fixation_rimthick_both, [support_x, support_y, 3]);
     
     % Convert to uint8 images
     fix_im(:,:,:,lum,1) = uint8(fixation_rimthin1);
-    fix_im(:,:,:,lum,2) = uint8(fixation_rimthick1);
+    fix_im(:,:,:,lum,2) = uint8(fixation_rimthick_white1); % white
     fix_im(:,:,:,lum,3) = uint8(fixation_rimthick_left1);
     fix_im(:,:,:,lum,4) = uint8(fixation_rimthick_right1);
     fix_im(:,:,:,lum,5) = uint8(fixation_rimthick_both1);
+    fix_im(:,:,:,lum,6) = uint8(fixation_rimthick_black1); % black
     
     % clean up
     clear temp0 
@@ -126,12 +132,17 @@ alpha_mask_thick = reshape(alpha_mask0_thick,support_x,support_y);
 % convert to uint8 and concat
 alpha_mask_thin  = uint8(alpha_mask_thin);
 alpha_mask_thick = uint8(alpha_mask_thick);
-mask = cat(3, alpha_mask_thin, repmat(alpha_mask_thick,[1 1 4]));
+mask = cat(3, alpha_mask_thin, repmat(alpha_mask_thick,[1 1 5]));
 
 %% create info table
-lum_info   = repmat(params.stim.fix.dotlum',5,1);
-width_info = repelem({'thin','thick','thick_left','thick_right','thick_both'},length(params.stim.fix.dotlum));
-info       = table(lum_info,width_info','VariableNames',{'luminance','rim_width'});
+lum_info        = repmat(params.stim.fix.dotlum',6,1);
+width_info      = repelem({'thin','thick','thick','thick','thick','thick'},length(params.stim.fix.dotlum));
+color_side_info = repelem({'both','both','left','right','both','both'},length(params.stim.fix.dotlum));
+rim_color       = cat(1, repmat(params.stim.fix.color(1,:),2*length(params.stim.fix.dotlum),1),...
+                    repmat(params.stim.fix.color(2,:),3*length(params.stim.fix.dotlum),1),...
+                    repmat(params.stim.fix.color(3,:),length(params.stim.fix.dotlum),1));
+rim_color  = mat2cell(rim_color,ones(size(rim_color,1),1));
+info       = table(lum_info,width_info',color_side_info',rim_color,'VariableNames',{'luminance','rim_width','color_side','rim_color'});
 
 %% Store images and info table if requested
 if params.stim.store_imgs
@@ -159,7 +170,7 @@ if params.verbose
     counter = 1;
     for ii = 1:size(fix_im,4)
         for jj = 1:size(fix_im,5)
-            subplot(6,5,counter)
+            subplot(6,6,counter)
             imagesc(squeeze(fix_im(:,:,:,ii,jj)), 'AlphaData',params.stim.fix.dotopacity)
             axis square
             axis off
@@ -181,7 +192,7 @@ if params.verbose
     counter = 1;
     for ii = 1:size(fix_im,4)
         for jj = 1:size(fix_im,5)
-            subplot(6,5,counter)
+            subplot(6,6,counter)
             imagesc(squeeze(fix_im(:,:,:,ii,jj)))
             axis square
             axis off
