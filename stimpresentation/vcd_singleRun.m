@@ -301,28 +301,33 @@ fix_thin_rect    = {fix_thin_rect0 + repmat(params.offsetpix,1,2)}; clear fix_th
 fix_thick_rect   = {fix_thick_rect0 + repmat(params.offsetpix,1,2)}; clear fix_thick_rect0
 
 % merge fixation dot image and mask
-fix_thin_full   = cell(1,size(all_images.fix,4));
-fix_thick_full  = cell(1,size(all_images.fix,4));
-fix_thick_left  = cell(1,size(all_images.fix,4));
-fix_thick_right = cell(1,size(all_images.fix,4));
-fix_thick_both  = cell(1,size(all_images.fix,4));
+fix_thin_full         = cell(1,size(all_images.fix,4));
+fix_thick_full_white  = cell(1,size(all_images.fix,4));
+fix_thick_left        = cell(1,size(all_images.fix,4));
+fix_thick_right       = cell(1,size(all_images.fix,4));
+fix_thick_both        = cell(1,size(all_images.fix,4));
+fix_thick_full_black  = cell(1,size(all_images.fix,4));
 
 for ll = 1:size(all_images.fix,4) % loop over luminance values
-    fix_thin_full{ll}   = feval(flipfun,  cat(3, all_images.fix(:,:,:,ll,1), all_images.alpha.fix(:,:,1)));
-    fix_thick_full{ll}  = feval(flipfun,  cat(3, all_images.fix(:,:,:,ll,2), all_images.alpha.fix(:,:,2)));
-    fix_thick_left{ll}  = feval(flipfun,  cat(3, all_images.fix(:,:,:,ll,3), all_images.alpha.fix(:,:,3)));
-    fix_thick_right{ll} = feval(flipfun,  cat(3, all_images.fix(:,:,:,ll,4), all_images.alpha.fix(:,:,4)));
-    fix_thick_both{ll}  = feval(flipfun,  cat(3, all_images.fix(:,:,:,ll,5), all_images.alpha.fix(:,:,5)));
+    fix_thin_full{ll}        = feval(flipfun,  cat(3, all_images.fix(:,:,:,ll,1), all_images.alpha.fix(:,:,1)));
+    fix_thick_full_white{ll} = feval(flipfun,  cat(3, all_images.fix(:,:,:,ll,2), all_images.alpha.fix(:,:,2)));
+    fix_thick_left{ll}       = feval(flipfun,  cat(3, all_images.fix(:,:,:,ll,3), all_images.alpha.fix(:,:,3)));
+    fix_thick_right{ll}      = feval(flipfun,  cat(3, all_images.fix(:,:,:,ll,4), all_images.alpha.fix(:,:,4)));
+    fix_thick_both{ll}       = feval(flipfun,  cat(3, all_images.fix(:,:,:,ll,5), all_images.alpha.fix(:,:,5)));
+    fix_thick_full_black{ll} = feval(flipfun,  cat(3, all_images.fix(:,:,:,ll,6), all_images.alpha.fix(:,:,6)));
 end
 
+% add fix images and rects to struct
 fix_im = struct();
-fix_im.fix_thin_full   = fix_thin_full;   clear fix_thin_full
-fix_im.fix_thick_full  = fix_thick_full;  clear fix_thick_full
-fix_im.fix_thick_left  = fix_thick_left;  clear fix_thick_left
-fix_im.fix_thick_right = fix_thick_right; clear fix_thick_right
-fix_im.fix_thick_both  = fix_thick_both;  clear fix_thick_both
-fix_im.fix_thin_rect   = fix_thin_rect;   clear fix_thin_rect
-fix_im.fix_thick_rect  = fix_thick_rect;  clear fix_thick_rect
+fix_im.fix_thin_full         = fix_thin_full;         clear fix_thin_full
+fix_im.fix_thick_full_white  = fix_thick_full_white;  clear fix_thick_full
+fix_im.fix_thick_left        = fix_thick_left;        clear fix_thick_left
+fix_im.fix_thick_right       = fix_thick_right;       clear fix_thick_right
+fix_im.fix_thick_both        = fix_thick_both;        clear fix_thick_both
+fix_im.fix_thick_full_black  = fix_thick_full_black;  clear fix_thick_full_black
+
+fix_im.fix_thin_rect         = fix_thin_rect;         clear fix_thin_rect
+fix_im.fix_thick_rect        = fix_thick_rect;        clear fix_thick_rect
 
 
 
