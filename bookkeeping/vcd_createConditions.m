@@ -83,8 +83,10 @@ function [params, condition_master, all_unique_im, all_cond] = vcd_createConditi
 %% %%%%%%%%%%%%% PARSE INPUTS %%%%%%%%%%%%%
 p0 = inputParser;
 p0.addRequired('params'        , @isstruct);
-p0.addParameter('load_params'  , true, @islogical);
+p0.addParameter('load_params'  , false, @islogical);
 p0.addParameter('store_params' , true, @islogical);
+p0.addParameter('store_imgs'   , false, @islogical);
+p0.addParameter('verbose'      , false, @islogical);
 p0.addParameter('session_env' , 'MRI', @(x) any(strcmp(x,{'BEHAVIOR','MRI'})));
 
 % Parse inputs
@@ -96,6 +98,7 @@ for ff = 1:length(rename_me)
     eval([sprintf('%s = p0.Results.%s;', rename_me{ff},rename_me{ff})]);
 end
 clear rename_me ff p0
+
 
 %% Load params if requested and we can find the file
 if load_params
@@ -116,7 +119,7 @@ else % Recreate conditions and blocks and trials
         warning('[%s]: Will try to loading exp params from file.\n', mfilename);
         d = dir(fullfile(vcd_rootPath,'workspaces','info',sprintf('exp_%s*.mat',params.disp.name)));
         if ~isempty(d)
-            if params.verbose
+            if verbose
                 fprintf('\n[%s]: Found %d exp params .mat file(s)\n',mfilename,length(d));
                 if length(d) > 1
                     warning('[%s]: Multiple .mat files! Will pick the most recent one\n', mfilename);
@@ -126,20 +129,20 @@ else % Recreate conditions and blocks and trials
             tmp = load(fullfile(d(end).folder,d(end).name));
             params.exp = tmp.exp;
         else
-            if params.verbose
+            if verbose
                 warning('[%s]: Can''t find exp session .mat files! Will run vcd_getSessionParams.m', mfilename);
             end
             params.exp  = vcd_getSessionParams('load_params',false,'store_params',false, 'verbose',false);
         end
     end
     if ~isfield(params,'stim')
-        if params.verbose
+        if verbose
             warning('[%s]: params.stim doesn''t exist!)',mfilename)
             warning('[%s]: Will try to loading stim params from file.\n', mfilename);
         end
         d = dir(fullfile(vcd_rootPath,'workspaces','info',sprintf('stim_%s*.mat',params.disp.name)));
         if ~isempty(d)
-            if params.verbose
+            if verbose
                 fprintf('\n[%s]: Found %d stim params .mat file(s)\n',mfilename,length(d));
                 if length(d) > 1
                     warning('[%s]: Multiple .mat files! Will pick the most recent one\n', mfilename);
@@ -149,7 +152,7 @@ else % Recreate conditions and blocks and trials
             tmp = load(fullfile(d(end).folder,d(end).name));
             params.exp = tmp.exp;
         else
-            if params.verbose
+            if verbose
                 warning('[%s]: Can''t find stim session .mat files! Will run vcd_getStimParams.m', mfilename);
             end
             params.stim = vcd_getStimParams('load_params',false,'store_params',false, 'verbose',false);  
@@ -157,7 +160,7 @@ else % Recreate conditions and blocks and trials
     end
     
     %% Preallocate space and set up tables/structs
-    if params.verbose
+    if verbose
         tic
         fprintf('\n[%s]: Start creating conditions for %s experiment.. \n',mfilename,session_env);
     end
@@ -336,6 +339,10 @@ else % Recreate conditions and blocks and trials
                 end
                 n1 = [n0([1,2]), n0(3)+n0(4), n0(5)];
                 assert(all(n==n1))
+            elseif ismember(curr_sc(jj),5) && ismember(curr_tc(mm),9) % NS-WHERE
+                subcat = condition_master.sub_cat(condition_master.stim_class==curr_sc(jj) & condition_master.task_class==curr_tc(mm),:);
+                n0     = histcounts(subcat);
+                assert(all(n==n0))
             elseif ismember(curr_sc(jj),[4,5]) && ismember(curr_tc(mm),10)
                 affordcat = condition_master.affordance_cat(condition_master.stim_class==curr_sc(jj) & condition_master.task_class==curr_tc(mm),:);
                 if curr_sc(jj) == 4
@@ -345,7 +352,7 @@ else % Recreate conditions and blocks and trials
                     n1     = histcounts(affordcat);    
                 end
                 assert(all(n==n1))
-            elseif ismember(curr_sc(jj),99) && ismember(curr_tc(mm),3) % scc-all
+            elseif ismember(curr_sc(jj),99) || ismember(curr_tc(mm),3) % scc-all
                 % Check if we sample all core images across trials
                 stmclass0 = condition_master.stim_class_name(condition_master.stim_class==curr_sc(jj) & condition_master.task_class==curr_tc(mm),:);
                 cued0     = condition_master.is_cued(condition_master.stim_class==curr_sc(jj) & condition_master.task_class==curr_tc(mm));
@@ -353,6 +360,8 @@ else % Recreate conditions and blocks and trials
                 [~,stmclass_cued_i] = ismember(stmclass0_cued,params.exp.stimclassnames([1,3,2,4]));
                 n1 = histcounts(stmclass_cued_i);
                 assert(all(n==n1))
+            elseif all(n==0) && curr_tc(mm)~=2 && ~ismember(curr_tc(mm),[8,9,10])
+                error('[%s]: No correct responses found?!',mfilename);
             else
                 assert(all(diff(n)==0))
             end
@@ -427,7 +436,7 @@ else % Recreate conditions and blocks and trials
     
 
     %% Store condition_master if requested
-    if params.store_params
+    if store_params
         fprintf('[%s]:Storing condition_master..\n',mfilename)
         saveDir = fullfile(vcd_rootPath,'workspaces','info');
         if ~exist(saveDir,'dir'), mkdir(saveDir); end
@@ -516,16 +525,16 @@ else % Recreate conditions and blocks and trials
     
     
     %% Plot figures to check condition master content
-    if params.verbose
+    if verbose
 
-        vcd_visualizeMasterTable(condition_master, params.store_imgs,session_env);
+        vcd_visualizeMasterTable(condition_master, store_imgs,session_env);
 
         figure; set(gcf,'Position',[1,1,1200,300]);
         histogram([condition_master.stim_nr_left;condition_master.stim_nr_right],'numbins',length(params.stim.all_core_im_nrs))
         xlabel('unique condition nr'); ylabel('trial count')
          title('Total unique image nr')
         box off;
-        if params.store_imgs
+        if store_imgs
             saveFigsFolder = fullfile(vcd_rootPath,'figs',sprintf('condition_master0_%s',session_env));
             if ~exist(saveFigsFolder,'dir'); mkdir(saveFigsFolder); end
             filename = sprintf('vcd_totaluniqueim.png');
@@ -539,7 +548,7 @@ else % Recreate conditions and blocks and trials
         cb.Ticks = [0,unique(N_tbl(~isnan(N_tbl)))'];
         set(gca,'YTick',[1:5],'YTickLabel', params.exp.stimclassnames);  set(gca,'XTick',[1:30]); title('Sum of unique im per stimulus class')
         box off;
-        if params.store_imgs
+        if store_imgs
             saveFigsFolder = fullfile(vcd_rootPath,'figs',sprintf('condition_master0_%s',session_env));
             filename = sprintf('vcd_uniqueim_per_stimclass.png');
             print(gcf,'-dpng','-r300',fullfile(saveFigsFolder,filename));
@@ -554,7 +563,7 @@ else % Recreate conditions and blocks and trials
         set(gca,'YTick',[1:10],'YTickLabel', params.exp.taskclassnames); 
         set(gca,'XTick',[0:25:110]); title('Sum of unique im per task class')
         box off;
-        if params.store_imgs
+        if store_imgs
             saveFigsFolder = fullfile(vcd_rootPath,'figs',sprintf('condition_master0_%s',session_env));
             filename = sprintf('vcd_uniqueim_per_taskclass.png');
             print(gcf,'-dpng','-r300',fullfile(saveFigsFolder,filename));
@@ -571,7 +580,7 @@ else % Recreate conditions and blocks and trials
         cb.Ticks = [min(foo(:)):10:max(foo(:))];
         set(gca,'YTick',[1:params.exp.block.n_trials_single_epoch]); title('SCC stimulus class distribution')
         box off;
-        if params.store_imgs
+        if store_imgs
             saveFigsFolder = fullfile(vcd_rootPath,'figs',sprintf('condition_master0_%s',session_env));
             filename = sprintf('vcd_scc_stimulusclass_trialdistr.png');
             print(gcf,'-dpng','-r300',fullfile(saveFigsFolder,filename));
@@ -589,7 +598,7 @@ else % Recreate conditions and blocks and trials
             cb.Ticks = [min(foo(:)):10:max(foo(:))];
             set(gca,'YTick',[1:params.exp.block.n_trials_single_epoch]); title('LTM stimulus class distribution')
             box off;
-            if params.store_imgs
+            if store_imgs
                 saveFigsFolder = fullfile(vcd_rootPath,'figs',sprintf('condition_master0_%s',session_env));
                 filename = sprintf('vcd_ltm_stimulusclass_trialdistr.png');
                 print(gcf,'-dpng','-r300',fullfile(saveFigsFolder,filename));
