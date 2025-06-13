@@ -1,4 +1,4 @@
-function condition_master = vcd_allocateBlocksToRuns(params,condition_master_in,session_env)
+function condition_master = vcd_allocateBlocksToRuns(params,condition_master_in,session_env, varargin)
 % VCD function to allocate the unique trials and blocks to given runs.
 %
 %   condition_master = vcd_allocateBlocksToRuns(params)
@@ -16,9 +16,27 @@ function condition_master = vcd_allocateBlocksToRuns(params,condition_master_in,
 %   condition_master      :  (struct) updated condition master table with
 %                             block and runs for each subject and session.
 
-%%
+%% Parse inputs
+p0 = inputParser;
+p0.addRequired('params'                 , @isstruct);
+p0.addRequired('condition_master'       , @istable);
+p0.addRequired('session_env'            , @(x) any(strcmp(x,{'BEHAVIOR','MRI'})));
+p0.addParameter('load_params'           , false, @islogical);
+p0.addParameter('store_params'          , true, @islogical);
+p0.addParameter('store_imgs'            , false, @islogical);
+p0.addParameter('verbose'               , false, @islogical);
 
-% copy condition master
+% Parse inputs
+p0.parse(params,condition_master_in,session_env,varargin{:});
+
+% Rename variables into general params struct
+rename_me = fieldnames(p0.Results);
+for ff = 1:length(rename_me)
+    eval([sprintf('%s = p0.Results.%s;', rename_me{ff},rename_me{ff})]);
+end
+clear rename_me ff p0
+
+%% copy condition master
 condition_master = condition_master_in;
 
 % Add extra columns to master table
@@ -78,7 +96,7 @@ for ses = 1:size(all_sessions,3)
     for st = 1:size(all_sessions,4) % session types
         if ~isnan(session_types(ses,st))
             %% First we check how many repeats of stim-task crossings we want to run within a session
-            if params.verbose
+            if verbose
                 fprintf('SESSION %03d, session_type %02d..\n',ses,session_types(ses,st))
             end
             % also keep track of local stim-task block allocation
@@ -143,7 +161,7 @@ for ses = 1:size(all_sessions,3)
                                     condition_master.crossing_name(idx) = {sprintf('%s-%s',params.exp.taskclassnames{tc}, params.exp.stimclassnames{sc})};
                                     stim_class_tmp_name = stim_class_abbr{sc};
                                 end
-                                if params.verbose
+                                if verbose
                                     if ii == 1
                                         fprintf('\n %s   \t: %3.1f block(s)\n',cell2mat(unique(condition_master.crossing_name(find(idx)))),n_blocks)
                                     end
@@ -409,7 +427,7 @@ for ses = 1:size(all_sessions,3)
                
             end
             
-            if params.verbose
+            if verbose
                 fprintf('\nTOTAL MINIBLOCKS: %d for SESSION %03d, session_type %02d\n',bb, ses,session_types(ses,st))
             end
             % the number of blocks in the table should be equal to the number of
@@ -490,7 +508,7 @@ condition_master = vcd_updateGlobalCounters(params, condition_master, session_en
 condition_master.block_nr = condition_master.global_block_nr;
 
 %Visualize results
-if params.verbose
+if verbose
     figure; set(gcf,'Position',[1 1 1200 600]);
     clims = [0, max([max(condition_master.block_nr),max(condition_master.run_nr)])];
     cmap = cmapturbo(max(clims)+1);                
@@ -520,7 +538,7 @@ if params.verbose
                 xlabel('BLOCK NR')
                 
                 
-                if params.store_imgs
+                if store_imgs
                     saveFigsFolder = fullfile(vcd_rootPath,'figs',sprintf('condition_master1_%s',session_env));
                     if ~exist(saveFigsFolder,'dir'); mkdir(saveFigsFolder);end
                     filename = sprintf('vcd_session%02d_%s_subjblocks_post_shuffle.png',ses,choose(st==1, 'A','B'));
@@ -561,7 +579,7 @@ return
 % %     end
 %     set(gca,'YTick',1,'YTickLabel',{' block nr'})
 %
-%     if params.store_imgs
+%     if store_imgs
 %         saveFigsFolder = fullfile(vcd_rootPath,'figs');
 %         filename = sprintf('vcd_session%02d_blocks_pre_shuffle.png', ses);
 %         print(gcf,'-dpng','-r300',fullfile(saveFigsFolder,filename));
