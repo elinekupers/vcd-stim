@@ -70,7 +70,7 @@ function [time_table_master, all_run_frames] = vcd_createRunTimeTables(params, v
 p0 = inputParser;
 p0.addRequired('params'           , @isstruct);
 p0.addParameter('condition_master', [], @istable);
-p0.addParameter('load_params'     , true, @islogical);
+p0.addParameter('load_params'     , false, @islogical);
 p0.addParameter('store_params'    , true, @islogical);
 p0.addParameter('store_imgs'      , false, @islogical);
 p0.addParameter('verbose'         , false, @islogical);
@@ -253,7 +253,7 @@ for ses = 1:size(all_sessions,3)
                     % run duration we want
                     while 1
                         % vcd_optimizeIBIs inputs are run_dur, block_dur, ibis, nr_blocks, prepost_blank
-                        [ibis, postblank_to_add] = vcd_optimizeIBIs(total_ses_dur, block_dur, IBI_to_use, length(block_dur), 0, params.verbose); % prepost_blank is 0 because we already subtract this when defining total_ses_dur
+                        [ibis, postblank_to_add] = vcd_optimizeIBIs(total_ses_dur, block_dur, IBI_to_use, length(block_dur), 0, verbose); % prepost_blank is 0 because we already subtract this when defining total_ses_dur
                         if (total_ses_dur - sum(ibis) - sum(block_dur) - postblank_to_add) <= 0  
                             break;
                         end

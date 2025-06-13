@@ -12,7 +12,7 @@ function [params,condition_master_shuffled,time_table_master_shuffled, all_subj_
 p0 = inputParser;
 p0.addRequired('params'                 , @isstruct);
 p0.addParameter('condition_master'      , [], @istable);
-p0.addParameter('load_params'           , true, @islogical);
+p0.addParameter('load_params'           , false, @islogical);
 p0.addParameter('store_params'          , true, @islogical);
 p0.addParameter('store_imgs'            , false, @islogical);
 p0.addParameter('verbose'               , false, @islogical);
@@ -30,6 +30,7 @@ for ff = 1:length(rename_me)
     eval([sprintf('%s = p0.Results.%s;', rename_me{ff},rename_me{ff})]);
 end
 clear rename_me ff p0
+
 
 %% Load subject files if we can
 if ~isempty(randomization_file_pth)
@@ -54,7 +55,7 @@ else
         
         d = dir(fullfile(vcd_rootPath,'workspaces','info',sprintf('stim_%s*.mat',params.disp.name)));
         if ~isempty(d)
-            if params.verbose
+            if verbose
                 fprintf('[%s]: Found %d stim params .mat file(s)\n',mfilename,length(d));
                 if length(d) > 1
                     warning('[%s]: Multiple .mat files! Will pick the most recent one\n', mfilename);
@@ -69,7 +70,7 @@ else
         
         d = dir(fullfile(vcd_rootPath,'workspaces','info',sprintf('exp_%s*.mat',params.disp.name)));
         if ~isempty(d)
-            if params.verbose
+            if verbose
                 fprintf('[%s]: Found %d exp params .mat file(s)\n',mfilename,length(d));
                 if length(d) > 1
                     warning('[%s]: Multiple .mat files! Will pick the most recent one\n', mfilename);
