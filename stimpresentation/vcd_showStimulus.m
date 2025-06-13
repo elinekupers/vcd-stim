@@ -99,17 +99,19 @@ fprintf('');
 
 % Create fixation textures prior to exp onset (as we need them throughout the experiment)
 % We make fixation dot textures for each luminance value and rim thickness.
-fix_texture.thin_full   = cell(1,size(fix.fix_thin_full,2));
-fix_texture.thick_full  = cell(1,size(fix.fix_thin_full,2));
-fix_texture.thick_left  = cell(1,size(fix.fix_thin_full,2));
-fix_texture.thick_right = cell(1,size(fix.fix_thin_full,2));
-fix_texture.thick_both  = cell(1,size(fix.fix_thin_full,2));
+fix_texture.thin_full         = cell(1,size(fix.fix_thin_full,2));
+fix_texture.thick_full_white  = cell(1,size(fix.fix_thin_full,2));
+fix_texture.thick_left        = cell(1,size(fix.fix_thin_full,2));
+fix_texture.thick_right       = cell(1,size(fix.fix_thin_full,2));
+fix_texture.thick_both        = cell(1,size(fix.fix_thin_full,2));
+fix_texture.thick_full_black  = cell(1,size(fix.fix_thin_full,2));
 for ll = 1:size(fix.fix_thin_full,2) % loop over luminance values
-    fix_texture.thin_full{ll}   = Screen('MakeTexture',win,fix.fix_thin_full{ll});
-    fix_texture.thick_full{ll}  = Screen('MakeTexture',win,fix.fix_thick_full{ll});
-    fix_texture.thick_left{ll}  = Screen('MakeTexture',win,fix.fix_thick_left{ll});
-    fix_texture.thick_right{ll} = Screen('MakeTexture',win,fix.fix_thick_right{ll});
-    fix_texture.thick_both{ll}  = Screen('MakeTexture',win,fix.fix_thick_both{ll});
+    fix_texture.thin_full{ll}         = Screen('MakeTexture',win,fix.fix_thin_full{ll});
+    fix_texture.thick_full_white{ll}  = Screen('MakeTexture',win,fix.fix_thick_full_white{ll});
+    fix_texture.thick_left{ll}        = Screen('MakeTexture',win,fix.fix_thick_left{ll});
+    fix_texture.thick_right{ll}       = Screen('MakeTexture',win,fix.fix_thick_right{ll});
+    fix_texture.thick_both{ll}        = Screen('MakeTexture',win,fix.fix_thick_both{ll});
+    fix_texture.thick_full_black{ll}  = Screen('MakeTexture',win,fix.fix_thick_full_black{ll});
 end
 
 % Prepare fixation texture vector outside the flip loop
@@ -148,8 +150,9 @@ for nn = 1:size(run_frames.frame_event_nr,1)
     elseif ismember(eventID,90) % TASK CUE -- NOTE: no fixation circle!
         fix_tex(nn)  = [];
         fix_rect(nn) = [];
+        run_frames.fix_abs_lum(nn) = NaN; % remove 128 as  absolute luminance because there is no fixation target twinkle
     elseif ismember(eventID,[91,93,94,95,96,97,98]) % ALL STIMULUS EVENTS + ITI (thick fixation circle rim)
-        fix_tex(nn)  = fix_texture.thick_full(lum_idx);
+        fix_tex(nn)  = fix_texture.thick_full_white(lum_idx);
         fix_rect(nn) = fix.fix_thick_rect;
     elseif ismember(eventID,99) % IBI (thin fixation circle rim)
         fix_tex(nn)  = fix_texture.thin_full(lum_idx);
@@ -157,6 +160,7 @@ for nn = 1:size(run_frames.frame_event_nr,1)
     elseif eventID >= 990 % eyetracking targets / pupil black/white displays
         fix_tex(nn) = [];
         fix_rect(nn) = []; 
+        run_frames.fix_abs_lum(nn) = NaN; % remove 128 as  absolute luminance because there is no fixation target twinkle
     elseif eventID == 0 % pre/post blank rest period (thin fixation circle rim)
         fix_tex(nn)  = fix_texture.thin_full(lum_idx);
         fix_rect(nn) = fix.fix_thin_rect;
@@ -227,7 +231,7 @@ for nn = 1:size(run_frames.frame_event_nr,1)
 end
 
 % Use thin rim fixation circle for pre-run instruction screen.
-fix_tex_preruninstr  = fix_texture.thick_full{6}; % mid gray luminance (128)
+fix_tex_preruninstr  = fix_texture.thick_full_black{6}; % mid gray luminance (128)
 fix_rect_preruninstr = fix.fix_thick_rect{1};
 
 
