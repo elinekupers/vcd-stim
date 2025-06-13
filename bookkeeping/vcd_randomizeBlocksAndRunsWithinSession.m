@@ -168,6 +168,11 @@ p0.addParameter('max_run_deviation'             , 15*60, @isnumeric); % time fra
 p0.addParameter('max_block_repeats'             , 10   , @isnumeric);
 p0.addParameter('allowed_block_combinations'    , []   , @isnumeric); % first row is max single-stim block nrs / run, second row is max double-stim block nrs / run (e.g., [6 4 2 3; 1 2 4 3]) 
 p0.addParameter('saveDir'                       , ''   , @ischar); % where to store the shuffled condition_master
+p0.addParameter('load_params'                   , false, @islogical);
+p0.addParameter('store_params'                  , true, @islogical);
+p0.addParameter('store_imgs'                    , false, @islogical);
+p0.addParameter('verbose'                       , false, @islogical);
+
 % Parse inputs
 p0.parse(params,condition_master,session_env,varargin{:});
 
@@ -177,15 +182,6 @@ for ff = 1:length(rename_me)
     eval([sprintf('%s = p0.Results.%s;', rename_me{ff},rename_me{ff})]);
 end
 clear rename_me ff p0
-
-%% Check inputs
-if ~isfield(params,'verbose') || isempty(params.verbose)
-    params.verbose = false;
-end
-
-if ~isfield(params,'store_params') || isempty(params.store_params)
-    params.store_params = true;
-end
 
 %% Infer other inputs
 unique_sessions  = unique(condition_master.session_nr);
@@ -617,7 +613,7 @@ for ses = 1:length(unique_sessions)
                 
                 % If we shuffled all blocks more than 2000 times, we will throw an error.
                 if attempts>5000
-                    error('[%s]: Can''t seem to find a solution!\n',mfilename)
+                    error('[%s]: Can''t seem to find a solution after 5000 attempts! Try running the same code again!\n',mfilename)
                 end
                 
             end % big while loop
@@ -719,7 +715,7 @@ toc;
 condition_master_shuffled = vcd_updateGlobalCounters(params, condition_master_shuffled, session_env);
 
 % Store randomization file and shuffled condition master
-if params.store_params
+if store_params
     randomization_params = struct();
     randomization_params.slack = slack;
     randomization_params.max_run_deviation = max_run_deviation;
