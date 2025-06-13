@@ -152,7 +152,7 @@ blank_onset_mn_lum = blank_onset_idx(ismember(blank_onset_idx,button_press_frame
 blank_offset_mn_lum = blank_offset_idx(ismember(blank_offset_idx,button_press_frame));
 
 delete_me_onset  = fix_abs_lum(blank_onset_mn_lum)==128;
-delete_me_offset = fix_abs_lum(blank_offset_mn_lum)==128;
+delete_me_offset = fix_abs_lum(blank_offset_mn_lum)~=128;
 
 if sum(delete_me_onset)>0
     button_response_fix(blank_onset_mn_lum(delete_me_onset)) = NaN;
