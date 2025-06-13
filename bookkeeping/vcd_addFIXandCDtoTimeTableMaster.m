@@ -1,4 +1,4 @@
-function [time_table_master,all_run_frames] = vcd_addFIXandCDtoTimeTableMaster(params, time_table_master, session_env)
+function [time_table_master,all_run_frames] = vcd_addFIXandCDtoTimeTableMaster(params, time_table_master, session_env, varargin)
 % [WRITE ME]
 % 
 %    [time_table_master,all_run_frames] = vcd_addFIXandCDtoTimeTableMaster(params, time_table_master, session_env)
@@ -6,6 +6,28 @@ function [time_table_master,all_run_frames] = vcd_addFIXandCDtoTimeTableMaster(p
 %
 %
 %
+
+%% %%%%%%%%%%%%% PARSE INPUTS %%%%%%%%%%%%%
+p0 = inputParser;
+p0.addRequired('params'             , @isstruct);
+p0.addRequired('time_table_master'  , @istable);
+p0.addRequired('session_env'	    , @(x) ismember(x,{'MRI','BEHAVIOR','TEST'}));
+p0.addParameter('store_params'      , true,  @islogical);
+p0.addParameter('verbose'           , false, @islogical);
+p0.addParameter('load_params'       , false, @islogical);
+p0.addParameter('store_imgs'        , false, @islogical);
+
+
+% Parse inputs
+p0.parse(params, time_table_master,  session_env, varargin{:});
+
+% Rename variables into general params struct
+rename_me = fieldnames(p0.Results);
+for ff = 1:length(rename_me)
+    eval([sprintf('%s = p0.Results.%s;', rename_me{ff},rename_me{ff})]);
+end
+clear rename_me ff p0
+
 
 % get session environment params
 [~,session_types,~,~,~,~, ~, nr_session_types ] = vcd_getSessionEnvironmentParams(params, session_env);
@@ -48,7 +70,8 @@ for ses = 1:length(session_nrs)
                 % Note 2: We freeze the fixation twinkle during rest periods.
                 
                 % Get rest / blank periods to know when to freeze the
-                % fixation luminance sequence.
+                % fixation luminance sequence. 
+                % 0: 'pre-blank', 90:'task-cue', 999: eyetracking block
                 blank_onset       = this_run.event_start(this_run.block_nr==999 | this_run.block_nr==0 | this_run.event_id==90); 
                 blank_offset      = this_run.event_end(this_run.block_nr==999 | this_run.block_nr==0 | this_run.event_id==90); % includes postblank period 
                 
@@ -77,7 +100,7 @@ for ses = 1:length(session_nrs)
                 
                 if ~verLessThan('matlab', '9.6')
                     % visualize fixation sequence
-                    if params.verbose
+                    if verbose
                         makeprettyfigures;
                         
                         figure(101); clf; set(gcf,'Position',[1,1,1400,444])
@@ -95,7 +118,7 @@ for ses = 1:length(session_nrs)
                         xlabel('Time (s)');
                         xlim([0, length(fix_matrix(:,1))/params.stim.presentationrate_hz])
                         
-                        if params.store_imgs
+                        if store_imgs
                             saveFigsFolder = fullfile(vcd_rootPath,'figs');
                             filename = sprintf('vcd_session%02d_%s_run%02d_fix_sequence.png', session_nrs(ses),choose(session_types(ses,st)==1,'A','B'),run_nrs(rr));
                             print(gcf,'-dpng','-r300',fullfile(saveFigsFolder,filename));
@@ -116,20 +139,28 @@ for ses = 1:length(session_nrs)
                         all_crossings = cat(1, all_crossings, repmat(this_run.crossing_nr(jj), this_run.event_dur(jj),1));
                     end
                 end
+                % If numeric vector: Change zero's to NaN
+                all_cued(all_cued==0) = NaN;
+                
+                % If logical vector: Change  NaN's to zeros
+                all_catch(isnan(all_catch)) = 0;
+                
+                % Add events to run_frames struct
                 run_frames.frame_event_nr = single(all_events);      clear all_events
                 run_frames.is_cued        = single(all_cued);      clear all_cued;
                 run_frames.is_catch       = logical(all_catch);  clear all_catch;
                 run_frames.crossingIDs    = single(all_crossings);   clear all_crossings
                 
+                % find stimulus and event frames
                 stim_idx    = ismember(this_run.event_id, [params.exp.block.stim_epoch1_ID, params.exp.block.stim_epoch2_ID, ...
                                 params.exp.block.eye_gaze_fix_ID, params.exp.block.eye_gaze_sac_target_ID, ...
                                 params.exp.block.eye_gaze_pupil_black_ID, params.exp.block.eye_gaze_pupil_white_ID]);
-                
                 stim_events = this_run.event_id(stim_idx);
                 stim_row    = find(stim_idx);
                 
                 % Preallocate space for nr of fixation changes, frame nrs,
-                % contrast levels, button_response related to contrast dip
+                % contrast levels, button_response related to contrast dip/
+                % we use single class to save memory
                 this_run.nr_of_fix_changes    = zeros(size(this_run,1),1,'single');
                 run_frames.frame_im_nr        = zeros(run_dur,2,'single');
                 run_frames.contrast           = ones(run_dur,2,'single');
@@ -185,7 +216,9 @@ for ses = 1:length(session_nrs)
                                 c_onset      = this_run.cd_start(stim_row(ii));
                                 if ~isnan(c_onset) && c_onset~=0
                                     cd_cued_side    = run_frames.is_cued(c_onset);
-                                    if cd_cued_side == 3; cd_cued_side = 1; end % for NS
+                                    if cd_cued_side == 3
+                                        cd_cued_side = 1; 
+                                    end % for NS
                                     c_onset_support = c_onset - pre_onset_time_frames; % we shift the support function to an earlier time point such that the disp occurs at c_onset
                                     f_cd            = c_onset_support:this_run.event_end(stim_row(ii));
                                     t_pad           = length(f_cd) - length(params.stim.cd.t_cmodfun);
