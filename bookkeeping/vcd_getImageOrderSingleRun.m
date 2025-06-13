@@ -27,6 +27,8 @@ p0.addRequired('run_nr'             , @isnumeric);
 p0.addParameter('all_images'        , struct(), @isstruct);
 p0.addParameter('store_params'      , true, @islogical);
 p0.addParameter('verbose'           , false, @islogical);
+p0.addParameter('load_params'       , false, @islogical);
+p0.addParameter('store_imgs'        , false, @islogical);
 p0.addParameter('session_env', 'MRI', @(x) ismember(x,{'MRI','BEHAVIOR','TEST'}));
 
 % Parse inputs
@@ -38,6 +40,8 @@ for ff = 1:length(rename_me)
     eval([sprintf('%s = p0.Results.%s;', rename_me{ff},rename_me{ff})]);
 end
 clear rename_me ff p0
+
+
 
 %% Check subject, session and run nrs to process
 
@@ -131,7 +135,7 @@ if ~isfield(all_images,'eye') || isempty(all_images.eye)
     d = dir(sprintf('%s*.mat', params.stim.el.stimfile));
     a = load(fullfile(d(end).folder,d(end).name), 'sac_im','pupil_im_white','pupil_im_black');
     all_images.eye.sac_im    = a.sac_im; 
-    all_images.eye.pupil_im_white  = a.pupil_im_white;
+    all_images.eye.pupil_im_white = a.pupil_im_white;
     all_images.eye.pupil_im_black = a.pupil_im_black;
     clear a d;
 end
@@ -613,26 +617,28 @@ for ii = 1:length(stim_row)
                 % 50% change we will actually apply the contrast
                 % decrement change to stimulus (this probability is already
                 % determined by vcd_addFIXandCDtoTimeTableMaster.m).
-                if run_table.cd_start(stim_row(ii))~=0 && run_table.is_cued(stim_row(ii))~=side
-                    stmclass   = run_table.stim_class_name{stim_row(ii),side};
-                    rel_onset  = run_table.cd_start(stim_row(ii)) - run_table.event_start(stim_row(ii)) + 1;
-                    
-                    if ~isnan(rel_onset)
-                        t_cmod_pad = params.exp.trial.stim_array_dur-(rel_onset+length(params.stim.cd.t_cmodfun)-1);
-                        if strcmp(stmclass,'rdk')
-                            [f_im_cd, f_mask_cd] = vcd_applyContrastDecrement(params, ...
-                                rel_onset, stmclass, run_images(curr_frames,side), ...
-                                'input_mask', run_alpha_masks(curr_frames,side), ...
-                                't_cmod_pad',t_cmod_pad); % give all frames
-                        else
-                            [f_im_cd, f_mask_cd] = vcd_applyContrastDecrement(params,...
-                                rel_onset, stmclass, run_images(curr_frames(1),side), ...
-                                'input_mask', run_alpha_masks(curr_frames(1),side), ...
-                                't_cmod_pad',t_cmod_pad); % give first (and only frame)
+                if ~isnan(run_table.cd_start(stim_row(ii)))
+                    if run_table.cd_start(stim_row(ii))~=0 && run_table.is_cued(stim_row(ii))==side
+                        stmclass   = run_table.stim_class_name{stim_row(ii),side};
+                        rel_onset  = run_table.cd_start(stim_row(ii)) - run_table.event_start(stim_row(ii)) + 1;
+                        
+                        if ~isnan(rel_onset)
+                            t_cmod_pad = params.exp.trial.stim_array_dur-(rel_onset+length(params.stim.cd.t_cmodfun)-1);
+                            if strcmp(stmclass,'rdk')
+                                [f_im_cd, f_mask_cd] = vcd_applyContrastDecrement(params, ...
+                                    rel_onset, stmclass, run_images(curr_frames,side), ...
+                                    'input_mask', run_alpha_masks(curr_frames,side), ...
+                                    't_cmod_pad',t_cmod_pad); % give all frames
+                            else
+                                [f_im_cd, f_mask_cd] = vcd_applyContrastDecrement(params,...
+                                    rel_onset, stmclass, run_images(curr_frames(1),side), ...
+                                    'input_mask', run_alpha_masks(curr_frames(1),side), ...
+                                    't_cmod_pad',t_cmod_pad); % give first (and only frame)
+                            end
+                            run_images(curr_frames,side) = f_im_cd;
+                            run_alpha_masks(curr_frames,side) = f_mask_cd;
+                            clear f_im_cd f_mask_cd;
                         end
-                        run_images(curr_frames,side) = f_im_cd;
-                        run_alpha_masks(curr_frames,side) = f_mask_cd;
-                        clear f_im_cd f_mask_cd;
                     end
                 end
             end
