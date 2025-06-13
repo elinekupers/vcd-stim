@@ -110,10 +110,11 @@ params.exp    = vcd_getSessionParams('disp_name', params.disp.name, ...
 [sac_im, pupil_im_white, pupil_im_black] = vcd_createEyeTrackingBlockTargets(params);
                                  
 %% Fixation circle
-% vcd_fixationDot function creates 30 different fixation circle images, 
-% which is the full crossing between 6 inner circle luminance levels and 5 
+% vcd_fixationDot function creates 36 different fixation circle images, 
+% which is the full crossing between 6 inner circle luminance levels and 6 
 % rim types. If params.verbose = true, this function will make a PNG of 
-% each fixation dot, and a figure with all dots in a 6x5 array.
+% each fixation dot, and two figures with all dots in a 6x6 array (one 
+% mimicking the 50% transparency, the other one not).
 % If params.store_imgs = true, this function will store these figures in
 % fullfile(vcd_rootPath,'figs',dispname,'fix').
 %
@@ -123,9 +124,10 @@ params.exp    = vcd_getSessionParams('disp_name', params.disp.name, ...
 % OUTPUTS:
 % * fix         : (uint8) unique fixation circle images, 5D array: 
 %                   height (24 pixels) x width (24 pixels) x 3 (rgb) 
-%                   x 6 luminance levels x 5 dot rims types 
-%                   Rim types are 1: thin white, 2: thick white, 
-%                   3: thick-red left, 4: thick-red right, 5: thick-red both
+%                   x 6 luminance levels x 6 dot rims types 
+%                   Rim types are 1: thin white both, 2: thick white both, 
+%                   3: thick red left, 4: thick red right, 5: thick red both
+%                   6: thick black both
 % * mask        : (uint8) alpha transparency masks, 4D array: 
 %                   height (24 pixels) x width (24 pixels) x 2 dot rims types (thin, thick)
 % * info        : (table) table with specs about the different types of dot
