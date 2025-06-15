@@ -104,20 +104,22 @@ function [rdks, masks, info] = vcd_rdk(params)
 ap_center = [0,0]; % [x y] in pixels. center on zero for now
 
 % Define dot aperture in pixels. 
-% NOTE: we shave off 1 dot radius (3 pixels from each side) to avoid dots being plotting outside the aperture
+% NOTE: we shave off 1 dot radius (BOLDscreen: 3 pixels from each side / 
+% Eizoflexscan: 2 pixels from each side) to avoid dots being plotting 
+% outside the aperture.
 ap_radius = [params.stim.rdk.img_sz_pix./2 params.stim.rdk.img_sz_pix./2]-(params.stim.rdk.dots_size_pix); % [w h] in pixels
 
 % The total size of the RDK frame is ~1.5x larger than the support expected  
 % for a 4 deg RDK aperture. The BOLDscreen 4 deg aperture is 352 x 352 pixels 
 % and frame support is 544 x 544 pixels. The Eizoflexscan 4 deg aperture is 
 % 256 x 256 pixels and frame support is 396 x 396 pixels. Note that this 
-% support scale factor is not exactly 1.5 because we want an even nr of
+% support scale factor is not exactly 1.5 because we want an even number of
 % pixels for the total frame size.
 if strcmp(params.disp.name, '7TAS_BOLDSCREEN32')
-    scf = 1.545454545454545; % scf = 544/352; convert square support image from [92.52, 78.44, 545.6, 573.76] into [0 0 544 544]; 
+    scf = 544/params.stim.rdk.img_sz_pix; % scf = 1.545454545454545; convert square support image from [92.52, 78.44, 545.6, 573.76] into [0 0 544 544]; 
     rect_box_sz = 546;
 elseif strcmp(params.disp.name, 'PPROOM_EIZOFLEXSCAN')
-    scf = 1.546875000000000; % scf = 396/256; convert square support image from [67.56, 57.32, 396.8, 417.28] into [0 0 396 396]; 
+    scf = 396/params.stim.rdk.img_sz_pix; % scf = 1.546875000000000; convert square support image from [67.56, 57.32, 396.8, 417.28] into [0 0 396 396]; 
     rect_box_sz = 396;
 else
     scf = 1.548022598870056;
@@ -332,7 +334,7 @@ for cc = 1:length(params.stim.rdk.dots_coherence)
                     clf; hold all;
                     ax = gca;
                     ax.Units = 'pixels';
-                    r = rectangle(ax,'Position', [(ap_center -(rect_box_sz/2)), ...
+                    r = rectangle(ax,'Position', [(ap_center -(rect_box_sz/2)), ... for PProom: [-198, 198, 396, 396]
                         rect_box_sz, rect_box_sz], ...
                         'FaceColor', [0.5 0.5 0.5], 'EdgeColor', 'none'); %#ok<NASGU> %
                     colormap gray; axis off square tight; 
