@@ -104,15 +104,16 @@ fix_texture.thick_full_white  = cell(1,size(fix.fix_thin_full,2));
 fix_texture.thick_left        = cell(1,size(fix.fix_thin_full,2));
 fix_texture.thick_right       = cell(1,size(fix.fix_thin_full,2));
 fix_texture.thick_both        = cell(1,size(fix.fix_thin_full,2));
-fix_texture.thick_full_black  = cell(1,size(fix.fix_thin_full,2));
 for ll = 1:size(fix.fix_thin_full,2) % loop over luminance values
     fix_texture.thin_full{ll}         = Screen('MakeTexture',win,fix.fix_thin_full{ll});
     fix_texture.thick_full_white{ll}  = Screen('MakeTexture',win,fix.fix_thick_full_white{ll});
     fix_texture.thick_left{ll}        = Screen('MakeTexture',win,fix.fix_thick_left{ll});
     fix_texture.thick_right{ll}       = Screen('MakeTexture',win,fix.fix_thick_right{ll});
     fix_texture.thick_both{ll}        = Screen('MakeTexture',win,fix.fix_thick_both{ll});
-    fix_texture.thick_full_black{ll}  = Screen('MakeTexture',win,fix.fix_thick_full_black{ll});
 end
+
+fix_texture.thick_full_black{1}  = Screen('MakeTexture',win,fix.fix_thick_full_black{1});
+
 
 % Prepare fixation texture vector outside the flip loop
 fix_tex    = cell(length(stim.im),1);
@@ -231,7 +232,7 @@ for nn = 1:size(run_frames.frame_event_nr,1)
 end
 
 % Use thin rim fixation circle for pre-run instruction screen.
-fix_tex_preruninstr  = fix_texture.thick_full_black{6}; % mid gray luminance (128)
+fix_tex_preruninstr  = fix_texture.thick_full_black{1}; % mid gray luminance (128)
 fix_rect_preruninstr = fix.fix_thick_rect{1};
 
 

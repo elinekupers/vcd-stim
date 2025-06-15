@@ -306,7 +306,6 @@ fix_thick_full_white  = cell(1,size(all_images.fix,4));
 fix_thick_left        = cell(1,size(all_images.fix,4));
 fix_thick_right       = cell(1,size(all_images.fix,4));
 fix_thick_both        = cell(1,size(all_images.fix,4));
-fix_thick_full_black  = cell(1,size(all_images.fix,4));
 
 for ll = 1:size(all_images.fix,4) % loop over luminance values
     fix_thin_full{ll}        = feval(flipfun,  cat(3, all_images.fix(:,:,:,ll,1), all_images.alpha.fix(:,:,1)));
@@ -314,8 +313,11 @@ for ll = 1:size(all_images.fix,4) % loop over luminance values
     fix_thick_left{ll}       = feval(flipfun,  cat(3, all_images.fix(:,:,:,ll,3), all_images.alpha.fix(:,:,3)));
     fix_thick_right{ll}      = feval(flipfun,  cat(3, all_images.fix(:,:,:,ll,4), all_images.alpha.fix(:,:,4)));
     fix_thick_both{ll}       = feval(flipfun,  cat(3, all_images.fix(:,:,:,ll,5), all_images.alpha.fix(:,:,5)));
-    fix_thick_full_black{ll} = feval(flipfun,  cat(3, all_images.fix(:,:,:,ll,6), all_images.alpha.fix(:,:,6)));
 end
+
+% only mean gray luminance // no transparency
+fix_thick_full_black{1} = feval(flipfun,  all_images.fix(:,:,:,ll,6));
+
 
 % add fix images and rects to struct
 fix_im = struct();
