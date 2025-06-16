@@ -218,7 +218,7 @@ for ii = 1:length(stim_row)
                         assert(isequal( run_table.gbr_phase(stim_row(ii),side), gbr_phase));
                         
                         run_images{curr_frames(1),side} = all_images.gabor(:,:,:,ori_idx,con_idx,1);
-                        run_alpha_masks{curr_frames(1),side} = all_images.alpha.gabor(:,:,ori_idx,con_idx,1);
+                        run_alpha_masks{curr_frames(1),side} = []; %all_images.alpha.gabor(:,:,ori_idx,con_idx,1);
                         
                     elseif strcmp(run_table.event_name(stim_row(ii)),'stim2') && strcmp(run_table.task_class_name(stim_row(ii)),'wm') && run_table.is_catch(stim_row(ii)) == 0
                         delta_deg = run_table.stim2_delta(stim_row(ii),side);
@@ -241,7 +241,7 @@ for ii = 1:length(stim_row)
                         delta_idx = 1+ find(delta_deg == params.stim.gabor.delta_from_ref);
                         
                         run_images{curr_frames(1),side}      = all_images.gabor(:,:,:,ori_idx,con_idx, delta_idx);
-                        run_alpha_masks{curr_frames(1),side} = all_images.alpha.gabor(:,:,ori_idx,con_idx, delta_idx);
+                        run_alpha_masks{curr_frames(1),side} = []; %all_images.alpha.gabor(:,:,ori_idx,con_idx, delta_idx);
                         
                     elseif strcmp(run_table.event_name(stim_row(ii)),'stim2') && strcmp(run_table.task_class_name(stim_row(ii)),'ltm') && run_table.is_catch(stim_row(ii)) == 0
                         
@@ -318,7 +318,7 @@ for ii = 1:length(stim_row)
                         rdk_masks = repmat({mask}, size(rdk_images,1), 1);
                         
                         run_images(curr_frames,side) = rdk_images;
-                        run_alpha_masks(curr_frames,side) = rdk_masks;
+                        run_alpha_masks(curr_frames,side) = []; %rdk_masks;
                         
                     elseif strcmp(run_table.event_name(stim_row(ii)),'stim2') && strcmp(run_table.task_class_name(stim_row(ii)),'wm') && run_table.is_catch(stim_row(ii)) == 0
                         
@@ -373,7 +373,7 @@ for ii = 1:length(stim_row)
                         rdk_masks = repmat({mask}, size(rdk_images,1), 1);
                         
                         run_images(curr_frames,side) = rdk_images;
-                        run_alpha_masks(curr_frames,side) = rdk_masks;
+                        run_alpha_masks(curr_frames,side) = []; %rdk_masks;
                         
                     elseif strcmp(run_table.event_name(stim_row(ii)),'stim2') && strcmp(run_table.task_class_name(stim_row(ii)),'ltm') && run_table.is_catch(stim_row(ii)) == 0
                         
@@ -431,7 +431,7 @@ for ii = 1:length(stim_row)
                     
                     if run_table.is_catch(stim_row(ii)) == 0
                         run_images{curr_frames(1),side} = all_images.dot;
-                        run_alpha_masks{curr_frames(1),side} = all_images.alpha.dot;
+                        run_alpha_masks{curr_frames(1),side} = []; %all_images.alpha.dot;
                         
                         if strcmp(run_table.event_name(stim_row(ii)),'stim2')
                             test_im = run_table.stim2_im_nr(stim_row(ii),side);
