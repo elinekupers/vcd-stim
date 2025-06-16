@@ -1,11 +1,11 @@
-function [scenes,ltm_lures,wm_im,info] = vcd_naturalscenes(params)
+function [scenes,ltm_lures,wm_im,info] = vcd_naturalscenes(params, verbose, store_imgs)
 % VCD function to load and resize/square pix values for natural scenes:
 %
-%  [scenes,ltm_lures,wm_im,info] = vcd_naturalscenes(params)
+%  [scenes,ltm_lures,wm_im,info] = vcd_naturalscenes(params, verbose, store_imgs)
 %
 % Purpose:
 %   Load subset of natural scene images used in the Natural Scenes Dataset
-%   for specified VCD experimental display. If params.store_imgs is set to
+%   for specified VCD experimental display. If store_imgs is set to
 %   true then this function will store the loaded images as a single mat
 %   file as defined by p.stim.ns.stimfile, e.g.:
 %   fullfile(vcd_rootPath,'workspaces','stimuli',<disp_name>,'scenes_<disp_name>_YYYYMMDDTHHMMSS.mat')
@@ -24,7 +24,6 @@ function [scenes,ltm_lures,wm_im,info] = vcd_naturalscenes(params)
 %
 % INPUTS:
 %  params             : (struct) stimulus params with the following fields:
-%    store_imgs                 : store finalized scene images and info or not.
 %    disp.name                  : name of used monitor (to check for squaring pixel values) (see vcd_getDisplayParams.m)
 %    stim.ns.infofile           : csv file name (see vcd_getStimulusParams.m)
 %    stim.ns.lure_im            : header names for lure images in csv file
@@ -36,6 +35,8 @@ function [scenes,ltm_lures,wm_im,info] = vcd_naturalscenes(params)
 %    stim.ns.wmtest_png_folder  : folder, where to find individual wm test pngs?
 %    stim.ns.ltmlure_png_folder : folder, where to find individual novel ltm lure pngs?
 %    stim.ns.imgtest_png_folder : folder, where to find individual img test pngs?
+%  verbose           : (logical) show debug figures
+%  store_imgs        : (logical) store stimuli and debug figures as pngs 
 %
 %
 % OUTPUTS:
@@ -321,7 +322,7 @@ else % do nothing
     wm_im      = wmtest0;
 end
 
-if params.verbose
+if verbose
     %% Visualize resized images
     makeprettyfigures;
     figure; set(gcf,'Position', [156    91   881   706],'color','w');
@@ -342,7 +343,7 @@ if params.verbose
         title(sprintf('Im %02d resized',ii), 'FontSize',20);
         axis image; box off
         set(gca,'CLim',[1 255]);
-        if params.stim.store_imgs
+        if store_imgs
             saveFigDir2 = fullfile(vcd_rootPath,'figs',params.disp.name,'ns','resized');
             if ~exist(saveFigDir2,'dir'), mkdir(saveFigDir2); end
             imwrite(scenes(:,:,:,ss,tt,uu), fullfile(saveFigDir2, sprintf('%04d_vcd_ns%02d.png', im_nr(ii), ii)));
@@ -356,7 +357,7 @@ if params.verbose
             axis image; box off
             set(gca,'CLim',[1 255]);
             
-            if params.stim.store_imgs
+            if store_imgs
                 imwrite(wm_im(:,:,:,ss,tt,uu,wm_idx), fullfile(saveFigDir2, sprintf('%04d_vcd_ns%02d_wm_im%02d.png', wm_test_im_nr(((ii-1)*n_wm_changes)+ll), ii,wm_idx)));
             end
         end
@@ -374,7 +375,7 @@ if params.verbose
                 axis image; box off
                 set(gca,'CLim',[1 255]);
                 
-                if params.stim.store_imgs
+                if store_imgs
                     imwrite(ltm_lures(:,:,:,ss,tt,uu,lure_idx), ...
                         fullfile(saveFigDir2, sprintf('%04d_vcd_ns%02d_ltm_lure%02d.png', ltm_lure_im_nr(((specialcore_counter-1)*n_ltm_lure_types)+lure_idx), ii,lure_idx)));
                 end
@@ -450,7 +451,7 @@ if any(strcmp(params.disp.name, {'7TAS_BOLDSCREEN32', 'PPROOM_EIZOFLEXSCAN'})) &
         title(sprintf('Im %02d resized & squared',ss), 'FontSize',20);
         axis image; box off
         set(gca,'CLim',[1 255]);
-        if params.stim.store_imgs
+        if store_imgs
             saveFigDir2 = fullfile(vcd_rootPath,'figs',params.disp.name,'ns','resized_and_squared');
             if ~exist(saveFigDir2,'dir'), mkdir(saveFigDir2); end
             imwrite(scenes(:,:,:,ss,tt,uu), fullfile(saveFigDir2, sprintf('%04d_vcd_ns%02d.png',im_nr(ii), ii)));
@@ -464,7 +465,7 @@ if any(strcmp(params.disp.name, {'7TAS_BOLDSCREEN32', 'PPROOM_EIZOFLEXSCAN'})) &
             axis image; box off
             set(gca,'CLim',[1 255]);
             
-            if params.stim.store_imgs
+            if store_imgs
                 imwrite(wm_im(:,:,:,ss,tt,uu,wm_idx), fullfile(saveFigDir2, sprintf('%04d_vcd_ns%02d_wm_im%02d.png', wm_test_im_nr(((ii-1)*n_wm_changes)+wm_idx), ii,wm_idx)));
             end
         end
@@ -477,7 +478,7 @@ if any(strcmp(params.disp.name, {'7TAS_BOLDSCREEN32', 'PPROOM_EIZOFLEXSCAN'})) &
                 title(sprintf('Im %02d, ltm lure %02d resized & squared',ii,lure_idx), 'FontSize',20);
                 axis image; box off
                 set(gca,'CLim',[1 255]);
-                if params.stim.store_imgs
+                if store_imgs
                     imwrite(ltm_lures(:,:,:,ss,tt,uu,lure_idx), ...
                         fullfile(saveFigDir2, sprintf('%04d_vcd_ns%02d_ltm_lure%02d.png', ltm_lure_im_nr(((specialcore_counter-1)*n_ltm_lure_types)+lure_idx), ii,lure_idx)));
                 end
@@ -490,7 +491,7 @@ end
 
 
 %% Store images if requested
-if params.stim.store_imgs
+if store_imgs
     fprintf('[%]: Storing images',mfilename);
     saveDir = fileparts(fullfile(params.stim.ns.stimfile));
     if ~exist(saveDir,'dir'), mkdir(saveDir); end

@@ -1,6 +1,6 @@
-function [dot, mask, info] = vcd_singledot(params)
+function [dot, mask, info] = vcd_singledot(params, verbose, store_imgs)
 % VCD function
-%  [dot, mask, info] = vcd_singledot(params)
+%  [dot, mask, info] = vcd_singledot(params, verbose, store_imgs)
 % 
 % Purpose:
 %   Create a simple dot image for experimental display.
@@ -35,7 +35,7 @@ function [dot, mask, info] = vcd_singledot(params)
 %   folder fullfile(vcd_rootPath, 'figs', <params.disp.name>,'simple_dot');
 %
 % INPUTS:
-%   params                  : stim params struct (see vcd_setStimParams.m)
+%  params                  : stim params struct (see vcd_setStimParams.m)
 %    *** this function requires the following struct fields ***
 %    bckgrnd_grayval        : (int) background gray value (128)
 %    stim.dot.img_sz_pix    : (int) size of image support (pixels) of the
@@ -48,13 +48,15 @@ function [dot, mask, info] = vcd_singledot(params)
 %    stim.dot.x0_pix_delta  : (double): list of horizontal center positions for each WM test dot (pixels)
 %    stim.dot.y0_pix_delta  : (double): list of vertical center positions for each WM test dot (pixels)
 %    stim.dot.iso_eccen     : (double): iso-eccentricy of the ring (deg)
+%  verbose           : (logical) show debug figures
+%  store_imgs        : (logical) store stimuli and debug figures as pngs 
 %
 % OUTPUTS:
-%   dot                     : (uint8) dot image used for VCD experiment
+%  dot                     : (uint8) dot image used for VCD experiment
 %                               height (pixels) by width (pixels) x 3 (rgb)
-%   masks                   : (uint8) alpha masks  used for VCD experiment, to crop out image edges:
+%  masks                   : (uint8) alpha masks  used for VCD experiment, to crop out image edges:
 %                               height (pixels) by width (pixels))
-%   info                    : (table) info about sinlge dot images
+%  info                    : (table) info about sinlge dot images
 %      unique_im     : (double) unique image nr for each dot location: 
 %                     range 49-64 for core images, 303-366 for WM test
 %                     images.
@@ -205,14 +207,14 @@ end
 
 
 %% Visualize if requested
-if params.verbose
+if verbose
     makeprettyfigures;
-    if params.stim.store_imgs
+    if store_imgs
         saveFigDir = fullfile(vcd_rootPath,'figs',params.disp.name,'dot','visual_checks');
         if ~exist(saveFigDir,'dir'), mkdir(saveFigDir); end
     end
     %% Make PNG image of dot alone:
-    if params.store_imgs
+    if store_imgs
         imwrite(dot, fullfile(vcd_rootPath,'figs',params.disp.name,'dot',sprintf('%04d_singledot.png', params.stim.dot.unique_im_nrs_core(1))));
     end
     
@@ -225,7 +227,7 @@ if params.verbose
     subplot(133); imagesc(dot, 'AlphaData',mask); colormap gray; axis image;  set(gca, 'CLim', [1 255]);
     title('dot+alpha mask'); xlabel('pixels'); ylabel('pixels')
 
-    if params.store_imgs 
+    if store_imgs 
         print(fullfile(saveFigDir,'singledot_alphamask'),'-dpng','-r150');
     end
     
@@ -244,7 +246,7 @@ if params.verbose
         pax.ThetaZeroLocation = 'top';
         pax.ThetaDir = 'clockwise';
         pax.FontSize = 20;
-        if params.store_imgs
+        if store_imgs
             title(sprintf('Single dot location %d + ref: [%d,%d,0,%d,%d]',ii, params.stim.dot.delta_from_ref));
             print(fullfile(saveFigDir,sprintf('%04d_singledot', ii)),'-dpng','-r150');
         end
@@ -276,7 +278,7 @@ if params.verbose
     h0.InteractionsAllowed = 'none';
     title('single dot locations - both hemifields');
     axis image;
-    if params.store_imgs
+    if store_imgs
 %         set(gcf, 'InvertHardCopy', 'off');
         print(fullfile(saveFigDir,'singledot_all_loc'),'-dpng','-r150');
     end
@@ -304,7 +306,7 @@ if params.verbose
         title(sprintf('Angle: %2.2f; Delta: %2.2f',info.angle_deg(aa),dot_ref_locs(dlta)), 'FontSize',20);
         axis image tight;
 %         set(gcf, 'InvertHardCopy', 'off');
-        if params.stim.store_imgs
+        if store_imgs
             print(fullfile(saveFigDir,sprintf('%04d_singledot_delta%02d', im_nr,dlta-1)),'-dpng','-r150');
         end
     end

@@ -1,7 +1,8 @@
-function [sac_im,pupil_im_white,pupil_im_black] = vcd_createEyeTrackingBlockTargets(params)
-% VCD function to create stimuli for eye tracking block
+function [sac_im,pupil_im_white,pupil_im_black] = vcd_createEyeTrackingBlockTargets(params, verbose, store_imgs)
+% VCD function to create stimuli for eye tracking bloc
 % 
-%   [sac_im,pupil_im_white,pupil_im_black] = vcd_createEyeTrackingBlockTargets(params)
+%   [sac_im,pupil_im_white,pupil_im_black] =
+%        vcd_createEyeTrackingBlockTargets(params, verbose, store_imgs)
 % 
 % There are 5 saccade targets (params.exp.block.nr_of_saccades): central, 
 % left, right, up, down, and 1 pupil trial with a mid-gray central fixation 
@@ -42,7 +43,9 @@ function [sac_im,pupil_im_white,pupil_im_black] = vcd_createEyeTrackingBlockTarg
 %   * stim.el.target_center_diam_pix   :  diameter of the inner circle of the target in pixels (same as fixation circle,10 pixels for BOLDscreen)
 %   * disp.h_pix                       :  height of the display in pixels
 %   * disp.w_pix                       :  width of the display in pixels
-%
+% verbose           : (logical) show debug figures
+% store_imgs        : (logical) store stimuli and debug figures as pngs 
+% 
 % OUTPUTS:
 %  sac_im           : (uint8) saccade stimuli (disp.h_pix x disp.w_pix x 3 x nr of saccade targets)
 %  pupil_im_white   : (uint8) white background pupil trial stimulus (disp.h_pix x disp.w_pix x 3)
@@ -55,10 +58,12 @@ target_locations = params.exp.block.nr_of_saccades;
 bckground_gray   = uint8(ones(params.disp.h_pix,params.disp.w_pix))*params.stim.bckgrnd_grayval;
 
 % Define folders to store stimulus matlab file and pngs.
-saveStimMatFileDir = fullfile(vcd_rootPath,'workspaces','stimuli',params.disp.name);
-saveFigDir = fullfile(params.saveFigsFolder,'eye');
-if ~exist(saveFigDir,'file'), mkdir(saveFigDir); end
-if ~exist(saveStimMatFileDir,'file'), mkdir(saveStimMatFileDir); end
+if store_imgs
+    saveStimMatFileDir = fullfile(vcd_rootPath,'workspaces','stimuli',params.disp.name);
+    saveFigDir = fullfile(params.saveFigsFolder,'eye');
+    if ~exist(saveFigDir,'file'), mkdir(saveFigDir); end
+    if ~exist(saveStimMatFileDir,'file'), mkdir(saveStimMatFileDir); end
+end
 
 % Create image support for saccade target
 support_x = 2*params.stim.fix.dotcenterdiam_pix;
@@ -136,14 +141,14 @@ for nr_loc = 1:target_locations
     sac_im = cat(4,sac_im,im1); 
 
     % Visualize image when requested
-    if params.verbose
+    if verbose
         figure(1); clf
         imshow(im1,[1 255]);
         axis image
     end
     
     % Store image when requested
-    if params.store_imgs
+    if store_imgs
         imwrite(im1, fullfile(saveFigDir,sprintf('vcd_eyetarget_%02d.png', nr_loc)));
     end
     
@@ -166,7 +171,7 @@ pupil_im_white(dot_coords_y, dot_coords_x,:) = fixation_rimthick1_gray_on_white;
 pupil_im_black(dot_coords_y, dot_coords_x,:) = fixation_rimthick1_gray_on_black;
 
 % Visualize image when requested
-if params.verbose
+if verbose
     figure(2); clf
     imshow(pupil_im_white,[1 255]);
     axis image
@@ -177,7 +182,7 @@ if params.verbose
 end
 
 % Store image when requested
-if params.store_imgs
+if store_imgs
     save(fullfile(saveStimMatFileDir,sprintf('eye_%s%s.mat', params.disp.name, datestr(now,30))), 'sac_im','pupil_im_white','pupil_im_black');
     imwrite(pupil_im_white, fullfile(saveFigDir,'vcd_eyepupil_white.png'));
     imwrite(pupil_im_black, fullfile(saveFigDir,'vcd_eyepupil_black.png'));   

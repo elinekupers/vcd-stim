@@ -1,6 +1,6 @@
-function [fix_im, mask, info] = vcd_fixationDot(params)
+function [fix_im, mask, info] = vcd_fixationDot(params, verbose, store_imgs)
 % VCD function:
-%  [fix_im, info] = vcd_fixationDot(params)
+%  [fix_im, info] = vcd_fixationDot(params, verbose, store_imgs)
 %
 % Purpose:
 %   Create a set of fixation dot images for experimental display. We want a
@@ -9,19 +9,21 @@ function [fix_im, mask, info] = vcd_fixationDot(params)
 %   fixation parameters.
 %
 % INPUTS:
-%   params  : params stuct (see vcd_setStimParams.m)
+% params  : params stuct (see vcd_setStimParams.m)
 %               * stim.store_imgs
 %               * stim.fix.dotcenterdiam_pix
 %               * stim.fix.dotthickcenterdiam_pix
 %               * stim.fix.dotthincenterdiam_pix
 %               * stim.fix.dotlum
+% verbose           : (logical) show debug figures
+% store_imgs        : (logical) store stimuli and debug figures as pngs 
 %
 % OUTPUTS:
-%   fix_im  : fixation dot images, 5-dim array:
+% fix_im  : fixation dot images, 5-dim array:
 %               w (pixels) x h (pixels) x 3 x 6 luminance levels x 6 rim widths
-%   mask    : alpha mask for ptb: w (pixels) x h (pixels) x 2 (one gray
+% mask    : alpha mask for ptb: w (pixels) x h (pixels) x 2 (one gray
 %                   layer, one transparency layer)
-%   info    : table with information about fixation dot conditions 
+% info    : table with information about fixation dot conditions 
 %
 % Written by Eline Kupers 2025/02
 
@@ -145,7 +147,7 @@ rim_color  = mat2cell(rim_color,ones(size(rim_color,1),1));
 info       = table(lum_info,width_info',color_side_info',rim_color,'VariableNames',{'luminance','rim_width','color_side','rim_color'});
 
 %% Store images and info table if requested
-if params.stim.store_imgs
+if store_imgs
     fprintf('[%s]: Storing images..',mfilename)
     tic
     saveMatStimFileDir = fileparts(fullfile(params.stim.fix.stimfile));
@@ -159,7 +161,7 @@ if params.stim.store_imgs
 end
 
 %% Visualize fixation circle if requested
-if params.verbose
+if verbose
     makeprettyfigures;
     
     saveFigDir = fullfile(params.saveFigsFolder,'fix');
@@ -177,12 +179,12 @@ if params.verbose
             set(gca,'CLim',[1 255])
             title(sprintf('%01d, %01d',ii, jj))
             counter = counter+1;
-            if params.store_imgs
+            if store_imgs
                 imwrite(fix_im(:,:,:,ii,jj), fullfile(saveFigDir,sprintf('vcd_fixcircle_w_alphamask_%01d_%01d.png', ii, jj)), 'Alpha' , double(mask(:,:,jj))/255);
             end
         end
     end
-    if params.store_imgs
+    if store_imgs
         filename = sprintf('vcd_fixcircle_all_w_alphamask.png');
         print(fH,'-dpng','-r300',fullfile(saveFigDir,filename));
     end
@@ -199,12 +201,12 @@ if params.verbose
             set(gca,'CLim',[1 255])
             title(sprintf('%01d, %01d',ii, jj))
             counter = counter+1;
-            if params.store_imgs
+            if store_imgs
                 imwrite(fix_im(:,:,:,ii,jj), fullfile(saveFigDir,sprintf('vcd_fixcircle_%01d_%01d.png', ii, jj)));
             end
         end
     end
-    if params.store_imgs
+    if store_imgs
         filename = sprintf('vcd_fixcircle_all.png');
         print(fH,'-dpng','-r300',fullfile(saveFigDir,filename));
     end

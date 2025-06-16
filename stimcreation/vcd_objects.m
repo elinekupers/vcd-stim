@@ -1,6 +1,6 @@
-function [objects, masks, info] = vcd_objects(params)
+function [objects, masks, info] = vcd_objects(params, verbose, store_imgs)
 % VCD function:
-%   [objects, masks, info] = vcd_objects(params)
+%   [objects, masks, info] = vcd_objects(params, verbose, store_imgs)
 %
 % Purpose:
 %   Luminance-controlled, load, and store rotated object images for VCD 
@@ -44,6 +44,22 @@ function [objects, masks, info] = vcd_objects(params)
 %
 % INPUTS:
 %  params       :   struct with stimulus params
+%    *** this function requires the following struct fields ***
+%    bckgrnd_grayval                : (double, integral) background gray value (128)
+%    stim.obj.img_sz_pix            : (double, integral) size of image support (pixels) of the
+%                                       dot. Must be an even number.
+%    stim.obj.super_cat             : (double, integral) superordinate object category (ranges between 1-5)
+%    stim.obj.basic_cat             : (double, integral) basic object category (ranges between 1-2)
+%    stim.obj.sub_cat               : (double, integral) subordinate object category (ranges between 1-3)
+%    stim.obj.facing_dir_deg        : (double, integral) list of facing directions for each object (deg)
+%    stim.obj.affordance            : (double, integral) number associated with each affordance label for each object,  
+%                                        where 1: greet, 2: grasp, 3: enter, and 4: observe.
+%    stim.obj.x0_pix                : (double, integral) horizontal center positions for left/right object apertures (pixels)
+%    stim.obj.y0_pix                : (double, integral) vertical center positions for left/right object apertures (pixels)
+%    stim.obj.unique_im_nrs_core    : (double, integral) unique stimulus numbers for core images
+%    stim.obj.unique_im_nrs_wm_test : (double, integral) unique stimulus numbers for working memory test images
+%  verbose           : (logical) show debug figures
+%  store_imgs        : (logical) store stimuli and debug figures as pngs 
 %
 % OUTPUTS:
 %  objects      :   uint8 5D array with images of individual object stimuli
@@ -323,7 +339,7 @@ for sub = 1:n_obj
 end
 
 %% Store stimuli if requested
-if params.stim.store_imgs
+if store_imgs
     fprintf('\nStoring images..')
     saveDir = fileparts(fullfile(params.stim.obj.stimfile));
     if ~exist(saveDir,'dir'), mkdir(saveDir); end
@@ -336,7 +352,7 @@ end
 
 %% Visualize stimuli if requested
 
-if params.stim.store_imgs
+if store_imgs
     saveFigDir = fullfile(vcd_rootPath,'figs',params.disp.name, 'obj');
     if ~exist(saveFigDir,'dir'); mkdir(saveFigDir); end
     
@@ -358,9 +374,9 @@ if params.stim.store_imgs
     end
 end
 
-% if params.verbose
-    
-    % debug figure
+% if verbose
+%     
+%     debug figure
 %     counter = 1;
 %     figure(99); set(gcf, 'Position', [300   584   868   753]);
 %     for objectNr = 1:size(objects,4)
@@ -388,7 +404,7 @@ end
 %                 print(fullfile(saveFigDir,sprintf('%02d_object%02d_delta%02d', im_nr,objectNr, dd)),'-dpng','-r150');
 %             end
 %             
-            % update counter
+%             update counter
 %             counter = counter+1;
 %         end
 %     end
