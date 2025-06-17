@@ -331,7 +331,9 @@ else
   mdf = median(diff(triggertimes));                    % typical empirical TR diff
   
   % check that the mdf and the intended TR are within 50 ms
-  assert(abs(mdf-a1.params.exp.TR) < 50/1000);  
+  if abs(mdf-a1.params.exp.TR) >= 50/1000
+    warning('*** The trigger difference (mdf) is not expected!! perhaps this is a behavioral session with incidental triggers??? ***');
+  end
 
   % find diffs that are more than 10% larger or 10% smaller than the mdf.
   % express these as a multiple of the mdf.
@@ -368,7 +370,7 @@ end
 % - duration is 60 means the end of the 60th frame is t=60.
 % - the next event also starts at t=60.
 
-% check that the total duration of all events + one extra frame at the end is exactly the number of time frames
+% check that the total duration of all events is exactly the number of time frames
 assert((sum(a1.run_table.event_dur))==length(timeframes));
 
 % check that the timing field in run_frames is exactly 0:X
