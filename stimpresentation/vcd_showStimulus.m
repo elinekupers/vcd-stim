@@ -618,7 +618,6 @@ while 1
 end
 
 fprintf('RUN ENDED.\n');
-ListenChar(0);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%% SAVE EYELINK DATA %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -746,6 +745,7 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % Restore priority and cursor
+ListenChar(0);
 ShowCursor;
 ptoff(oldCLUT);
 Priority(oldPriority);
