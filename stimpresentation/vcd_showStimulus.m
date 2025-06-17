@@ -127,6 +127,18 @@ task_rect  = fix_tex;
 unique_crossingIDs = unique(run_frames.crossingIDs);
 unique_crossingIDs(ismember(unique_crossingIDs,[999,0])) = [];
 
+% just make this once
+alltasktex = {};
+for p=1:length(unique_crossingIDs)
+  alltasktex{p} = Screen('MakeTexture',win, taskscript.im{p});
+end
+
+% just make this once
+allimtex = {};
+for p=1:7
+  allimtex{p} = Screen('MakeTexture',win, stim.eye(:,:,:,p));
+end
+
 for nn = 1:size(run_frames.frame_event_nr,1)
     
     eventID = run_frames.frame_event_nr(nn);
@@ -137,7 +149,8 @@ for nn = 1:size(run_frames.frame_event_nr,1)
     % set up fixation dot textures
     lum_idx = find(run_frames.fix_abs_lum(nn)==params.stim.fix.dotlum);
     
-    if eventID==92 % SPATIAL CUE
+    switch eventID
+    case 92
         if run_frames.is_cued(nn)==1
             fix_tex(nn)  = fix_texture.thick_left(lum_idx);
             fix_rect(nn) = fix.fix_thick_rect;
@@ -148,25 +161,26 @@ for nn = 1:size(run_frames.frame_event_nr,1)
             fix_tex(nn)  = fix_texture.thick_both(lum_idx);
             fix_rect(nn) = fix.fix_thick_rect;
         end
-    elseif ismember(eventID,90) % TASK CUE -- NOTE: no fixation circle!
+    case 90 % TASK CUE -- NOTE: no fixation circle!
         fix_tex(nn)  = [];
         fix_rect(nn) = [];
         run_frames.fix_abs_lum(nn) = NaN; % remove 128 as  absolute luminance because there is no fixation target twinkle
-    elseif ismember(eventID,[91,93,94,95,96,97,98]) % ALL STIMULUS EVENTS + ITI (thick fixation circle rim)
+    case {91 93 94 95 96 97 98} % ALL STIMULUS EVENTS + ITI (thick fixation circle rim)
         fix_tex(nn)  = fix_texture.thick_full_white(lum_idx);
         fix_rect(nn) = fix.fix_thick_rect;
-    elseif ismember(eventID,99) % IBI (thin fixation circle rim)
+    case 99 % IBI (thin fixation circle rim)
         fix_tex(nn)  = fix_texture.thin_full(lum_idx);
         fix_rect(nn) = fix.fix_thin_rect;
-    elseif eventID >= 990 % eyetracking targets / pupil black/white displays
-        fix_tex(nn) = [];
-        fix_rect(nn) = []; 
-        run_frames.fix_abs_lum(nn) = NaN; % remove 128 as  absolute luminance because there is no fixation target twinkle
-    elseif eventID == 0 % pre/post blank rest period (thin fixation circle rim)
-        fix_tex(nn)  = fix_texture.thin_full(lum_idx);
-        fix_rect(nn) = fix.fix_thin_rect;
+    otherwise
+        if eventID >= 990 % eyetracking targets / pupil black/white displays
+          fix_tex(nn) = [];
+          fix_rect(nn) = []; 
+          run_frames.fix_abs_lum(nn) = NaN; % remove 128 as  absolute luminance because there is no fixation target twinkle
+        elseif eventID == 0 % pre/post blank rest period (thin fixation circle rim)
+            fix_tex(nn)  = fix_texture.thin_full(lum_idx);
+            fix_rect(nn) = fix.fix_thin_rect;
+        end
     end
-    
     
     switch eventID
     % task_cue_ID           = 90; % Text on display to instruct subject
@@ -189,43 +203,45 @@ for nn = 1:size(run_frames.frame_event_nr,1)
 
         case 90 % task_cue_ID
             % Get instructions from png file
-            task_tex{nn}   = Screen('MakeTexture',win, taskscript.im{run_frames.crossingIDs(nn)==unique_crossingIDs});
+            %OLD:task_tex{nn}   = Screen('MakeTexture',win, taskscript.im{run_frames.crossingIDs(nn)==unique_crossingIDs});
+            task_tex{nn}   = alltasktex{run_frames.crossingIDs(nn)==unique_crossingIDs};
             task_rect{nn}  = taskscript.rect{run_frames.crossingIDs(nn)==unique_crossingIDs};
             framecolor{nn} = 255*ones(1,3);
         
         % Draw background with eyetracking target
         case {990,991} % eye_gaze_fix_ID = 990,991; % central fixation "rest" and "target"
-            im_tex{nn}  = Screen('MakeTexture',win, stim.eye(:,:,:,1));
+            %OLD:im_tex{nn}  = Screen('MakeTexture',win, stim.eye(:,:,:,1));
+            im_tex{nn} = allimtex{1};
             im_rect{nn} = rect;
             framecolor{nn} = 255*ones(1,3);
             
         case 992 % eye_gaze_sac_target_ID  = left
-            im_tex{nn}  = Screen('MakeTexture',win, stim.eye(:,:,:,2));
+            im_tex{nn} = allimtex{2};
             im_rect{nn} = rect;
             framecolor{nn} = 255*ones(1,3);
             
         case 993 % eye_gaze_sac_target_ID  = right
-            im_tex{nn}  = Screen('MakeTexture',win, stim.eye(:,:,:,3));
+            im_tex{nn} = allimtex{3};
             im_rect{nn} = rect;
             framecolor{nn} = 255*ones(1,3);
             
         case 994 % eye_gaze_sac_target_ID  = up
-            im_tex{nn}  = Screen('MakeTexture',win, stim.eye(:,:,:,4));
+            im_tex{nn} = allimtex{4};
             im_rect{nn} = rect;
             framecolor{nn} = 255*ones(1,3);
             
         case 995 % eye_gaze_sac_target_ID  = down
-            im_tex{nn}  = Screen('MakeTexture',win, stim.eye(:,:,:,5));
+            im_tex{nn} = allimtex{5};
             im_rect{nn} = rect;
             framecolor{nn} = 255*ones(1,3);
             
         case 996 % eye_gaze_pupil_ID is black
-            im_tex{nn}  = Screen('MakeTexture',win, stim.eye(:,:,:,6));
+            im_tex{nn} = allimtex{6};
             im_rect{nn} = rect;
             framecolor{nn} = 255*ones(1,3);
                          
         case 997 % eye_gaze_pupil_ID is white
-            im_tex{nn}  = Screen('MakeTexture',win, stim.eye(:,:,:,7));
+            im_tex{nn} = allimtex{7};
             im_rect{nn} = rect;
             framecolor{nn} = 255*ones(1,3);
     end
