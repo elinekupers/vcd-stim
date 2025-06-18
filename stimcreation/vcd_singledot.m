@@ -242,7 +242,7 @@ if verbose
         figure(1); clf;
         pax = polaraxes;
         polarscatter(info.angle_rad([idx1;idx2])', info.eccen_deg([idx1;idx2])',params.stim.dot.radius_pix,cmap,'LineWidth',3);
-        pax.LineWidth = 1;
+        pax.LineWidth = 0;
         pax.ThetaZeroLocation = 'top';
         pax.ThetaDir = 'clockwise';
         pax.FontSize = 20;
@@ -256,7 +256,7 @@ if verbose
     %% All dot locations per hemifield with "fake" fixation circle
     bckground = uint8(ones(params.disp.h_pix,params.disp.w_pix))*params.stim.bckgrnd_grayval;
     im1 = repmat(bckground,[1 1 3]);
-    dot_halfsz = params.stim.dot.radius_pix;
+    dot_halfsz = (size(dot,1)/2);
 
     for ang = params.stim.dot.ang_deg
         
@@ -274,7 +274,7 @@ if verbose
     figure;
     imshow(im1,[1 255]);
     hold on;
-    h0 = drawcircle('Center',[params.disp.xc,params.disp.yc],'Radius',11,'color', [1 1 1],'LineWidth',6);
+    h0 = drawcircle('Center',[params.disp.xc,params.disp.yc],'Radius',3,'color', [1 1 1],'LineWidth',1);
     h0.InteractionsAllowed = 'none';
     title('single dot locations - both hemifields');
     axis image;
@@ -285,8 +285,8 @@ if verbose
     
     %% Visualize individual dot locations
     im1 =double(ones(params.disp.h_pix,params.disp.w_pix))*0.5; % gray background
-    dot_halfsz = (size(dot,1)/2)-0.5;
     dot_ref_locs = [0, params.stim.dot.delta_from_ref];
+    figure(99); 
     for aa = 1:length(info.dot_xpos_pix)
         
         im_nr = info.unique_im(aa);
@@ -294,12 +294,12 @@ if verbose
         ypos_dots_to_plot = info.dot_ypos_pix(aa);
         dlta = find(info.delta_deg(aa)==[0,params.stim.dot.delta_from_ref]);
         
-        figure(99); clf;
+        clf;
         imshow(im1,[0 1]);
         hold all;
-        h0 = drawcircle('Center',[params.disp.xc,params.disp.yc],'Radius',11,'color', [1 1 1],'LineWidth',6);
+        h0 = drawcircle('Center',[params.disp.xc,params.disp.yc],'Radius',3,'color', [1 1 1],'LineWidth',1);
         h0.InteractionsAllowed = 'none';
-        h1 = drawcircle('Center',[params.disp.w_pix-xpos_dots_to_plot,params.disp.h_pix-ypos_dots_to_plot],'Radius',dot_halfsz,'color',[1 1 1],'EdgeAlpha',0);
+        h1 = drawcircle('Center',[params.disp.w_pix-xpos_dots_to_plot,params.disp.h_pix-ypos_dots_to_plot],'Radius',params.stim.dot.radius_pix,'color',[1 1 1],'EdgeAlpha',0);
         h1.InteractionsAllowed = 'none';
         h1.FaceAlpha=1;
         
