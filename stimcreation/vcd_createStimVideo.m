@@ -14,9 +14,12 @@ vidObj.FrameRate = 1/ifi;
 open(vidObj);
 
 % Create an animation.
-figure(101);
-set(gcf,'Position',[500   500   700  700], 'Units','Pixels','Renderer','OpenGL','PaperUnits','normalized')
+figure(101); set(gcf, 'Units','Pixels','Renderer','OpenGL','PaperUnits','normalized')
+set(gcf,'Position', [0 0 size(frames,1), size(frames,2)]);
 set(gca,'CLim', [1 255]);
+axis off;
+set(gcf, 'InvertHardCopy', 'off');
+screenppd = get(0,'ScreenPixelsPerInch');
 
 if ndims(frames) == 3
     nframes = size(frames,3);
@@ -28,6 +31,9 @@ else
 end
 
 for k = 1:nframes
+    
+    currFrame.cdata = [];
+    currFrame.colormap = [];
     
     cla
     if ndims(frames) == 3
@@ -48,9 +54,13 @@ for k = 1:nframes
     end
 
     drawnow;
+
+    % write to temp.png
+    files = printnice(gcf,[1 screenppd],'~/Desktop/temp');
     
-    % Write each frame to the file.
-    currFrame = getframe(gca);
+    % read it in
+    im = imread(files{1});
+    currFrame.cdata = im;
     writeVideo(vidObj,currFrame);
     
 end
