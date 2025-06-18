@@ -16,6 +16,8 @@ open(vidObj);
 % Create an animation.
 figure(101); set(gcf, 'Units','Pixels','Renderer','OpenGL','PaperUnits','normalized')
 set(gcf,'Position', [0 0 size(frames,1), size(frames,2)]);
+set(gca,'Units','normalized');
+set(gca,'Position',[0 0 1 1]);
 set(gca,'CLim', [1 255]);
 axis off;
 set(gcf, 'InvertHardCopy', 'off');
