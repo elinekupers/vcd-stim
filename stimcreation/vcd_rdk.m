@@ -323,7 +323,17 @@ for cc = 1:length(params.stim.rdk.dots_coherence)
                         inside = isInsideAperture(dots(ii,:), ap_center, ap_radius);
                         if ~inside
                             % move to point symmetric location
-                            dots(ii,:) = -dots(ii,:); 
+                              % THIS IS BUGGY as it puts the dot potentially outside of the circle.
+                              % dots(ii,:) = -dots(ii,:); 
+                            assert(ap_radius(1)==ap_radius(2));
+                            d_old = dots(ii,:) - dot_vel_pix_per_frames(ii,:);
+                            rts = roots([   sum((dots(ii,:)-d_old).^2)   2*sum((dots(ii,:)-d_old).*d_old)   sum(d_old.^2)-ap_radius(1).^2   ]);
+                            rii = find(rts>0 & rts<1);
+                            assert(length(rii)==1);
+                            rts = rts(rii);
+                            newpt = d_old + rts*dot_vel_pix_per_frames(ii,:);
+                            delta = dots(ii,:) - newpt;
+                            dots(ii,:) = -newpt + delta;
                             col(ii,:) = setdiff(params.stim.rdk.dots_color,col(ii,:),'rows'); % flip contrast
                         end
                     end % ndots loop
