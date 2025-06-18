@@ -95,7 +95,7 @@ function [data,all_images] = runme_vcdcore(subj_nr,ses_nr,ses_type,run_nr, dispN
 %                                  'PPROOM_EIZOFLEXSCAN' - EizoFlexscan monitor @ CMRR's psychophysics room
 %                                  'CCNYU_VIEWPIXX3D'    - ViewPixx monitor in Clay Curtis' psychophysics room                   
 %   [wantsynctest]       : if true, we do the PTB monitor sync test. 
-%                          Default: false
+%                          Default: true
 %   [loadparams]         : if true, load stored parameter values. 
 %                          Default: true
 %   [storeparams]        : if true, store created parameter values. 
