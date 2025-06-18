@@ -118,6 +118,8 @@ function [data,all_images] = runme_vcdcore(subj_nr,ses_nr,ses_type,run_nr, dispN
 %                          Default: [], which will turn into: sprintf('%s_vcd_subj%03d_ses%02d_run%02d.mat',ts0,subj_nr,sesID,run_nr);
 %   [wanteyetracking]    : if true, we will initialize eyetracking. 
 %                          Default: false;
+%   [wantdatabypass]     : if true, we will skip actually running the experiment and just generate dummy behavioral .mat files. 
+%                          Default: false;
 %   [ptbMaxVBLstd]       : allowable error (std in seconds) in the 50 VBL time stamp measurements taken by PTB during the synctest. 
 %                          If the measurement error is larger than the desired monitor refresh rate, psychtoolbox throws an error during the synctest.
 %                          Default: 0.0004 s. Larger standard deviations are more forgiving and less likely for psychtoolbox to throw an error.
@@ -182,6 +184,7 @@ p.addParameter('movieflip'          , [0 0]   , @isnumeric); % up/down, left/rig
 p.addParameter('savedatadir'        , ''      , @ischar);
 p.addParameter('subjfilename'       , ''      , @ischar);
 p.addParameter('wanteyetracking'    , false   , @islogical);
+p.addParameter('wantdatabypass'     , false   , @islogical);
 p.addParameter('ptbMaxVBLstd'       , 0.0009  , @isnumeric);
 p.addParameter('all_images'         , struct(), @isstruct);
 p.addParameter('timetable_file'     , ''      , @ischar);
@@ -318,6 +321,7 @@ end
     'eyelinkfile',     eyelinkfilename, ...
     'savedatadir',     savedatadir, ...
     'wanteyetracking', wanteyetracking, ...
+    'wantdatabypass',  wantdatabypass, ...
     'loadparams',      loadparams, ...
     'storeparams',     storeparams, ...
     'store_imgs',      storeimgs, ...
