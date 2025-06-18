@@ -360,7 +360,7 @@ else
                 % SPATIAL -- RDK specific
                 p.dots_size_deg   = 0.068/2;                                      % single dot radius in deg (we go by radius because that is what "drawcircle" expects
                 p.dots_size_pix   = round(p.dots_size_deg*disp_params.ppd);       % single dot radius in pixels
-                p.dots_color      = [255 255 255; 1 1 1]./255;                    % 50:50 white:black, color in RGB and converted to [0-1] as expected by stimulus creation function
+                p.dots_color      = [255 255 255; 1 1 1];                    % 50:50 white:black, color in RGB and converted to [0-1] as expected by stimulus creation function
                 p.dots_density    = 15.9;                                         % density of dots within circular aperture (dots/deg^2)
                 p.max_dots_per_frame = round(p.dots_density*(pi*(p.img_sz_deg/2)^2)); % how many individual dots within a square support. Density is 15.9 dots / deg^2   (Number is similar to Kiani lab, rokers lab aims for 150) and roughly matches to nr of pixels in aperture
                 p.dots_contrast   = 1;                                            % Michelson [0-1] (fraction)
@@ -376,8 +376,8 @@ else
                 
                 % SPATIAL -- manipulated params
                 p.num_mot_dir      = 8;                                           % number of sampled motion directions
-                p.dots_direction   = [0:(360/p.num_mot_dir):359]+(0.5*(360/p.num_mot_dir)); % sample direction of coherent motion from [0-359] in deg (0 deg is aligned with 12 o'clock)
-                                                                                  % turns out to be: [22.5,67.5,112.5,157.5,202.5,247.5,292.5,337.5]
+                p.dots_direction   = [33.75:(360/p.num_mot_dir):359];             % sample direction of coherent motion from [0-359] in deg (0 deg is aligned with 12 o'clock)
+                                                                                  % turns out to be: [33.7500, 78.7500. 123.7500, 168.7500, 213.7500, 258.7500, 303.7500, 348.7500] deg
                 % ensure equal distance from cardinal meridians
                 assert(isequal(abs(0-p.dots_direction(1:(p.num_mot_dir/2))), abs(180-p.dots_direction(((p.num_mot_dir/2)+1):p.num_mot_dir))));
                 assert(isequal(abs(90-p.dots_direction(1:(p.num_mot_dir/2))), abs(270-p.dots_direction(((p.num_mot_dir/2)+1):p.num_mot_dir))));
@@ -468,7 +468,7 @@ else
                 p.y0_pix        = disp_params.yc + round(y * disp_params.ppd);     % desired y-center loc in pix (translation from upper left corner [0,0])
                 
                 % WORKING MEMORY: dot angle position deltas for test images
-                p.delta_from_ref             = [-16, -8, 8, 16];                   % how much should stim iso-eccen loc deviate from reference (WM: double epochs)
+                p.delta_from_ref             = [-12, -6, 6, 12]; %[-16, -8, 8, 16];                   % how much should stim iso-eccen loc deviate from reference (WM: double epochs)
                                                                                    % the bigger the delta, the easier the trial
                 p.unique_im_nrs_wm_test      = [175:238];                          % Unique image nrs associated with the 64 WM DOT test stimuli
                 p.min_ang_distance_test_stim = 20;                                 % minimum angular distance (deg) between two wm test images; otherwise test dot stimuli will overlap.
@@ -543,7 +543,7 @@ else
 
                 % OBJECT FACING ROTATION ANGLES
                 p.num_unique_objects       = 16;                            % nr of rotations (deg), 0 = rightward facing, 180 = leftward facing, 90 = forward facing
-                % Contraints: 
+                % Constraints: 
                 % * Do not include 0-25 deg and 155-180 deg to avoid edge cases in WM
                 % * Have equal nr of "sideways" and "forward" facing objects.
                 % * if possible, object rotations have equal distance from rotation category border (45 and 135).
@@ -586,6 +586,15 @@ else
                                               15,6,12]; %   148 deg: church, 52  deg: house, 134 deg: watertower
                 assert(isequal([1:p.num_unique_objects],sort(obj_idx)))
                 p.facing_dir_deg           = facing_dir_deg(obj_idx);
+                
+                % For 20% of the PC-OBJ trials, we will use a catch facing
+                % direction: is_objcatch
+                % About 2/3 of those is_objcatch
+                
+                
+                p.catch_rotation = []; 
+                
+                
                 
                 % Define the 5 superordinate, 1-3 basic, and 16 subordinate categories
                 p.super_cat          = {'human','animal','object','food','place'};     
@@ -659,11 +668,15 @@ else
                 p.duration       = stim.stimdur_frames;                                                            % frames (nr of monitor refreshes)
                 
                 % SPATIAL
-                p.og_res_stim    = 425;                                                                       % original resolution of NSD stimuli
-                p.rz_res_stim    = 714;                                                                       % resized  resolution of NSD stimuli
-                p.dres           = ((ctr_square_deg/disp_params.h_deg * disp_params.h_pix) / p.og_res_stim);  % scale factor to apply
+                % For reference: we resize scenes to 8.4 x 8.4 degrees (as this is what has been used in NSD) 
+                % NSD scene resolution with the old 7T screen setup resulted in 714 x 714 pixels
+                % For VCD, 8.4 x 8.4 degrees  results in: 
+                % PP room Eizoflexscan: 537 x 537 pixels, or 8.4034 x 8.4034 degrees.
+                % 7TAS BOLDSCREEN: XX x XX pixels, or XX x XX degrees.
+                p.og_res_stim    = 425;                                                                       % Original stimulus reslution is 425 x 425 (pixels)
                 p.img_sz_deg     = ctr_square_deg;                                                            % desired height (or width) of square stimulus support (deg)
-                p.img_sz_pix     = ceil(p.og_res_stim.*p.dres);                                               % height (or width) of square stimulus support (pix)
+                p.img_sz_pix     = round(p.img_sz_deg.*disp_params.ppd);                                      % height (and width) of square stimulus support (pixels). 
+                p.dres           = p.img_sz_pix/p.og_res_stim;                                                % Scale factor for imresize
                 p.x0_deg         = 0;                                                                         % desired x-center loc in degrees (translation from 0,0)
                 p.y0_deg         = 0;                                                                         % desired y-center loc in degrees (translation from 0,0)
                 p.x0_pix         = round((p.x0_deg.*disp_params.ppd)/2)*2;                                    % x-center loc in pixels (translation from 0,0)
@@ -733,8 +746,6 @@ else
 
                 % Add params to struct
                 stim.ns = p;
-                
-                if verbose, fprintf('*** %s:\t\tscale factor = %.4f ***\n',upper(stim_class{ii}),stim.ns.dres); end
         end
         if verbose
             % Print out stimulus params
