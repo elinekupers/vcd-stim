@@ -618,7 +618,7 @@ else
   data.timing.glitchcnt       = 0;
   data.timing.timeframes      = linspacefixeddiff(0,mfi,numtimeframes);
   data.timing.starttime       = 12162.00;
-  save(fullfile(params.savedatadir,params.behaviorfile),{'params' 'run_table' 'run_frames' 'data'});
+  save(fullfile(params.savedatadir,params.behaviorfile),'params','run_table','run_frames','data');
 
 end
 
