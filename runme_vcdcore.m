@@ -126,6 +126,7 @@ function [data,all_images] = runme_vcdcore(subj_nr,ses_nr,ses_type,run_nr, dispN
 %   [all_images]         : struct with all VCD images, to avoid extra load time.
 %   [timetable_file]     : mat-file specifying the time_table_master based on the subject's shuffled condition_master table.
 %                          Default: []. No file means that the runme_vcdcore code will generate a new time_table_master file on the fly.
+%   [exp_env]            : argument to vcd_startup.m. Default: [].
 %
 % OUTPUTS:
 %   data                 : struct with behavioral button presses and monitor
@@ -163,7 +164,6 @@ function [data,all_images] = runme_vcdcore(subj_nr,ses_nr,ses_type,run_nr, dispN
 %  - 2024/12/01 - first version committed to github 
 
 close all; clc;
-vcd_startup; % script will navigate to root of vcd-stim code folder
 
 %% %%%%%%%%%%%%% PARSE INPUTS %%%%%%%%%%%%%
 p = inputParser;
@@ -190,6 +190,7 @@ p.addParameter('all_images'         , struct(), @isstruct);
 p.addParameter('timetable_file'     , ''      , @ischar);
 p.addParameter('stimDir'            , fullfile(vcd_rootPath,'workspaces','stimuli'), @ischar); % Where do the stimulus mat files live?
 p.addParameter('instrfolder'        , fullfile(vcd_rootPath,'workspaces','instructions'), @ischar); % Where do the task instruction txt and png files live?
+p.addParameter('exp_env'            , []      , @isnumeric);
 
 % Parse inputs
 p.parse(subj_nr, ses_nr, ses_type, run_nr, dispName, varargin{:});
@@ -200,6 +201,10 @@ for ff = 1:length(rename_me)
     eval([sprintf('%s = p.Results.%s;', rename_me{ff},rename_me{ff})]); %#ok<NBRAK>
 end
 clear rename_me ff p
+
+%% Do startup
+
+vcd_startup(exp_env); % script will navigate to root of vcd-stim code folder
 
 %% Check environment and input parameters:
        
