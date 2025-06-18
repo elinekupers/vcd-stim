@@ -291,8 +291,8 @@ params.exp    = vcd_getSessionParams('disp_name', params.disp.name, ...
 % OUTPUTS:
 % * scenes      : (uint8) core scene images, 6D array:
 %                 For :
-%                   height (BOLDscreen: 743 pixels, Eizoflexscan: 541 pixels)
-%                   x width (BOLDscreen: 743 pixels, Eizoflexscan: 541 pixels)
+%                   height (BOLDscreen: 743 pixels, Eizoflexscan: 537 pixels)
+%                   x width (BOLDscreen: 743 pixels, Eizoflexscan: 537 pixels)
 %                   x 3 (rgb)
 %                   x 5 superordinate semantic object categories (human, animal, object, food, place)
 %                   x 2 scene locations (indoor/outdoor)
