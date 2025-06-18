@@ -278,7 +278,7 @@ if ~exist('stim','var') || ~isfield(scan,'im') || isempty(stim.im)
         masks = a.masks;
         clear a d;
     else % we want to load stimuli on the fly (takes 15-60 seconds depending on the run)
-        if exist('all_images','var') && ~isempty(all_images)
+        if ~exist('all_images','var') && isempty(all_images)
             all_images = struct();
         end
         
