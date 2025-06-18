@@ -241,8 +241,8 @@ if verbose
         
         figure(1); clf;
         pax = polaraxes;
-        polarscatter(info.angle_rad([idx1;idx2])', info.eccen_deg([idx1;idx2])',sz,cmap,'LineWidth',3);
-        pax.LineWidth = 3;
+        polarscatter(info.angle_rad([idx1;idx2])', info.eccen_deg([idx1;idx2])',params.stim.dot.radius_pix,cmap,'LineWidth',3);
+        pax.LineWidth = 1;
         pax.ThetaZeroLocation = 'top';
         pax.ThetaDir = 'clockwise';
         pax.FontSize = 20;
@@ -256,7 +256,8 @@ if verbose
     %% All dot locations per hemifield with "fake" fixation circle
     bckground = uint8(ones(params.disp.h_pix,params.disp.w_pix))*params.stim.bckgrnd_grayval;
     im1 = repmat(bckground,[1 1 3]);
-    
+    dot_halfsz = params.stim.dot.radius_pix;
+
     for ang = params.stim.dot.ang_deg
         
         angle = deg2rad(ang);
@@ -264,7 +265,6 @@ if verbose
     
         ys = params.disp.yc + round(y_shift*params.disp.ppd);
         xs = params.disp.xc + round(x_shift*params.disp.ppd);
-        dot_halfsz = (size(dot,1)/2);
         dot_coords_x = (xs - dot_halfsz) : (xs + dot_halfsz -1);
         dot_coords_y = (ys - dot_halfsz) : (ys + dot_halfsz -1);
     
