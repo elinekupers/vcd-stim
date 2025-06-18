@@ -296,9 +296,13 @@ for cc = 1:length(params.stim.rdk.dots_coherence)
                         % update spatial position
                         dots(ii,:) = dots(ii,:) + dot_vel_pix_per_frames(ii,:); 
 
+                        % check if it left the circle
+                        inside = isInsideAperture(dots(ii,:), ap_center, ap_radius);
+
                         % Check whether the dot has reached its 'kill time'
-                        % based on frames
-                        if curr_frame > dot_kill_time(ii)
+                        % based on frames.  If it's time to die or if we are no
+                        % longer inside the circle, get a new random position.
+                        if curr_frame > dot_kill_time(ii) || ~inside
 
                             % if so, we create dot with a new kill time and a
                             % new random x and y coordinate
@@ -322,44 +326,52 @@ for cc = 1:length(params.stim.rdk.dots_coherence)
                                 end
                             end
 
+                        end
+                        
+                        % if it's time to die, update dot_kill_time.
+                        if curr_frame > dot_kill_time(ii)
                             dot_kill_time(ii) = curr_frame + params.stim.rdk.dots_lifetime -1;
-
                         end
+                        
+%                         % if it's no longer inside, flip contrast for the new dot
+%                         if ~inside
+%                             col(ii,:)  = setdiff(params.stim.rdk.dots_color,col(ii,:),'rows'); 
+%                         end
 
-                        % Check if dot has moved outside of the aperture and update and flip contrast if needed
-                        inside = isInsideAperture(dots(ii,:), ap_center, ap_radius);
-                        if ~inside
-                            % move to point symmetric location
-                            %
-                            % PREVIOUSLY: dots(ii,:) = -dots(ii,:); --> BUT THIS IS BUGGY as it puts the dot potentially outside of the circle.
-                            % instead, we find the point that the dot actually 
-                            % exits the circle.  mirror that point across the origin.  
-                            % then continue the rest of the trajectory.
-                            
-                            % check if we deal with a circular aperture (instead of ellipse)
-                            assert(ap_radius(1)==ap_radius(2));
-                            
-                            % get original position
-                            d_old = dots(ii,:) - dot_vel_pix_per_frames(ii,:); 
-                            
-                            % we create a polynomial (x^2 + 2x + c) that represents 
-                            % the distance traveled and how far dot was originally 
-                            % from the aperture bound. The "roots" function
-                            % gives the eigenvalues from this polynomial function
-                            % which allows us to calculate when the dot would
-                            % have exited the aperture and needs to be wrapped
-                            rts        = roots([   sum((dots(ii,:)-d_old).^2)   2*sum((dots(ii,:)-d_old).*d_old)   sum(d_old.^2)-ap_radius(1).^2   ]); 
-                            rii        = find(rts>0 & rts<1);
-                            assert(length(rii)==1);
-                            rts        = rts(rii);
-                            newpt      = d_old + rts*dot_vel_pix_per_frames(ii,:); % calulate the distance at which the dot would have exited the aperture
-                            delta      = dots(ii,:) - newpt;                       % how much more would the dot have traveled beyond the aperture?
-                            dots(ii,:) = -newpt + delta;                           % now wrap the dot location and add the "left-over" distance (delta) to finish the dot motion.
-                            assert(all(nearZero([delta+(rts*dot_vel_pix_per_frames(ii,:))]-dot_vel_pix_per_frames(ii,:)))); % ensure the distance traveled is the same
-                            
-                            % When wrapping dot, we also flip contrast
-                            col(ii,:)  = setdiff(params.stim.rdk.dots_color,col(ii,:),'rows'); 
-                        end
+%                         % Check if dot has moved outside of the aperture and update and flip contrast if needed
+%                         if ~inside
+%                             % move to point symmetric location
+%                             %
+%                             % PREVIOUSLY: dots(ii,:) = -dots(ii,:); --> BUT THIS IS BUGGY as it puts the dot potentially outside of the circle.
+%                             % instead, we find the point that the dot actually 
+%                             % exits the circle.  mirror that point across the origin.  
+%                             % then continue the rest of the trajectory.
+%                             
+%                             % check if we deal with a circular aperture (instead of ellipse)
+%                             assert(ap_radius(1)==ap_radius(2));
+%                             
+%                             % get original position
+%                             d_old = dots(ii,:) - dot_vel_pix_per_frames(ii,:); 
+%                             
+%                             % we create a polynomial (x^2 + 2x + c) that represents 
+%                             % the distance traveled and how far dot was originally 
+%                             % from the aperture bound. The "roots" function
+%                             % gives the eigenvalues from this polynomial function
+%                             % which allows us to calculate when the dot would
+%                             % have exited the aperture and needs to be wrapped
+%                             rts        = roots([   sum((dots(ii,:)-d_old).^2)   2*sum((dots(ii,:)-d_old).*d_old)   sum(d_old.^2)-ap_radius(1).^2   ]); 
+%                             rii        = find(rts>0 & rts<1);
+%                             assert(length(rii)==1);
+%                             rts        = rts(rii);
+%                             newpt      = d_old + rts*dot_vel_pix_per_frames(ii,:); % calulate the distance at which the dot would have exited the aperture
+%                             delta      = dots(ii,:) - newpt;                       % how much more would the dot have traveled beyond the aperture?
+%                             dots(ii,:) = -newpt + delta;                           % now wrap the dot location and add the "left-over" distance (delta) to finish the dot motion.
+%                             assert(all(nearZero([delta+(rts*dot_vel_pix_per_frames(ii,:))]-dot_vel_pix_per_frames(ii,:)))); % ensure the distance traveled is the same
+%                             
+%                             % When wrapping dot, we also flip contrast
+%                             col(ii,:)  = setdiff(params.stim.rdk.dots_color,col(ii,:),'rows'); 
+%                         end
+
                     end % ndots loop
 
                     % Create frame with gray background
