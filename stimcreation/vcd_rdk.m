@@ -330,8 +330,23 @@ for cc = 1:length(params.stim.rdk.dots_coherence)
                         inside = isInsideAperture(dots(ii,:), ap_center, ap_radius);
                         if ~inside
                             % move to point symmetric location
-                            dots(ii,:) = -dots(ii,:);  
-                            col(ii,:)  = setdiff(params.stim.rdk.dots_color,col(ii,:),'rows'); % flip contrast
+                            %
+                            % PREVIOUSLY: dots(ii,:) = -dots(ii,:); --> BUT THIS IS BUGGY as it puts the dot potentially outside of the circle.
+                            % instead, we find the point that the dot actually 
+                            % exits the circle.  mirror that point across the origin.  
+                            % then continue the rest of the trajectory.
+                            assert(ap_radius(1)==ap_radius(2)); % check if we deal with a circular aperture (instead of ellipse)
+                            d_old = dots(ii,:) - dot_vel_pix_per_frames(ii,:);
+                            rts = roots([   sum((dots(ii,:)-d_old).^2)   2*sum((dots(ii,:)-d_old).*d_old)   sum(d_old.^2)-ap_radius(1).^2   ]);
+                            rii = find(rts>0 & rts<1);
+                            assert(length(rii)==1);
+                            rts = rts(rii);
+                            newpt = d_old + rts*dot_vel_pix_per_frames(ii,:);
+                            delta = dots(ii,:) - newpt;
+                            dots(ii,:) = -newpt + delta;
+
+                            % flip contrast
+                            col(ii,:)  = setdiff(params.stim.rdk.dots_color,col(ii,:),'rows'); 
                         end
                     end % ndots loop
 

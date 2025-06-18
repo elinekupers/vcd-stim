@@ -95,7 +95,7 @@ function [data,all_images] = runme_vcdcore(subj_nr,ses_nr,ses_type,run_nr, dispN
 %                                  'PPROOM_EIZOFLEXSCAN' - EizoFlexscan monitor @ CMRR's psychophysics room
 %                                  'CCNYU_VIEWPIXX3D'    - ViewPixx monitor in Clay Curtis' psychophysics room                   
 %   [wantsynctest]       : if true, we do the PTB monitor sync test. 
-%                          Default: false
+%                          Default: true
 %   [loadparams]         : if true, load stored parameter values. 
 %                          Default: true
 %   [storeparams]        : if true, store created parameter values. 
@@ -118,12 +118,15 @@ function [data,all_images] = runme_vcdcore(subj_nr,ses_nr,ses_type,run_nr, dispN
 %                          Default: [], which will turn into: sprintf('%s_vcd_subj%03d_ses%02d_run%02d.mat',ts0,subj_nr,sesID,run_nr);
 %   [wanteyetracking]    : if true, we will initialize eyetracking. 
 %                          Default: false;
+%   [wantdatabypass]     : if true, we will skip actually running the experiment and just generate dummy behavioral .mat files. 
+%                          Default: false;
 %   [ptbMaxVBLstd]       : allowable error (std in seconds) in the 50 VBL time stamp measurements taken by PTB during the synctest. 
 %                          If the measurement error is larger than the desired monitor refresh rate, psychtoolbox throws an error during the synctest.
 %                          Default: 0.0004 s. Larger standard deviations are more forgiving and less likely for psychtoolbox to throw an error.
 %   [all_images]         : struct with all VCD images, to avoid extra load time.
 %   [timetable_file]     : mat-file specifying the time_table_master based on the subject's shuffled condition_master table.
 %                          Default: []. No file means that the runme_vcdcore code will generate a new time_table_master file on the fly.
+%   [exp_env]            : argument to vcd_startup.m. Default: [].
 %
 % OUTPUTS:
 %   data                 : struct with behavioral button presses and monitor
@@ -161,7 +164,6 @@ function [data,all_images] = runme_vcdcore(subj_nr,ses_nr,ses_type,run_nr, dispN
 %  - 2024/12/01 - first version committed to github 
 
 close all; clc;
-vcd_startup; % script will navigate to root of vcd-stim code folder
 
 %% %%%%%%%%%%%%% PARSE INPUTS %%%%%%%%%%%%%
 p = inputParser;
@@ -182,11 +184,13 @@ p.addParameter('movieflip'          , [0 0]   , @isnumeric); % up/down, left/rig
 p.addParameter('savedatadir'        , ''      , @ischar);
 p.addParameter('subjfilename'       , ''      , @ischar);
 p.addParameter('wanteyetracking'    , false   , @islogical);
+p.addParameter('wantdatabypass'     , false   , @islogical);
 p.addParameter('ptbMaxVBLstd'       , 0.0009  , @isnumeric);
 p.addParameter('all_images'         , struct(), @isstruct);
 p.addParameter('timetable_file'     , ''      , @ischar);
 p.addParameter('stimDir'            , fullfile(vcd_rootPath,'workspaces','stimuli'), @ischar); % Where do the stimulus mat files live?
 p.addParameter('instrfolder'        , fullfile(vcd_rootPath,'workspaces','instructions'), @ischar); % Where do the task instruction txt and png files live?
+p.addParameter('exp_env'            , []      , @isnumeric);
 
 % Parse inputs
 p.parse(subj_nr, ses_nr, ses_type, run_nr, dispName, varargin{:});
@@ -197,6 +201,10 @@ for ff = 1:length(rename_me)
     eval([sprintf('%s = p.Results.%s;', rename_me{ff},rename_me{ff})]); %#ok<NBRAK>
 end
 clear rename_me ff p
+
+%% Do startup
+
+vcd_startup(exp_env); % script will navigate to root of vcd-stim code folder
 
 %% Check environment and input parameters:
        
@@ -318,6 +326,7 @@ end
     'eyelinkfile',     eyelinkfilename, ...
     'savedatadir',     savedatadir, ...
     'wanteyetracking', wanteyetracking, ...
+    'wantdatabypass',  wantdatabypass, ...
     'loadparams',      loadparams, ...
     'storeparams',     storeparams, ...
     'store_imgs',      storeimgs, ...

@@ -42,6 +42,7 @@ p.addParameter('loadparams'         , true      , @islogical)                   
 p.addParameter('storeparams'        , true      , @islogical)                    % whether to store stimulus params
 p.addParameter('laptopkey'          , -3        , @isnumeric);                   % listen to all keyboards/boxes (is this similar to k=-3;?)
 p.addParameter('wanteyetracking'    , false     , @islogical);                   % whether to try to hook up to the eyetracker
+p.addParameter('wantdatabypass'     , false     , @islogical);                   % whether to skip the experiment and just save dummy .mat file
 p.addParameter('deviceNr'           , []        , @isnumeric);                   % kbWait/kbCheck input device number to listen to
 p.addParameter('device_check'       , 'both'    , @char);                        % what type of devices do we want to check for button presses: 'external','internal', or 'both'
 p.addParameter('triggerkey'         , {'5','t'}, @(x) iscell(x) || isstring(x)) % key(s) that starts the experiment
@@ -584,16 +585,42 @@ end
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% START EXPERIMENT! %%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-[data, ~] = vcd_showStimulus(...
-    params, ptonparams, ...
-    fix_im, ...
-    stim, ...
-    run_frames, ...
-    run_table, ...
-    introscript, ...
-    taskscript, ...
-    deviceNr);
 
+if ~params.wantdatabypass
+
+  [data, ~] = vcd_showStimulus(...
+      params, ptonparams, ...
+      fix_im, ...
+      stim, ...
+      run_frames, ...
+      run_table, ...
+      introscript, ...
+      taskscript, ...
+      deviceNr);
+
+else
+
+  % calc
+  numtimeframes = sum(run_table.event_dur);  % number of timeframes expected
+  idealexpdur = numtimeframes/params.stim.presentationrate_hz;  % ideal exp dur in seconds
+  mfi = 1/params.stim.presentationrate_hz;  % idealized flip interval in seconds
+  
+  % create dummy data
+  data = struct();
+  data.wantframefiles         = 0;
+  data.detectinput            = 1;
+  data.forceglitch            = 0;
+  data.timeKeys               = {739780.00   {'absolutetimefor0'}
+                                 -0.016      {'trigger'}
+                                 -0.014      {'t'}
+                                 idealexpdur {'DONE'}};
+  data.timing.mfi             = mfi;
+  data.timing.glitchcnt       = 0;
+  data.timing.timeframes      = linspacefixeddiff(0,mfi,numtimeframes);
+  data.timing.starttime       = 12162.00;
+  save(fullfile(params.savedatadir,params.behaviorfile),'params','run_table','run_frames','data');
+
+end
 
 return
 
