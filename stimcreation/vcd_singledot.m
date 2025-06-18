@@ -18,7 +18,7 @@ function [dot, mask, info] = vcd_singledot(params, verbose, store_imgs)
 %   NOTE 1: that these dots are identical, hence we only create one dot image
 %   and one transparency mask. We will log all the angles and unique image
 %   numbers in the info table, including those 4 test images for WM task: 
-%   dots that are -15, -5 +5 +15 deg rotated relative to each core dot
+%   dots that are -12, -6 +6 +12 deg rotated relative to each core dot
 %   (unique image nrs 303-366).
 %
 %   NOTE 2: We smooth the circle edge (anti alias) with a Savitzky-Golay 
@@ -69,9 +69,9 @@ function [dot, mask, info] = vcd_singledot(params, verbose, store_imgs)
 %      eccen_deg     : (double) eccentricity of dot (deg) 
 %      angle_rad     : (double) dot angle in radians.
 %      delta_deg     : (double) dot angle relative from core dot angle:
-%                             -16, -8, +8, +16 (deg)
-%      delta_deg_i   : (double) same as delta_deg but indexed 1: -16 deg
-%                             2: -8 deg, 3: +8 deg, or 4: +16 deg.            
+%                             -12, -6, +6, +12 (deg)
+%      delta_deg_i   : (double) same as delta_deg but indexed 1: -12 deg
+%                             2: -6 deg, 3: +6 deg, or 4: +12 deg.            
 %      dot_xpos_pix  : (double) x-position of dot angle in image space (pixels)
 %      dot_ypos_pix  : (double) y-position of dot angle in image space (pixels)
 %      is_specialcore : (logical) whether the dot location is part of the
@@ -233,7 +233,6 @@ if verbose
     
     %% Visualize reference location vs offset locations for WM images
     cmap = [0,0,0; lines(4)];
-    sz = 50*ones(1,5);
     for ii = params.stim.dot.unique_im_nrs_core
         
         idx1 = find(info.unique_im==ii);
