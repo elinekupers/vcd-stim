@@ -100,12 +100,6 @@ if ~isfield(params.stim.ns, 'infofile')
     params.stim.ns.infofile = fullfile(vcd_rootPath,'workspaces','info','scene*');
 end
 
-% find info file
-% d = dir(sprintf('%s*.csv',params.stim.ns.infofile));
-% if isempty(d)
-%     error('[%s]: Infofile cannot be found!',mfilename)
-% end
-
 % Read info table
 % info = readtable(fullfile(d(end).folder, d(end).name));
 info = table();
@@ -433,7 +427,7 @@ if any(strcmp(params.disp.name, {'7TAS_BOLDSCREEN32', 'PPROOM_EIZOFLEXSCAN','CCN
 end
 
 % Visualize squared and resized images
-if any(strcmp(params.disp.name, {'7TAS_BOLDSCREEN32', 'PPROOM_EIZOFLEXSCAN'})) && params.verbose
+if verbose && any(strcmp(params.disp.name, {'7TAS_BOLDSCREEN32', 'PPROOM_EIZOFLEXSCAN','CCNYU_VIEWPIXX3D'}))
     
     specialcore_counter = 0;
     
