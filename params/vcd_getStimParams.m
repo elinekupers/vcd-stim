@@ -471,7 +471,7 @@ else
                 p.delta_from_ref             = [-12, -6, 6, 12]; %[-16, -8, 8, 16];                   % how much should stim iso-eccen loc deviate from reference (WM: double epochs)
                                                                                    % the bigger the delta, the easier the trial
                 p.unique_im_nrs_wm_test      = [175:238];                          % Unique image nrs associated with the 64 WM DOT test stimuli
-                p.min_ang_distance_test_stim = 20;                                 % minimum angular distance (deg) between two wm test images; otherwise test dot stimuli will overlap.
+                p.min_ang_distance_test_stim = 20;                                 % minimum angular distance (deg) between two wm test images; to avoid that test dot stimuli will overlap.
                 
                 % check if all test images for WM have unique angles
                 tmp          = p.ang_deg+[0, p.delta_from_ref]';
@@ -534,68 +534,160 @@ else
                 p.og_res_stim_total_sz     = 1024;                          % original resolution of object stimuli
                 p.og_res_stim_target_sz    = parafov_circle_diam_pix;       % object stimuli have a target size of 4 dva = 354 pixels (7TAS_BOLDSCREEN32) or 258 pixels (PP room)
                 p.og_res_stim_deg          = parafov_circle_diam_deg;       % corresponding to 4 deg
-                
+
                 % we calculate the img size and scale factor relative to 1024x1024 original image size, 
                 % as the object preprocessing script has already scaled the raw image to get desired object size. 
                 p.img_sz_pix               = (p.og_res_stim_total_sz/p.og_res_stim_target_sz)*parafov_circle_diam_pix; 
                 p.img_sz_deg               = parafov_circle_diam_deg;            % height (or width) of square stimulus support (deg)
                 p.dres                     = p.img_sz_pix / p.og_res_stim_total_sz; % height (or width) of square stimulus support (pix)
 
+                p.crop_img_sz_pix          = p.og_res_stim_total_sz/2; % height (and width) of cropped square stimulus support (512 x 512 pixels).
+
+                
                 % OBJECT FACING ROTATION ANGLES
                 p.num_unique_objects       = 16;                            % nr of rotations (deg), 0 = rightward facing, 180 = leftward facing, 90 = forward facing
                 % Constraints: 
                 % * Do not include 0-25 deg and 155-180 deg to avoid edge cases in WM
                 % * Have equal nr of "sideways" and "forward" facing objects.
-                % * if possible, object rotations have equal distance from rotation category border (45 and 135).
-                % * if possible, equal distance between object rotations.
-                dd = 4; % degrees difference between rotations, arbitrary nr that we know fits in the smallest sampling bin (26-44 degrees).
-                facing_dir_deg             = cat(2, ... 
-                                              linspace(26,44,dd),   ... 4 sideways between 26-44 degrees 
-                                              linspace(46,64,dd),   ... 4 forward between 46-66 degrees.
-                                              linspace(116,134,dd), ... 4 forward between 91-111 degrees 
-                                              linspace(136,154,dd)); %  4 sideways between 136-154 degrees.
+                % * Rotations need to be at least ±5 degrees away from decision bounds (45 and 135 degrees, as well as 90 degrees)
+                % * if possible, object rotations have equal distance from rotation category border (45 and 135 degrees).
+                % * NOT POSSIBLE: equal distance between object rotations.
+                % * We only pick even numbers because that's the granularity
+                %   of rotation steps we have for raw images.
+                % * We ignore 45±5 degrees and 135±5 degrees, otherwise PC task will be too difficult.
+                facing_dir_deg             = cat(2, [26, 32, 36, 40], ...    4 sideways between 26-40 degrees. 
+                                                    [50, 54, 70, 84], ...    4 forward between 50-84 degrees.
+                                                    [96, 110, 126, 130], ... 4 forward between 96-130 degrees 
+                                                    [140, 144, 148, 154]); % 4 sideways between 140-154 degrees.
                 facing_dir_deg             = ceil(facing_dir_deg/2)*2; % force integrals of 2 as original images come in steps of 2 degrees
-                % facing_dir_deg = 
-                %                 26     1
-                %                 32     2
-                %                 38     3
-                %                 44     4    
-                %                 46     5
-                %                 52     6    
-                %                 58     7
-                %                 64     8
-                %                 116    9
-                %                 122   10
-                %                 128   11
-                %                 134   12
-                %                 136   13
-                %                 142   14
-                %                 148   15
-                %                 154   16
 
                 % ensure equal distance from cardinal meridians
                 assert(isequal(abs(facing_dir_deg(1:(p.num_unique_objects/2))-90), fliplr(abs(90-facing_dir_deg(((p.num_unique_objects/2)+1):p.num_unique_objects)))));
                 assert(isequal(abs(45-facing_dir_deg(1:(p.num_unique_objects/2))), fliplr(abs(135-facing_dir_deg(((p.num_unique_objects/2)+1):p.num_unique_objects)))));
                 
-                % we carefully assign a unique rotation to an object
-                obj_idx                    = [7,3,14, ...   58  deg: damon,  38  deg: lisa,  142 deg: sophia
-                                              2,13,9,5, ... 32  deg: parrot, 136 deg: cat,   116 deg: bear,   46 deg: giraffe
-                                              16, 1, ...    154 deg: drill,  26  deg: brush
-                                              8, 11, ...    64  deg: bus,    128 deg: suv
-                                              4, 10, ...    44  deg: pizza,  122 deg: banana
-                                              15,6,12]; %   148 deg: church, 52  deg: house, 134 deg: watertower
+                % we carefully assign a unique rotation to an object. Less
+                % than 10 degrees from decision boundary is considered a
+                % "hard" trial, the others are considered "easy"
+                obj_idx                    = [7,3,14, ...   70  deg: damon (easy),  36  deg: lisa (hard),  144 deg: sophia (hard)
+                                              2,13,9,5, ... 32  deg: parrot (easy), 140 deg: cat (hard),    96 deg: bear (easy),   50 deg: giraffe (hard)
+                                              12, 1, ...    130 deg: drill (hard),  26  deg: brush (easy)
+                                              8, 11, ...    84  deg: bus (easy),    126 deg: suv (hard)
+                                              4, 10, ...    40  deg: pizza (hard),  110 deg: banana (easy)
+                                              16, 6,15]; %  154 deg: church (easy), 54  deg: house (hard), 148 deg: watertower (easy)
+                                          
                 assert(isequal([1:p.num_unique_objects],sort(obj_idx)))
                 p.facing_dir_deg           = facing_dir_deg(obj_idx);
+                % facing_dir_deg =
+                    % 1     70  (easy) damon
+                    % 2     36  (hard) lisa
+                    % 3    144  (hard) sophia
+                    % 4     32  (easy) parrot
+                    % 5    140  (hard) cat
+                    % 6     96  (easy) bear
+                    % 7     50  (hard) giraffe
+                    % 8    130  (hard) drill
+                    % 9     26  (easy) brush
+                    % 10    84  (easy) bus
+                    % 11   126  (hard) suv
+                    % 12    40  (hard) pizza
+                    % 13   110  (easy) banana
+                    % 14   154  (easy) church 
+                    % 15    54  (hard) house
+                    % 16   148  (easy) watertower
+                
                 
                 % For 20% of the PC-OBJ trials, we will use a catch facing
-                % direction: is_objcatch
-                % About 2/3 of those is_objcatch
+                % direction (in the condition_master this is logged as
+                % "is_objcatch" = true or false). About 2/3 of those
+                % is_objcatch should be from the opposite facing direction.
                 
+                % We have 91 possible rotations per object ((180/2)+1). One
+                % rotations will be the base rotations for the core object,
+                % which leaves 91-1 = 90 possible rotations for objcatch.
+                % From these 90 possible rotations, we sample 18 catch
+                % rotations. (as 18 is easily divisible by 3). We then
+                % sample catch rotations such that 1/3 from same facing
+                % direction as the core rotation, and 2/3 from other facing 
+                % direction than the core rotation.
+                nr_objcatch_rotations = 90/5; % 18 possible catch rotations for each of the 16 individual objects
+                p.catch_rotation      = zeros(p.num_unique_objects,nr_objcatch_rotations);  
+                forward_facing_rotations(1,:)  = 0:2:44;    % degrees (note: we exclude 45 degrees)
+                forward_facing_rotations(2,:)  = 136:2:180; % degrees (note: we exclude 135 degrees)
+                sideways_facing_rotations(1,:) = 46:2:88;   % degrees (note: we exclude 45 and 90 degrees)
+                sideways_facing_rotations(2,:) = 92:2:134;  % degrees (note: we exclude 90 and 135 degrees)
                 
-                p.catch_rotation = []; 
+                % how many forward/sideways catch rotations do we sample?
+                p.distribution_objcatch = round(nr_objcatch_rotations.*[1/3, 2/3]); % 1/3 from same facing direction, and 2/3 from other facing direction
+
+                % catch rotation is in (absolute) degrees using the same
+                % convention as core object base rotation: 0 = rightward facing, 180 = leftward facing, 90 = forward facing
+                p.catch_rotation = [12    22    26    30    36    96   102   104   110   112   134   138   142   146   160   170   176   178; ... damon
+                                    62    76    94    96    98   100   104   110   112   120   124   134   150   156   162   164   172   178; ... lisa
+                                     2    14    18    24    36    38    46    56    58    60    88   106   110   114   118   126   128   130; ... sophia
+                                    46    48    52    68    72    78    84   106   110   120   128   132   146   148   154   162   178   180; ... parrot
+                                     2     6    20    26    32    44    56    64    80    86    88    98   100   104   112   114   126   132; ... cat
+                                     0     2     8    12    20    22    26    30    36    46    48    50    68    74    82   140   158   164; ... bear
+                                     6    18    20    22    32    94   100   110   118   124   132   138   142   152   158   168   170   178; ... giraffe
+                                     2     6    18    20    26    28    36    42    52    56    60    74    80    82   136   142   160   170; ... drill
+                                    46    48    82    88    96   104   110   112   122   124   128   134   138   142   144   148   164   172; ... brush
+                                     6    12    18    20    30    40   100   102   104   114   116   132   154   156   162   166   176   178; ... bus
+                                     2    18    32    34    44    60    64    76    78    82    88   136   138   140   142   154   166   174; ... suv
+                                    58    66    70    94    96   102   104   108   110   120   122   132   136   146   156   160   162   166; ... pizza
+                                     4    12    32    34    50    52    66    72    86    88   138   142   150   154   158   168   174   178; ... banana
+                                     2     4    16    32    34    36    48    52    54    60    62    72    76    86    92   106   108   110; ... church
+                                     0     6    12    22    28    30    32    38    44   102   106   110   112   122   130   142   150   156; ... house
+                                     0    10    14    34    38    42    50    56    62    64    76    88    94   116   118   124   132   134]; % watertower
+                                         
+               p.unique_im_nrs_objcatch = [1423:(1423+length(p.catch_rotation(:))-1)]; % unique image nrs for object catch rotations are 1423:1710;
+                           
+                 % Above sampling of catch rotations was created by the following code:
                 
-                
-                
+                % % %      for ff = 1:p.num_unique_objects
+                % % %          % if the base rotation is forward facing
+                % % %          if ismember(p.facing_dir_deg(ff),sideways_facing_rotations)
+                % % %              % and in the first row of forward rotations
+                % % %              if p.facing_dir_deg(ff) <= max(sideways_facing_rotations(1,:))
+                % % %                  sampleSW_same = setdiff(sideways_facing_rotations(1,:),p.facing_dir_deg(ff));
+                % % %                  sampleSW_diff = sideways_facing_rotations(2,:);
+                % % %                  % or the second first row of forward rotations
+                % % %              elseif p.facing_dir_deg(ff) >= max(sideways_facing_rotations(1,:)) && p.facing_dir_deg(ff) <= max(sideways_facing_rotations(2,:))
+                % % %                  sampleSW_same = setdiff(sideways_facing_rotations(2,:),p.facing_dir_deg(ff));
+                % % %                  sampleSW_diff = sideways_facing_rotations(1,:);
+                % % %              end
+                % % %              % we sample all forward facing rotations
+                % % %              sampleFF = forward_facing_rotations;
+                % % % 
+                % % %              % select 1/3 sideways rotations that are 90 degrees
+                % % %              % away and 2/3 of facing forward rotations for
+                % % %              % objcatch
+                % % %              p.catch_rotation(ff,:) = sort(cat(2, datasample(sampleSW_diff,p.distribution_objcatch(1),'Replace',false), datasample(sampleFF(:),p.distribution_objcatch(2),'Replace',false)'));
+                % % % 
+                % % %              % if the base rotation is sideways facing
+                % % %          elseif ismember(p.facing_dir_deg(ff),forward_facing_rotations)
+                % % %              % and in the first row of sideways rotations
+                % % %              if p.facing_dir_deg(ff) <= max(forward_facing_rotations(1,:))
+                % % %                  sampleFF_same = setdiff(forward_facing_rotations(1,:),p.facing_dir_deg(ff));
+                % % %                  sampleFF_diff = forward_facing_rotations(2,:);
+                % % %                  % or the second first row of sideways rotations
+                % % %              elseif p.facing_dir_deg(ff) >= max(forward_facing_rotations(1,:)) && p.facing_dir_deg(ff) <= max(forward_facing_rotations(2,:))
+                % % %                  sampleFF_same = setdiff(forward_facing_rotations(2,:),p.facing_dir_deg(ff));
+                % % %                  sampleFF_diff = forward_facing_rotations(1,:);
+                % % %              end
+                % % %              % we sample all sideways facing rotations
+                % % %              sampleSW = sideways_facing_rotations(:);
+                % % % 
+                % % %              % select 1/3 sideways rotations that are 90 degrees
+                % % %              % away and 2/3 of facing forward rotations for
+                % % %              % objcatch
+                % % %              p.catch_rotation(ff,:) = sort(cat(2, datasample(sampleFF_diff,p.distribution_objcatch(1),'Replace',false), datasample(sampleSW(:),p.distribution_objcatch(2),'Replace',false)'));
+                % % % 
+                % % %          end
+                % % % 
+                % % %          % ensure the catch rotations are not the same as the core
+                % % %          % rotations
+                % % %          assert(all(p.catch_rotation(ff,:)~=p.facing_dir_deg(ff)))
+                % % %      end
+
                 % Define the 5 superordinate, 1-3 basic, and 16 subordinate categories
                 p.super_cat          = {'human','animal','object','food','place'};     
                 
@@ -618,20 +710,19 @@ else
                 p.affordance{4}      = {'grasp','grasp'};
                 p.affordance{5}      = {'enter','enter','observe'};
 
-                % WORKING MEMORY: dot angle position deltas for test images
+                % WORKING MEMORY: dot angle position deltas for test
+                % images.
+                % NOTE that WM have do not have "unique" rotations (i.e.,
+                % no other core object has that rotation, given the limited 
+                % nr of rotations we can use, and the use of objcatch
+                % rotations).
                 p.delta_from_ref         = [-24, -12, 12, 24];                  % Relative rotation from reference image for WM test image
                                                                                 %  the bigger the delta, the easier the trial. 
                                                                                 % for 1-89 deg rotations: Negative values are leftwards, positive values is rightwards
                                                                                 % for 91-180 deg rotations: Negative values are rightward, positive values is leftward
                 p.unique_im_nrs_wm_test  = [239:302];                           %  Unique image nrs associated with the 64 WM OBJ test stimuli
                                                                             
-                % check if all test images for WM have unique rotations
-                % (not possible anymore with the limited nr of rotations we
-                % can use).
-%                 tmp          = p.facing_dir_deg+[0, p.delta_from_ref]';
-%                 assert(isequal(length(unique(tmp(:))), length(tmp(:))));
-%                 clear tmp
-                                                       
+                                   
                 % IMAGERY: 
                 p.unique_im_nrs_specialcore = p.unique_im_nrs_core([1,3,5,7,8,10,12,14]);   % 8 SELECTED IMAGES USED (SUBSET of 16 IMAGES)--these are hand picked! damon, sophia, cat, giraffe, drill, bus, pizza, church
                 
@@ -642,7 +733,7 @@ else
                 p.imagery_quiz_images    = [ones(1,10),2.*ones(1,10)];         % quiz dots overlap (1) or not (2)
                 
                 % LTM PAIR
-                p.ltm_pairs          = [];                                       %%
+                p.ltm_pairs          = [];                                     %% TODO: list of core stim numbers of same/other stim classes in the order of obj core images
                 
                 % Add params to struct
                 stim.obj = p;
@@ -753,7 +844,6 @@ else
         end
     end
     
-    
     stim.all_core_im_nrs         = sort(cat(2, stim.gabor.unique_im_nrs_core, stim.rdk.unique_im_nrs_core, stim.dot.unique_im_nrs_core, stim.obj.unique_im_nrs_core, stim.ns.unique_im_nrs_core));
     stim.all_specialcore_im_nrs  = sort(cat(2, stim.gabor.unique_im_nrs_specialcore, stim.rdk.unique_im_nrs_specialcore, stim.dot.unique_im_nrs_specialcore, stim.obj.unique_im_nrs_specialcore, stim.ns.unique_im_nrs_specialcore));
     stim.all_wm_test_im_nrs      = sort(cat(2, stim.gabor.unique_im_nrs_wm_test, stim.rdk.unique_im_nrs_wm_test, stim.dot.unique_im_nrs_wm_test, stim.obj.unique_im_nrs_wm_test, stim.ns.unique_im_nrs_wm_test));
@@ -762,6 +852,7 @@ else
     stim.all_ltm_lure_im_nrs     = sort(stim.ns.unique_im_nrs_ltm_lures);
     stim.all_test_im_nrs         = sort(cat(2, stim.all_wm_test_im_nrs, stim.all_img_test_im_nrs, stim.all_ltm_lure_im_nrs));
     stim.all_im_nrs              = sort(cat(2, stim.all_core_im_nrs, stim.all_test_im_nrs));
+    stim.all_objcatch_im_nrs     = sort(stim.obj.unique_im_nrs_objcatch);
 
     % Tell the user more info
     if verbose
@@ -773,6 +864,7 @@ else
         fprintf('\t %d WM test (%03d-%03d) \n',length(stim.all_wm_test_im_nrs),min(stim.all_wm_test_im_nrs), max(stim.all_wm_test_im_nrs))
         fprintf('\t %d IMG test (%03d-%03d) \n',length(stim.all_img_test_im_nrs),min(stim.all_img_test_im_nrs), max(stim.all_img_test_im_nrs))
         fprintf('\t %d LTM novel lures (%03d-%03d) \n',length(stim.all_ltm_lure_im_nrs),min(stim.all_ltm_lure_im_nrs), max(stim.all_ltm_lure_im_nrs))
+        fprintf('\t %d OBJ catch images (%03d-%03d) \n', length(stim.all_objcatch_im_nrs), min(stim.all_objcatch_im_nrs), max(stim.all_objcatch_im_nrs));
         fprintf('\t %d special core\n',length(stim.all_specialcore_im_nrs))
         fprintf('\t %d LTM pairs \n',length(stim.all_ltm_pairs)) 
         
