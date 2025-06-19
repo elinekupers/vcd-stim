@@ -336,6 +336,8 @@ else
     % IMG
     exp.trial.img.test_task                          = 0.5;  % chance of a yes/no overlapping test dots
  
+    % OBJ-PC
+    exp.trial.pc.prob_objcatch                       = 0.2;  % 20% chance of a pc-obj catch trial (different facing direction from canonical direction).
     
     %% Nr of blocks per run and session
     % BEHAVIOR:
