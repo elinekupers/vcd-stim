@@ -48,15 +48,16 @@ assert(isequal(sum(expected_nr_cd_trials_per_cue),expected_nr_cd_trials));
 min_nr_cd_trials_per_stimclass = zeros(1,5);
 min_nr_cd_trials_per_stimclass(unique(cd_trials.stim_class)') = floor(expected_nr_cd_trials/length(unique(cd_trials.stim_class)));
 
-% Do some voodoo forcefully trying to balance the nr of cd changes across
+% Do some voodoo to balance the nr of cd changes across
 % spatial cueing conditions, stim feature levels..
+% basically we resample trials until we find the sample we like
 fprintf('[%s]: Sample cd trials',mfilename)
 while 1
     fprintf('.')
     reshuffle_trials = [];
     
     % select cd trials
-    when_cd_trials = sort(randsample(nr_cued_cd_trials,expected_nr_cd_trials)); % default is without replacement
+    when_cd_trials = sort(randsample(nr_cued_cd_trials,expected_nr_cd_trials,'Replace',false)); % default is without replacement
     
     % Make sure we selected the nr of trials we expect for the given probability.
     assert(isequal(expected_nr_cd_trials,length(when_cd_trials)));
