@@ -136,11 +136,11 @@ params.exp    = vcd_getSessionParams('disp_name', params.disp.name, ...
 %                   Rim types are 1: thin white both, 2: thick white both, 
 %                   3: thick red left, 4: thick red right, 5: thick red both
 %                   6: thick black both
-% * mask        : (uint8) alpha transparency masks, 4D array: 
+% * masks       : (uint8) alpha transparency masks, 4D array: 
 %                   height (24 pixels) x width (24 pixels) x 2 dot rims types (thin, thick)
 % * info        : (table) table with specs about the different types of dot
 %                   rims and luminance values.
-[fix, mask, info] = vcd_fixationDot(params, verbose, store_imgs);
+[fix, ~, ~] = vcd_fixationDot(params, verbose, store_imgs); % outputs are [fix, masks, info]
 
 %% Gabors
 % vcd_gabor function creates 56 Gabor stimuli: 24 core and 32 working
@@ -176,7 +176,7 @@ params.exp    = vcd_getSessionParams('disp_name', params.disp.name, ...
 %                   Note that dims masks(:,:,:,[1,2],:) are empty
 %                   as all wm test stimuli use the highest contrast level.
 % * info        : table with stimulus information matching the gabor array
-[gabors, ~, ~] = vcd_gabor(params, verbose, store_imgs);
+[gabors, ~, ~] = vcd_gabor(params, verbose, store_imgs); % outputs are [gabors, masks, info]
 
 %% RDKs (Random Dot motion Kinetograms)
 % vcd_rdk function creates 56 RDK movies: 24 core and 32 working memory
@@ -208,7 +208,7 @@ params.exp    = vcd_getSessionParams('disp_name', params.disp.name, ...
 %                     height (544 or 396 pixels) x width (544 or 396 pixels)
 % * info        : table with stimulus information matching the rdk array 
 
-[rdks, ~, ~] = vcd_rdk(params, verbose, store_imgs);
+[rdks, ~, ~] = vcd_rdk(params, verbose, store_imgs); % outputs are [rdks, masks, info]
 
 %% Single dot
 % vcd_singledot function creates 1 dot that will be used for 16 core and 64
@@ -237,11 +237,13 @@ params.exp    = vcd_getSessionParams('disp_name', params.disp.name, ...
 %                   x width (BOLDscreen: 94 pixels, Eizoflexscan: 70 pixels)
 % * info        : table with stimulus information about the dot locations
 
-[single_dot, ~, ~] = vcd_singledot(params, verbose, store_imgs);
+[single_dot, ~, ~] = vcd_singledot(params, verbose, store_imgs); % outputs are [single_dot, masks, info]
 
 %% Objects
-% vcd_objects function creates 80 objects will be used for 16 core and 64
-% working memory test images.
+% vcd_objects function creates a total of 80 objects:
+% - 16 core images 
+% - 64 working memory test images.
+% - 288 catch object images.
 %
 % If params.verbose = true, this function will make a PNG for each object 
 % (core and WM test) and figures with axes/titles to check image nrs,
@@ -250,26 +252,40 @@ params.exp    = vcd_getSessionParams('disp_name', params.disp.name, ...
 % these figures in fullfile(vcd_rootPath,'figs',<dispname>,'obj').
 %
 % INPUTS:
-% * params      : parameter struct (requires display and stimulus parameters)
-% * verbose           : (logical) show debug figures
-% * store_imgs        : (logical) store stimuli and debug figures as pngs 
+% * params        : parameter struct (requires display and stimulus parameters)
+% * verbose       : (logical) show debug figures
+% * store_imgs    : (logical) store stimuli and debug figures as pngs 
 %
 % OUTPUTS:
-% * objects     : (uint8) is a 5D array:
-%                 For BOLDscreen:
-%                   height (1024 pixels) x width (1024 pixels) x 3 (rgb) 
+% * objects       : (uint8) is a 5D array:
+%                   For BOLDscreen:
+%                   height (512 pixels) x width (512 pixels) x 3 (rgb) 
 %                   x 16 object categories (subordinate level) 
 %                   x 4 rotation offsets (0, -24, -12, +12, +24 deg). 
-% * masks       : (uint8) is a 4D array containing alpha transparency mask:
-%                 For BOLDscreen:
-%                   height (1024 pixels) x width (1024 pixels) 
+% * masks         : (uint8) is a 4D array containing alpha transparency mask:
+%                   For BOLDscreen:
+%                   height (512 pixels) x width (512 pixels) 
 %                   x 16 object categories (subordinate level) 
 %                   x 5 rotation offsets (0, -24, -12, +12, +24 deg). 
-% * info        : (table) information about object png filenames,
-%                  category information, and object rotation. Also stored
-%                  as csv info file in params.stim.obj.infofile.
+% * objects_catch : (uint8) is a 5D array:
+%                   For BOLDscreen:
+%                   height (512 pixels) x width (512 pixels) x 3 (rgb) 
+%                   x 16 object categories (subordinate level) 
+%                   x 18 catch rotations sampled from all rotation objects
+%                   (0-180 degrees), except the core rotation of the
+%                   object.
+% * masks_catch   : (uint8) is a 4D array containing alpha transparency mask:
+%                   For BOLDscreen:
+%                   height (512 pixels) x width (512 pixels)
+%                   x 16 object categories (subordinate level) 
+%                   x 18 catch rotations sampled from all rotation objects
+%                   (0-180 degrees), except the core rotation of the
+%                   object.
+% * info          : (table) information about object png filenames,
+%                   category information, and object rotation. Also stored
+%                   as csv info file in params.stim.obj.infofile.
 
-[objects, ~, ~] = vcd_objects(params, verbose, store_imgs);
+[objects, ~, ~, ~, ~] = vcd_objects(params, verbose, store_imgs); % outputs are [objects, masks, objects_catch, masks_catch, info]
 
 %% Natural scenes
 % vcd_naturalscenes function loads, resizes (and squares pixel values if
@@ -325,7 +341,7 @@ params.exp    = vcd_getSessionParams('disp_name', params.disp.name, ...
 %                  category information. Also stored
 %                  as csv info file in params.stim.ns.infofile.
 
-[scenes, ltm_lures, wm_im, ~] = vcd_naturalscenes(params, verbose, store_imgs);
+[scenes, ltm_lures, wm_im, ~] = vcd_naturalscenes(params, verbose, store_imgs); % outputs are [scenes, ltm_lures, wm_im, info]
 
 
 
