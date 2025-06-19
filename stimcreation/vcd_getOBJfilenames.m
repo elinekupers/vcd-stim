@@ -4,8 +4,9 @@ function [filenames, unique_im_nrs] = vcd_getOBJfilenames()
 %
 %    [filenames, unique_im_nrs] = vcd_getOBJfilenames()
 % 
-% 65-80 are core images (the same as params.stim.obj.unique_im_nrs_core)
-% 367:430 are wm test images (the same as params.stim.obj.unique_im_nrs_wm_test)
+% 65-80 are 16 core images (the same as params.stim.obj.unique_im_nrs_core)
+% 367:430 are 64 wm test images (the same as params.stim.obj.unique_im_nrs_wm_test)
+% 1423:1710 are 288 pc object catch images (the same as params.stim.obj.unique_im_nrs_objcatch)
 % 
 % There are 91 "raw" rotation files per object (e.g., animals_bear_rotXX.png)
 % where XX ranges from [01-91]. These rotation numbers correspond to
@@ -34,13 +35,16 @@ function [filenames, unique_im_nrs] = vcd_getOBJfilenames()
 
 % Define unique_im_nrs (get from those defined in vcd_getStimParams OBJ field)
 stim = vcd_getStimParams('load_params',false,'store_params',false, 'verbose',false);
-unique_im_nrs = cat(2,stim.obj.unique_im_nrs_core, stim.obj.unique_im_nrs_wm_test)'; % [65:80,239:302]
+unique_im_nrs = cat(2,stim.obj.unique_im_nrs_core, stim.obj.unique_im_nrs_wm_test,stim.all_objcatch_im_nrs)'; % [65:80,239:302, 1423:1710]
 
-rot2fname  = @(x) 1+(x/2);
-core_rot = stim.obj.facing_dir_deg';
-wm_rot   = [core_rot + stim.obj.delta_from_ref]';
-wm_rot   = wm_rot(:);
-fname_nrs  = cat(1, rot2fname(core_rot), rot2fname(wm_rot));
+% convert rotation in degrees to filename number
+rot2fname = @(x) 1+(x/2); % we have 91 raw images, in steps of 2 degrees, and count files from 01
+core_rot  = stim.obj.facing_dir_deg';
+wm_rot    = [core_rot + stim.obj.delta_from_ref]';
+wm_rot    = wm_rot(:);
+catch_rot = stim.obj.catch_rotation';
+catch_rot = catch_rot(:);
+fname_nrs = cat(1, rot2fname(core_rot), rot2fname(wm_rot), rot2fname(catch_rot));
 
 % Define filename of each object's png
 filenames0 = {'faces_damonwayans_rot';...
@@ -60,7 +64,10 @@ filenames0 = {'faces_damonwayans_rot';...
             'places_house1_rot'; ...
             'places_watertower_rot'};
         
-filenames1 = cat(1,filenames0,repelem(filenames0,4,1)); % core + wm test im
+filenames1 = cat(1, filenames0, ... core images
+                    repelem(filenames0,length(stim.obj.delta_from_ref),1), ... % wm test im
+                    repelem(filenames0,size(stim.obj.catch_rotation,2),1));  % obj catch im
+                
 filenames  = cellfun(@(x,y) strcat(x,y), filenames1, cellfun(@(x) sprintf('%02d.png',x), num2cell(fname_nrs),'UniformOutput',false),'UniformOutput', false);
         
 assert(isequal(length(filenames),length(unique_im_nrs)));
