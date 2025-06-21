@@ -1,4 +1,4 @@
-function condition_master = vcd_allocateBlocksToRuns(params,condition_master_in,session_env, varargin)
+function condition_master = vcd_allocateBlocksToRuns(params,condition_master_in,env_type, varargin)
 % VCD function to allocate the unique trials and blocks to given runs.
 %
 %   condition_master = vcd_allocateBlocksToRuns(params)
@@ -9,7 +9,7 @@ function condition_master = vcd_allocateBlocksToRuns(params,condition_master_in,
 %                             to exist and contain condition_master v0.
 %   condition_master_in   :  (struct) input condition_master table with
 %                             block and runs for each subject and session.
-%   session_env           :  (str) label to define what type of session we
+%   env_type              :  (str) label to define what type of session we
 %                             are defining: 'MRI' or 'BEHAVIOR'.
 %
 % OUTPUTS:
@@ -20,14 +20,14 @@ function condition_master = vcd_allocateBlocksToRuns(params,condition_master_in,
 p0 = inputParser;
 p0.addRequired('params'                 , @isstruct);
 p0.addRequired('condition_master'       , @istable);
-p0.addRequired('session_env'            , @(x) any(strcmp(x,{'BEHAVIOR','MRI'})));
+p0.addRequired('env_type'               , @(x) any(strcmp(x,{'BEHAVIOR','MRI'})));
 p0.addParameter('load_params'           , false, @islogical);
 p0.addParameter('store_params'          , true, @islogical);
 p0.addParameter('store_imgs'            , false, @islogical);
 p0.addParameter('verbose'               , false, @islogical);
 
 % Parse inputs
-p0.parse(params,condition_master_in,session_env,varargin{:});
+p0.parse(params,condition_master_in,env_type,varargin{:});
 
 % Rename variables into general params struct
 rename_me = fieldnames(p0.Results);
@@ -86,7 +86,7 @@ stim_class_abbr{1} = 'GBR';
 task_class_abbr = upper(params.exp.taskclassnames);
 
 % check session type
-[all_sessions,session_types] = vcd_getSessionEnvironmentParams(params, session_env);
+[all_sessions,session_types] = vcd_getSessionEnvironmentParams(params, env_type);
 
 % create separate counters for scc and ltm task crossings, because trials
 % are spread across stimulus classes
@@ -114,10 +114,10 @@ for ses = 1:size(all_sessions,3)
             for sc = 1:length(params.exp.stimclassnames)
                 for tc = 1:length(params.exp.taskclassnames)
                     
-                    if strcmp(session_env,'MRI')
+                    if strcmp(env_type,'MRI')
                         task_start = params.exp.session.mri.task_start(tc);
                         
-                    elseif strcmp(session_env,'BEHAVIOR')
+                    elseif strcmp(env_type,'BEHAVIOR')
                         task_start = params.exp.session.behavior.task_start(tc);
                     end
                     if  ses >= task_start
@@ -261,7 +261,7 @@ for ses = 1:size(all_sessions,3)
                                     assert(isequal(nr_trials,nr_trials_half_block));
                                 end
                                 
-                                % do some checks
+                                % Check if these rows in the condition master are already occupied, we want them to be empty (otherwise we would overwrite the trial)!
                                 assert(all(isnan(condition_master.session_nr(idx))))
                                 assert(all(isnan(condition_master.session_type(idx))))
                                 assert(all(isnan(condition_master.block_nr(idx))))
@@ -295,26 +295,42 @@ for ses = 1:size(all_sessions,3)
                                     
                                     if condition_master.is_catch(sub_idx(tt))==1
                                         if condition_master.is_cued(sub_idx(tt))==1
-                                            cue_label = {sprintf('%s 0000 X LCUED %s',stim_class_tmp_name,task_class_abbr{tc}), ...
-                                                sprintf('%s 0000 X LCUED %s',stim_class_tmp_name,task_class_abbr{tc})};
+                                            cue_label = {sprintf('%s 0000 X LCUED %s#',stim_class_tmp_name,task_class_abbr{tc}), ...
+                                                sprintf('%s 0000 X LCUED %s#',stim_class_tmp_name,task_class_abbr{tc})};
                                         elseif condition_master.is_cued(sub_idx(tt))==2
-                                            cue_label = {sprintf('%s 0000 X RCUED %s',stim_class_tmp_name,task_class_abbr{tc}), ...
-                                                sprintf('%s 0000 X RCUED %s',stim_class_tmp_name,task_class_abbr{tc})};
+                                            cue_label = {sprintf('%s 0000 X RCUED %s#',stim_class_tmp_name,task_class_abbr{tc}), ...
+                                                sprintf('%s 0000 X RCUED %s#',stim_class_tmp_name,task_class_abbr{tc})};
                                         elseif condition_master.is_cued(sub_idx(tt))==3
                                             if strcmp(stim_class_tmp_name,'NS')
-                                                cue_label = {sprintf('%s 0000 X NCUED %s',stim_class_tmp_name,task_class_abbr{tc}), NaN};
+                                                cue_label = {sprintf('%s 0000 X NCUED %s#',stim_class_tmp_name,task_class_abbr{tc}), NaN};
                                             else
-                                                cue_label = {sprintf('%s 0000 X NCUED %s',stim_class_tmp_name,task_class_abbr{tc}), ...
-                                                    sprintf('%s 0000 X NCUED %s',stim_class_tmp_name,task_class_abbr{tc})};
+                                                cue_label = {sprintf('%s 0000 X NCUED %s#',stim_class_tmp_name,task_class_abbr{tc}), ...
+                                                    sprintf('%s 0000 X NCUED %s#',stim_class_tmp_name,task_class_abbr{tc})};
                                             end
                                         end
                                     elseif condition_master.is_cued(sub_idx(tt))==1
-                                        cue_label = {sprintf('%s %04d L CUED %s',stim_class_tmp_name,condition_master.stim_nr_left(sub_idx(tt)),task_class_abbr{tc}), ...
-                                            sprintf('%s %04d R UNCUED %s',stim_class_tmp_name,condition_master.stim_nr_right(sub_idx(tt)),task_class_abbr{tc})};
+                                        if condition_master.is_objectcatch(sub_idx(tt))>0
+                                            cue_label = {sprintf('%s %04d L CUED %s+',stim_class_tmp_name,condition_master.stim_nr_left(sub_idx(tt)),task_class_abbr{tc}), ...
+                                                sprintf('%s %04d R UNCUED %s',stim_class_tmp_name,condition_master.stim_nr_right(sub_idx(tt)),task_class_abbr{tc})};
+                                            condition_master.stim_nr_left(sub_idx(tt)) = condition_master.is_objectcatch(sub_idx(tt)); % replace image nr
+                                            condition_master.is_objectcatch(sub_idx(tt)) = 1; % Now we reset is_objectcatch to logical
+                                        else
+                                            cue_label = {sprintf('%s %04d L CUED %s',stim_class_tmp_name,condition_master.stim_nr_left(sub_idx(tt)),task_class_abbr{tc}), ...
+                                                sprintf('%s %04d R UNCUED %s',stim_class_tmp_name,condition_master.stim_nr_right(sub_idx(tt)),task_class_abbr{tc})};
+                                        end
+                                       
+                                        
                                     elseif condition_master.is_cued(sub_idx(tt))==2
-                                        cue_label = {sprintf('%s %04d L UNCUED %s',stim_class_tmp_name,condition_master.stim_nr_left(sub_idx(tt)),task_class_abbr{tc}),...
+                                        if condition_master.is_objectcatch(sub_idx(tt))>0
+                                            cue_label = {sprintf('%s %04d L UNCUED %s',stim_class_tmp_name,condition_master.stim_nr_left(sub_idx(tt)),task_class_abbr{tc}),...
+                                            sprintf('%s %04d R CUED %s+',stim_class_tmp_name,condition_master.stim_nr_right(sub_idx(tt)),task_class_abbr{tc})};
+                                            condition_master.stim_nr_right(sub_idx(tt)) = condition_master.is_objectcatch(sub_idx(tt)); % replace image nr
+                                            condition_master.is_objectcatch(sub_idx(tt)) = 1; % Now we reset is_objectcatch to logical
+                                        else
+                                            cue_label = {sprintf('%s %04d L UNCUED %s',stim_class_tmp_name,condition_master.stim_nr_left(sub_idx(tt)),task_class_abbr{tc}),...
                                             sprintf('%s %04d R CUED %s',stim_class_tmp_name,condition_master.stim_nr_right(sub_idx(tt)),task_class_abbr{tc})};
-                                    
+                                        end
+                                        
                                     elseif condition_master.is_cued(sub_idx(tt))==3
                                         
                                         % NS trial - left stim / right is nan
@@ -469,7 +485,7 @@ newOrderNames = {'session_nr','session_type','run_nr','block_nr','trial_nr',...
     'task_class','task_class_name', ...
     'crossing_nr','crossing_name',...
     'stim_nr_left', 'stim_nr_right', ...
-    'is_cued', 'is_catch', ...
+    'is_cued', 'is_catch', 'is_objectcatch',...
     'correct_response', ...
     'orient_dir', ...
     'contrast', ...
@@ -503,7 +519,7 @@ condition_master = condition_master(:,newOrder_idx);
 condition_master = vcd_getTrialRepeatNr(condition_master);
 
 % add global_trial_nr
-condition_master = vcd_updateGlobalCounters(params, condition_master, session_env);
+condition_master = vcd_updateGlobalCounters(params, condition_master, env_type);
 % condition_master.global_trial_nr = [1:size(condition_master,1)]';
 condition_master.block_nr = condition_master.global_block_nr;
 
@@ -539,7 +555,7 @@ if verbose
                 
                 
                 if store_imgs
-                    saveFigsFolder = fullfile(vcd_rootPath,'figs',sprintf('condition_master1_%s',session_env));
+                    saveFigsFolder = fullfile(vcd_rootPath,'figs',sprintf('condition_master1_%s',env_type));
                     if ~exist(saveFigsFolder,'dir'); mkdir(saveFigsFolder);end
                     filename = sprintf('vcd_session%02d_%s_subjblocks_post_shuffle.png',ses,choose(st==1, 'A','B'));
                     print(gcf,'-dpng','-r300',fullfile(saveFigsFolder,filename));
