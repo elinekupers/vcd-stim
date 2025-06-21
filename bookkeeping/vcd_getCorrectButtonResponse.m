@@ -219,17 +219,17 @@ switch block_name
         % 1-INDEX  = FORWARD
         % 2-MIDDLE = SIDEWAYS
         
+        % Get cued object rotation in degrees
+        obj_rot = table_row.orient_dir(table_row.is_cued);
+        
         % We set the cutoff at 45 and 135 degrees.
-        forward =  (params.stim.obj.facing_dir_deg > 45 & params.stim.obj.facing_dir_deg < 135);
-        sideways = (params.stim.obj.facing_dir_deg < 45 | params.stim.obj.facing_dir_deg > 135);
-        assert(~isequal(forward,sideways));
-        if sum(cat(2,forward,sideways))==0
-            error('[%s]: No response options for %s!',mfilename,block_name)
+        if (obj_rot > 45) && (obj_rot < 135)
+            button_response = 1; % closer to FORWARD
+        elseif (obj_rot < 45 || obj_rot > 135)
+            button_response = 2; % closer to SIDEWAYS
+        else
+            error('[%s]: Ill-defined response option for %s!',mfilename,block_name)
         end
-        answer_options = NaN(1,length(params.stim.obj.facing_dir_deg));
-        answer_options(forward) = 1; % closer to FORWARD
-        answer_options(sideways) = 2; % closer to SIDEWAYS
-        button_response = answer_options(table_row.orient_dir(table_row.is_cued)==params.stim.obj.facing_dir_deg);
         
     case {'wm-obj'   }
         % Rotation memory task - Objects
