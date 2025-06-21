@@ -15,7 +15,9 @@ function [params, condition_master, all_unique_im, all_cond] = vcd_createConditi
 %   4. Merge unique stimuli with left/right parafoveal stimulus locations
 %       into a single trial, pseudo-randomly assign covert spatial
 %       attention cue and fixation dot rim thickening direction.
-%   5. Allocate trials to blocks
+%   5. Allocate trials to blocks.
+%   6. Calculate with CD-trials a contrast decrement onset and when this
+%      dip will happen during the trial.
 %
 % INPUTS:
 %  params         : (required) Struct with stimulus and session params
@@ -26,55 +28,244 @@ function [params, condition_master, all_unique_im, all_cond] = vcd_createConditi
 %  [store_params] : (optional) Store generated parameters or not.
 %                     Will store params in fullfile(vcd_rootPath,'workspaces','info');
 %                     Default: true
-%  [session_env] : (optional) Are we dealing with MRI or BEHAVIOR sessions
-%                     Default: 'MRI'
+%  [env_type]     : (optional) Are we dealing with MRI or BEHAVIOR sessions
+%                     Default: ''
 %
 % OUTPUT:
-%  condition_master : N rows x M table that lists every unique image presented
-%                       in VCD-core, for every task crossing separated by
-%                       individual trial.
+%  condition_master : table with N rows for every trial in the in VCD-core     
+%                      behavioralor MRI experiment, by M columns specifying 
+%                      information about the individual trial.
 %                    Each row is an individual image.
 %                    For Gabors/RDKs/Dots/ComplexObj, two subsequent rows
 %                    define a unique trial. For NS, there is only 1 row per
 %                    unique trial, as there is only one central image.
 %
-%   Columns contains the following information:
-%   1: {'unique_im_nr'   } unique image nr"
-%   2: {'stimloc'        } stimulus location relative to fixation dot: 1 = left, 2 = right, 3 = central
-%   3: {'stimloc_name'   } same as column two but then in text 
-%   4: {'orient_dir'     } orientation (gabor), motion direction (rdk), or angle (dot), or facing direction (obj) in deg
-%   5: {'contrast'       } stimulus contrast (Michelson fraction)
-%   6: {'gbr_phase'      } gabor stimulus phase  (NaN for non gabor stim)
-%   7: {'rdk_coherence'  } rdk stimulus dot coherence (fraction of dots, NaN for non rdk stim)
-%   8: {'super_cat'      } superordinate object category level (for obj and ns) 
-%   9: {'basic_cat'      } basic object category level (for obj and ns)
-%   10: {'sub_cat'        } subordinate object category level (for obj and ns)
-%   11: {'super_cat_name' } same as 8, but then in text
-%   12: {'basic_cat_name' } same as 9, but then in text
-%   13: {'sub_cat_name'   } same as 10, but then in text
-%   14: {'stim_class_name'} stimulus class name (gabor, rdk, dot, obj, ns)
-%   15: {'stim_class'     } stim class nr (1:5)
-%   16: {'task_class_name'} task class name (fix/cd/scc/pc/wm/ltm/img/what/where/how)
-%   17: {'task_class'     } task class nr (1:10)
-%   18: {'is_cued'         } cue status: 0 = uncued, 1 = cued
-%   19: {'unique_trial_nr'} unique trial nr
-%   20: {'thickening_dir' } thickening direction of fixation dot rim (for spatial attention cue) 1 = left, 2 = right, 3 = both/neutral
-%   21: {'stim2_delta'    } for double epoch tasks, what predefined delta between stim 1 and stim 2 did we choose from p.stim.(<stim_class_name>).delta_ref
-%   22: {'stim2'          } same as 21, but then update stim feature of stim2 (e.g., 80 deg orientation for a stim1: 95 - 15 deg)
-%   23: {'ltm_stim_pair'  } for LTM task: each unique image nr is associated with
-%                           another stimulus
-%   24: {'islure'         } for LTM task: whether we use lure stimulus or not
-%   25: {'repeat_nr'      } Keep track how many times has this unique image has
-%                           been repeated thusfar in the experiment
+%   Columns description:
+%  1:  'session_nr'       : (double, integral) Session number, behavioral 
+%                             experiment has 1  session. MRI experiment has
+%                             27 sessions: 1 wide and 26 deep sessions.
+%  2:  'session_type'     : (double, integral) Session type, two MRI 
+%                             sessions (the first and last) are split  
+%                             between subjects, such that half of the 
+%                             subjects see version A (session type = 1) and 
+%                             the other half of the subjects see version B 
+%                             (session type = 2).
+%  3:  'run_nr'           : (double, integral) Run number. Resets every 
+%                             session behavioral experiment has 1-12 runs 
+%                             for itssingle session. MRI experiment has 10 
+%                             runs per session (except for the last 
+%                             session, which has 5 runs).
+%  4:  'block_nr'         : (double, integral) Stimulus block number,
+%                             resets every run. Behavioral experiment has
+%                             1-12 runs for its single session. The MRI
+%                             experiment has 10 runs per session, except
+%                             for the last session, which has 5 runs.    
+%  5:  'trial_nr'         : (double, integral) Trial number within a 
+%                             stimulus block, resets every block. Single-
+%                             stimulus presentation blocks have 8 trials
+%                             per block (fix/cd/scc/pc/what/where/how
+%                             tasks). Double-stimulus presentation blocks
+%                             have 4 trials per block (wm/ltm/img tasks).  
+%  6:  'global_run_nr'    : (double, integral) Cumulative run number across
+%                             all the sessions, i.e., this number does not 
+%                             reset for every session)
+%  7:  'global_block_nr'  : (double, integral) Cumulative block number 
+%                             across all the sessions, i.e., this number 
+%                             does not reset for every run or session)
+%  8:  'global_trial_nr'  : (double, integral) Cumulative trial number 
+%                             across all the sessions, i.e., this number 
+%                             does not reset for block, run or session)
+%  9:  'condition_nr'     : (double, integral) Condition number for this
+%                             particular trial. Every combination of
+%                             a unique stimulus x task crossing x cueing
+%                             status (cued/uncued/neutral cued) gets their
+%                             own condition number. We use the same
+%                             condition number regardless of whether there
+%                             an additional test stimulus was shown (in
+%                             double stimulus-presentation trials) or not.
+%  10: 'condition_name'   : (cell, char) condition name, same as column 
+%                             9: 'condition_nr' but human-readible format.
+%  11: 'stim_class'       : (double, integral) stimulus class number, where
+%                            1: 'gabor' (Gabors: grating windowed by a 2D circular gaussian)
+%                            2: 'rdk'   (Random dot motion kinematograms)
+%                            3: 'dot'   (Single small dot on a 4-degree iso-eccentric ring)
+%                            4: 'obj'   (Grayscale objects cropped from the background)
+%                            5: 'ns'    (Large, centrally presented colorful naturalistic scenes)
+%  12: 'stim_class_name'  : (cell, char) stimulus class name, same as 
+%                            column 11: 'stim_class' but human-readible 
+%                            format.
+%  13: 'task_class'       : (double, integral) task class number. Ranges 
+%                            from 1-10, where 1: fix, 2: cd, 3: scc, 4: pc, 
+%                            5: wm, 6: ltm, 7: img, 8: what, 9: where, 
+%                            10: how.   
+%  14: 'task_class_name'  : (cell, char) task class name, same as column 
+%                            13: 'task_class' but human-readible format.
+%  15: 'crossing_nr'      : (double, integral) stimulus-task class crossing
+%                            number. Ranges from 1 through 32, where
+%                            1: 'fix-gabor',  2: 'cd-gabor',  3: 'scc-all'
+%                            4: 'pc-gabor' ,  5: 'wm-gabor',  6: 'ltm-all'
+%                            7: 'img-gabor',  8: 'fix-rdk',   9: 'cd-rdk' 
+%                            10: 'pc-rdk' ,  11: 'wm-rdk' ,  12: 'img-rdk'
+%                            13: 'fix-dot',  14: 'cd-dot' ,  15: 'pc-dot' 
+%                            16: 'wm-dot',   17: 'img-dot',  18: 'fix-obj'
+%                            19: 'cd-obj' ,  20: 'pc-obj' ,  21: 'wm-obj' 
+%                            22: 'img-obj',  23: 'what-obj', 24: 'how-obj'
+%                            25: 'fix-ns' ,  26: 'cd-ns',    27: 'pc-ns'
+%                            28: 'wm-ns',    29: 'img-ns',   30: 'what-ns'
+%                            31: 'where-ns', 32: 'how-ns'. 
+%                            'all' in 'scc-all' means that those stimulus 
+%                            blocks mix all stimulus classes crossed with 
+%                            the 'scc' task (i.e., gabors, rdks, dots, 
+%                            objects).
+%                            'all' in 'ltm-all' means that those stimulus 
+%                            blocks mix all stimulus classes crossed with 
+%                            the 'ltm' task (i.e., gabors, rdks, dots, 
+%                            objects, scenes).
+%  16: 'crossing_name'    : (cell, char) task class name, same as column 
+%                            15: 'crossing_nr' but human-readible.
+%  17: 'stim_nr_left'     : (double, integral) unique stimulus number for
+%                            the stimulus location on the left of the 
+%                            central fixation circle for gabors, rdks, dots,
+%                            and objects, OR the unique stimulus number of
+%                            the centrally presented scene.
+%  18: 'stim_nr_right'    : (double, integral) unique stimulus number for
+%                            the stimulus location on the right of the 
+%                            central fixation circle for gabors, rdks, dots,
+%                            and objects. Scenes only have NaN in this column
+%                            as we only show one centrally presented
+%                            stimulus.
+%  19: 'is_cued'          : (double, integral) what stimulus location is 
+%                            cued with a covert spatial attention cue by 
+%                            thickening the fixation circle rim where 
+%                            1 = left side, 2 = right side, 3 = both
+%                            sides/neutral cue.
+%  20: 'is_catch'         : (logical, true/false) whether the trial is
+%                            a catch trial where no stimulus showed up.
+%                            true = yes, this is a catch trial. false = no,
+%                            this is a regular, NON catch trial.
+%  21: 'correct_response' : (double, integral) what is the correct response
+%                            for the cued stimulus this given trial? 
+%                            Depending on the stimulus-task crossing, the 
+%                            correct response can be 2AFC (1 or 2), 
+%                            3AFC (1, 2, or 3), or 4AFC (1, 2, 3, or 4).
+%                            See vcd_getCorrectButtonResponse.m for more
+%                            details.
+%  22: 'orient_dir'       : (double, decimal) Depending on the stimulus 
+%                            class, this column describes the Gabor tilt 
+%                            orientation (degrees), RDK motion direction 
+%                            (degrees), or Dot angular position (degrees), 
+%                            or object facing direction (degrees).
+%  23: 'contrast'         : (double, decimal) stimulus contrast (Michelson fraction)
+%  24: 'gbr_phase'        : (double, integral) gabor stimulus phase  (NaN for non gabor stim)
+%  25: 'rdk_coherence'    : (double, decimal) rdk stimulus dot coherence, 
+%                            i.e. fraction of dots that move in the same 
+%                            direction (NaN for non rdk stim)
+%  26: 'super_cat'        : (double, integral) OBJ and NS superordinate  
+%                            object category level: 1:'human', 2:'animal', 
+%                            3:'object', 4:'food', 5:'place'.
+%                            (NaN for gabor, rdk and dot stimulus classes).
+%  27: 'super_cat_name'   : (cell, char) same as colum 26: 'super_cat', but 
+%                            human-readible format.
+%  28: 'basic_cat'        : (double, integral) OBJ and NS basic object 
+%                            category level for every superordinate 
+%                            category level:
+%                            OBJECT BASIC CATEGORY LABELS:
+%                            * human:  1:'facemale', 2:'facefemale'
+%                            * animal: 1:'small',    2:'large'
+%                            * object: 1:'tool',     2:'vehicle'
+%                            * food:   1:'manmade',  2:'produce'
+%                            * place:  1:'building', (no 2nd label)
+%                            SCENE BASIC CATEGORY LABELS:
+%                            * human:  1:'indoor',  2:'outdoor'
+%                            * animal: 1:'indoor',  2:'outdoor'
+%                            * object: 1:'indoor',  2:'outdoor'
+%                            * food:   1:'indoor',  2:'outdoor'
+%                            * place:  1:'indoor',  2:'outdoor'
+%                            (NaN for gabor, rdk and dot stimulus classes).
+%  29: 'basic_cat_name'   : (cell, char) same as colum 28: 'basic_cat', but 
+%                            human-readible format.
+%  30: 'sub_cat'          : (double, integral) OBJ and NS subordinate  
+%                            object category level for every basic category
+%                            level:
+%                            OBJECT SUBORDINATE CATEGORY LABELS:
+%                            * facemale:   1:'damon'
+%                            * facefemale: 1:'lisa',   2:'sophia'
+%                            * small:      1:'parrot', 2:'cat'
+%                            * large:      1:'bear',   2:'giraffe'
+%                            * tool:       1:'drill',  2:'brush' 
+%                            * vehicle:    1:'bus',    2:'suv'
+%                            * manmade:    1:'pizza',  2:'suv'
+%                            * produce:    1:'bus',    2:'banana'
+%                            * building:   
+%                            SCENE SUBORDINATE CATEGORY LABELS:
+%                            * indoor:  1:'left', 2:'center', 3:'right
+%                            * outdoor: 1:'left', 2:'center', 3:'right
+%                            (NaN for gabor, rdk and dot stimulus classes).
+%  31: 'sub_cat_name'     : (cell, char) same as colum 30: 'sub_cat', but 
+%                            human-readible format.
+%  32: 'affordance_cat'   : (double, integral) OBJ and NS affordance  
+%                            category labels
+%                            OBJECT AFFORDANCE LABELS:
+%                            1:'greet', 2:'grasp', 
+%                            3:'enter', 4: 'observe/do nothing'
+%                            SCENE SUBORDINATE CATEGORY LABELS:
+%                            1:'greet', 2:'grasp', 
+%                            3:'enter', 4: 'observe/do nothing'
+%                            (NaN for gabor, rdk and dot stimulus classes).
+%  33: 'affordance_name'  : (cell, char) same as 32: 'affordance_cat' but 
+%                            human-readible format.
+%  34: 'cd_start'         : (double, integral) for cd task crossings only
+%                            (other task crossings will have NaN), the time
+%                            frame relative to stimulus onset of that trial 
+%                            when the contrast decrement started. Only 20%
+%                            of cd trials will contain a contrast
+%                            decrement. If no contrast decrement occurred
+%                            in a cd trial, then 'cd_start' is set to NaN.
+%  35: 'stim2_delta'      : (double, decimal) for double-stimulus 
+%                            presentation trials only, depending on the 
+%                            stimulus class, this column describes the
+%                            difference in: Gabor tilt orientation
+%                            (degrees), RDK motion direction (degrees)
+%                            Dot angular position (degrees), object facing 
+%                            direction (degrees) between the first stimulus
+%                            and the second stimulus shown after the delay.
+%                            Values are defined by the stimulus parameter:
+%                            params.stim.(<stim_class_name>).delta_ref
+%  36: 'stim2_im_nr'      : (double, integral) for double-stimulus 
+%                            presentation trials only, what is the unique 
+%                            stimulus number that is associated with the 
+%                            test stimulus (the second stimulus show after   
+%                            the 8-s delay) in WM, LTM, IMG task crossings.
+%  37: 'stim2_orient_dir' : (double, decimal) for double-stimulus 
+%                            presentation trials only, depending on the 
+%                            stimulus class, this column describes the
+%                            total Gabor tilt orientation
+%                            (degrees), RDK motion direction (degrees)
+%                            Dot angular position (degrees), object facing 
+%                            direction (degrees) between the first stimulus
+%                            and the second stimulus shown after the delay.
+%  38: 'is_special_core'  : (logical, true/false) Is this stimulus part of
+%                            the special core stimulus set (true) or not 
+%                            (false)? Special core stimuli are a subset of 
+%                            core stimuli that are only used for LTM and
+%                            IMG task crossings.
+%  39: 'is_lure'          : (logical, true/false) For LTM task crossings: 
+%                            did we use a novel lure stimulus (true)
+%                            or not (false).
+%  40: 'repeat_nr'        : (double, integral): How many times has this exact trial been
+%                            repeated thusfar in the experiment, across all
+%                            the sessions and runs.
+%  41: 'trial_type'       : (double, integral): Is this a single-stimulus
+%                            presentation trial (1) or a double-stimulus 
+%                            presentation trial (2)?
 %
-%  There are two hierarchical structs, which are the building blocks of
-%  the condition master table, listing the unique images and unique 
+%  There are also two hierarchical structs, which are the building blocks 
+%  of the condition master table, listing the unique images and unique 
 %  conditions for each stimulus class:
 %  * all_unique_im  : matrix labeling the unique image features
 %  * all_conds      : stimulus "condition master" matrix describing the
-%                    pseudo-random shuffled order of trials for one
-%                    stimulus class, across all sessions.
-
+%                     pseudo-random shuffled order of trials for one
+%                     stimulus class, across all sessions.
 %
 %
 % Written by Eline Kupers November 2024 (kupers [at] umn [dot] edu)
@@ -87,7 +278,7 @@ p0.addParameter('load_params'  , false, @islogical);
 p0.addParameter('store_params' , true, @islogical);
 p0.addParameter('store_imgs'   , false, @islogical);
 p0.addParameter('verbose'      , false, @islogical);
-p0.addParameter('session_env' , 'MRI', @(x) any(strcmp(x,{'BEHAVIOR','MRI'})));
+p0.addParameter('env_type'     , '', @(x) any(strcmp(x,{'BEHAVIOR','MRI'})));
 
 % Parse inputs
 p0.parse(params,varargin{:});
@@ -100,9 +291,22 @@ end
 clear rename_me ff p0
 
 
-%% Load params if requested and we can find the file
+%% %%%%%%%%%%%%% BOOKKEEPING  %%%%%%%%%%%%%
+
+% Infer environment if we haven't set this parameter  
+if ~exist('env_type','var') || isempty(env_type)
+    if strcmp(params.disp.name,'7TAS_BOLDSCREEN32')
+        env_type = 'MRI';
+    elseif ismember(params.disp.name,{'CCNYU_VIEWPIXX3D','PPROOM_EIZOFLEXSCAN'}) 
+        env_type = 'BEHAVIOR';
+    elseif ismember(params.disp.name,{'KKOFFICE_AOCQ3277','EKHOME_ASUSVE247'}) 
+        env_type = 'BEHAVIOR';
+    end
+end
+
+% Load params if requested and we can find the file
 if load_params
-    d = dir(fullfile(vcd_rootPath,'workspaces','info',sprintf('condition_master_%s_%s*.mat',params.disp.name,session_env)));
+    d = dir(fullfile(vcd_rootPath,'workspaces','info',sprintf('condition_master_%s_%s*.mat',params.disp.name,env_type)));
     fprintf('\n[%s]: Found %d condition_master .mat file(s)\n',mfilename,length(d));
     if ~isempty(d)
         if length(d) > 1
@@ -159,10 +363,11 @@ else % Recreate conditions and blocks and trials
         end
     end
     
-    %% Preallocate space and set up tables/structs
+    %% %%%%%%%%%%%%% CREATE CONDITIONS %%%%%%%%%%%%%
+    % Preallocate space and set up tables/structs
     if verbose
         tic
-        fprintf('\n[%s]: Start creating conditions for %s experiment.. \n',mfilename,session_env);
+        fprintf('\n[%s]: Start creating conditions for %s experiment.. \n',mfilename,env_type);
     end
     
     all_unique_im     = struct();  % details about unique core images present in VCD-core experiment. This information is also present in condition_master.
@@ -186,9 +391,9 @@ else % Recreate conditions and blocks and trials
         % Get corresponding task crossings
         bsc_idx = cell2mat(cellfun(@(x) strcmp(params.exp.stimclassnames,x), {stimClass_name}, 'UniformOutput', false));
         
-        if strcmp(session_env,'MRI')
+        if strcmp(env_type,'MRI')
             task_crossings = find( params.exp.crossings(bsc_idx,:));
-        elseif strcmp(session_env,'BEHAVIOR')
+        elseif strcmp(env_type,'BEHAVIOR')
             task_crossings = find(params.exp.n_unique_trial_repeats_behavior(bsc_idx,:)>0);
         end
                 
@@ -227,7 +432,7 @@ else % Recreate conditions and blocks and trials
             % stimulus feature of interest that receive priority. For
             % example, we want to make sure we present all 3 gabor
             % contrasts within a block at least once.
-            tbl = vcd_createConditionMaster(params, t_cond, n_trials_per_block,session_env);
+            tbl = vcd_createConditionMaster(params, t_cond, env_type);
             
             % --- Allocate space for block nr ---
             tbl.stim_class_unique_block_nr = NaN(size(tbl,1),1);
@@ -259,14 +464,88 @@ else % Recreate conditions and blocks and trials
         condition_master = cat(1,condition_master,stim_table);
     end % stim idx
     
+    % ---- Add object catch trials ----
+    % How many trials are object catch given the 20% probility?
+    pcobj_trial_idx = find(condition_master.stim_class == 4 & condition_master.task_class == 4);
+    nr_objectcatch_trials_per_rep = round(size(condition_master(pcobj_trial_idx,:),1)*params.exp.trial.pc.prob_objcatch);
     
-    % ---- IMPORTANT FUNCTION: Shuffle stimuli for SCC and LTM task ----
-    condition_master = vcd_shuffleStimForTaskClass(params,  'scc', condition_master, params.exp.block.n_trials_single_epoch,session_env);
-    if strcmp(session_env,'MRI')
-        condition_master = vcd_shuffleStimForTaskClass(params,  'ltm', condition_master, params.exp.block.n_trials_double_epoch,session_env);
+    % Select object catch trials randomly from the total list (without
+    % replacement). Ensure we distribute object catch trials across
+    % left/right cued locations and unique objects (as much as possible)
+    while 1
+        objcatch_ok = [false, false];
+        
+        objcatch_idx    = datasample(pcobj_trial_idx,nr_objectcatch_trials_per_rep,'Replace',false);
+ 
+        % Check the cued stimulus in those selected trials
+        cued_loc_objcatch = condition_master.is_cued(objcatch_idx);
+        if (abs(diff(histcounts(cued_loc_objcatch, [1:3]))) <= 1)
+            objcatch_ok(1) = true;
+        end
+        
+        % Check the object stimulus in those selected trials
+        obj_objcatch = condition_master.sub_cat_name(objcatch_idx);
+        if length(unique(obj_objcatch))==length(obj_objcatch) || ...
+                length(unique(obj_objcatch))==length(unique(condition_master.sub_cat_name(pcobj_trial_idx)))
+            objcatch_ok(2) = true;
+        end
+        
+        if sum(objcatch_ok)==length(objcatch_ok)
+            break
+        end
     end
     
-    % ---- IMPORTANT FUNCTION: Add correct button press ----
+        
+    % Get the unique image numbers for object catch stimuli
+    % (reshape to 18 catch rotations x 16 objects)
+    catch_im_nr = reshape(params.stim.obj.unique_im_nrs_objcatch',[],params.stim.obj.num_unique_objects)';
+    
+    % Copy catch rotations such that we can remove them when used in a trial.
+    possible_objcatch_rotations = params.stim.obj.catch_rotation; % dims: 16 x 18
+    
+    % Loop over object catch trials
+    for cc = 1:length(objcatch_idx)
+        % is this a right or left cued stimulus location?
+        if cued_loc_objcatch(cc)==1 % if we are dealing with a left cued stimulus
+            old_stim_nr       = condition_master.stim_nr_left(objcatch_idx(cc));
+        elseif cued_loc_objcatch(cc)==2 % if we are dealing with a right cued stimulus
+            old_stim_nr       = condition_master.stim_nr_right(objcatch_idx(cc));
+        end
+        
+        % What core object (1-16) are we dealing with?
+        old_stim_obj_nr   = (old_stim_nr==params.stim.obj.unique_im_nrs_core);
+        
+        % What are the possible object catch rotations we can use?
+        possible_objcatch_rotations0 = possible_objcatch_rotations(old_stim_obj_nr,:);
+        possible_objcatch_rotations1 = possible_objcatch_rotations0(~isnan(possible_objcatch_rotations0));
+        
+        objcatch_rot = randi(length(possible_objcatch_rotations1),1);
+        
+        % update rotation of object
+        condition_master.orient_dir(objcatch_idx(cc),cued_loc_objcatch(cc)) = possible_objcatch_rotations1(objcatch_rot);
+        
+        % remove rotation from list
+        possible_objcatch_rotations(old_stim_obj_nr,objcatch_rot) = NaN;
+
+        % Update special core column (objectcatch stimuli can never be 
+        % special core stimuli)
+        condition_master.is_special_core(objcatch_idx(cc),cued_loc_objcatch(cc)) = false;
+
+        % Insert object catch image number into "is_objectcatch" for now..
+        % (we need to hold on to the core object number for the condition
+        % label).
+        condition_master.is_objectcatch(objcatch_idx(cc)) = catch_im_nr(old_stim_obj_nr,objcatch_rot);
+
+    end    
+    
+    
+    % ---- IMPORTANT STEP: Shuffle stimuli for SCC and LTM task ----
+    condition_master = vcd_shuffleStimForTaskClass(params,  'scc', condition_master, params.exp.block.n_trials_single_epoch,env_type);
+    if strcmp(env_type,'MRI')
+        condition_master = vcd_shuffleStimForTaskClass(params,  'ltm', condition_master, params.exp.block.n_trials_double_epoch,env_type);
+    end
+    
+    % ---- IMPORTANT STEP: Add correct button press ----
     button_response = NaN(size(condition_master,1),1);
     for ii = 1:size(condition_master,1)
         if  condition_master.is_catch(ii)
@@ -297,7 +576,7 @@ else % Recreate conditions and blocks and trials
                 break;
             else
                 % shuffle trials while preserving 50:50 cue left/right
-                cued00 = cued0; scc_trials00 = scc_trials;
+                cued00 = cued0;
                 cueleft_idx0         = find(cued0==1);
                 cueright_idx0        = find(cued0==2);
                 cueleft_idx          = cueleft_idx0(randperm(length(cueleft_idx0),length(cueleft_idx0)));
@@ -325,31 +604,50 @@ else % Recreate conditions and blocks and trials
     curr_tc = curr_tc(curr_tc~=1); % exclude fixation
     for jj = 1:length(curr_sc)
         for mm = 1:length(curr_tc)
-            resp = condition_master.correct_response(condition_master.stim_class==curr_sc(jj) & condition_master.task_class==curr_tc(mm));
-            n = histcounts(resp);
+            if ismember(curr_tc(mm),[2,4,5,6,7]) % cd, pc, wm, ltm, img have 2 response options
+                nr_responses = 2;
+            elseif ismember(curr_tc(mm),[3,8,10]) % scc, what, how have 4 response options
+                nr_responses = 4;
+            elseif ismember(curr_tc(mm),[9]) % where has 3 response options
+                nr_responses = 3;
+            end
+            resp = condition_master.correct_response( ...
+                condition_master.stim_class==curr_sc(jj) & ...
+                condition_master.task_class==curr_tc(mm));
+            n = histcounts(resp,1:(nr_responses+1));
             % For WHAT/HOW tasks we go by category info, because we combine
             % object and foods into one button press..
             if ismember(curr_sc(jj),[4,5]) && ismember(curr_tc(mm),8)
                 supercat = condition_master.super_cat(condition_master.stim_class==curr_sc(jj) & condition_master.task_class==curr_tc(mm),:);
                 if curr_sc(jj) == 4 % objects
                     cued0  = condition_master.is_cued(condition_master.stim_class==curr_sc(jj) & condition_master.task_class==curr_tc(mm));
-                    n0     = histcounts([supercat(cued0==1,1);supercat(cued0==2,2)]);
+                    n0     = histcounts([supercat(cued0==1,1);supercat(cued0==2,2)],1:6);
                 elseif curr_sc(jj) == 5 % scenes, no left/right, only center
-                    n0     = histcounts(supercat);
+                    n0     = histcounts(supercat,1:6);
                 end
                 n1 = [n0([1,2]), n0(3)+n0(4), n0(5)];
                 assert(all(n==n1))
+            elseif ismember(curr_sc(jj),4) && ismember(curr_tc(mm),4) % PC-OBJ
+                resp2 = resp(condition_master.is_objectcatch( ...
+                    condition_master.stim_class==curr_sc(jj) & ...
+                    condition_master.task_class==curr_tc(mm))==0);
+                n2 = histcounts(resp2,1:(nr_responses+1));
+                if mod(length(resp2),2)==1 % if we have an uneven nr of trials after we removed objectcatch trials
+                    assert(diff(n2)<=1); % we allow for a difference of one
+                else % assume we have an even nr of trials after we removed objectcatch trials
+                    assert(all(n==n0))  % we don't allow for a difference of one
+                end
             elseif ismember(curr_sc(jj),5) && ismember(curr_tc(mm),9) % NS-WHERE
                 subcat = condition_master.sub_cat(condition_master.stim_class==curr_sc(jj) & condition_master.task_class==curr_tc(mm),:);
-                n0     = histcounts(subcat);
+                n0     = histcounts(subcat,1:(nr_responses+1));
                 assert(all(n==n0))
-            elseif ismember(curr_sc(jj),[4,5]) && ismember(curr_tc(mm),10)
+            elseif ismember(curr_sc(jj),[4,5]) && ismember(curr_tc(mm),10) % OBJ-HOW & NS-HOW
                 affordcat = condition_master.affordance_cat(condition_master.stim_class==curr_sc(jj) & condition_master.task_class==curr_tc(mm),:);
                 if curr_sc(jj) == 4
                     cued0 = condition_master.is_cued(condition_master.stim_class==curr_sc(jj) & condition_master.task_class==curr_tc(mm));
-                    n1    = histcounts([affordcat(cued0==1,1);affordcat(cued0==2,2)]);
+                    n1    = histcounts([affordcat(cued0==1,1);affordcat(cued0==2,2)],1:(nr_responses+1));
                 elseif curr_sc(jj) == 5
-                    n1     = histcounts(affordcat);    
+                    n1     = histcounts(affordcat,1:(nr_responses+1)); 
                 end
                 assert(all(n==n1))
             elseif ismember(curr_sc(jj),99) || ismember(curr_tc(mm),3) % scc-all
@@ -358,7 +656,7 @@ else % Recreate conditions and blocks and trials
                 cued0     = condition_master.is_cued(condition_master.stim_class==curr_sc(jj) & condition_master.task_class==curr_tc(mm));
                 stmclass0_cued = [stmclass0(cued0==1,1);stmclass0(cued0==2,2)];
                 [~,stmclass_cued_i] = ismember(stmclass0_cued,params.exp.stimclassnames([1,3,2,4]));
-                n1 = histcounts(stmclass_cued_i);
+                n1 = histcounts(stmclass_cued_i,1:(nr_responses+1));
                 assert(all(n==n1))
             elseif all(n==0) && curr_tc(mm)~=2 && ~ismember(curr_tc(mm),[8,9,10])
                 error('[%s]: No correct responses found?!',mfilename);
@@ -373,68 +671,13 @@ else % Recreate conditions and blocks and trials
     % conditions (i.e., order of trials allocated to a block). If you don't
     % want this, set params.load_params = true to load an existing
     % condition_master.
-    condition_master = vcd_allocateBlocksToRuns(params,condition_master,session_env);
+    condition_master = vcd_allocateBlocksToRuns(params,condition_master,env_type);
     
     
-    %% ---- bookkeeping: Add contrast decrement
-
-    % shuffle [yes/no] responses to CD change such that cued trials have 
-    % exactly 20% chance of a contrast decrement change to stimulus 
-    % (defined by params.exp.trial.cd.prob_change).
-    % For the uncued side, we do not change contrast.
-    cd_blocks                    = find(condition_master.task_class == 2); % get CD blocks
-    cd_blocks_cue                = condition_master.is_cued(cd_blocks); % what side is cued for each CD trial?
-    nr_cued_cd_trials            = length(cd_blocks_cue); % nr of cued trials across all CD blocks
-    when                         = floor(linspace(1,nr_cued_cd_trials,nr_cued_cd_trials*params.exp.trial.cd.prob_change)); % when do we expect a CD change?
-    when(when>nr_cued_cd_trials) = nr_cued_cd_trials; % we don't care about order of trials for now, we will shuffle trials in a block later.
-    assert(isequal(length(unique(when)),length(when))); % make sure we selected the nr of trials we expect for the given probability.
-    expected_cue_cnt             = round(histcounts(cd_blocks_cue)*params.exp.trial.cd.prob_change); % round this probability as we can only deal with integer nr of trials.
+    %% ---- IMPORTANT FUNCTION: Add contrast decrement
+    condition_master = vcd_determineContrastDecrementChangeTrials(params, condition_master);
     
-    while 1 % Do some voodoo trying to balance the nr of cd changes across spatial cueing conditions..
-        cue_cnt = histcounts(cd_blocks_cue(when));
-        if any(cue_cnt < expected_cue_cnt)
-            cue_type_to_add = find((cue_cnt - expected_cue_cnt)<0);
-            [~,cue_type_to_remove] = max(cue_cnt);
-            to_rm_idx  = find(cd_blocks_cue==cue_type_to_remove);
-            to_add_idx = find(cd_blocks_cue==cue_type_to_add);
-            
-            rm_idx = find(ismember(when,to_rm_idx));
-            already_added_idx = find(ismember(to_add_idx,when'));
-            to_add_idx(already_added_idx)= [];
-            idx_to_swap = rm_idx(randi(length(rm_idx),1));
-            [~,idx_to_add] = min(abs(to_add_idx-when(idx_to_swap)));
-            when(idx_to_swap) = to_add_idx(idx_to_add);
-        else
-            break
-        end
-        
-    end
-    
-    % Get onset time frame of the cd modulation within a trial 
-    % (the modulation function has 2 frames of high contrast, prior to
-    % dip). The onset time refers to the time the actual contrast dip
-    % happens (so after the second time frames finishes and the third
-    % starts).
-    cd_change_total = 2.*ones(1,nr_cued_cd_trials);
-    cd_change_total(when)=1; % 1=yes change, 2=no change
-    for rpt = 1:sum(cd_change_total==1)
-        cd_start(rpt) = feval(params.stim.cd.cdsoafun);
-    end
-    % insert onsets into the condition_master table
-    condition_master.cd_start(cd_blocks(cd_change_total==1),1) = cd_start';
-
-    % check nr of changes across all cd trials
-    assert(isequal(sum(cd_change_total==1),sum(~isnan(condition_master.cd_start))));
-    assert(isequal(sum(cd_change_total==2),sum(isnan(condition_master.cd_start(condition_master.task_class == 2 & condition_master.is_cued>0)))));
-    % check nr of changes across left/right cueing conditions
-    assert(isequal(sum(~isnan(condition_master.cd_start(condition_master.task_class == 2 & condition_master.is_cued==1))),...
-                   sum(~isnan(condition_master.cd_start(condition_master.task_class == 2 & condition_master.is_cued==2)))));
-               
-    % check expected probability to nr of cd trials with a change
-    assert(isequal(nr_cued_cd_trials*params.exp.trial.cd.prob_change,sum(~isnan(condition_master.cd_start))))
-    
-    
-
+    condition_master.is_objectcatch = logical(condition_master.is_objectcatch);
     %% Store condition_master if requested
     if store_params
         fprintf('[%s]:Storing condition_master..\n',mfilename)
@@ -449,9 +692,9 @@ else % Recreate conditions and blocks and trials
     % Stim class nr should match with params
     assert(isequal(unique(condition_master.stim_class)',[1:length(params.exp.stimclassnames),99]))
     % Task class nr should match with params
-    if strcmp(session_env,'MRI')
+    if strcmp(env_type,'MRI')
         assert(isequal(unique(condition_master.task_class)',1:length(params.exp.taskclassnames)));
-    elseif strcmp(session_env,'BEHAVIOR')
+    elseif strcmp(env_type,'BEHAVIOR')
         assert(isequal(unique(condition_master.task_class)', find(any(params.exp.n_unique_trial_repeats_behavior,1))))
     end
     % Cued vs uncued stimuli should be matched
@@ -463,14 +706,14 @@ else % Recreate conditions and blocks and trials
     adjusted_crossings = params.exp.nr_unique_trials_per_crossing;
     
                 
-    all_sessions = vcd_getSessionEnvironmentParams(params, session_env);
+    all_sessions = vcd_getSessionEnvironmentParams(params, env_type);
     for ii = 1:length(params.exp.stimclassnames)
         
         % Check nr of unique stimuli per stimulus class
         if ii == 5
-            tmp = condition_master(~condition_master.is_catch & strcmp(condition_master.stim_class_name(:,1), params.exp.stimclassnames{ii}),:);
+            tmp = condition_master(~condition_master.is_catch & ~condition_master.is_objectcatch & strcmp(condition_master.stim_class_name(:,1), params.exp.stimclassnames{ii}),:);
         
-            [N, N_edges] = histcounts(tmp.stim_nr_left(strcmp(tmp.stim_class_name(:,1), params.exp.stimclassnames{ii})));
+            [N, ~] = histcounts(tmp.stim_nr_left(strcmp(tmp.stim_class_name(:,1), params.exp.stimclassnames{ii})));
         
             N_tbl(ii,1:length(N)) = N;
             assert(isequal(size(N,2), length(all_unique_im.(params.exp.stimclassnames{ii}).unique_im_nr)))
@@ -478,10 +721,10 @@ else % Recreate conditions and blocks and trials
             unique_im_from_table(ii) = length(unique(tmp.stim_nr_left));
 
         
-%             if strcmp(session_env,'MRI')
+%             if strcmp(env_type,'MRI')
 %                 % lower IMG/LTM block contribution (we have less unique images)
 %                 unique_trial_repeats = params.exp.n_unique_trial_repeats_mri;
-%             elseif strcmp(session_env,'BEHAVIOR') % NO LTM/IMG
+%             elseif strcmp(env_type,'BEHAVIOR') % NO LTM/IMG
 %                 adjusted_crossings(ii,6) = 0;
 %                 adjusted_crossings(ii,7) = 0;
 %                 half_blocks = all_sessions>0 & all_sessions<1;
@@ -494,9 +737,9 @@ else % Recreate conditions and blocks and trials
             assert(isequal(empirical_nr_of_trials, expected_nr_of_trials))
             
         else
-            tmp = condition_master(~condition_master.is_catch & any(strcmp(condition_master.stim_class_name, params.exp.stimclassnames{ii}),2),:);
+            tmp = condition_master(~condition_master.is_catch & ~condition_master.is_objectcatch & any(strcmp(condition_master.stim_class_name, params.exp.stimclassnames{ii}),2),:);
             
-            [N, N_edges] = histcounts(cat(1,tmp.stim_nr_left(strcmp(tmp.stim_class_name(:,1), params.exp.stimclassnames{ii})),....
+            [N, ~] = histcounts(cat(1,tmp.stim_nr_left(strcmp(tmp.stim_class_name(:,1), params.exp.stimclassnames{ii})),....
                                             tmp.stim_nr_right(strcmp(tmp.stim_class_name(:,2), params.exp.stimclassnames{ii}))));
             
             N_tbl(ii,1:length(N)) = N;
@@ -508,7 +751,11 @@ else % Recreate conditions and blocks and trials
             colsLR_scc = [tmp.stim_nr_left(tmp.task_class ==3 & strcmp(tmp.stim_class_name(:,1), params.exp.stimclassnames{ii})); ...
                             tmp.stim_nr_right(tmp.task_class ==3 & strcmp(tmp.stim_class_name(:,2), params.exp.stimclassnames{ii}))];
             expected_nr_of_trials = sum(all_sessions(ii,:).*params.exp.nr_trials_per_block(ii,:));
-            empirical_nr_of_trials = sum([size(colsLR,1),size(unique(colsLR_scc),1)/2]);
+            if strcmp(params.exp.stimclassnames{ii},'obj')
+                empirical_nr_of_trials = sum([size(colsLR,1),size(unique(colsLR_scc),1)/2])+sum(condition_master.is_objectcatch);
+            else
+                empirical_nr_of_trials = sum([size(colsLR,1),size(unique(colsLR_scc),1)/2]);
+            end
             assert((abs(floor(empirical_nr_of_trials)-expected_nr_of_trials))<=2); % we allow for 1-2 trials difference per stim class due to imbalanced nr of trials for SCC
         end
     end
@@ -516,7 +763,7 @@ else % Recreate conditions and blocks and trials
     % Now dive into each task class
     M_tbl = NaN(length(params.exp.taskclassnames),length(params.stim.all_core_im_nrs)+1);
     for ii = unique(condition_master.task_class)'
-        [M, edges_M] = histcounts([condition_master.stim_nr_left(~condition_master.is_catch & (condition_master.task_class==ii)); ...
+        [M, ~] = histcounts([condition_master.stim_nr_left(~condition_master.is_catch & (condition_master.task_class==ii)); ...
                                     condition_master.stim_nr_left(~condition_master.is_catch & (condition_master.task_class==ii))],[0:1:length(params.stim.all_core_im_nrs)+1]);
         M_tbl(ii,1:length(M)) = M;
     end
@@ -527,7 +774,7 @@ else % Recreate conditions and blocks and trials
     %% Plot figures to check condition master content
     if verbose
 
-        vcd_visualizeMasterTable(condition_master, store_imgs,session_env);
+        vcd_visualizeMasterTable(condition_master, store_imgs,env_type);
 
         figure; set(gcf,'Position',[1,1,1200,300]);
         histogram([condition_master.stim_nr_left;condition_master.stim_nr_right],'numbins',length(params.stim.all_core_im_nrs))
@@ -535,7 +782,7 @@ else % Recreate conditions and blocks and trials
          title('Total unique image nr')
         box off;
         if store_imgs
-            saveFigsFolder = fullfile(vcd_rootPath,'figs',sprintf('condition_master0_%s',session_env));
+            saveFigsFolder = fullfile(vcd_rootPath,'figs',sprintf('condition_master0_%s',env_type));
             if ~exist(saveFigsFolder,'dir'); mkdir(saveFigsFolder); end
             filename = sprintf('vcd_totaluniqueim.png');
             print(gcf,'-dpng','-r300',fullfile(saveFigsFolder,filename));
@@ -549,7 +796,7 @@ else % Recreate conditions and blocks and trials
         set(gca,'YTick',[1:5],'YTickLabel', params.exp.stimclassnames);  set(gca,'XTick',[1:30]); title('Sum of unique im per stimulus class')
         box off;
         if store_imgs
-            saveFigsFolder = fullfile(vcd_rootPath,'figs',sprintf('condition_master0_%s',session_env));
+            saveFigsFolder = fullfile(vcd_rootPath,'figs',sprintf('condition_master0_%s',env_type));
             filename = sprintf('vcd_uniqueim_per_stimclass.png');
             print(gcf,'-dpng','-r300',fullfile(saveFigsFolder,filename));
         end
@@ -564,7 +811,7 @@ else % Recreate conditions and blocks and trials
         set(gca,'XTick',[0:25:110]); title('Sum of unique im per task class')
         box off;
         if store_imgs
-            saveFigsFolder = fullfile(vcd_rootPath,'figs',sprintf('condition_master0_%s',session_env));
+            saveFigsFolder = fullfile(vcd_rootPath,'figs',sprintf('condition_master0_%s',env_type));
             filename = sprintf('vcd_uniqueim_per_taskclass.png');
             print(gcf,'-dpng','-r300',fullfile(saveFigsFolder,filename));
         end
@@ -581,12 +828,12 @@ else % Recreate conditions and blocks and trials
         set(gca,'YTick',[1:params.exp.block.n_trials_single_epoch]); title('SCC stimulus class distribution')
         box off;
         if store_imgs
-            saveFigsFolder = fullfile(vcd_rootPath,'figs',sprintf('condition_master0_%s',session_env));
+            saveFigsFolder = fullfile(vcd_rootPath,'figs',sprintf('condition_master0_%s',env_type));
             filename = sprintf('vcd_scc_stimulusclass_trialdistr.png');
             print(gcf,'-dpng','-r300',fullfile(saveFigsFolder,filename));
         end
         
-        if strcmp(session_env,'MRI')
+        if strcmp(env_type,'MRI')
             % Stim class distribution in LTM blocks
             foo = [condition_master.stim_nr_left((condition_master.task_class==6),:), ...
                 condition_master.stim_nr_right((condition_master.task_class==6),:)]';
@@ -599,7 +846,7 @@ else % Recreate conditions and blocks and trials
             set(gca,'YTick',[1:params.exp.block.n_trials_single_epoch]); title('LTM stimulus class distribution')
             box off;
             if store_imgs
-                saveFigsFolder = fullfile(vcd_rootPath,'figs',sprintf('condition_master0_%s',session_env));
+                saveFigsFolder = fullfile(vcd_rootPath,'figs',sprintf('condition_master0_%s',env_type));
                 filename = sprintf('vcd_ltm_stimulusclass_trialdistr.png');
                 print(gcf,'-dpng','-r300',fullfile(saveFigsFolder,filename));
             end
