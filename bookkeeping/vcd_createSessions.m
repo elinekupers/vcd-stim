@@ -16,7 +16,7 @@ p0.addParameter('load_params'           , false, @islogical);
 p0.addParameter('store_params'          , true, @islogical);
 p0.addParameter('store_imgs'            , false, @islogical);
 p0.addParameter('verbose'               , false, @islogical);
-p0.addParameter('session_env'           , 'MRI', @(x) any(strcmp(x,{'BEHAVIOR','MRI'})));
+p0.addParameter('env_type'              , '', @(x) any(strcmp(x,{'BEHAVIOR','MRI'})));
 p0.addParameter('randomization_file_pth', [], @ischar);
 p0.addParameter('subj_id'               , 'vcd_subj000', @ischar);
 p0.addParameter('saveDir'               , [], @ischar)
@@ -32,11 +32,22 @@ end
 clear rename_me ff p0
 
 
+% Infer environment if we haven't set this parameter  
+if ~exist('env_type','var') || isempty(env_type)
+    if strcmp(params.disp.name,'7TAS_BOLDSCREEN32')
+        env_type = 'MRI';
+    elseif ismember(params.disp.name,{'CCNYU_VIEWPIXX3D','PPROOM_EIZOFLEXSCAN'}) 
+        env_type = 'BEHAVIOR';
+    elseif ismember(params.disp.name,{'KKOFFICE_AOCQ3277','EKHOME_ASUSVE247'}) 
+        env_type = 'BEHAVIOR';
+    end
+end
+
 %% Load subject files if we can
 if ~isempty(randomization_file_pth)
     % load provided randomized condition master file
-    load(fullfile(randomization_file_pth,sprintf('%scondition_master_shuffled_%s_%s_*.mat',[subj_id '_'], params.disp.name, session_env)),'condition_master_shuffled');
-    load(fullfile(randomization_file_pth,sprintf('%stime_table_master_shuffled_%s_%s_*.mat',[subj_id '_'], params.disp.name, session_env)),'time_table_master_shuffled','all_subj_run_frames');
+    load(fullfile(randomization_file_pth,sprintf('%scondition_master_shuffled_%s_%s_*.mat',[subj_id '_'], params.disp.name, env_type)),'condition_master_shuffled');
+    load(fullfile(randomization_file_pth,sprintf('%stime_table_master_shuffled_%s_%s_*.mat',[subj_id '_'], params.disp.name, env_type)),'time_table_master_shuffled','all_subj_run_frames');
 else
     
     if load_params % load condition_master and params if requested
@@ -101,15 +112,16 @@ else
     
     %% 0. set saveDir if we haven't already
     if store_params && isempty(saveDir)
-        saveDir = fullfile(vcd_rootPath,'data',session_env, subj_id);
+        saveDir = fullfile(vcd_rootPath,'data',env_type, subj_id);
     end
+
     
     %% 1. We shuffle the block order within a session (as well as trial order within a block)
     % and allocate blocks randomly (under some constraints) to each run.
     % We then store a file that records this new block order
     [condition_master_shuffled, ~, ~, ~, ~] = ... % other outputs are: fname, condition_master_shuffle_idx, session_crossing_matrix, session_block_matrix
         vcd_randomizeBlocksAndRunsWithinSession(params, ...
-        condition_master, session_env, 'subj_id', subj_id, 'saveDir',saveDir);
+        condition_master, env_type, 'subj_id', subj_id, 'saveDir',saveDir);
     
     %% 2. We expand the condition master table and add all trial events
     % (in units of presentationrate_hz frames), and we now call it
@@ -121,7 +133,7 @@ else
         'store_params', store_params, ...
         'verbose', verbose, ...
         'condition_master',condition_master_shuffled,...
-        'session_env',session_env, ...
+        'env_type',env_type, ...
         'saveDir',saveDir, ...
         'subj_id',subj_id);
     
