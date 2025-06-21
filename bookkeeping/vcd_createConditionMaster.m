@@ -1,4 +1,4 @@
-function cond_master = vcd_createConditionMaster(params, cond_table, n_trials_per_block, session_env)
+function cond_master = vcd_createConditionMaster(params, cond_table, env_type)
 % VCD function to create condition master table.
 %
 %  cond_master = vcd_createConditionMaster(params, cond_table, n_trials_per_block)
@@ -17,7 +17,7 @@ function cond_master = vcd_createConditionMaster(params, cond_table, n_trials_pe
 %  cond_table           : (table) table with core stimuli information for a
 %                          particular stimulus class
 %  n_trials_per_block   : (int) number of trials per block (4 or 8)
-%  session_env          : (char) character string defining if this is for 
+%  env_type             : (char) character string defining if this is for 
 %                          the "MRI" or "BEHAVIORAL" version of the 
 %                          vcd-core experiment? Choose: "MRI" or "BEHAVIORAL"
 %
@@ -46,15 +46,15 @@ function cond_master = vcd_createConditionMaster(params, cond_table, n_trials_pe
 % of unique images is identical for each task.
 %
 % Columns contains the following information:
-%   1: {'unique_stim_nr'   } unique images (parafoveal stimulus patches: 1 trial occupies 2 rows)
-%   2: {'stimloc'        } stimulus location relative to fixation dot: 1 = left, 2 = right, 3 = central
-%   3: {'stimloc_name'   } same as column two but then in text 
-%   4: {'orient_dir'     } orientation (gabor), motion direction (rdk), or angle (dot), or facing direction (obj) in deg
-%   5: {'contrast'       } stimulus contrast (Michelson fraction)
-%   6: {'gbr_phase'      } gabor stimulus phase  (NaN for non gabor stim)
-%   7: {'rdk_coherence'  } rdk stimulus dot coherence (fraction of dots, NaN for non rdk stim)
-%   8: {'super_cat'      } superordinate object category level (for obj and ns) 
-%   9: {'basic_cat'      } basic object category level (for obj and ns)
+%   1: {'unique_stim_nr'  } unique images (parafoveal stimulus patches: 1 trial occupies 2 rows)
+%   2: {'stimloc'         } stimulus location relative to fixation dot: 1 = left, 2 = right, 3 = central
+%   3: {'stimloc_name'    } same as column two but then in text 
+%   4: {'orient_dir'      } orientation (gabor), motion direction (rdk), or angle (dot), or facing direction (obj) in deg
+%   5: {'contrast'        } stimulus contrast (Michelson fraction)
+%   6: {'gbr_phase'       } gabor stimulus phase  (NaN for non gabor stim)
+%   7: {'rdk_coherence'   } rdk stimulus dot coherence (fraction of dots, NaN for non rdk stim)
+%   8: {'super_cat'       } superordinate object category level (for obj and ns) 
+%   9: {'basic_cat'       } basic object category level (for obj and ns)
 %   10: {'sub_cat'        } subordinate object category level (for obj and ns)
 %   11: {'super_cat_name' } same as 8, but then in text
 %   12: {'basic_cat_name' } same as 9, but then in text
@@ -65,21 +65,23 @@ function cond_master = vcd_createConditionMaster(params, cond_table, n_trials_pe
 %   17: {'task_class'     } task class nr (1:10)
 %   18: {'is_cued'        } what spatial location did we cue with rim of
 %                           fixation circle: 1 = left, 2 = right, 3 = both sides/neutral cue
-%   19: {'unique_trial_nr'} unique trial nr
-%   20: {'stim2_delta'    } for  WM/IMG/LTM task: what delta gabor tilt/
+%   19: {'is_catch'       } is this a catch trial where no stimulus was shown in trial (true) or not (false)?
+%   20: {'is_objectcatch' } is this a objectcatch trial where a randomly chosen non-core rotation was shown (true) or not (false). objectcatch trial can only occur for OBJ stimuli.
+%   21: {'unique_trial_nr'} unique trial nr
+%   22: {'stim2_delta'    } for  WM/IMG/LTM task: what delta gabor tilt/
 %                           rdk motion dir / dot angle / object rotation /
 %                           scene was used for test stim in second stimulus array (after the delay) (see
 %                           p.stim.(xx).delta_from_ref).
-%   21: {'stim2_im_nr'    } for  WM/IMG/LTM task: unique test image nr in stimulus array 2
+%   23: {'stim2_im_nr'    } for  WM/IMG/LTM task: unique test image nr in stimulus array 2
 %                           (after the delay). Defined for double epoch
 %                           tasks only.
-%   22: {'stim2_orient_dir'} for  WM/IMG/LTM task: absolute gabor tilt/rdk motion direction/dot
+%   24: {'stim2_orient_dir'} for  WM/IMG/LTM task: absolute gabor tilt/rdk motion direction/dot
 %                           angle/obj rotation of test stimulus (so after
 %                           delta is applied to core stimulus feature)
-%   23: {'is_lure'        } for LTM task: is stim2_im_nr a lure stimulus or not.
-%   24: {'ltm_stim_pair'  } for LTM task: each unique image nr is associated with
+%   25: {'is_lure'        } for LTM task: is stim2_im_nr a lure stimulus or not.
+%   26: {'ltm_stim_pair'  } for LTM task: each unique image nr is associated with
 %                           another stimulus
-%   25: {'repeat_nr'      } Keep track how many times has this unique image has
+%   27: {'repeat_nr'      } Keep track how many times has this unique image has
 %                           been repeated thusfar in the experiment
 %
 % Written by Eline Kupers Feb 2025 @ UMN
@@ -88,8 +90,15 @@ function cond_master = vcd_createConditionMaster(params, cond_table, n_trials_pe
 %% Get variables from input table
 
 
-if (nargin < 4 && ~exist('session_env','var')) || isempty(session_env)
-    session_env = 'MRI';
+if (nargin < 4 && ~exist('env_type','var')) || isempty(env_type)
+    % Infer environment if we haven't env_type
+    if ~exist('env_type','var') || isempty(env_type)
+        if strcmp(params.disp.name,'7TAS_BOLDSCREEN32')
+            env_type = 'MRI';
+        elseif ismember(params.disp.name,{'CCNYU_VIEWPIXX3D','PPROOM_EIZOFLEXSCAN','KKOFFICE_AOCQ3277','EKHOME_ASUSVE247'})
+            env_type = 'BEHAVIOR';
+        end
+    end
 end
     
 
@@ -104,7 +113,7 @@ assert(length(taskClass)==1)
 cond_master = [];
 
 % get nr of repetitions (depends on session type: mri or behavior)
-[~,~,~,~, ~,~, ~, ~, ~, ~, unique_trial_repeats, ~,catch_trial_flag] = vcd_getSessionEnvironmentParams(params, session_env);
+[~,~,~,~, ~,~, ~, ~, ~, ~, unique_trial_repeats, ~,catch_trial_flag] = vcd_getSessionEnvironmentParams(params, env_type);
 nr_reps = ceil(unique_trial_repeats(strcmp(stimClass, params.exp.stimclassnames),strcmp(taskClass, params.exp.taskclassnames)));
 
 % only insert one catch trial every other block, given that special core is 50% or less stimuli per class
@@ -153,23 +162,7 @@ if nr_reps > 0
                 for loc = 1:n_cued_stimlocs % cued vs uncued
 
                     % SHUFFLE ORDER OF UNIQUE IMAGES
-                    
-                    % % PREVIOUSLY: shuffle contrasts every 3 trials
-                    % % shuffle 8 orientations within every 8 unique images
-                    % shuffle_ori = shuffle_concat([1:n_ori_bins],n_contrasts);
-                    % shuffle_ori = shuffle_ori' + repelem([0:n_ori_bins:(n_unique_cases-1)],n_ori_bins)';
-                    % assert(isequal(unique(shuffle_ori),[1:(n_ori_bins*n_contrasts)]'))
-                    % % create a contrast case vector where im 1-8 is low contrast, 9-17 is mid and 18-24 is high
-                    % contrast_vec0 = reshape(1:n_unique_cases,[],n_contrasts);
-                    % contrast_vec0 = contrast_vec0';
-                    % contrast_vec0 = contrast_vec0(:); % we want low,mid,high followed by low,mid,high, etc.
-                    % shuffle_c  = shuffle_concat(1:n_contrasts,n_unique_cases/n_contrasts);
-                    % shuffle_c  = contrast_vec0(shuffle_c + repelem([0:n_contrasts:(n_unique_cases-1)],n_contrasts));
-                    % assert(isequal(unique(shuffle_c),[1:n_unique_cases]'))
-                    % conds_shuffle0 = cond_table(shuffle_ori,:); % <-- first shuffle based on unique nr of orientations
-                    % conds_shuffle0 = conds_shuffle0(shuffle_c,:); % <-- then shuffle based on unique nr of contrasts, such that new trial order prioritizes contrast order
-
-                    % NOW: we shuffle all conditions, without constraints.
+                    % we shuffle all conditions, without constraints.
                     shuffle_c      = randperm(size(cond_table,1),size(cond_table,1));
                     conds_shuffle0 = cond_table(shuffle_c,:);
 
@@ -182,6 +175,9 @@ if nr_reps > 0
                     % Add cue vec column
                     conds_shuffle0.is_cued = cue_vec;
 
+                    % Add is_objectcatch trial vector (randomly chosen non-core rotation, only for OBJ)
+                    conds_shuffle0.is_objectcatch = false(size(conds_shuffle0,1),1);
+                    
                     % Do some checks on unique trial condition master table:
                     assert(isequal(length(conds_shuffle0.unique_im_nr),n_unique_cases)); % Check unique image nr
                     assert(isequal(sum(conds_shuffle0.stimloc==1),size(conds_shuffle0,1)/2));  % Check left stim loc
@@ -190,7 +186,6 @@ if nr_reps > 0
                     assert(isequal(sort(conds_shuffle0.gbr_phase,'ascend'),repelem(params.stim.gabor.ph_deg,n_unique_cases/length(params.stim.gabor.ph_deg))')); % Check phase
                     if ~ismember(taskClass{:}, {'ltm','img'})
                         assert(isequal(sort(conds_shuffle0.contrast,'ascend'),repelem(params.stim.gabor.contrast,n_ori_bins)')); % Check contrast levels
-%                         assert(isequal(sort(reshape(conds_shuffle0.contrast,n_contrasts,[])),repmat(params.stim.gabor.contrast',1,n_ori_bins))); % Check contrast order
                     else
                         assert(isequal(conds_shuffle0.contrast,repelem(params.stim.gabor.contrast(3),n_ori_bins)')); % Check contrast
                     end
@@ -384,23 +379,7 @@ if nr_reps > 0
                 for loc = 1:n_cued_stimlocs % cued vs uncued
                     
                     % SHUFFLE ORDER OF UNIQUE IMAGES
-                    % PREVIOUSLY: 
-                    % % shuffle orientation every 8 trials
-                    % shuffle_motdir = shuffle_concat([1:n_motdir],n_coh);
-                    % shuffle_motdir = shuffle_motdir' + repelem([0:n_motdir:(n_unique_cases-1)],n_motdir)';
-                    % % shuffle coherence every 3 trials
-                    % shuffle_c = shuffle_concat(1:n_coh,n_unique_cases/n_coh);
-                    % case_vec  = reshape(1:n_unique_cases,[],n_coh);
-                    % % Reshape number of unique image cases, such that we can
-                    % % allocate unique image nrs across combinations of coh and
-                    % % motdir
-                    % case_vec = case_vec';
-                    % case_vec = case_vec(:);
-                    % shuffled_c = case_vec(shuffle_c + repelem([0:n_coh:(n_unique_cases-1)],n_coh),:);
-                    % conds_shuffle0 = cond_table(shuffle_motdir,:); % <-- first shuffle based on unique nr of orientations
-                    % conds_shuffle0 = conds_shuffle0(shuffled_c,:); % <-- then shuffle based on unique nr of coh, such that new trial order prioritized coh order
-
-                    % NOW: we shuffle all conditions, without constraints.
+                    % we shuffle all conditions, without constraints.
                     shuffle_c      = randperm(size(cond_table,1),size(cond_table,1));
                     conds_shuffle0 = cond_table(shuffle_c,:);
                     
@@ -413,6 +392,9 @@ if nr_reps > 0
                     % Add catch trial vector
                     conds_shuffle0.is_catch = false(size(conds_shuffle0,1),1);
 
+                    % Add is_objectcatch trial vector (randomly chosen non-core rotation, only for OBJ)
+                    conds_shuffle0.is_objectcatch = false(size(conds_shuffle0,1),1);
+                    
                     % Do some checks:
                     assert(isequal(length(conds_shuffle0.unique_im_nr),n_unique_cases)); % Check unique image nr
                     assert(isequal(sum(conds_shuffle0.stimloc==1),n_unique_cases/2));  % Check left stim loc
@@ -420,7 +402,6 @@ if nr_reps > 0
                     assert(isequal(sort(conds_shuffle0.orient_dir,'ascend'),repelem(params.stim.rdk.dots_direction,n_coh)')); % Check motdir
                     if ~ismember(taskClass{:}, {'ltm','img'})
                         assert(isequal(sort(conds_shuffle0.rdk_coherence,'ascend'),repelem(params.stim.rdk.dots_coherence,n_motdir)')); % Check coherence levels
-%                         assert(isequal(sort(reshape(conds_shuffle0.rdk_coherence,n_coh,[])),repmat(params.stim.rdk.dots_coherence',1,n_motdir))); % Check coherence order
                     else
                         assert(isequal(conds_shuffle0.rdk_coherence,repelem(params.stim.rdk.dots_coherence(3),n_motdir)')); % Check coherence
                     end
@@ -607,13 +588,7 @@ if nr_reps > 0
                 cue_vec = []; im_cue_vec_loc1 = [];
                 for loc = 1:n_cued_stimlocs % cued vs uncued
 
-                    % % PREVIOUSLY
-                    % % shuffle dot angle every 8 trials
-                    % shuffle_loc = shuffle_concat([1:n_dot_loc],1);
-                    % % SHUFFLE TRIALS
-                    % conds_shuffle0 = cond_table(shuffle_loc,:); % <-- shuffle based on unique nr of orientations
-
-                    % NOW: we shuffle all conditions, without constraints.
+                    % we shuffle all conditions, without constraints.
                     shuffle_c      = randperm(size(cond_table,1),size(cond_table,1));
                     conds_shuffle0 = cond_table(shuffle_c,:);
                     
@@ -626,6 +601,9 @@ if nr_reps > 0
                     % Add catch trial vector
                     conds_shuffle0.is_catch = false(size(conds_shuffle0,1),1);
 
+                    % Add is_objectcatch trial vector (randomly chosen non-core rotation, only for OBJ)
+                    conds_shuffle0.is_objectcatch = false(size(conds_shuffle0,1),1);
+                    
                     % Do some checks:
                     assert(isequal(length(conds_shuffle0.unique_im_nr),n_unique_cases)); % Check unique image nr
                     assert(isequal(sum(conds_shuffle0.stimloc==1),n_unique_cases/2));  % Check left stim loc
@@ -811,7 +789,6 @@ if nr_reps > 0
             n_super_cat = length(unique(cond_table.super_cat));
             assert(isequal(length(params.stim.obj.super_cat),n_super_cat));
 
-            % PREVIOUSLY
             % UNIQUE COBJ array dims: 8 basic categories
             basic_cat_vec = []; n_basic_cat = [];
             for ni = 1:n_super_cat
@@ -857,7 +834,7 @@ if nr_reps > 0
 
             % Keep track of stim loc cue loc for catch trials.
             prior_cue_dir_for_catch_trial = [];
-
+            
             % Shuffle trials for each repeat
             for rep = 1:nr_reps
 
@@ -882,30 +859,7 @@ if nr_reps > 0
                 cue_vec = []; im_cue_vec_loc1 = [];
                 for loc = 1:n_cued_stimlocs % cued vs uncued
 
-                    % PREVIOUSLY
-                    % % Make sure every 8 trials, subject sees images from at least 4 super
-                    % % classes
-                    % super_cat_shuffle_idx = randperm(length(super_cat_vec),length(super_cat_vec));
-                    % shuffled_super_cat    = super_cat_vec(super_cat_shuffle_idx);
-                    % for jj = 1:n_trials_per_block:(length(shuffled_super_cat))
-                    % 
-                    %     while 1
-                    %         if isempty(setdiff([1:n_super_cat],unique(shuffled_super_cat(jj:(jj+n_trials_per_block-1)),'legacy'))) || ...
-                    %                 isequal(setdiff([1:n_super_cat],unique(shuffled_super_cat(jj:(jj+n_trials_per_block-1)),'legacy')),1)
-                    %             break;
-                    %         end
-                    %         super_cat_shuffle_idx = randperm(length(super_cat_vec),length(super_cat_vec));
-                    %         shuffled_super_cat = super_cat_vec(super_cat_shuffle_idx);
-                    % 
-                    %     end
-                    % end
-                    % % Check if n_sub_cat still holds
-                    % assert(isequal(histcounts(shuffled_super_cat),n_sub_cat));
-                    % NOW SHUFFLE
-                    % conds_shuffle0 = cond_table(basic_cat_shuffle_idx,:); % <-- shuffle based on basic category
-                    % conds_shuffle1 = conds_shuffle0(super_cat_shuffle_idx,:); % <-- shuffle based on super category, last one to give it priority
-
-                    % NOW: we shuffle all conditions, without constraints.
+                    % we shuffle all conditions, without constraints.
                     shuffle_c      = randperm(size(cond_table,1),size(cond_table,1));
                     conds_shuffle0 = cond_table(shuffle_c,:);
                     
@@ -915,8 +869,14 @@ if nr_reps > 0
                     % Add cue vec
                     conds_shuffle0.is_cued = cue_vec;
 
-                    % Add catch trial vector
+                    % Add general catch trial vector (no stim)
                     conds_shuffle0.is_catch = false(size(conds_shuffle0,1),1);
+                    
+                    % Add is_objectcatch trial vector (randomly chosen non-core rotation, only for OBJ-PC)
+                     % we will add the occurance of object catch trials
+                     % later, because we need to know how many OBJ-PC
+                     % trials we have before selecting 20%
+                    conds_shuffle0.is_objectcatch = false(size(conds_shuffle0,1),1);
 
                     % Do some checks:
                     assert(isequal(length(conds_shuffle0.unique_im_nr),n_unique_cases)); % Check unique image nr
@@ -1070,7 +1030,7 @@ if nr_reps > 0
                 % Accummulate
                 cond_master = [cond_master; conds_single_rep_merged];
             end
-
+            
             % thickening direction doesn't have to match
             % between left and right, or do they??...
             if ~strcmp(taskClass{:},'fix')
@@ -1132,83 +1092,18 @@ if nr_reps > 0
 
                 conds_master_single_rep = [];
 
-                % PREVIOUSLY
-%                 % Make sure every block, subject sees images from 5 super
-%                 % classes
-%                 super_cat_shuffle_idx = randperm(length(super_cat_vec),length(super_cat_vec));
-%                 shuffled_super_cat    = super_cat_vec(super_cat_shuffle_idx);
-% 
-%                 good_blocks = 0;
-%                 block_start_idx = 1:n_trials_per_block:(length(shuffled_super_cat));
-%                 if n_trials_per_block < n_super_cat
-%                     allowed_mismatch0 = diff([n_trials_per_block,n_super_cat])*2;
-%                 else
-%                     allowed_mismatch0 = 0;
-%                 end
-% 
-%                 while 1
-%                     super_cat_shuffle_idx = shuffle_concat(super_cat_shuffle_idx,1);
-%                     shuffled_super_cat = super_cat_vec(super_cat_shuffle_idx);
-% 
-%                     good_blocks = 0;
-% 
-%                     for jj = block_start_idx
-%                         idx = jj:(jj+n_trials_per_block-1);
-% 
-%                         if idx(end)>length(shuffled_super_cat)
-%                             idx(idx>length(shuffled_super_cat)) = [];
-%                             mismatch = diff([length(idx),n_super_cat])*2;
-%                         else
-%                             mismatch = allowed_mismatch0;
-%                         end
-%                         missing_conditions = setdiff([1:n_super_cat],unique(shuffled_super_cat(idx),'legacy'));
-% 
-%                         if isempty(missing_conditions) || length(missing_conditions) <= mismatch
-%                             good_blocks = good_blocks+1;
-%                         end
-%                     end
-%                     if good_blocks == length(block_start_idx)-1
-%                         break;
-%                     end
-%                 end            
-% 
-%                 % Check if n_sub_cat still holds
-%                 if ismember(taskClass{:},{'ltm','img'})
-%                     assert(isequal(histcounts(shuffled_super_cat),n_sub_cat))
-%                 else
-%                     assert(isequal(histcounts(shuffled_super_cat),sum(n_sub_cat,2)'))
-%                 end
-% 
-% 
-%                 % shuffle basic category (so shuffle every other image)
-%     %             basic_cat_vec = cond_table.basic_cat;
-%                 basic_cat_shuffle_idx = [];
-%                 for ii = 1:length(n_basic_cat)
-%                     % create [ 0 0 2 2 4 4 ] vector
-%                     curr_im = repelem(length(basic_cat_shuffle_idx): 2 : length(basic_cat_shuffle_idx)+2*n_basic_cat(ii),n_basic_cat(ii));
-%                     if ismember(taskClass{:},{'ltm','img'})
-%                         basic_cat_shuffle_idx = cat(2, basic_cat_shuffle_idx, curr_im + shuffle_concat([1:n_basic_cat(ii)],n_sub_cat(ii)));
-%                     else
-%                         % add shuffled [1,2,1,2,1,2] vector
-%                         basic_cat_shuffle_idx = cat(2, basic_cat_shuffle_idx, curr_im + shuffle_concat([1:n_basic_cat(ii)],n_sub_cat(ii,1)));
-%                     end
-%                 end
-%                 if ismember(taskClass{:},{'ltm','img'})
-%                     basic_cat_shuffle_idx = basic_cat_shuffle_idx(ismember(basic_cat_shuffle_idx,1:length(basic_cat_shuffle_idx)/2));
-%                 end
-%                 % NOW SHUFFLE!
-%                 conds_shuffle0 = cond_table(basic_cat_shuffle_idx,:); % <-- shuffle based on basic category
-%                 conds_master_single_rep = conds_shuffle0(super_cat_shuffle_idx,:); % <-- shuffle based on super category, last one to give it priority
 
-
-                % NOW we shuffle all conditions, without constraints, regardless of superordinate category class
+                % we shuffle all conditions, without constraints, regardless of superordinate category class
                 shuffle_c               = randperm(size(cond_table,1),size(cond_table,1));
                 conds_master_single_rep = cond_table(shuffle_c,:);
 
 
                 % Add catch trial vector
                 conds_master_single_rep.is_catch = false(size(conds_master_single_rep,1),1);
-
+                
+                % Add is_objectcatch trial vector (randomly chosen non-core rotation, only for OBJ)
+                conds_master_single_rep.is_objectcatch = false(size(conds_master_single_rep,1),1);
+                
                 if catch_trial_flag
                     % Check if we want to skip a catch trial
                     if ismember(taskClass{:}, {'ltm','img'})
@@ -1227,8 +1122,7 @@ if nr_reps > 0
                     conds_master_single_rep2 = conds_master_single_rep;
                 end
 
-                % No need to merge unique im into trials because there is only one
-                % stim.
+                % No need to merge unique im into trials because there is only one stim.
                 conds_master_single_rep2.unique_trial_nr = [1:size(conds_master_single_rep2,1)]';
 
                 conds_master_single_rep2.stim_nr_left  = conds_master_single_rep2.unique_im_nr;
