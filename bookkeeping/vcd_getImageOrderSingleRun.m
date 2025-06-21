@@ -1,13 +1,13 @@
 function [run_images, run_alpha_masks, all_images] = vcd_getImageOrderSingleRun(params, ...
-    time_table_master, all_run_frames, subj_nr, ses_nr, ses_type, run_nr, varargin)
+    time_table_master, all_run_frames, subj_nr, ses_nr, ses_type, run_nr, env_type, varargin)
 % VCD function to load uint8 stimuli, alpha transparency masks, and
 % corresponding image nrs for each trial
 %
 %   [run_images, run_alpha_masks, all_images] =
 %   vcd_getImageOrderSingleRun( ...
-%       params, time_table_master, subj_nr, ses_nr, ses_type, run_nr, ...
-%       ['all_images', <all_images>], ['load_params',<load_params>], ...
-%       ['store_params',<store_params>],['session_env',<session_env>])
+%       params, time_table_master, subj_nr, ses_nr, ses_type, run_nr, env_type, ...
+%       ['all_images', <all_images>],['verbose', <verbose>],...
+%       ['store_run_images',<store_run_images>],['env_type',<env_type>])
 %
 % Note image files are stored locally (workspaces > stimuli), and need to
 % be created prior to running this function (see s_createStim.m) for every
@@ -24,15 +24,13 @@ p0.addRequired('subj_nr'            , @isnumeric);
 p0.addRequired('ses_nr'             , @isnumeric);
 p0.addRequired('ses_type'           , @isnumeric);
 p0.addRequired('run_nr'             , @isnumeric);
+p0.addRequired('env_type'           , @(x) ismember(x,{'MRI','BEHAVIOR'}));
 p0.addParameter('all_images'        , struct(), @isstruct);
-p0.addParameter('store_params'      , true, @islogical);
 p0.addParameter('verbose'           , false, @islogical);
-p0.addParameter('load_params'       , false, @islogical);
-p0.addParameter('store_imgs'        , false, @islogical);
-p0.addParameter('session_env', 'MRI', @(x) ismember(x,{'MRI','BEHAVIOR','TEST'}));
+p0.addParameter('savestim'          , false, @islogical); % store the actual stimuli we load for stimulus presentation
 
 % Parse inputs
-p0.parse(params, time_table_master, all_run_frames, subj_nr, ses_nr, ses_type, run_nr, varargin{:});
+p0.parse(params, time_table_master, all_run_frames, subj_nr, ses_nr, ses_type, run_nr, env_type, varargin{:});
 
 % Rename variables into general params struct
 rename_me = fieldnames(p0.Results);
@@ -41,18 +39,28 @@ for ff = 1:length(rename_me)
 end
 clear rename_me ff p0
 
+%% Check if experimental parameters are already defined and load it if needed
+if ~isfield(params,'exp') || isempty(params.exp)
+    warning('[%s]: Can''t find exp field in params! Will run vcd_getSessionParams.m', mfilename);
+    params.exp  = vcd_getSessionParams('load_params',false,'store_params',false, 'verbose',false, 'disp_name',params.disp.name);
+end
 
+% check if stimulus parameters are already defined and load it if needed
+if ~isfield(params,'stim') || isempty(params.stim)
+    warning('[%s]: Can''t find stim field in params! Will run vcd_getStimParams.m', mfilename);
+    params.stim = vcd_getStimParams('load_params',false,'store_params',false, 'verbose', false, 'disp_name',params.disp.name);
+end
 
 %% Check subject, session and run nrs to process
 
 % Check if subject nr is member of total subjects
-subj_ok = ismember([1:params.exp.total_subjects],subj_nr);
+subj_ok = ismember([0:999],subj_nr);
 if isempty(subj_ok)
     error('\n[%s]: Subject number is outside the range!\n',mfilename);
 end
 
 % Check if ses nr is member of all sessions
-if strcmp(session_env, 'MRI')
+if strcmp(env_type, 'MRI')
     if ses_nr == 1
         ses_ok = ismember([params.exp.session.n_wide_sessions],ses_nr);
         run_ok = ismember([1:params.exp.session.mri.wide.n_runs_per_session(ses_nr,ses_type)],run_nr); 
@@ -60,12 +68,9 @@ if strcmp(session_env, 'MRI')
         ses_ok = ismember([params.exp.session.n_deep_sessions],ses_nr);
         run_ok = ismember([1:params.exp.session.mri.deep.n_runs_per_session(ses_nr,ses_type)],run_nr); 
     end
-elseif strcmp(session_env, 'BEHAVIOR')
+elseif strcmp(env_type, 'BEHAVIOR')
     ses_ok = ismember([1:params.exp.session.n_behavioral_sessions],ses_nr);
     run_ok = ismember([1:params.exp.session.behavior.n_runs_per_session],run_nr);
-elseif strcmp(session_env, 'TEST')
-    ses_ok = ismember([1:max([params.exp.session.n_behavioral_sessions,params.exp.session.n_mri_sessions])],ses_nr);
-    run_ok = ismember([1:max([params.exp.session.behavior.n_runs_per_session,params.exp.session.n_deep_sessions])],run_nr);
 end
 
 if isempty(ses_ok)
@@ -90,11 +95,21 @@ if isempty(all_images) || isempty(fieldnames(all_images))
         'fix',[], 'info',[], 'eye',[],'alpha',[]);
 end
 
+% Check if we defined folder names
+if ~isfield(params, 'instrfolder') || isempty(params.instrfolder)
+    params.instrfolder = fullfile(vcd_rootPath,'workspaces','instructions');
+end
+
+if ~isfield(params, 'stimfolder') || isempty(params.stimfolder)
+    params.stimfolder = fullfile(vcd_rootPath,'workspaces','stimuli');
+end
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%% INSTRUCTIONS IM %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Load stored instruction cues if needed
-if ~isfield(all_images,'instr') || isempty(all_images.instr) || ~isfield(all_images.instr,'im')
+% Load all stored instruction cues if they aren't already in the all_images
+% struct
+if ~isfield(all_images,'instr') || isempty(all_images.instr)
     if verbose; fprintf('[%s]: Loading instruction images (text + icons)..\n',mfilename); end
-    
+
     d = dir(fullfile(params.instrfolder,'instruction_images', '*.png'));
     
     %  instr_im: 4D array: [x,y, 3, nr_crossings]ß
@@ -115,8 +130,8 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%% FIX IM %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Load stored fixation dot images if needed
 if ~isfield(all_images,'fix') || isempty(all_images.fix)
-     if verbose; fprintf('[%s]: Loading fixation dot images..\n',mfilename); end
-    
+    if verbose; fprintf('[%s]: Loading fixation dot images..\n',mfilename); end
+
     %  FIX CIRCLE: 5D array: [x,y, 3, lum, rim types]
     d = dir(fullfile(params.stimfolder,params.disp.name, sprintf('fix_%s*.mat',params.disp.name)));
     a1 = load(fullfile(d(end).folder,d(end).name), 'fix_im','mask','info');
@@ -161,7 +176,7 @@ stim_row    = find(ismember(run_table.event_id, [params.exp.block.stim_epoch1_ID
 
 
 % Loop over all stimulus rows
-if verbose; fprintf('[%s]: Load stimuli for each trial..\n',mfilename); end
+if verbose; fprintf('[%s]: Insert stimuli for each trial into "run_frames"..\n',mfilename); end
 tic; 
 for ii = 1:length(stim_row)
     
@@ -272,7 +287,7 @@ for ii = 1:length(stim_row)
                     elseif run_table.is_catch(stim_row(ii)) == 1
                         % catch trial
                         run_images{curr_frames,side}      = uint8(zeros(1,1,1));
-                        run_alpha_masks{curr_frames,side}      = uint8(zeros(1,1,1));
+                        run_alpha_masks{curr_frames,side} = uint8(zeros(1,1,1));
                     end
                     
                     
@@ -315,10 +330,10 @@ for ii = 1:length(stim_row)
                             rdk_images = rdk_images';
                         end
                         
-                        rdk_masks = repmat({mask}, size(rdk_images,1), 1);
+%                         rdk_masks = repmat({mask}, size(rdk_images,1), 1);
                         
                         run_images(curr_frames,side) = rdk_images;
-                        run_alpha_masks(curr_frames,side) = []; %rdk_masks;
+                        run_alpha_masks(curr_frames,side) = cell(size(rdk_images,1), 1);
                         
                     elseif strcmp(run_table.event_name(stim_row(ii)),'stim2') && strcmp(run_table.task_class_name(stim_row(ii)),'wm') && run_table.is_catch(stim_row(ii)) == 0
                         
@@ -370,10 +385,10 @@ for ii = 1:length(stim_row)
                             rdk_images = rdk_images';
                         end
                         
-                        rdk_masks = repmat({mask}, size(rdk_images,1), 1);
+%                         rdk_masks = repmat({mask}, size(rdk_images,1), 1);
                         
                         run_images(curr_frames,side) = rdk_images;
-                        run_alpha_masks(curr_frames,side) = []; %rdk_masks;
+                        run_alpha_masks(curr_frames,side) = cell(size(rdk_images,1), 1);
                         
                     elseif strcmp(run_table.event_name(stim_row(ii)),'stim2') && strcmp(run_table.task_class_name(stim_row(ii)),'ltm') && run_table.is_catch(stim_row(ii)) == 0
                         
@@ -389,8 +404,8 @@ for ii = 1:length(stim_row)
                             %                                         end
                             %
                             %                                         rdk_masks = repmat(mask, size(rdk_images,1), 1);
-                            run_images(curr_frames,side) = []; %rdk_images;
-                            run_alpha_masks(curr_frames,side) = []; %rdk_masks;
+                            run_images(curr_frames,side) = rdk_images;
+                            run_alpha_masks(curr_frames,side) = cell(size(rdk_images,1), 1);
                             
                         else % other stim class
                             pair_im = [];
@@ -404,8 +419,8 @@ for ii = 1:length(stim_row)
                             %                                         end
                             %
                             %                                         rdk_masks = repmat(mask, size(rdk_images,1), 1);
-                            run_images(curr_frames,side) = []; %rdk_images;
-                            run_alpha_masks(curr_frames,side) = []; %rdk_masks;
+                            run_images(curr_frames,side) = rdk_images;
+                            run_alpha_masks(curr_frames,side) = cell(size(rdk_images,1), 1);
                             
                         end
                         
@@ -500,7 +515,7 @@ for ii = 1:length(stim_row)
                         assert(strcmp(run_table.sub_cat_name(stim_row(ii),side), all_images.info.obj.sub_cat_name(idx)));
                         tmp_test_im = reshape(params.stim.obj.unique_im_nrs_wm_test,4,[]);
                         assert(isequal(test_im,tmp_test_im(delta_idx0,corresponding_unique_im)))
-                        run_images{curr_frames(1),side} = all_images.obj(:,:,:,corresponding_unique_im,delta_idx0);
+                        run_images{curr_frames(1),side}      = all_images.obj(:,:,:,corresponding_unique_im,delta_idx0);
                         run_alpha_masks{curr_frames(1),side} = all_images.alpha.obj(:,:,corresponding_unique_im,delta_idx0);
                         
                     elseif strcmp(run_table.event_name(stim_row(ii)),'stim2') && strcmp(run_table.task_class_name(stim_row(ii)),'ltm') && run_table.is_catch(stim_row(ii)) == 0
@@ -614,31 +629,30 @@ for ii = 1:length(stim_row)
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %%%%%%%%%%%%%%% APPLY CONTRAST DECREMENT %%%%%%%%%%%%%%%%%%%%%%%%%%
             if strcmp(run_table.task_class_name(stim_row(ii)),'cd')
-                % 50% change we will actually apply the contrast
+                % 20% change we will actually apply the contrast
                 % decrement change to stimulus (this probability is already
                 % determined by vcd_addFIXandCDtoTimeTableMaster.m).
                 if ~isnan(run_table.cd_start(stim_row(ii)))
-                    if run_table.cd_start(stim_row(ii))~=0 && run_table.is_cued(stim_row(ii))==side
+                    if run_table.cd_start(stim_row(ii))~=0 && (1+mod(run_table.is_cued(stim_row(ii))-1,2))==side
                         stmclass   = run_table.stim_class_name{stim_row(ii),side};
                         rel_onset  = run_table.cd_start(stim_row(ii)) - run_table.event_start(stim_row(ii)) + 1;
-                        
-                        if ~isnan(rel_onset)
-                            t_cmod_pad = params.exp.trial.stim_array_dur-(rel_onset+length(params.stim.cd.t_cmodfun)-1);
-                            if strcmp(stmclass,'rdk')
-                                [f_im_cd, f_mask_cd] = vcd_applyContrastDecrement(params, ...
-                                    rel_onset, stmclass, run_images(curr_frames,side), ...
-                                    'input_mask', run_alpha_masks(curr_frames,side), ...
-                                    't_cmod_pad',t_cmod_pad); % give all frames
-                            else
-                                [f_im_cd, f_mask_cd] = vcd_applyContrastDecrement(params,...
-                                    rel_onset, stmclass, run_images(curr_frames(1),side), ...
-                                    'input_mask', run_alpha_masks(curr_frames(1),side), ...
-                                    't_cmod_pad',t_cmod_pad); % give first (and only frame)
-                            end
-                            run_images(curr_frames,side) = f_im_cd;
-                            run_alpha_masks(curr_frames,side) = f_mask_cd;
-                            clear f_im_cd f_mask_cd;
+                        pre_onset_frames = sum(params.stim.cd.t_cmodfun==params.stim.cd.t_cmodfun(1));
+                        t_cmod_pad = length([(rel_onset-1+length(params.stim.cd.t_cmodfun)-pre_onset_frames)+1:params.exp.trial.stim_array_dur]);
+                        if strcmp(stmclass,'rdk')
+                            [f_im_cd, f_mask_cd] = vcd_applyContrastDecrement(params, ...
+                                rel_onset, stmclass, run_images(curr_frames,side), ...
+                                'input_mask', run_alpha_masks(curr_frames,side), ...
+                                't_cmod_pad',t_cmod_pad); % give all frames
+                        else
+                            [f_im_cd, f_mask_cd] = vcd_applyContrastDecrement(params,...
+                                rel_onset, stmclass, run_images(curr_frames(1),side), ...
+                                'input_mask', run_alpha_masks(curr_frames(1),side), ...
+                                't_cmod_pad',t_cmod_pad); % give first (and only frame)
                         end
+                        run_images(curr_frames,side) = f_im_cd;
+                        run_alpha_masks(curr_frames,side) = f_mask_cd;
+                        clear f_im_cd f_mask_cd;
+                       
                     end
                 end
             end
@@ -649,14 +663,23 @@ end % stim idx
 
 
 % Store stimuli and masks if requested
-if store_params
-    fprintf('[%s]: Storing trial data..\n',mfilename)
-    saveDir = fullfile(vcd_rootPath,'workspaces','info',sprintf('subj%03d',subj_nr));
+if savestim
+    fprintf('[%s]: Storing run images..\n',mfilename)
+    saveDir = fullfile(vcd_rootPath,'data',env_type,sprintf('vcd_subj%03d',subj_nr), sprintf('vcd_subj%03d_ses%02d',subj_nr, ses_nr));
     if ~exist(saveDir,'dir'), mkdir(saveDir); end
+    % grab eye, fixation and instructions images as well..
+    eye_im         = all_images.eye; 
+    fix_im.im      = all_images.fix;
+    fix_im.alpha   = all_images.alpha.fix;
+    fix_im.info    = all_images.info.fix;
+    instr_im.im    = all_images.instr;
+    instr_im.alpha = all_images.alpha.instr;
+    instr_im.info  = all_images.info.instr;
+    
     save(fullfile(saveDir, ...
         sprintf('subj%03d_ses%02d_%s_run%02d_images_%s.mat', ...
         subj_nr, ses_nr, choose(ses_type==1,'A','B'),run_nr, params.disp.name)), ...
-        'run_images','run_alpha_masks','-v7.3')
+        'run_images','run_alpha_masks','run_table','run_frames','eye_im','instr_im','fix_im','-v7.3')
 end
 
 % tell the user we are done and report time it took to load images
