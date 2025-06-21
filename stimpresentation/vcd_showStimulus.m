@@ -124,23 +124,28 @@ framecolor = fix_tex;
 task_tex   = fix_tex;
 task_rect  = fix_tex;
 
-unique_crossingIDs = unique(run_frames.crossingIDs);
+unique_crossingIDs = unique(run_frames.crossingIDs(~isnan(run_frames.crossingIDs)));
 unique_crossingIDs(ismember(unique_crossingIDs,[999,0])) = [];
 
-% just make this once
+
+% Make textures for task instruction images once
 alltasktex = {};
-for p=1:length(unique_crossingIDs)
-  alltasktex{p} = Screen('MakeTexture',win, taskscript.im{p});
+for p = 1:length(unique_crossingIDs)
+    alltasktex{p} = Screen('MakeTexture', win, taskscript.im{p});
 end
 
-% just make this once
+% Make textures for eyetracking block images once
 allimtex = {};
-for p=1:7
-  allimtex{p} = Screen('MakeTexture',win, stim.eye(:,:,:,p));
+for p = 1:size(stim.eye,4)
+    allimtex{p} = Screen('MakeTexture', win, stim.eye(:,:,:,p));
 end
 
+clear p
+
+% Loop over time frames
 for nn = 1:size(run_frames.frame_event_nr,1)
     
+    % Get event number for this time frame
     eventID = run_frames.frame_event_nr(nn);
     if isnan(eventID)
         eventID = 0;
@@ -164,7 +169,7 @@ for nn = 1:size(run_frames.frame_event_nr,1)
     case 90 % TASK CUE -- NOTE: no fixation circle!
         fix_tex(nn)  = [];
         fix_rect(nn) = [];
-        run_frames.fix_abs_lum(nn) = NaN; % remove 128 as  absolute luminance because there is no fixation target twinkle
+        run_frames.fix_abs_lum(nn) = NaN; % remove 128 as absolute luminance because there is no fixation target twinkle
     case {91 93 94 95 96 97 98} % ALL STIMULUS EVENTS + ITI (thick fixation circle rim)
         fix_tex(nn)  = fix_texture.thick_full_white(lum_idx);
         fix_rect(nn) = fix.fix_thick_rect;
@@ -175,7 +180,7 @@ for nn = 1:size(run_frames.frame_event_nr,1)
         if eventID >= 990 % eyetracking targets / pupil black/white displays
           fix_tex(nn) = [];
           fix_rect(nn) = []; 
-          run_frames.fix_abs_lum(nn) = NaN; % remove 128 as  absolute luminance because there is no fixation target twinkle
+          run_frames.fix_abs_lum(nn) = NaN; % remove 128 as absolute luminance because there is no fixation target twinkle
         elseif eventID == 0 % pre/post blank rest period (thin fixation circle rim)
             fix_tex(nn)  = fix_texture.thin_full(lum_idx);
             fix_rect(nn) = fix.fix_thin_rect;
@@ -196,58 +201,55 @@ for nn = 1:size(run_frames.frame_event_nr,1)
 
         % Draw background + fix dot on top
         case {0, 91, 92, 93, 94, 95, 96, 97, 98, 99}
-            
             im_tex{nn}     = fix_tex{nn}; 
             im_rect{nn}    = fix_rect{nn};
             framecolor{nn} = 255*ones(1,3); 
 
         case 90 % task_cue_ID
             % Get instructions from png file
-            %OLD:task_tex{nn}   = Screen('MakeTexture',win, taskscript.im{run_frames.crossingIDs(nn)==unique_crossingIDs});
             task_tex{nn}   = alltasktex{run_frames.crossingIDs(nn)==unique_crossingIDs};
             task_rect{nn}  = taskscript.rect{run_frames.crossingIDs(nn)==unique_crossingIDs};
             framecolor{nn} = 255*ones(1,3);
         
         % Draw background with eyetracking target
         case {990,991} % eye_gaze_fix_ID = 990,991; % central fixation "rest" and "target"
-            %OLD:im_tex{nn}  = Screen('MakeTexture',win, stim.eye(:,:,:,1));
-            im_tex{nn} = allimtex{1};
-            im_rect{nn} = rect;
+            im_tex{nn}      = allimtex{1};
+            im_rect{nn}     = rect;
+            framecolor{nn}  = 255*ones(1,3);
+            
+        case 992 % eye_gaze_sac_target_ID = left
+            im_tex{nn}      = allimtex{2};
+            im_rect{nn}     = rect;
+            framecolor{nn}  = 255*ones(1,3);
+            
+        case 993 % eye_gaze_sac_target_ID = right
+            im_tex{nn}      = allimtex{3};
+            im_rect{nn}     = rect;
+            framecolor{nn}  = 255*ones(1,3);
+            
+        case 994 % eye_gaze_sac_target_ID = up
+            im_tex{nn}     = allimtex{4};
+            im_rect{nn}    = rect;
             framecolor{nn} = 255*ones(1,3);
             
-        case 992 % eye_gaze_sac_target_ID  = left
-            im_tex{nn} = allimtex{2};
-            im_rect{nn} = rect;
-            framecolor{nn} = 255*ones(1,3);
-            
-        case 993 % eye_gaze_sac_target_ID  = right
-            im_tex{nn} = allimtex{3};
-            im_rect{nn} = rect;
-            framecolor{nn} = 255*ones(1,3);
-            
-        case 994 % eye_gaze_sac_target_ID  = up
-            im_tex{nn} = allimtex{4};
-            im_rect{nn} = rect;
-            framecolor{nn} = 255*ones(1,3);
-            
-        case 995 % eye_gaze_sac_target_ID  = down
-            im_tex{nn} = allimtex{5};
-            im_rect{nn} = rect;
+        case 995 % eye_gaze_sac_target_ID = down
+            im_tex{nn}     = allimtex{5};
+            im_rect{nn}    = rect;
             framecolor{nn} = 255*ones(1,3);
             
         case 996 % eye_gaze_pupil_ID is black
-            im_tex{nn} = allimtex{6};
-            im_rect{nn} = rect;
+            im_tex{nn}     = allimtex{6};
+            im_rect{nn}    = rect;
             framecolor{nn} = 255*ones(1,3);
                          
         case 997 % eye_gaze_pupil_ID is white
-            im_tex{nn} = allimtex{7};
-            im_rect{nn} = rect;
+            im_tex{nn}     = allimtex{7};
+            im_rect{nn}    = rect;
             framecolor{nn} = 255*ones(1,3);
     end
 end
 
-% Use thin rim fixation circle for pre-run instruction screen.
+% Use thick rim fixation circle for pre-run instruction screen.
 fix_tex_preruninstr  = fix_texture.thick_full_black{1}; % mid gray luminance (128)
 fix_rect_preruninstr = fix.fix_thick_rect{1};
 
@@ -691,13 +693,16 @@ clear fix_tex fix_rect fix_texture alltasktex allimtex ...
       intro_tex im_tex im_rect framecolor fix_rect_preruninstr ...
       fix_tex_preruninstr sides temp
 
+% remove all_images from params struct in case that sneaked in
+params.all_images = [];
+  
 % figure out names of all variables except uint8 images
 vars = whos;
 vars = {vars.name};
 vars = vars(cellfun(@(x) ~ismember(x,{'fix', ...
     'stim', 'all_images', ...
-  'wantframefiles' 'detectinput' 'forceglitch' 'timekeys' 'mfi' 'glitchcnt' ...
-  'timeframes' 'starttime' 'dur' 'frameduration'}),vars)); 
+    'wantframefiles' 'detectinput' 'forceglitch' 'timekeys' 'mfi' 'glitchcnt' ...
+    'timeframes' 'starttime' 'dur' 'frameduration'}),vars)); 
 
 % Save data (button presses, params, etc)
 save(fullfile(params.savedatadir,params.behaviorfile),vars{:});  % '-v7.3'
