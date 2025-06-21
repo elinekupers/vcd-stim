@@ -178,6 +178,7 @@ assert(isequal(conds_master_reordered.stimloc,repmat([1;2],size(conds_master_reo
 % get table size (rows x cols), and width inside a column
 sz = [sum(conds_master_reordered.stimloc==3) + sum(sum(conds_master_reordered.stimloc==[1,2],2))/2, size(conds_master_reordered,2)];
 
+% we assume most columns with stimulus are double width, except for the ones cherry-picked below:
 col_width = 2.*ones(1,size(conds_master_reordered,2));
 col_width(strcmp(conds_master_reordered.Properties.VariableNames,'stim_class')) = 1;
 col_width(strcmp(conds_master_reordered.Properties.VariableNames,'unique_im_nr')) = 1;
@@ -185,6 +186,7 @@ col_width(strcmp(conds_master_reordered.Properties.VariableNames,'stimloc')) = 1
 col_width(strcmp(conds_master_reordered.Properties.VariableNames,'task_class')) = 1;
 col_width(strcmp(conds_master_reordered.Properties.VariableNames,'is_catch')) = 1;
 col_width(strcmp(conds_master_reordered.Properties.VariableNames,'is_cued')) = 1;
+col_width(strcmp(conds_master_reordered.Properties.VariableNames,'is_objectcatch')) = 1;
 col_width(strcmp(conds_master_reordered.Properties.VariableNames,'task_class_name')) = 1;
 col_width(strcmp(conds_master_reordered.Properties.VariableNames,'unique_trial_nr')) = 1;
 col_width(strcmp(conds_master_reordered.Properties.VariableNames,'thickening_dir')) = 1;
