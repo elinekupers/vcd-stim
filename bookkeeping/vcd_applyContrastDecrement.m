@@ -143,7 +143,8 @@ assert(length(cmodfun) <= params.stim.(stim_class).duration)
 
 % Check if onset of contrast decrement allows for temporal modulation function
 % to fall entirely within stimulus duration
-assert((c_onset+length(cmodfun)-1) <= params.stim.(stim_class).duration)
+pre_onset_frames = sum(cmodfun==1);
+assert((c_onset-1+length(cmodfun)-pre_onset_frames) == params.stim.(stim_class).duration)
 
 % Check if we deal with a static image (one frame or a movie (multiple
 % frames).
@@ -163,13 +164,17 @@ output_im = input_im;
 output_mask = input_mask;
 
 % loop over time points of the temporal contrast modulation function
-for tt = 1:length(cmodfun)
+cmodfun1 = cmodfun(cmodfun<1); % assume 1 is full contrast.. until we dip below we don't do anything to the image (i.e. when we have pre_onset_frames)
+
+for tt = 1:length(cmodfun1)
+
+    frame_to_modify = c_onset+tt-1; % subtract one because we want to start at c_onset
     
     % Get image
-    tmp_im = output_im{c_onset+tt-1}; % subtract one because we want to start at c_onset
+    tmp_im = output_im{frame_to_modify}; 
     
-    if ~isempty(input_mask) 
-        tmp_mask = output_mask{c_onset+tt-1}; % subtract one because we want to start at c_onset
+    if ~isempty(input_mask)
+        tmp_mask = output_mask{frame_to_modify};
     end
     
     % Get image size
@@ -177,16 +182,15 @@ for tt = 1:length(cmodfun)
     
     % Check if there is an alpha mask in fourth dim of input_im or
     % separately defined by input_mask)
-    
     if ndims(tmp_im)==3 && size(tmp_im,3)==4
         tmp_im = tmp_im(:,:,1:3);
         if isempty(tmp_mask)
-           tmp_mask = double(tmp_im(:,:,4));
+            tmp_mask = double(tmp_im(:,:,4));
         end
     end
     
     % apply alpha transparency mask
-    if exist('tmp_mask','var') && ~isempty(tmp_mask) 
+    if exist('tmp_mask','var') && ~isempty(tmp_mask)
         
         if strcmp(stim_class,'obj')
             mask_idx = (double(tmp_mask)./255)>0.5; % note simple hack
@@ -211,35 +215,35 @@ for tt = 1:length(cmodfun)
         % subtract the mean luminance of this scene from the normalized
         % color image, then scale contrast for the given time frame in the
         % contrast modulation function, and add back the mean.
-        tmp_im_c        = ((tmp_im_norm-mn_im).*cmodfun(tt)) + mn_im;  
+        tmp_im_c        = ((tmp_im_norm-mn_im).*cmodfun1(tt)) + mn_im;
         tmp_im_c        = (255.*sqrt(tmp_im_c));                            % bring back to 0-255
         
     elseif strcmp(stim_class,'obj')
-        % Objects are grayscale, where RGB channels range between luminance values [1-255]   
+        % Objects are grayscale, where RGB channels range between luminance values [1-255]
         tmp_im_norm     = ((tmp_im0-1)./254).^2;                            % convert image luminance range [0-1]
         mn_im           = mean(tmp_im_norm(:));                             % compute the mean of image
-        % center around mean, scale contrast for the given time frame in 
-        % the contrast modulation function, bring min/max range back to [0-1]  
-        tmp_im1         = ((tmp_im_norm - mn_im)*cmodfun(tt)) + mn_im;                  
+        % center around mean, scale contrast for the given time frame in
+        % the contrast modulation function, bring min/max range back to [0-1]
+        tmp_im1         = ((tmp_im_norm - mn_im)*cmodfun1(tt)) + mn_im;
         tmp_im_c        = ( (254.*sqrt(tmp_im1)) +1 );                      % bring min/max range back to [1-255]
         
     else % Gabors, RDKs, Dots are gray scale, where RGB channels range between luminance values [1-255], and mean luminance is 128
         tmp_im_norm = (tmp_im0./255)-0.5;                                   % center around 0, range [-0.5 0.5]
-        tmp_im1     = tmp_im_norm.*cmodfun(tt);                             % scale contrast for the given time frame in the contrast modulation function
+        tmp_im1     = tmp_im_norm.*cmodfun1(tt);                             % scale contrast for the given time frame in the contrast modulation function
         tmp_im_c    = ( (255.*(tmp_im1+0.5)) );                             % bring back to 1-255
     end
     
     % Create full uint8 image
-    if exist('tmp_mask','var') && ~isempty(tmp_mask) 
+    if exist('tmp_mask','var') && ~isempty(tmp_mask)
         tmp_im_full = tmp_im;                           % No need to resize
         tmp_im_full(mask_idx) = uint8(tmp_im_c);        % Convert from double to uint8
     else
         tmp_im_c    = reshape(tmp_im_c,sz0);            % Resize to 2D (or 3D)
         tmp_im_full = uint8(tmp_im_c);                  % Convert from double to uint8
     end
-
+    
     % accumulate contrast modulated image
-    output_im{c_onset+tt-1} = tmp_im_full;
+    output_im{frame_to_modify} = tmp_im_full;
     
     
     
