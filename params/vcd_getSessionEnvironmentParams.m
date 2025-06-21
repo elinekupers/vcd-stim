@@ -2,7 +2,7 @@ function [all_sessions,session_types,n_runs_per_session,min_run_dur, ...
           total_run_dur,actual_task_run_dur, IBI, nr_session_types, ...
           preblank_run_dur, postblank_run_dur, unique_trial_repeats, ...
           nr_blocks_per_run,catch_trial_flag] = ...
-            vcd_getSessionEnvironmentParams(params, session_env)
+            vcd_getSessionEnvironmentParams(params, env_type)
 
 %% WRITE ME DESCRIPTION OF OUTPUTS
 
@@ -25,7 +25,7 @@ function [all_sessions,session_types,n_runs_per_session,min_run_dur, ...
 
 %%
 % Get params for session environment (MRI or Behavior)
-if strcmp(session_env,'MRI')
+if strcmp(env_type,'MRI')
     
     % Concatenate wide and deep sessions
     all_sessions         = cat(3, params.exp.session.mri.wide.ses_blocks, params.exp.session.mri.deep.ses_blocks);
@@ -44,7 +44,7 @@ if strcmp(session_env,'MRI')
     preblank_run_dur     = params.exp.run.pre_blank_dur_MRI;
     postblank_run_dur    = params.exp.run.post_blank_dur_MRI;
 
-elseif strcmp(session_env,'BEHAVIOR')
+elseif strcmp(env_type,'BEHAVIOR')
     all_sessions         = params.exp.session.behavior.ses_blocks;
     session_types        = params.exp.session.behavior.session_types;
     nr_session_types     = 1;
