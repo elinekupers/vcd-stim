@@ -34,7 +34,7 @@
 % in "stim_<dispname>_YYYYMMDDTHHMMSS.mat" in fullfile(vcd_rootPath,'workspaces','info').
 verbose      = true;  % visualize stimuli (true) or not (false)
 store_imgs   = true;  % store visualization figures (true) or not (false)
-load_params  = false; % if true, we load from file. if false, define params.
+load_params  = true; % if true, we load from file. if false, define params.
 store_params = true;  % if false, we don't store params. if true, we store mat file in fullfile(vcd_rootPath,'workspaces','info')
 
 % Create params struct
@@ -86,32 +86,43 @@ params.exp    = vcd_getSessionParams('disp_name', params.disp.name, ...
 % left, right, up, down, and 1 pupil trial with a mid-gray central fixation 
 % target on a black and white background.
 %
-% The distance between the center and 4 left/right/up/down targets are set
-% as [xc,yc] ± 264 pixels (BOLDscreen) or ± 192 pixels (EIZOFLEXSCAN). 
-% This results in dots at the following pixel coordinates for the 5 targets
-% BOLDscreen coordinates in pixels:
-%                    [x3,y3]=[960,376]
-% [x1,y1]=[696,640]  [x0,y0]=[960,640]   [x2,y2]=[1224,640]
-%                    [x4,y4]=[960,904]
-%
-% EIZOFLEXSCAN coordinates in pixels:
-%                    [x3,y3]=[960,408]
-% [x1,y1]=[768,600]  [x0,y0]=[960,600]   [x2,y2]=[1156,600]
-%                    [x4,y4]=[960,792]
+% DESIRED target distance:
+% Between the center and 4 left/right/up/down targets is 4 degrees visual
+% angle. This results in [xc,yc] ± 264 pixels (7TAS BOLDscreen) or [xc,yc] 
+% ± 256 pixels (PPROOM EIZOFLEXSCAN).
 %
 % EMPIRICAL target distance:
-% * BOLDscreen: 264 pixels, which corresponds to 2.9936 degrees.
-% * PP room EIZOFLEX: 192 pixels, which corresponds to 3.0046 degrees.
+% * 7TAS BOLDscreen: XXX pixels, which corresponds to XXX degrees.
+% * PPROOM EIZOFLEXSCAN: 265 pixels, which corresponds to 4.0061 degrees.
+%
+% This results in dots at the following pixel coordinates for the 5 targets
+% BOLDscreen target rect coordinates in pixels 
+% [x1,y1,x1,y2] = [top-left-x, top-left-y, bottom-right-x bottom-right-y]:
+%                    [xx,xx,xx,xx]
+% [xx,xx,xx,xx]      [xx,xx,xx,xx]       [xx,xx,xx,xx]
+%                    [xx,xx,xx,xx]
+%
+% EIZOFLEXSCAN target rect coordinates in pixels 
+% [x1,y1,x1,y2] = [top-left-x, top-left-y, bottom-right-x bottom-right-y]:
+%
+%                    [951,335,969,353]
+% [695,591,713,609]  [951,591,969,609]   [1207,591,1225,609]
+%                    [951,847,969,865]
 %
 % INPUTS:
-%  params           : (struct) parameter struct, which should contain the following fields:
-% * verbose           : (logical) show debug figures
-% * store_imgs        : (logical) store stimuli and debug figures as pngs 
+% * params         : (struct) parameter struct.
+% * verbose        : (logical) show debug figures
+% * store_imgs     : (logical) store stimuli and debug figures as pngs 
 %
 % OUTPUTS:
-%  sac_im           : (uint8) saccade stimuli (height in pixels x width in pixels x 3 x 5)
-%  pupil_im_white   : (uint8) white background pupil trial stimulus (height in pixels x width in pixels x 3)
-%  pupil_im_black   : (uint8) black background pupil trial stimulus (height in pixels x width in pixels x 3)
+% * sac_im         : (uint8) saccade stimuli
+%                     height in pixels x width in pixels x 3 (RGB) 
+%                     x 5 targets (1: center, 2: left, 3: right, 4: up, 5:
+%                     down).
+% * pupil_im_white : (uint8) white background pupil trial stimulus 
+%                     height in pixels x width in pixels x 3 (RGB) 
+% * pupil_im_black : (uint8) black background pupil trial stimulus
+ %                    height in pixels x width in pixels x 3 (RGB)
 
 [sac_im, pupil_im_white, pupil_im_black] = vcd_createEyeTrackingBlockTargets(params, verbose, store_imgs);
                                  
