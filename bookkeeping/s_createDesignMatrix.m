@@ -55,7 +55,7 @@
 
 verbose      = true; % print text and visualize stimuli (true) or not (false)?
 store_imgs   = true; % store debug figures (true) or not (false)?
-load_params  = true; % load stored params (true) or recreate them (false)?
+load_params  = false; % load stored params (true) or recreate them (false)?
 store_params = true; % save stored params as mat file (true) or not (false)?
 
 params = struct();
@@ -69,7 +69,7 @@ params.disp = vcd_getDisplayParams(dispname);
 % Infer environment type
 if strcmp(dispname,'7TAS_BOLDSCREEN32')
     env_type = 'MRI';
-elseif strcmp(dispname,'PPROOM_EIZOFLEXSCAN','KKOFFICE_AOCQ3277','EKHOME_ASUSVE247','CCNYU_VIEWPIXX3D')
+elseif ismember(dispname,{'PPROOM_EIZOFLEXSCAN','KKOFFICE_AOCQ3277','EKHOME_ASUSVE247','CCNYU_VIEWPIXX3D'})
     env_type = 'BEHAVIOR';
 end
 
