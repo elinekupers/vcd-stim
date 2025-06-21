@@ -52,29 +52,26 @@
 %% %%%%%%%%%%%%%%%%%%%
 %%%%%% PARAMETERS %%%% 
 %%%%%%%%%%%%%%%%%%%%%%
+
+verbose      = true; % print text and visualize stimuli (true) or not (false)?
+store_imgs   = true; % store debug figures (true) or not (false)?
+load_params  = true; % load stored params (true) or recreate them (false)?
+store_params = true; % save stored params as mat file (true) or not (false)?
+
 params = struct();
-params.verbose        = true; % print text and visualize stimuli or not?
-params.store_imgs     = true; % store visualization figures or not?
 params.saveFigsFolder = fullfile(vcd_rootPath,'figs'); % where to store visualization figures
 
 % Get display params
-% Choose from: '7TAS_BOLDSCREEN32','KKOFFICE_AOCQ3277','EKHOME_ASUSVE247',
-%              'PPROOM_EIZOFLEXSCAN','CCNYU_VIEWPIXX3D'
+% Choose from: '7TAS_BOLDSCREEN32','KKOFFICE_AOCQ3277','EKHOME_ASUSVE247','PPROOM_EIZOFLEXSCAN','CCNYU_VIEWPIXX3D'
 dispname    = 'PPROOM_EIZOFLEXSCAN'; 
 params.disp = vcd_getDisplayParams(dispname);
 
-% Infer session type
+% Infer environment type
 if strcmp(dispname,'7TAS_BOLDSCREEN32')
-    session_env = 'MRI';
-elseif strcmp(dispname,'PPROOM_EIZOFLEXSCAN')
-    session_env = 'BEHAVIOR';
-else
-    session_env = 'MRI';
+    env_type = 'MRI';
+elseif strcmp(dispname,'PPROOM_EIZOFLEXSCAN','KKOFFICE_AOCQ3277','EKHOME_ASUSVE247','CCNYU_VIEWPIXX3D')
+    env_type = 'BEHAVIOR';
 end
-
-% Get stimulus parameters
-params.load_params  = false; % load stored params or recreate them
-params.store_params = true;
 
 % SETUP RNG
 params.rng.rand_seed = sum(100*clock);
@@ -87,14 +84,14 @@ randn('seed', params.rng.randn_seed);
 % Input 2: Load prior stored parameters or not? (logical)
 % Input 3: Store generated parameters or not? (logical)
 params.stim   = vcd_getStimParams('disp_name', params.disp.name, ...
-                                  'load_params', params.load_params, ...
-                                  'store_params', params.store_params); 
+                                  'load_params', load_params, ...
+                                  'store_params', store_params); 
 
 %% Define/Load experiment session params
 params.exp    = vcd_getSessionParams('disp_name', params.disp.name, ...
                                 'presentationrate_hz',params.stim.presentationrate_hz, ...
-                                'load_params', params.load_params, ...
-                                'store_params', params.store_params);
+                                'load_params', load_params, ...
+                                'store_params', store_params);
 
 %% Create unique conditions
 % !!WARNING!! There is a randomization component involved in creating the
@@ -111,9 +108,9 @@ params.exp    = vcd_getSessionParams('disp_name', params.disp.name, ...
 % * vcd_shuffleStimForTaskClass
 
 [params, condition_master, all_unique_im, all_cond] = ...
-            vcd_createConditions(params,  'load_params',  params.load_params, ...
-                                          'store_params', params.store_params, ...
-                                          'session_env', session_env);
+            vcd_createConditions(params,  'load_params',  load_params, ...
+                                          'store_params', store_params, ...
+                                          'env_type', env_type);
 
 %% Create/Load miniblocks into runs and sessions, shuffle blocks within a run for each subject's run
 % !!WARNING!! There is a randomization component involved in creating the
@@ -126,9 +123,9 @@ params.exp    = vcd_getSessionParams('disp_name', params.disp.name, ...
 % * vcd_addFIXandCDtoTimeTableMaster
 [params,condition_master_shuffled,time_table_master_shuffled, all_subj_run_frames] = ...
     vcd_createSessions(params,'condition_master',condition_master,...
-                               'load_params',  params.load_params, ...
-                               'store_params', params.store_params, ...
-                               'session_env', session_env);
+                               'load_params',  load_params, ...
+                               'store_params', store_params, ...
+                               'env_type', env_type);
 
 
 
