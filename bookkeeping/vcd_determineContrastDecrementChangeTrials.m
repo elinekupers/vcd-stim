@@ -57,7 +57,7 @@ while 1
     reshuffle_trials = [];
     
     % select cd trials
-    when_cd_trials = sort(randsample(nr_cued_cd_trials,expected_nr_cd_trials,'Replace',false)); % default is without replacement
+    when_cd_trials = sort(randsample(nr_cued_cd_trials,expected_nr_cd_trials,false)); % default is without replacement
     
     % Make sure we selected the nr of trials we expect for the given probability.
     assert(isequal(expected_nr_cd_trials,length(when_cd_trials)));
@@ -94,9 +94,7 @@ while 1
         end
         
     end
-    
 
-    
     selected_cd_trials = cond_mat(when_cd_trials,:);
     
     cond_cnt = sum(selected_cd_trials,1);
@@ -161,6 +159,16 @@ end
 % insert cd onset and correct response into the condition_master table
 condition_master.cd_start(cd_trials_idx)         = cd_start;
 condition_master.correct_response(cd_trials_idx) = correct_response;
+
+% update condition name and numbr for cued sides with cd contrast
+when_idx = find(cd_trials_idx);
+when_cd_trials_sub = when_idx(when_cd_trials);
+for ii = 1:length(when_cd_trials)
+    condition_master.condition_name{when_cd_trials_sub(ii),mod(condition_master.is_cued(when_cd_trials_sub(ii))-1,2)+1} = ...
+        catcell(2,[condition_master.condition_name(when_cd_trials_sub(ii),mod(condition_master.is_cued(when_cd_trials_sub(ii))-1,2)+1),{'+'}]);
+    condition_master.condition_nr(when_cd_trials_sub(ii),mod(condition_master.is_cued(when_cd_trials_sub(ii))-1,2)+1) = ...
+        vcd_conditionName2Number(condition_master.condition_name{when_cd_trials_sub(ii),mod(condition_master.is_cued(when_cd_trials_sub(ii))-1,2)+1});
+end
 
 % check nr of changes across all cd trials
 assert(isequal(sum(correct_response==1),sum(~isnan(condition_master.cd_start))));
