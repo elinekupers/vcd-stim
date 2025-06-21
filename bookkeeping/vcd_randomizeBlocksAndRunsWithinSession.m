@@ -1,6 +1,6 @@
 function [condition_master_shuffled, fname, condition_master_shuffle_idx, ...
           session_crossing_matrix, session_block_matrix]  = ...
-            vcd_randomizeBlocksAndRunsWithinSession(params, condition_master, session_env, varargin)
+            vcd_randomizeBlocksAndRunsWithinSession(params, condition_master, env_type, varargin)
 % VCD function to shuffle stimulus blocks and trials within a block across
 % all sessions/session types. Once we find the order of stimulus blocks that 
 % adheres to our contraints, we resave the condition table with the 
@@ -9,7 +9,7 @@ function [condition_master_shuffled, fname, condition_master_shuffle_idx, ...
 % all the sessions in the MRI or BEHAVIORAL experiment.
 %
 %  [condition_master_shuffled, run_matrix,trial_order_local_shuffled, trial_order_global_shuffled] ...
-%    = vcd_randomizeBlocksAndRunsWithinSession(params, condition_master, session_env)
+%    = vcd_randomizeBlocksAndRunsWithinSession(params, condition_master, env_type)
 %
 % This code will do the following:
 % 1. Grab the crossing numbers for each stimulus block and separate them
@@ -103,7 +103,7 @@ function [condition_master_shuffled, fname, condition_master_shuffle_idx, ...
 % * params  
 % * condition_master            : (table) master table with all the stimuli 
 %                                 for each trial, in each session/run/block
-% * session_env                 : (char) session environment for this session: 
+% * env_type                 : (char) session environment for this session: 
 %                                 choose from 'BEHAVIORAL' or 'MRI'.
 % * [subj_id]                    : (char) fixed name added to beginning of
 %                                 filename that stores the 
@@ -161,7 +161,7 @@ function [condition_master_shuffled, fname, condition_master_shuffle_idx, ...
 p0 = inputParser;
 p0.addRequired('params'                         , @isstruct);
 p0.addRequired('condition_master'               , @istable);
-p0.addRequired('session_env'                    , @(x) any(strcmp(x,{'BEHAVIOR','MRI'})));
+p0.addRequired('env_type'                       , @(x) any(strcmp(x,{'BEHAVIOR','MRI'})));
 p0.addParameter('subj_id'                       , 'vcd_subj000', @ischar);
 p0.addParameter('slack'                         , 0*60 , @isnumeric); % time frames
 p0.addParameter('max_run_deviation'             , 15*60, @isnumeric); % time frames
@@ -174,7 +174,7 @@ p0.addParameter('store_imgs'                    , false, @islogical);
 p0.addParameter('verbose'                       , false, @islogical);
 
 % Parse inputs
-p0.parse(params,condition_master,session_env,varargin{:});
+p0.parse(params,condition_master,env_type,varargin{:});
 
 % Rename variables into general params struct
 rename_me = fieldnames(p0.Results);
@@ -189,7 +189,7 @@ unique_sessions  = unique(condition_master.session_nr);
 % Get session parameters depending on whether this is the Behavioral
 % experiment or MRI experiment.
 [~,session_types,runs_per_session,run_dur_min,run_dur_max,~,IBIs, ~, ~, ~, ...
-    ~,nr_blocks_per_run] = vcd_getSessionEnvironmentParams(params, session_env);
+    ~,nr_blocks_per_run] = vcd_getSessionEnvironmentParams(params, env_type);
 
 % Get durations of [single, double]-stim block 
 all_block_dur = [params.exp.block.total_single_epoch_dur, params.exp.block.total_double_epoch_dur];
@@ -612,8 +612,8 @@ for ses = 1:length(unique_sessions)
                 end
                 
                 % If we shuffled all blocks more than 2000 times, we will throw an error.
-                if attempts>5000
-                    error('[%s]: Can''t seem to find a solution after 5000 attempts! Try running the same code again!\n',mfilename)
+                if attempts>10000
+                    error('[%s]: Can''t seem to find a solution after 10000 attempts! Try running the same code again!\n',mfilename)
                 end
                 
             end % big while loop
@@ -712,7 +712,7 @@ fprintf('\n')
 toc;
 
 % Update global_block_nr 
-condition_master_shuffled = vcd_updateGlobalCounters(params, condition_master_shuffled, session_env);
+condition_master_shuffled = vcd_updateGlobalCounters(params, condition_master_shuffled, env_type);
 
 % Store randomization file and shuffled condition master
 if store_params
@@ -723,7 +723,7 @@ if store_params
     randomization_params.allowed_block_combinations = allowed_block_combinations;
     
     if isempty(saveDir)
-        saveDir = fullfile(vcd_rootPath,'data',session_env,subj_id);
+        saveDir = fullfile(vcd_rootPath,'data',env_type,subj_id);
     end
     if ~exist(saveDir,'dir'), mkdir(saveDir); end    
     
