@@ -1,0 +1,45 @@
+Fixation brightness task
+  Track brightness of fixation circle.
+Contrast change task - Gabors
+Contrast change task - Moving dots
+Contrast change task - Single dots
+Contrast change task - Objects
+Contrast change task - Scenes
+  Did image change contrast?
+Categorization task
+  What is the image?
+Tilt judgment task - Gabors
+  Is tilt of Gabor closer to horizontal or vertical?
+Tilt memory change task - Gabors
+  Remember tilt of reference Gabor for entire delay period.
+  How did tilt of test Gabor change?
+Motion direction judgment task - Moving dots
+  Is direction of moving dots closer to horizontal or vertical?
+Motion direction memory change task - Moving dots
+  Remember motion direction of reference dots for entire delay period.
+  How did motion direction of test dots change?
+Position judgment task - Single dots
+  Is position of dot closer to horizontal or vertical?
+Position memory change task - Single dots
+  Remember position of reference dot for entire delay period.
+  How did position of test dot change?
+Rotation judgment task - Objects
+  Is rotation of object closer to forward or sideways?
+Rotation memory change task - Objects
+  Remember rotation of reference object for entire delay period.
+  How did rotation of test object change?
+Indoor/outdoor judgment task - Scenes 
+  Is scene indoor or outdoor?
+Scene memory change task - Scenes
+  Remember reference scene for entire delay period.
+  How did test scene change?
+"What?" task - Objects
+  What is the object?
+"How?" task - Objects
+  How would you act with this object?
+"What?" task - Scenes 
+  What is the dominant object?
+"Where?" task - Scenes 
+  Where is the dominant object?
+"How?" task - Scenes 
+  How would you act in this scene?
