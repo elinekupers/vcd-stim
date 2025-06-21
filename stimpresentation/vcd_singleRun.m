@@ -518,7 +518,15 @@ stim.apsize       = apsize;  clear apsize;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 stim.rects = cell(size(stim.centers));
-for side = [1,2]
+nSides = unique(run_frames.is_cued(~isnan(run_frames.is_cued)));
+if length(nSides)==1 && nSides==3
+    nSides = 1; % if we happen to only have NS blocks..
+elseif length(nSides)>1 && any(nSides==3)
+    nSides = [1,2];
+else
+    nSides = nSides';
+end
+for side = nSides
     % Find the non-empty center and size cells for each stimulus side
     nonemptycenters   = ~cellfun(@isempty, stim.centers(:,side));
     nonemptysizes     = ~cellfun(@isempty, stim.apsize(:,side));
@@ -545,11 +553,10 @@ for side = [1,2]
     
     % Insert the "rects" into the struct
     stim.rects(nonemptycenters,side) = rects_shortlist;
-    
 end
 % Clear some memory
 clear centers_shortlist apsize_shortlist rects_shortlist ...
-        centers_mat size_mat destination_mat rects_mat
+        centers_mat size_mat destination_mat rects_mat nSides side
 
 
 
