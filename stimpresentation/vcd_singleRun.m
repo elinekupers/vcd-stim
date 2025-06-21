@@ -19,6 +19,9 @@ function [data, all_images] = vcd_singleRun(subj_nr, ses_nr, ses_type, run_nr, d
 %   all_images  : struct with all VCD images in uint8 pixels, to
 %                  avoid additional loading time when executing multiple runs.
 %
+% Examples:
+%  [data, all_images] = vcd_singleRun(1, 1, 1, 1, 'PPROOM_EIZOFLEXSCAN', 'env_type','BEHAVIOR', 'wantdatabypass',true)
+%
 % AUTHOR:
 %  Written by Eline Kupers @ UMN (kupers@umn.edu) (2024,2025)
 %
@@ -34,7 +37,7 @@ p.addRequired('run_nr'  , @isnumeric); % run number (integral number between 1-1
 p.addRequired('dispName', @(x) ismember(x,{'7TAS_BOLDSCREEN32','KKOFFICE_AOCQ3277','PPROOM_EIZOFLEXSCAN','EKHOME_ASUSVE247','CCNYU_VIEWPIXX3D'})) % display name to get the right display params
 
 % OPTIONAL INPUTS
-p.addParameter('savedatadir'        , ''        , @ischar);                      % place to store data with today's date
+p.addParameter('savedatafolder'     , ''        , @ischar);                      % place to store data with today's date
 p.addParameter('behaviorfile'       , ''        , @ischar);                      % filename used for stored matlab file with behavioral data (name will add today's date)
 p.addParameter('eyelinkfile'        , ''        , @ischar);                      % filename used for stored eyelink edf file with eyetracking data (name will add today's date)
 p.addParameter('stim'               , []        , @isstruct);                    % if you don't want to reload stimuli, you need stim.im to containing uint8 images (time frames x 2 cell array). 
@@ -43,18 +46,18 @@ p.addParameter('storeparams'        , true      , @islogical)                   
 p.addParameter('laptopkey'          , -3        , @isnumeric);                   % listen to all keyboards/boxes (is this similar to k=-3;?)
 p.addParameter('wanteyetracking'    , false     , @islogical);                   % whether to try to hook up to the eyetracker
 p.addParameter('wantdatabypass'     , false     , @islogical);                   % whether to skip the experiment and just save dummy .mat file
-p.addParameter('deviceNr'           , []        , @isnumeric);                   % kbWait/kbCheck input device number to listen to
+p.addParameter('deviceNr'           , -3        , @isnumeric);                   % kbWait/kbCheck input device number to listen to. Default = -3, listen to all devices. Previously: vcd_checkDevices(params.deviceNr, params.device_check);
 p.addParameter('device_check'       , 'both'    , @char);                        % what type of devices do we want to check for button presses: 'external','internal', or 'both'
-p.addParameter('triggerkey'         , {'5','t'}, @(x) iscell(x) || isstring(x)) % key(s) that starts the experiment
+p.addParameter('triggerkey'         , {'5','t'}, @(x) iscell(x) || isstring(x))  % key(s) that starts the experiment
 p.addParameter('triggerkeyname'     , '''5'' or ''t''', @isstring)               % for display only
 p.addParameter('userkeys'           , {'1','2','3','4'}, @(x) iscell(x) || isstring(x)) % key(s) that participants are expected to push
 p.addParameter('offsetpix'          , [0 0]     , @isnumeric);                   % offset of screen in pixels [10 20] means move 10-px right, 20-px down
 p.addParameter('movieflip'          , [0 0]     , @isnumeric)                    % whether to flip up-down, whether to flip left-right
 p.addParameter('wantsynctest'       , true      , @islogical)                    % whether we want to run the PTB sync test or not
-p.addParameter('savestim'           , false     , @islogical)                    % whether we want to store temp file with stimuli and timing
+p.addParameter('savestim'           , false     , @islogical)                    % whether we want to store matlab file with stimuli and timing
 p.addParameter('loadstimfromrunfile', false     , @islogical)                    % whether we want to load stim from run file
 p.addParameter('ptbMaxVBLstd'       , 0.0009    , @isnumeric)                    % what standard deviation for screen flip duration do we allow?
-p.addParameter('env_type'           , []        , @(x) ismember(x, {'MRI','BEHAVIOR', 'TEST'})); % are we running the behavioral (PProom), MRI (7TAS), or a TEST (office monitors) version of the VCD core experiment?
+p.addParameter('env_type'           , []        , @(x) ismember(x, {'MRI','BEHAVIOR'})); % are we running the 'BEHAVIOR' (PProom) or 'MRI' (7TAS) version of the VCD core experiment?
 p.addParameter('timetable_file'     , ''        , @ischar);                      % what randomization file are we loading? file should exist in   
 p.addParameter('all_images'         , struct()  , @isstruct);                    % preloaded all_images in a single struct (to save time)
 p.addParameter('verbose'            , true      , @islogical)                    % (boolean) whether to print out text in command window. Default = true. 
@@ -102,9 +105,6 @@ else
     skipsync = 1; % if wantsynctest = false, we skip the psychtoolbox synctest
 end
 
-% Listen to all devices for KbCheck
-deviceNr = -3; % previously: vcd_checkDevices(params.deviceNr, params.device_check);
-
 % pton input arguments are:
 % 1: [width, height, framerate, bitdepth]
 % 2: winsize (fraction: default is full extent)
@@ -135,8 +135,15 @@ params.rng.randn = randn;
 %  CCNYU_VIEWPIXX3D..
 if strcmp(params.env_type,'BEHAVIOR') && strcmp(params.disp.name,'CCNYU_VIEWPIXX3D')
     params.disp.name = 'PPROOM_EIZOFLEXSCAN';
-elseif strcmp(params.env_type,'TEST')
-    params.disp.name = 'PPROOM_EIZOFLEXSCAN';
+end
+
+% Infer env_type from display name if empty
+if isempty(params.env_type) 
+    if strcmp(params.disp.name,{'CCNYU_VIEWPIXX3D','PPROOM_EIZOFLEXSCAN','KKOFFICE_AOCQ3277','EKHOME_ASUSVE247'})
+        params.env_type = 'BEHAVIOR';  
+    elseif strcmp(params.disp.name,'7TAS_BOLDSCREEN32')
+        params.env_type = 'MRI';
+    end
 end
 
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -182,122 +189,140 @@ if ~isfield(params, 'exp') ||  isempty(params.exp)
 end
 
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%% LOAD TIME TABLE MASTER %%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%% LOAD/CREATE TIME TABLE MASTER %%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-% First we look user added a timetable_file
-if ~isempty(params.timetable_file)
-    d = dir(fullfile(params.timetable_file));
-    if ~isempty(d)
-        load(fullfile(d(end).folder,d(end).name),'time_table_master','all_run_frames');
-    else
-        error('[%s]: Can''t find time table master!!',mfilename)
+% First we look user wants to load stimuli from file
+if params.loadstimfromrunfile
+    % Images are in the format of:
+    % subj001_ses01_A_run01_images_PPROOM_EIZOFLEXSCAN_20250505T184109.mat
+    if isempty(params.savedatafolder)
+        params.savedatafolder = fullfile(vcd_rootPath,'data',params.env_type, ...
+            sprintf('vcd_subj%03d',params.subj_nr), sprintf('vcd_subj%03d_ses%02d',params.subj_nr, params.ses_nr));
     end
-else 
-    % create folder to store tables once we've created them
-    timetablefiledir = strsplit(params.savedatadir,'_ses');
-    params.timetablefiledir = timetablefiledir{1};
-    clear timetablefiledir;
-    
-    % if not, we see if there is a subject condition_master_shuffled, and
-    % create the time_table_master from there..
-    d = dir(fullfile(vcd_rootPath,'data',sprintf('vcd_subj%03d',params.subj_nr), '%s_condition_master*.mat',sprintf('vcd_subj%03d',params.subj_nr)));
+    d = dir(fullfile(params.savedatafolder,  ...
+        sprintf('subj%03d_ses%02d_%s_run%02d_images_%s.mat', ...
+        params.subj_nr, params.ses_nr, choose(params.ses_type==1,'A','B'), params.run_nr, params.disp.name)));
     if ~isempty(d)
-        load(fullfile(d(end).folder,d(end).name),'condition_master_shuffled');
-        
-        [time_table_master,all_run_frames] = ...
-            vcd_createRunTimeTables(params, ...
-            'load_params',false, ...
-            'store_params',true, ...
-            'condition_master',condition_master_shuffled,...
-            'session_env',params.env_type, ...
-            'saveDir',params.timetablefiledir, ...
-            'subj_id',sprintf('vcd_subj%03d',params.subj_nr));
-        
+        a1 = load(fullfile(d(end).folder,d(end).name));
+        stim.im    = a1.run_images;
+        stim.masks = a1.run_alpha_masks;
+        stim.eye   = cat(4, a1.eye_im.sac_im, a1.eye_im.pupil_im_black, a1.eye_im.pupil_im_white);
+        all_images.fix        = a1.fix_im.im;
+        all_images.alpha.fix  = a1.fix_im.alpha;
+        all_images.instr      = a1.instr_im.im;
+        all_images.info.instr = a1.instr_im.info;
+        run_frames = a1.run_frames;
+        run_table  = a1.run_table;
     else
-        % if there is no condition_master_shuffled for this subject, then
-        % we create both tables on the spot.
-        d = dir(fullfile(vcd_rootPath,'workspaces','info', sprintf('condition_master*%s*.mat', params.disp.name)));
-        a1 = load(fullfile(d(end).folder,d(end).name),'condition_master');
-        
-        % make randomization file!
-        [~,~, ...
-            time_table_master, ...
-            all_run_frames] = vcd_createSessions(params,...
-            'load_params',false, ...
-            'store_params',true, ...
-            'condition_master',a1.condition_master,...
-            'session_env',params.env_type, ...
-            'saveDir',params.timetablefiledir, ...
-            'subj_id',sprintf('vcd_subj%03d',params.subj_nr));
-        
-        % clear up
-        clear a1 d
+        error('[%s]: Can''t find file with run_images!!',mfilename)
     end
-end
-
-
-%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%% TRUNCATE TIME_TABLE_MASTER %%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-% Subselect the run frames and run table from bigger tables
-% (all_run_frames and time_table_master) with the entire experiment
-run_frames = all_run_frames(all_run_frames.session_nr == params.ses_nr & ...
-    all_run_frames.session_type == params.ses_type & ...
-    all_run_frames.run_nr ==params.run_nr,:);
-
-run_table = time_table_master(time_table_master.session_nr==params.ses_nr & ...
-    time_table_master.session_type==params.ses_type &...
-    time_table_master.run_nr==params.run_nr,:);
-
-clear time_table_master all_run_frames
-
-% Tell the user how many frames we expect for this run
-fprintf(' *** Expected duration of this run is ***\n')
-fprintf(' %d time frames (%d Hz) \n',size(run_frames,1), params.stim.presentationrate_hz);
-fprintf(' %3.2f seconds (or %d minutes and %02d seconds %d) \n',size(run_frames,1)/60, floor(size(run_frames,1)/3600),rem(size(run_frames,1),3600)/60);
-
-%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%% LOAD RUN STIMULI    %%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-% If you give the function a struct called "stim" with "im" field, we will
-% not load the images..
-if ~exist('stim','var') || ~isfield(scan,'im') || isempty(stim.im)
+    clear d a1;
     
-    % we want to load stimuli from file
-    if params.loadstimfromrunfile
-        % Images are in the format of:
-        % subj001_ses01_A_run01_images_PPROOM_EIZOFLEXSCAN_20250505T184109.mat
-        d = dir(fullfile(params.infofolder,sprintf('subj%03d',params.subj_nr),  ...
-            sprintf('subj%03d_ses%02d_%s_run%02d_images_%s_*.mat', ...
-            params.subj_nr, params.ses_nr, choose(params.ses_type==1,'A','B'), params.run_nr, params.disp.name)));
-        a = load(fullfile(d(end).folder,d(end).name));
-        images = a.images;
-        masks = a.masks;
-        clear a d;
-    else % we want to load stimuli on the fly (takes 15-60 seconds depending on the run)
+else % if not, then we look user pointed to a timetable_file
+
+    if ~isempty(params.timetable_file)
+        %% %%%%%%%%%%%%%% LOAD EXISTING TIME_TABLE_MASTER %%%%%%%%%%%%%%%%
+        d = dir(fullfile(params.timetable_file));
+        if ~isempty(d)
+            load(fullfile(d(end).folder,d(end).name),'time_table_master','all_run_frames');
+        else
+            error('[%s]: Can''t find time table master!!',mfilename)
+        end
+        
+    else % if not, then we create one on the fly 
+        
+        %% %%%%%%%%% CREATE SUBJECT TIME_TABLE_MASTER %%%%%%%%%%%%%%%
+        % create folder to store time tables once we've created them
+        timetablefiledir = strsplit(params.savedatafolder,'_ses');
+        params.timetablefiledir = timetablefiledir{1};
+        clear timetablefiledir;
+
+        % see if there is a subject condition_master_shuffled, which is the precursor of time_table_master
+        % and create the time_table_master from there..
+        d = dir(fullfile(params.timetablefiledir, '%s_condition_master*.mat',sprintf('vcd_subj%03d',params.subj_nr)));
+        if ~isempty(d)
+            load(fullfile(d(end).folder,d(end).name),'condition_master_shuffled');
+
+            [time_table_master,all_run_frames] = ...
+                vcd_createRunTimeTables(params, ...
+                'load_params',false, ...
+                'store_params',true, ...
+                'condition_master',condition_master_shuffled,...
+                'env_type',params.env_type, ...
+                'saveDir',params.timetablefiledir, ...
+                'subj_id',sprintf('vcd_subj%03d',params.subj_nr));
+
+        else
+            %% %% CREATE CONDITION_MASTER AND TIME_TABLE_MASTER %%%%%%%%%
+            % if there is no condition_master_shuffled for this subject, then
+            % we create both condition_master_shuffled and time_table_master on the spot.
+            d = dir(fullfile(vcd_rootPath,'workspaces','info', sprintf('condition_master*%s*.mat', params.disp.name)));
+            a1 = load(fullfile(d(end).folder,d(end).name),'condition_master');
+
+            % make randomization file!
+            [~,~, time_table_master, all_run_frames] = vcd_createSessions(params,...
+                'load_params',false, ...
+                'store_params',true, ...
+                'condition_master',a1.condition_master,...
+                'env_type',params.env_type, ...
+                'saveDir',params.timetablefiledir, ...
+                'subj_id',sprintf('vcd_subj%03d',params.subj_nr));
+
+            % clear up
+            clear a1 d
+        end
+    end
+
+    %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %%%%%%%%%%%%%%%%%%%%%%%% TRUNCATE TIME_TABLE_MASTER %%%%%%%%%%%%%%%%%%%%%%%
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    
+    % Subselect the run frames and run table from bigger tables
+    % (all_run_frames and time_table_master) with the entire experiment
+    run_frames = all_run_frames(all_run_frames.session_nr == params.ses_nr & ...
+        all_run_frames.session_type == params.ses_type & ...
+        all_run_frames.run_nr ==params.run_nr,:);
+    
+    run_table = time_table_master(time_table_master.session_nr==params.ses_nr & ...
+        time_table_master.session_type==params.ses_type &...
+        time_table_master.run_nr==params.run_nr,:);
+    
+    clear time_table_master all_run_frames
+ 
+    %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %%%%%%%%%%%%%%%%%%%%%%%%%%% LOAD RUN STIMULI    %%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    
+    % If you give the function a struct called "stim" with "im" field, we will
+    % not load the images..
+    if ~exist('stim','var') || ~isfield(scan,'im') || isempty(stim.im) || isempty(stim.eye)
+        
+        % we want to load stimuli on the fly (takes 15-60 seconds depending on the run)
         if ~exist('all_images','var') && isempty(all_images)
             all_images = struct();
         end
         
         [images, masks, all_images] = vcd_getImageOrderSingleRun(params, ...
-            run_table, run_frames, params.subj_nr, params.ses_nr, params.ses_type, params.run_nr, ...
-            'all_images', all_images, 'store_params', false,'session_env', params.env_type); 
+            run_table, run_frames, params.subj_nr, params.ses_nr, params.ses_type, params.run_nr, params.env_type, ...
+            'all_images', all_images, 'savestim', params.savestim);
+        
+        
+        % Insert images and mask into stim struct
+        stim.im    = images;
+        stim.masks = masks;
+        stim.eye   = cat(4, all_images.eye.sac_im, all_images.eye.pupil_im_black, all_images.eye.pupil_im_white);
+        
+        clear images masks
     end
     
-    % Insert images and mask into stim struct
-    stim.im    = images;
-    stim.masks = masks;
-    stim.eye   = cat(4, all_images.eye.sac_im, all_images.eye.pupil_im_black, all_images.eye.pupil_im_white);
-    
-    clear images masks
 end
 
+
+
 % Get fixation stim rect
-fix_thin_rect0   = CenterRect([0 0 round(size(all_images.fix,1)) round(size(all_images.fix,2))], [0 0 params.disp.w_pix params.disp.h_pix]);
-fix_thick_rect0  = CenterRect([0 0 round(size(all_images.fix,1)) round(size(all_images.fix,2))], [0 0 params.disp.w_pix params.disp.h_pix]);
+fix_thin_rect0   = CenterRect([0 0 size(all_images.fix,1) size(all_images.fix,2)], [0 0 params.disp.w_pix params.disp.h_pix]);
+fix_thick_rect0  = CenterRect([0 0 size(all_images.fix,1) size(all_images.fix,2)], [0 0 params.disp.w_pix params.disp.h_pix]);
 fix_thin_rect    = {fix_thin_rect0 + repmat(params.offsetpix,1,2)}; clear fix_thin_rect0
 fix_thick_rect   = {fix_thick_rect0 + repmat(params.offsetpix,1,2)}; clear fix_thick_rect0
 
@@ -318,7 +343,6 @@ end
 
 % only mean gray luminance // no transparency
 fix_thick_full_black{1} = feval(flipfun,  all_images.fix(:,:,:,ll,6));
-
 
 % add fix images and rects to struct
 fix_im = struct();
@@ -503,18 +527,29 @@ for side = [1,2]
     % Now only select the nonempty centers and sizes
     centers_shortlist = stim.centers(nonemptycenters,side);
     apsize_shortlist  = stim.apsize(nonemptycenters,side);
-    % Create stimulus "rects" for PTB. CenterRectOnPoint cannot handle
-    % empty cells or NaNs
-    rects_shortlist   = ...
-        cellfun(@(stimsize,stimcenter) ... width, height, x0, y0
-        CenterRectOnPoint([0 0 stimsize(1) stimsize(2)], stimcenter(1), stimcenter(2)), ...
-        apsize_shortlist,centers_shortlist, 'UniformOutput', false);
+    centers_mat       = cell2mat(centers_shortlist);
+    size_mat          = cell2mat(apsize_shortlist);
+    destination_mat = [centers_mat(:,1) - size_mat(:,1)./2, ... x1 top-left-x
+                       centers_mat(:,2) - size_mat(:,2)./2, ... y1 top-left-y
+                       centers_mat(:,1) + size_mat(:,1)./2, ... x2 bottom-right-x
+                       centers_mat(:,2) + size_mat(:,2)./2];  % y2 bottom-right-y
+                            
+    % Create stimulus "rects" for PTB. 
+    % CenterRect cannot handle empty cells or NaNs
+    % stimsize        = [width, height] in pixels
+    % destinationRect = [top-left-x, top-left-y, bottom-right-x, bottom-right-y] pixel location of the stimulus
+    rects_mat       = CenterRect([zeros(size(size_mat,1),1) zeros(size(size_mat,1),1), size_mat(:,1) size_mat(:,2)], ...
+                        [destination_mat(:,1), destination_mat(:,2), ...
+                         destination_mat(:,3), destination_mat(:,4)]);
+    rects_shortlist = mat2cell(rects_mat,ones(size(rects_mat,1),1));
+    
     % Insert the "rects" into the struct
     stim.rects(nonemptycenters,side) = rects_shortlist;
     
 end
 % Clear some memory
-clear rects_shortlist centers_shortlist apsize_shortlist
+clear centers_shortlist apsize_shortlist rects_shortlist ...
+        centers_mat size_mat destination_mat rects_mat
 
 
 
@@ -559,24 +594,27 @@ timeofshowstimcall = datestr(now,30);
 
 % Create subj###_ses## folder where behavioral, VBL timing, and eyetracking
 % data will be stored
-if isempty(params.savedatadir)
-    params.savedatadir = fullfile(vcd_rootPath,'data', ...
-        sprintf('%s_vcd_subj%d_ses%02d',timeofshowstimcall,params.subj_nr, params.ses_nr));
+if isempty(params.savedatafolder)
+    params.savedatafolder = fullfile(vcd_rootPath,'data',params.env_type,...
+        sprintf('vcd_subj%03d',params.subj_nr), ...
+        sprintf('vcd_subj%03d_ses%02d',params.subj_nr, params.ses_nr));
 end
+
 % Create subj###_ses## folder if it doesn't exist
-if ~exist(params.savedatadir,'dir'), mkdir(params.savedatadir); end
+if ~exist(params.savedatafolder,'dir'), mkdir(params.savedatafolder); end
 
 % Create behavioral matlab file name if user didn't define it yet (we do
 % this at the end because we want to use the "timeofshowstimcall")
 if ~isfield(params,'behaviorfile') || isempty(params.behaviorfile)
-    params.behaviorfile = sprintf('%s_vcd_subj%d_ses%02d_run%02d.mat', ...
-        timeofshowstimcall,params.subj_nr,params.ses_nr,params.run_nr);
+    params.behaviorfile = sprintf('behavior_%s_vcd_subj%03d_ses%02d_%s_run%02d.mat',...
+        timeofshowstimcall, params.subj_nr, params.ses_nr,choose(params.ses_type==1,'A','B'),params.run_nr);
 end
 
 % Create eyelink file if user didn't define one yet.
 if params.wanteyetracking
     if ~isfield(params,'eyelinkfile') || isempty(params.eyelinkfile)
-        params.eyelinkfile = fullfile(sprintf('eye_%s_vcd_subj-%s_run-%d.edf',datestr(now,30),params.subj_nr,params.run_nr));
+        params.eyelinkfile = sprintf('eye_%s_vcd_subj%03d_ses%02d_%s_run%02d.edf', ...
+            timeofshowstimcall,params.subj_nr,params.ses_nr,choose(params.ses_type==1,'A','B'),params.run_nr);
     end
 else
     params.eyelinkfile = [];
@@ -586,8 +624,15 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% START EXPERIMENT! %%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-if ~params.wantdatabypass
+% Tell the user how many frames we expect for this run
+fprintf(' *** Expected duration of this run is ***\n')
+fprintf(' %d time frames (%d Hz) \n',size(run_frames,1), params.stim.presentationrate_hz);
+fprintf(' %3.2f seconds (or %d minutes and %02d seconds) \n',size(run_frames,1)/60, floor(size(run_frames,1)/3600),rem(size(run_frames,1),3600)/60);
 
+
+if ~params.wantdatabypass
+    
+  % If we want to run the actual experiment
   [data, ~] = vcd_showStimulus(...
       params, ptonparams, ...
       fix_im, ...
@@ -596,29 +641,29 @@ if ~params.wantdatabypass
       run_table, ...
       introscript, ...
       taskscript, ...
-      deviceNr);
+      params.deviceNr);
 
-else
+else % or just generate the files + dummy data
 
   % calc
-  numtimeframes = sum(run_table.event_dur);  % number of timeframes expected
-  idealexpdur = numtimeframes/params.stim.presentationrate_hz;  % ideal exp dur in seconds
-  mfi = 1/params.stim.presentationrate_hz;  % idealized flip interval in seconds
+  numtimeframes = sum(run_table.event_dur);                       % number of timeframes expected
+  idealexpdur   = numtimeframes/params.stim.presentationrate_hz;  % ideal exp dur in seconds
+  mfi           = 1/params.stim.presentationrate_hz;              % idealized flip interval in seconds
   
   % create dummy data
   data = struct();
-  data.wantframefiles         = 0;
-  data.detectinput            = 1;
-  data.forceglitch            = 0;
-  data.timeKeys               = {739780.00   {'absolutetimefor0'}
-                                 -0.016      {'trigger'}
-                                 -0.014      {'t'}
-                                 idealexpdur {'DONE'}};
-  data.timing.mfi             = mfi;
-  data.timing.glitchcnt       = 0;
-  data.timing.timeframes      = linspacefixeddiff(0,mfi,numtimeframes);
-  data.timing.starttime       = 12162.00;
-  save(fullfile(params.savedatadir,params.behaviorfile),'params','run_table','run_frames','data');
+  data.wantframefiles    = 0;
+  data.detectinput       = 1;
+  data.forceglitch       = 0;
+  data.timeKeys          = {739780.00   {'absolutetimefor0'}
+                            -0.016      {'trigger'}
+                            -0.014      {'t'}
+                            idealexpdur {'DONE'}};
+  data.timing.mfi        = mfi;
+  data.timing.glitchcn   = 0;
+  data.timing.timeframes = linspacefixeddiff(0,mfi,numtimeframes);
+  data.timing.starttime  = 12162.00;
+  save(fullfile(params.savedatafolder,params.behaviorfile),'params','run_table','run_frames','data');
 
 end
 
