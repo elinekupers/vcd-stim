@@ -10,26 +10,35 @@ function [sac_im,pupil_im_white,pupil_im_black] = vcd_createEyeTrackingBlockTarg
 %
 % An eye tracking block has the following sequence;
 %   1. a 1-second fixation period (central fixation target on a mid-gray luminance)
-%   2. 5 x 1.2 second = 6 seconds of saccades (mimicing EL HV5 grid,±3 deg in all directions)
+%   2. 5 x 1.2 second = 6 seconds of saccades (mimicing EL HV5 grid,±4 deg in all directions)
 %   3. a 2-seconds rest period (central fixation target on a mid-gray luminance)
 %   4. a 4-seconds pupil trial: 3-s black adaptation, 1-s white screen to evoke max pupil response.
 %
+% The coordinates of each saccade image define the top left and bottom right 
+% coordinates of our rectangle support:
+% [top-left-x top-left-y bottom-right-x bottom-right-y].
+%
 % The distance between the center and 4 left/right/up/down targets are set
-% as [xc,yc] ± 264 pixels (BOLDscreen) or ± 192 pixels (EIZOFLEXSCAN). 
+% as [xc,yc] ± xxx pixels (BOLDscreen) or ± 256 pixels (EIZOFLEXSCAN). 
 % This results in dots at the following pixel coordinates for the 5 targets
-% BOLDscreen coordinates in pixels:
-%                    [x3,y3]=[960,376]
-% [x1,y1]=[696,640]  [x0,y0]=[960,640]   [x2,y2]=[1224,640]
-%                    [x4,y4]=[960,904]
+% BOLDscreen target rect coordinates in pixels 
+% [x1,y1,x1,y2] = [top-left-x, top-left-y, bottom-right-x bottom-right-y]:
 %
-% EIZOFLEXSCAN coordinates in pixels:
-%                    [x3,y3]=[960,408]
-% [x1,y1]=[768,600]  [x0,y0]=[960,600]   [x2,y2]=[1156,600]
-%                    [x4,y4]=[960,792]
+%                    [x,x,x,x]
+% [x,x,x,x]          [x,x,x,x]          [x,x,x,x]
+%                    [x,x,x,x]
 %
+% EIZOFLEXSCAN target rect coordinates in pixels 
+% [x1,y1,x1,y2] = [top-left-x, top-left-y, bottom-right-x bottom-right-y]:
+%
+%                    [951,335,969,353]
+% [695,591,713,609]  [951,591,969,609]   [1207,591,1225,609]
+%                    [951,847,969,865]
+%
+
 % EMPIRICAL target distance:
-% * BOLDscreen: 264 pixels, which corresponds to 2.9936 degrees.
-% * PP room EIZOFLEX: 192 pixels, which corresponds to 3.0046 degrees.
+% * BOLDscreen: xxx pixels, which corresponds to xxx degrees.
+% * PP room EIZOFLEX: 256 pixels, which corresponds to 4.0061 degrees.
 %
 % See vcd_setEyelinkParams.m for other parameters regarding Eyelink.
 %
@@ -91,8 +100,19 @@ fixation_rimthick1_gray_on_black       = reshape(fixation_rimthick0_gray_on_blac
 
 
 %% Place saccade targets on grey background
-dot_halfsz     = size(fixation_rimthick1_black_on_gray,1)/2;
-sac_im         = [];
+
+sac_im      = [];
+dot_sz      = support_x;
+half_dot_sz = dot_sz/2;
+
+% Saccade target coordinates are in the format:
+% [top-left-x, top-left-y, bottom-right-x bottom-right-y]
+% We follow PTB's convention where we start at at the outer corner of the 
+% top left pixel (0,0). We subtract one pixel from the support size because 
+% the outer side of the bottom right pixel will otherwise be counted as the 
+% 19th pixel in image space, resulting in a mismatch between the size of 
+% destination rectangle [19x19] allocated for the target image [18x18].
+target_rect = [0 0 dot_sz-1 dot_sz-1]; 
 
 for nr_loc = 1:target_locations
     
@@ -102,40 +122,47 @@ for nr_loc = 1:target_locations
     switch nr_loc
         
         case 1 % center
-            ys = params.disp.yc;
-            xs = params.disp.xc;
-            dot_coords_x = (xs - dot_halfsz) : (xs + dot_halfsz -1);
-            dot_coords_y = (ys - dot_halfsz) : (ys + dot_halfsz -1);
+            x1 = params.disp.xc - half_dot_sz; % top-left-x
+            y1 = params.disp.yc - half_dot_sz; % top-left-y
+            x2 = params.disp.xc + half_dot_sz; % bottom-right-x
+            y2 = params.disp.yc + half_dot_sz; % bottom-right-y
             
-            im1(dot_coords_y, dot_coords_x,:) = fixation_rimthick1_black_on_gray;
+            % center the target rect on a particular location of the screen.
+            coords = CenterRect(target_rect,[x1 y1 x2 y2]); % same as CenterRect(target_rect,[0 0 params.disp.w_pix,params.disp.h_pix]);
+            im1(coords(2):coords(4), coords(1):coords(3),:) = fixation_rimthick1_black_on_gray; % subtract one because coords are counting the outer side of last pixel
+            
         case 2 % left
-            ys = params.disp.yc;
-            xs = params.disp.xc - params.stim.el.point2point_distance_pix;
-            dot_coords_x = (xs - dot_halfsz) : (xs + dot_halfsz -1);
-            dot_coords_y = (ys - dot_halfsz) : (ys + dot_halfsz -1);
+            x1 = params.disp.xc - half_dot_sz - params.stim.el.point2point_distance_pix; 
+            x2 = params.disp.xc + half_dot_sz - params.stim.el.point2point_distance_pix;
+            y1 = params.disp.yc - half_dot_sz; 
+            y2 = params.disp.yc + half_dot_sz;
+            coords = CenterRect(target_rect,[x1 y1 x2 y2]);
+            im1(coords(2):coords(4), coords(1):coords(3),:) = fixation_rimthick1_black_on_gray;
             
-            im1(dot_coords_y, dot_coords_x,:) = fixation_rimthick1_black_on_gray;
         case 3 % right
-            ys = params.disp.yc;
-            xs = params.disp.xc + params.stim.el.point2point_distance_pix;
-            dot_coords_x = (xs - dot_halfsz) : (xs + dot_halfsz -1);
-            dot_coords_y = (ys - dot_halfsz) : (ys + dot_halfsz -1);
+            x1 = params.disp.xc - half_dot_sz + params.stim.el.point2point_distance_pix; 
+            x2 = params.disp.xc + half_dot_sz + params.stim.el.point2point_distance_pix;
+            y1 = params.disp.yc - half_dot_sz; 
+            y2 = params.disp.yc + half_dot_sz;
+            coords = CenterRect(target_rect,[x1 y1 x2 y2]);
+            im1(coords(2):coords(4), coords(1):coords(3),:) = fixation_rimthick1_black_on_gray;
             
-            im1(dot_coords_y, dot_coords_x,:) = fixation_rimthick1_black_on_gray;
         case 4 % up
-            ys = params.disp.yc - params.stim.el.point2point_distance_pix;
-            xs = params.disp.xc;
-            dot_coords_x = (xs - dot_halfsz) : (xs + dot_halfsz -1);
-            dot_coords_y = (ys - dot_halfsz) : (ys + dot_halfsz -1);
+            x1 = params.disp.xc - half_dot_sz; 
+            x2 = params.disp.xc + half_dot_sz;
+            y1 = params.disp.yc - half_dot_sz - params.stim.el.point2point_distance_pix; 
+            y2 = params.disp.yc + half_dot_sz - params.stim.el.point2point_distance_pix;
+            coords = CenterRect(target_rect,[x1 y1 x2 y2]);
+            im1(coords(2):coords(4), coords(1):coords(3),:) = fixation_rimthick1_black_on_gray;
             
-            im1(dot_coords_y, dot_coords_x,:) = fixation_rimthick1_black_on_gray;
         case 5 % down
-            ys = params.disp.yc + params.stim.el.point2point_distance_pix;
-            xs = params.disp.xc;
-            dot_coords_x = (xs - dot_halfsz) : (xs + dot_halfsz -1);
-            dot_coords_y = (ys - dot_halfsz) : (ys + dot_halfsz -1);
+            x1 = params.disp.xc - half_dot_sz; 
+            x2 = params.disp.xc + half_dot_sz;
+            y1 = params.disp.yc - half_dot_sz + params.stim.el.point2point_distance_pix; 
+            y2 = params.disp.yc + half_dot_sz + params.stim.el.point2point_distance_pix;
+            coords = CenterRect(target_rect,[x1 y1 x2 y2]);
+            im1(coords(2):coords(4), coords(1):coords(3),:) = fixation_rimthick1_black_on_gray;
             
-            im1(dot_coords_y, dot_coords_x,:) = fixation_rimthick1_black_on_gray;
     end
     
     sac_im = cat(4,sac_im,im1); 
@@ -151,8 +178,6 @@ for nr_loc = 1:target_locations
     if store_imgs
         imwrite(im1, fullfile(saveFigDir,sprintf('vcd_eyetarget_%02d.png', nr_loc)));
     end
-    
-    
 end
 
 %% Pupil trial
@@ -162,13 +187,13 @@ bckground_black = uint8(zeros(params.disp.h_pix,params.disp.w_pix));
 pupil_im_white = repmat(bckground_white,[1 1 3]);
 pupil_im_black = repmat(bckground_black,[1 1 3]);
 
-ys = params.disp.yc;
-xs = params.disp.xc;
-dot_coords_x = (xs - dot_halfsz) : (xs + dot_halfsz -1);
-dot_coords_y = (ys - dot_halfsz) : (ys + dot_halfsz -1);
-
-pupil_im_white(dot_coords_y, dot_coords_x,:) = fixation_rimthick1_gray_on_white;
-pupil_im_black(dot_coords_y, dot_coords_x,:) = fixation_rimthick1_gray_on_black;
+x1 = params.disp.xc - half_dot_sz;
+y1 = params.disp.yc - half_dot_sz;
+x2 = params.disp.xc + half_dot_sz;
+y2 = params.disp.yc + half_dot_sz;
+coords = CenterRect(target_rect,[x1 y1 x2 y2]);
+pupil_im_white(coords(2):coords(4), coords(1):coords(3),:) = fixation_rimthick1_gray_on_white;
+pupil_im_black(coords(2):coords(4), coords(1):coords(3),:) = fixation_rimthick1_gray_on_black;
 
 % Visualize image when requested
 if verbose
