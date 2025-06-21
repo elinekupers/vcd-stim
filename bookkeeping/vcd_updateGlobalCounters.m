@@ -1,4 +1,4 @@
-function condition_master = vcd_updateGlobalCounters(params, condition_master, session_env)
+function condition_master = vcd_updateGlobalCounters(params, condition_master, env_type)
 
 % add global session, run, block, and trial nr
 global_run_nrB     = 0;
@@ -16,7 +16,7 @@ for ii = 1:size(condition_master,1)
         global_trial_counter = global_trial_nr;
         
         % MRI session type 1 uses regular counter. BEHAVIOR has no A/B versions, always use regular counter
-    elseif (strcmp(session_env,'MRI') && condition_master.session_type(ii) == 1) || strcmp(session_env,'BEHAVIOR') 
+    elseif (strcmp(env_type,'MRI') && condition_master.session_type(ii) == 1) || strcmp(env_type,'BEHAVIOR') 
         if condition_master.run_nr(ii-1) ~= condition_master.run_nr(ii)
             global_run_nr = global_run_nr + 1;
         end
@@ -39,7 +39,7 @@ for ii = 1:size(condition_master,1)
         global_trial_counter = global_trial_nr;
         
         % session type 2 uses counterB for session 1 and 27
-    elseif strcmp(session_env,'MRI') && condition_master.session_type(ii) == 2 && ismember(condition_master.session_nr(ii),[1,length(params.exp.session.n_mri_sessions)])
+    elseif strcmp(env_type,'MRI') && condition_master.session_type(ii) == 2 && ismember(condition_master.session_nr(ii),[1,length(params.exp.session.n_mri_sessions)])
         if condition_master.run_nr(ii-1) ~= condition_master.run_nr(ii)
             global_run_nrB = global_run_nrB + 1;
         end
