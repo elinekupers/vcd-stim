@@ -1,6 +1,1 @@
-Motion direction memory task - Moving dots
-Remember motion direction of reference dots for entire delay period.
-How did motion direction of test dots change?
-
-1-INDEX  = CCW
-2-MIDDLE = CW
+Motion direction memory change task - Moving dots

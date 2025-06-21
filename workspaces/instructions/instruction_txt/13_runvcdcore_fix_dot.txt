@@ -1,5 +1,1 @@
 Fixation brightness task
-Track brightness of fixation circle.
-
-1-INDEX  = BRIGHTER
-2-MIDDLE = DIMMER

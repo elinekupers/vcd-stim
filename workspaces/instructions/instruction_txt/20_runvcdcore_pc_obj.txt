@@ -1,5 +1,1 @@
-Object rotation task - Objects
-Is rotation of object closer to forward or sideways?
-
-1-INDEX  = FORWARD
-2-MIDDLE = SIDEWAYS
+Rotation judgment task - Objects

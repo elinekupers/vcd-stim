@@ -1,5 +1,1 @@
-Indoor/outdoor task - Scenes 
-Is scene indoor or outdoor?
-
-1-INDEX  = INDOOR
-2-MIDDLE = OUTDOOR
+Indoor/outdoor judgment task - Scenes 

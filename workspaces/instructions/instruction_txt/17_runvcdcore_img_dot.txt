@@ -1,4 +1,4 @@
-Imagery task - Single dots
+####Imagery task - Single dots
 Imagine the prompted single dot for entire delay period.
 Do test dots straddle the imagined dot?
 

@@ -1,4 +1,4 @@
-Imagery task - Gabors
+#####Imagery task - Gabors
 Imagine the prompted Gabor for entire delay period.
 Do test dots align with imagined tilt?
 

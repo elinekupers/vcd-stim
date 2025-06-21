@@ -1,4 +1,4 @@
-Waiting for scanner... Get ready for the next run! 
-
-Please fixate at the central dot throughout the entire run
+Remember to fixate the dot throughout the entire run
 (even at the beginning and end of the run).
+
+Press a button when ready for the next run!

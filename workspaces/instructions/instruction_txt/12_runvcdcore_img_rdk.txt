@@ -1,4 +1,4 @@
-Imagery task - Moving dots
+###Imagery task - Moving dots
 Imagine the prompted moving dots for entire delay period.
 Do test dots align with imagined motion direction?
 

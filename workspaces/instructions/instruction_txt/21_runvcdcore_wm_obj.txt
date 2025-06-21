@@ -1,6 +1,1 @@
-Rotation memory task - Objects
-Remember rotation of reference object for entire delay period.
-How did rotation of test object change?
-
-1-INDEX  = LEFTWARDS
-2-MIDDLE = RIGHTWARDS
+Rotation memory change task - Objects

@@ -1,7 +1,1 @@
 "How?" task - Objects
-How would you act with this object?
-
-1-INDEX  = GREET
-2-MIDDLE = GRASP
-3-RING   = ENTER
-4-PINKY  = OBSERVE/DO NOTHING

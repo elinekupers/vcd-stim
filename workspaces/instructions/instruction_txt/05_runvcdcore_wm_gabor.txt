@@ -1,6 +1,1 @@
-Tilt memory task - Gabors
-Remember tilt of reference Gabor for entire delay period.
-How did tilt of test Gabor change?
-
-1-INDEX  = CCW
-2-MIDDLE = CW
+Tilt memory change task - Gabors

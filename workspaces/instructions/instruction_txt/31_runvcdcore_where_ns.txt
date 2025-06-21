@@ -1,6 +1,1 @@
 "Where?" task - Scenes 
-Where is the dominant object?
-
-1-INDEX  = LEFT
-2-MIDDLE = CENTER
-3-RING   = RIGHT

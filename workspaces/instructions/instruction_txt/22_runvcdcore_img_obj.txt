@@ -1,4 +1,4 @@
-Imagery task - Objects
+###Imagery task - Objects
 Imagine the prompted object for entire delay period.
 Are both dots within imagined object?
 

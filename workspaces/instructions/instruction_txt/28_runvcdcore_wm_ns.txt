@@ -1,6 +1,1 @@
-Scene memory task - Scenes
-Remember reference scene for entire delay period.
-How did test scene change?
-
-1-INDEX  = ADDED CONTENT
-2-MIDDLE = REMOVED CONTENT
+Scene memory change task - Scenes
