@@ -1,7 +1,7 @@
-function [time_table_master,all_run_frames] = vcd_addFIXandCDtoTimeTableMaster(params, time_table_master, session_env, varargin)
+function [time_table_master,all_run_frames] = vcd_addFIXandCDtoTimeTableMaster(params, time_table_master, env_type, varargin)
 % [WRITE ME]
 % 
-%    [time_table_master,all_run_frames] = vcd_addFIXandCDtoTimeTableMaster(params, time_table_master, session_env)
+%    [time_table_master,all_run_frames] = vcd_addFIXandCDtoTimeTableMaster(params, time_table_master, env_type)
 %
 %
 %
@@ -11,7 +11,7 @@ function [time_table_master,all_run_frames] = vcd_addFIXandCDtoTimeTableMaster(p
 p0 = inputParser;
 p0.addRequired('params'             , @isstruct);
 p0.addRequired('time_table_master'  , @istable);
-p0.addRequired('session_env'	    , @(x) ismember(x,{'MRI','BEHAVIOR','TEST'}));
+p0.addRequired('env_type'	        , @(x) ismember(x,{'MRI','BEHAVIOR'}));
 p0.addParameter('store_params'      , true,  @islogical);
 p0.addParameter('verbose'           , false, @islogical);
 p0.addParameter('load_params'       , false, @islogical);
@@ -19,7 +19,7 @@ p0.addParameter('store_imgs'        , false, @islogical);
 
 
 % Parse inputs
-p0.parse(params, time_table_master,  session_env, varargin{:});
+p0.parse(params, time_table_master, env_type, varargin{:});
 
 % Rename variables into general params struct
 rename_me = fieldnames(p0.Results);
@@ -30,7 +30,7 @@ clear rename_me ff p0
 
 
 % get session environment params
-[~,session_types,~,~,~,~, ~, nr_session_types ] = vcd_getSessionEnvironmentParams(params, session_env);
+[~,session_types,~,~,~,~, ~, nr_session_types ] = vcd_getSessionEnvironmentParams(params, env_type);
         
 
 % Preallocate space for generated subject run frames and updated time table master
@@ -71,9 +71,9 @@ for ses = 1:length(session_nrs)
                 
                 % Get rest / blank periods to know when to freeze the
                 % fixation luminance sequence. 
-                % 0: 'pre-blank', 90:'task-cue', 999: eyetracking block
-                blank_onset       = this_run.event_start(this_run.block_nr==999 | this_run.block_nr==0 | this_run.event_id==90); 
-                blank_offset      = this_run.event_end(this_run.block_nr==999 | this_run.block_nr==0 | this_run.event_id==90); % includes postblank period 
+                % 0: 'pre-blank', 90:'task-cue', 99:'IBI', 999: eyetracking block
+                blank_onset       = this_run.event_start(this_run.block_nr==999 | this_run.event_id==0 | this_run.event_id==90 | this_run.event_id==99); 
+                blank_offset      = this_run.event_end(this_run.block_nr==999 | this_run.event_id==0 | this_run.event_id==90 | this_run.event_id==99); % includes postblank period 
                 
                 % Get fixation sequence
                 % fix_matrix is a matrix with dims: time frames x 4, where 
@@ -130,26 +130,29 @@ for ses = 1:length(session_nrs)
                 %%%%%%%%%%%%% Expand run frames table %%%%%%%%%%%%%%%%%%
                 % this makes it easier to loop through the frames when we
                 % start flipping the screen
-                all_events = []; all_cued = []; all_catch = []; all_crossings = [];
+                all_events = []; all_cued = []; all_catch = []; all_crossings = []; all_objectcatch = [];
                 for jj = 1:length(this_run.event_id)
                     if ~isnan(this_run.event_dur(jj)) && this_run.event_dur(jj)~=0
-                        all_events = cat(1, all_events, repmat(this_run.event_id(jj), this_run.event_dur(jj),1));
-                        all_cued  = cat(1, all_cued,  repmat(this_run.is_cued(jj),   this_run.event_dur(jj),1));
-                        all_catch = cat(1, all_catch, repmat(this_run.is_catch(jj), this_run.event_dur(jj),1));
-                        all_crossings = cat(1, all_crossings, repmat(this_run.crossing_nr(jj), this_run.event_dur(jj),1));
+                        all_events      = cat(1, all_events,      repmat(this_run.event_id(jj),        this_run.event_dur(jj),1));
+                        all_cued        = cat(1, all_cued,        repmat(this_run.is_cued(jj),         this_run.event_dur(jj),1));
+                        all_catch       = cat(1, all_catch,       repmat(this_run.is_catch(jj),        this_run.event_dur(jj),1));
+                        all_objectcatch = cat(1, all_objectcatch, repmat(this_run.is_objectcatch(jj),  this_run.event_dur(jj),1));
+                        all_crossings   = cat(1, all_crossings,   repmat(this_run.crossing_nr(jj),     this_run.event_dur(jj),1));
                     end
                 end
                 % If numeric vector: Change zero's to NaN
                 all_cued(all_cued==0) = NaN;
                 
                 % If logical vector: Change  NaN's to zeros
-                all_catch(isnan(all_catch)) = 0;
+                all_catch(isnan(all_catch))             = 0;
+                all_objectcatch(isnan(all_objectcatch)) = 0;
                 
                 % Add events to run_frames struct
-                run_frames.frame_event_nr = single(all_events);      clear all_events
-                run_frames.is_cued        = single(all_cued);      clear all_cued;
-                run_frames.is_catch       = logical(all_catch);  clear all_catch;
-                run_frames.crossingIDs    = single(all_crossings);   clear all_crossings
+                run_frames.frame_event_nr = single(all_events);       clear all_events
+                run_frames.is_cued        = single(all_cued);         clear all_cued;
+                run_frames.is_catch       = logical(all_catch);       clear all_catch;
+                run_frames.is_objectcatch = logical(all_objectcatch); clear all_objectcatch;
+                run_frames.crossingIDs    = single(all_crossings);    clear all_crossings
                 
                 % find stimulus and event frames
                 stim_idx    = ismember(this_run.event_id, [params.exp.block.stim_epoch1_ID, params.exp.block.stim_epoch2_ID, ...
@@ -208,17 +211,14 @@ for ses = 1:length(session_nrs)
                             
                             % IF CONTRAST DECREMENT TASK BLOCK
                             if strcmp(this_run.task_class_name(stim_row(ii)),'cd')
-                                pre_onset_time_frames = sum(params.stim.cd.t_cmodfun==1);
+                                pre_onset_time_frames = sum(params.stim.cd.t_cmodfun==1); % time frames at initial contrast level (next one will have dip)
                                 % 20% change we will actually apply the contrast
                                 % decrement change to the cued stimulus
                                 % (uncued stimulus will never change
                                 % contrast).
                                 c_onset      = this_run.cd_start(stim_row(ii));
                                 if ~isnan(c_onset) && c_onset~=0
-                                    cd_cued_side    = run_frames.is_cued(c_onset);
-                                    if cd_cued_side == 3
-                                        cd_cued_side = 1; 
-                                    end % for NS
+                                    cd_cued_side    = mod(this_run.is_cued(stim_row(ii))-1,2)+1;
                                     c_onset_support = c_onset - pre_onset_time_frames; % we shift the support function to an earlier time point such that the disp occurs at c_onset
                                     f_cd            = c_onset_support:this_run.event_end(stim_row(ii));
                                     t_pad           = length(f_cd) - length(params.stim.cd.t_cmodfun);
@@ -236,7 +236,7 @@ for ses = 1:length(session_nrs)
                 
                 % Log fixation changes as button presses in
                 % subject's time_table_master
-                all_frames = 0:(run_dur-1); % subtract one frame because table starts at t=0;
+                all_frames = 1:run_dur; 
                 fix_events = find(strcmp(this_run.task_class_name,'fix'));
                 if  ~isempty(fix_events)
                     % given fixed interval and sampling without
