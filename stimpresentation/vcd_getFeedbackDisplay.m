@@ -14,9 +14,7 @@ for nn = 1:length(behavioral_results.summary.crossing_nr)
     d = dir(fullfile(params.instrfolder,'instruction_txt',sprintf('%02d_runvcdcore_%s.txt', behavioral_results.summary.crossing_nr(nn), taskName)));
     
     script     = d(1).name;
-    task_instr = vcd_getInstructionText(params, script, rect);
-      
-    task_name = task_instr(1: (regexp(task_instr, 'task')+3));
+    task_name = vcd_getInstructionText(params, script, rect);
     
     if length(task_name)>20
         txt0 = sprintf('Block %d: %s \t %d%% correct', ...
