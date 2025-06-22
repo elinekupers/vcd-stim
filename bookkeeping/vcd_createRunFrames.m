@@ -1,7 +1,7 @@
-function [time_table_master,all_run_frames] = vcd_addFIXandCDtoTimeTableMaster(params, time_table_master, env_type, varargin)
+function [time_table_master,all_run_frames] = vcd_createRunFrames(params, time_table_master, env_type, varargin)
 % [WRITE ME]
 % 
-%    [time_table_master,all_run_frames] = vcd_addFIXandCDtoTimeTableMaster(params, time_table_master, env_type)
+%    [time_table_master,all_run_frames] = vcd_createRunFrames(params, time_table_master, env_type)
 %
 %
 %
