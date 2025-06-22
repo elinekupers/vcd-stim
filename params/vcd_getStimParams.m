@@ -850,9 +850,9 @@ else
     stim.all_ltm_pairs           = sort(cat(2, stim.gabor.ltm_pairs, stim.rdk.ltm_pairs, stim.dot.ltm_pairs, stim.obj.ltm_pairs, stim.ns.ltm_pairs));
     stim.all_img_test_im_nrs     = sort(cat(2, stim.gabor.unique_im_nrs_img_test, stim.rdk.unique_im_nrs_img_test, stim.dot.unique_im_nrs_img_test, stim.obj.unique_im_nrs_img_test, stim.ns.unique_im_nrs_img_test));
     stim.all_ltm_lure_im_nrs     = sort(stim.ns.unique_im_nrs_ltm_lures);
-    stim.all_test_im_nrs         = sort(cat(2, stim.all_wm_test_im_nrs, stim.all_img_test_im_nrs, stim.all_ltm_lure_im_nrs));
+    stim.all_objectcatch_im_nrs  = sort(stim.obj.unique_im_nrs_objcatch);
+    stim.all_test_im_nrs         = sort(cat(2, stim.all_wm_test_im_nrs, stim.all_img_test_im_nrs, stim.all_ltm_lure_im_nrs, stim.all_objectcatch_im_nrs));
     stim.all_im_nrs              = sort(cat(2, stim.all_core_im_nrs, stim.all_test_im_nrs));
-    stim.all_objcatch_im_nrs     = sort(stim.obj.unique_im_nrs_objcatch);
 
     % Tell the user more info
     if verbose
@@ -864,7 +864,7 @@ else
         fprintf('\t %d WM test (%03d-%03d) \n',length(stim.all_wm_test_im_nrs),min(stim.all_wm_test_im_nrs), max(stim.all_wm_test_im_nrs))
         fprintf('\t %d IMG test (%03d-%03d) \n',length(stim.all_img_test_im_nrs),min(stim.all_img_test_im_nrs), max(stim.all_img_test_im_nrs))
         fprintf('\t %d LTM novel lures (%03d-%03d) \n',length(stim.all_ltm_lure_im_nrs),min(stim.all_ltm_lure_im_nrs), max(stim.all_ltm_lure_im_nrs))
-        fprintf('\t %d OBJ catch images (%03d-%03d) \n', length(stim.all_objcatch_im_nrs), min(stim.all_objcatch_im_nrs), max(stim.all_objcatch_im_nrs));
+        fprintf('\t %d OBJ catch images (%03d-%03d) \n', length(stim.all_objectcatch_im_nrs), min(stim.all_objectcatch_im_nrs), max(stim.all_objectcatch_im_nrs));
         fprintf('\t %d special core\n',length(stim.all_specialcore_im_nrs))
         fprintf('\t %d LTM pairs \n',length(stim.all_ltm_pairs)) 
         
