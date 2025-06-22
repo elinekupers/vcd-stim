@@ -6,13 +6,12 @@ function outputs = vcd(varargin)
 %   outputs = vcd('varname1',var1,'varname2',var2, ...'varnameN',varN);
 %
 % Note that 'fullinfo', 'stimulusnumberstonames', and
-% 'stimulusnamestonumbers' requires the time_table_master table. This
+% 'stimulusnamestonumbers' requires the condition_master table. This
 % variable is stored here: 
-%   vcd_rootPath/workspaces/info/trials_7TASBOLDSCREEN_YYYYMMDDTHHMMSS.mat.
-% You can re-generate a new trials_*.mat file by running (see also
+%   vcd_rootPath/workspaces/info/condition_master_<dispname>_YYYYMMDDTHHMMSS.mat.
+% You can re-generate a new condition_master mat file by running (see also
 % s_createDesignMatrix.m.):
-% [~, time_table_master] = vcd_createBlocksAndTrials(params, ...
-%   'load_params', false, 'store_params', true);
+% [~, condition_master] = vcd_createConditions(params);
 % 
 % % --- STIMULUS CLASSES ---
 % Abbreviations for stimulus classes are: 
@@ -395,6 +394,9 @@ if ~exist('all_core_im_stimclassnumbers','var') || isempty(all_core_im_stimclass
         3*ones(1, numel(stim.dot.unique_im_nrs_wm_test)), 4*ones(1, numel(stim.obj.unique_im_nrs_wm_test)), ...
         5*ones(1, numel(stim.ns.unique_im_nrs_wm_test)));
     
+    all_objectcatch_im_stimclassnumbers = 4*ones(1, numel(stim.obj.unique_im_nrs_objcatch));
+        
+    
     all_img_test_im_stimclassnumbers   = ...
         cat(2, ones(1, numel(stim.gabor.unique_im_nrs_img_test)), 2*ones(1, numel(stim.rdk.unique_im_nrs_img_test)), ...
         3*ones(1, numel(stim.dot.unique_im_nrs_img_test)), 4*ones(1, numel(stim.obj.unique_im_nrs_img_test)), ...
@@ -406,7 +408,8 @@ if ~exist('all_core_im_stimclassnumbers','var') || isempty(all_core_im_stimclass
     all_wm_test_im_stimclassnames      = exp.stimclassnames(all_wm_test_im_stimclassnumbers);
     all_img_test_im_stimclassnames     = exp.stimclassnames(all_img_test_im_stimclassnumbers);
     all_ltm_lure_im_stimclassnames     = exp.stimclassnames(all_ltm_lure_im_stimclassnumbers);
-    all_im_stimclassnames              = cat(2,all_core_im_stimclassnames,all_wm_test_im_stimclassnames,all_img_test_im_stimclassnames,all_ltm_lure_im_stimclassnames);
+    all_objectcatch_im_stimclassnames  = exp.stimclassnames(all_objectcatch_im_stimclassnumbers);
+    all_im_stimclassnames              = cat(2,all_core_im_stimclassnames,all_wm_test_im_stimclassnames,all_img_test_im_stimclassnames,all_ltm_lure_im_stimclassnames,all_objectcatch_im_stimclassnames);
     
     assert(isequal(length(stim.all_im_nrs),length(all_im_stimclassnames)))
 end
@@ -588,34 +591,49 @@ for ii = 1:2:length(requested_info)
                 % if we deal with a core stimulus
                 if ismember(stim_nr(nn), stim.all_core_im_nrs)  
                     
-                    [~,idx] = ismember(stim_nr(nn),vcd_info.time_table_master.stim_nr_left,'legacy');
+                    [~,idx] = ismember(stim_nr(nn),vcd_info.condition_master.stim_nr_left,'legacy');
+                    
                     if idx == 0
-                        [~,idx] = ismember(stim_nr(nn), vcd_info.time_table_master.stim_nr_right,'legacy');
+                        [~,idx] = ismember(stim_nr(nn), vcd_info.condition_master.stim_nr_right,'legacy');
                         im_loc = 2; % right stim
-                        stimnumber = vcd_info.time_table_master.stim_nr_right(idx);
+                        stimnumber   = vcd_info.condition_master.stim_nr_right(idx);
+                        stimlocation = 'R';
                     else
                         im_loc = 1; % left stim
-                        stimnumber = vcd_info.time_table_master.stim_nr_left(idx);
+                        stimnumber = vcd_info.condition_master.stim_nr_left(idx);
+                        if vcd_info.condition_master.stim_class(idx) == 5
+                            stimlocation  = 'C'; % central stim
+                        else
+                            stimlocation = 'L';
+                        end
                     end
+                    
+                    
 
                 elseif ismember(stim_nr(nn), stim.all_test_im_nrs)  
                     % find unique stimulus number for test image
-                    [~,idx] = ismember(stim_nr(nn),vcd_info.time_table_master.stim2(:,1),'legacy');
+                    [~,idx] = ismember(stim_nr(nn),vcd_info.condition_master.stim2(:,1),'legacy');
                     if idx == 0
-                        [~,idx] = ismember(stim_nr(nn), vcd_info.time_table_master.stim2(:,2),'legacy');
+                        [~,idx] = ismember(stim_nr(nn), vcd_info.condition_master.stim2(:,2),'legacy');
                         im_loc = 2; % right stim
-                        stimnumber = vcd_info.time_table_master.stim_nr_right(idx);
+                        stimnumber   = vcd_info.condition_master.stim_nr_right(idx);
+                        stimlocation = 'R';
                     else
                         im_loc = 1; % left stim
-                        stimnumber = vcd_info.time_table_master.stim_nr_left(idx);
+                        stimnumber = vcd_info.condition_master.stim_nr_left(idx);
+                        if vcd_info.condition_master.stim_class(idx) == 5
+                            stimlocation  = 'C'; % central stim
+                        else
+                            stimlocation = 'L';
+                        end
                     end
                 end
-                stimclassname = upper(vcd_info.time_table_master.stim_class_name{idx,im_loc});
+                stimclassname = upper(vcd_info.condition_master.stim_class_name{idx,im_loc});
                 if strcmp(stimclassname,'GABOR')
                     stimclassname = regexprep('GABOR','[AO]','');
                 end
                 stimnumber = num2str(stimnumber);
-                stimlocation  = choose((im_loc==1),'L','R');
+                
                 if ischar(stimnumber)
                     stimnumber = sprintf('%03d',str2double(stimnumber));
                 elseif isnumeric(stimnumber)
@@ -640,7 +658,7 @@ for ii = 1:2:length(requested_info)
                 
                 % extract stim nr from string
                 input_name0 = strsplit(info_val{nn},'-');
-                input_stim_class_name = input_name0{1};
+                input_stim_class_name = lower(input_name0{1});
                 input_stim_nr         = str2double(input_name0{2});
                 input_stim_pos        = input_name0{3};
                 
@@ -648,31 +666,37 @@ for ii = 1:2:length(requested_info)
                 [~,idx] = ismember(input_stim_nr,stim.all_im_nrs,'legacy');
                 true_stim_class_name = all_im_stimclassnames(idx);
                 
-                if strcmp(true_stim_class_name,'gabor')
+                if ismember(true_stim_class_name,'gabor')
                     true_stim_class_name = 'GBR';
                 end
                 
-                if ~strcmp(input_stim_class_name,true_stim_class_name)
+                if ~ismember(input_stim_class_name,true_stim_class_name)
                     warning('[%s]: Stimulus class name "%s" is not associated with this stimulus number %03d!',mfilename,input_stim_class_name,input_stim_nr)
                     out(nn) = NaN;
-                end
-               
-                % Check position of stimulus
-                [~,idx_l] = ismember(input_stim_nr, vcd_info.time_table_master.stim_nr_left,'legacy');
-                [~,idx_r] = ismember(input_stim_nr, vcd_info.time_table_master.stim_nr_right,'legacy');
-                if (idx_l == 0) && (idx_r > 0) % if right stimulus nr matches
-                    true_stim_pos = 'R'; % right stim
-                elseif (idx_l > 0) && (idx_r == 0) % if left stimulus nr matches
-                    true_stim_pos = 'L'; % left stim
-                elseif (idx_l == 0) && (idx_r == 0) % if none matches
-                    true_stim_pos = NaN;
+                else
+                    
+                    % Check position of stimulus
+                    [~,idx_l] = ismember(input_stim_nr, vcd_info.condition_master.stim_nr_left,'legacy');
+                    [~,idx_r] = ismember(input_stim_nr, vcd_info.condition_master.stim_nr_right,'legacy');
+
+                    if vcd_info.condition_master.stim_class(idx_l,:)==5
+                        true_stim_pos = 'C'; % central stim
+                    else
+                        if (idx_l == 0) && (idx_r > 0) % if right stimulus nr matches
+                            true_stim_pos = 'R'; % right stim
+                        elseif (idx_l > 0) && (idx_r == 0) % if left stimulus nr matches
+                            true_stim_pos = 'L'; % left stim
+                        elseif (idx_l == 0) && (idx_r == 0) % if none matches
+                            true_stim_pos = NaN;
+                        end
+                    end
+
+                    if ~strcmp(input_stim_pos,true_stim_pos) || isnan(true_stim_pos)
+                        warning('[%s]: Stimulus position "%s" is not associated with stimulus number %03d!',mfilename,input_stim_pos,input_stim_nr)
+                        out(nn) = NaN;
+                    end
                 end
 
-                if ~strcmp(input_stim_pos,true_stim_pos) || isnan(true_stim_pos)
-                    warning('[%s]: Stimulus position "%s" is not associated with stimulus number %03d!',mfilename,input_stim_pos,input_stim_nr)
-                    out(nn) = NaN;
-                end
-                
                 if out(nn) == 0
                     out(nn) = input_stim_nr;
                 end
@@ -849,87 +873,161 @@ for ii = 1:2:length(requested_info)
             end
 
         case 'fullinfo'              
-            % provide all info (data dump) for given stimulus number (1-1550)
+            % provide all info (data dump) for given stimulus number (1-1421)
             if isnumeric(info_val) % if user provides singleton or vector
                 stim_nr = info_val;
             elseif iscell(info_val)  % if user provides cell, turn into vector
                 stim_nr = info_val{:};
             end
             
-            out = cell(1,length(stim_nr));
+            all_condition_names = vcd_getConditionNames;
+            
+            if length(stim_nr) > 1
+                out = cell(1,length(stim_nr));
+            else
+                out = [];
+            end
+            
             for nn = 1:length(stim_nr)
+                stim_info = struct('condition_nr',[], 'condition_name',[],...
+                    'stim_class', [], 'stim_class_name', [], 'task_class', [], ...
+                    'task_class_name', [], 'crossing_nr', [], 'crossing_name', [], ...
+                    'stim_nr', [], 'stim_loc', [], 'stim_loc_name', [],'is_objectcatch', [], ...
+                    'orient_dir', [], 'contrast', [], 'gbr_phase', [], ...
+                    'rdk_coherence', [], 'super_cat', [], 'super_cat_name', [], ...
+                    'basic_cat', [], 'basic_cat_name', [], 'sub_cat', [], ...
+                    'sub_cat_name', [], 'affordance_cat', [], 'affordance_name', [], ...
+                    'is_special_core', [],'is_lure', []);
+                
+                
                 
                 % if we deal with a core stimulus
-                if ismember(stim_nr(nn), stim.all_core_im_nrs,'legacy')  
+                if ismember(stim_nr(nn), stim.all_core_im_nrs,'legacy')
                     
-                    [~,idx] = ismember(stim_nr(nn),vcd_info.time_table_master.stim_nr_left,'legacy');
+                    [~,idx] = ismember(stim_nr(nn),vcd_info.condition_master.stim_nr_left,'legacy');
                     if idx == 0
-                        [~,idx] = ismember(stim_nr(nn), vcd_info.time_table_master.stim_nr_right,'legacy');
+                        [~,idx] = ismember(stim_nr(nn), vcd_info.condition_master.stim_nr_right,'legacy');
                         im_loc = 2; % right stim
+                        stim_info.stim_nr = vcd_info.condition_master.stim_nr_right(idx);
                     else
                         im_loc = 1; % left stim
+                        stim_info.stim_nr = vcd_info.condition_master.stim_nr_left(idx);
                     end
-
-                elseif ismember(stim_nr(nn), stim.all_test_im_nrs)  
+                    
+                elseif ismember(stim_nr(nn), stim.all_test_im_nrs)
                     % find unique stim number for test image
-                    [~,idx] = ismember(stim_nr(nn),vcd_info.time_table_master.stim2(:,1),'legacy');
+                    [~,idx] = ismember(stim_nr(nn),vcd_info.condition_master.stim2_im_nr(:,1),'legacy');
                     if idx == 0
-                        [~,idx] = ismember(stim_nr(nn), vcd_info.time_table_master.stim2(:,2),'legacy');
+                        [~,idx] = ismember(stim_nr(nn), vcd_info.condition_master.stim2_im_nr(:,2),'legacy');
                         im_loc = 2; % right stim
+                        stim_info.stim_nr = vcd_info.condition_master.stim2_im_nr(idx,2);
                     else
                         im_loc = 1; % left stim
+                        stim_info.stim_nr = vcd_info.condition_master.stim2_im_nr(idx,1);
                     end
-                end
                     
-                % Get stim info (reference first)
-                stim_info = table2struct(vcd_info.time_table_master(idx,:));
-                field_sz  = struct2array(structfun(@numel, stim_info, 'UniformOutput', false));
-                fnames = fieldnames(stim_info);
-                for ff = find(field_sz==2)
-                    if iscell(stim_info.(fnames{ff})(im_loc))
-                        stim_info.(fnames{ff}) = stim_info.(fnames{ff}){im_loc};
+                elseif ismember(stim_nr(nn),stim.all_objectcatch_im_nrs)
+                    % find unique stim number for test image
+                    [~,idx] = ismember(stim_nr(nn),vcd_info.condition_master.stim2_im_nr(:,1),'legacy');
+                    if idx == 0
+                        [~,idx] = ismember(stim_nr(nn), vcd_info.condition_master.stim2_im_nr(:,2),'legacy');
+                        im_loc = 2; % right stim
+                        stim_info.stim_nr = vcd_info.condition_master.stim_nr_right(idx);
                     else
-                        stim_info.(fnames{ff}) = stim_info.(fnames{ff})(im_loc);
+                        im_loc = 1; % left stim
+                        stim_info.stim_nr = vcd_info.condition_master.stim_nr_left(idx);
                     end
-                end
-
-                % add stim loc           
-                if stim_info.stim_class == 5
-                    stim_info.stimloc = 3;
-                    stim_info.stimloc_name = 'center';
-                else
-                    stim_info.stimloc = im_loc;
-                    stim_info.stimloc_name = choose(im_loc==1,'left','right');
-                end
                     
-                % remove irrelevant stimulus location , fields with nans, and trial info
-                info_to_delete = {'is_cued','repeat_nr','task_class_name','task_class',...
-                    'unique_trial_nr','stim_class_unique_block_nr','block_local_trial_nr'};
-                if im_loc==1
-                    info_to_delete = cat(2,info_to_delete,'stim_nr_right');
-                    if ismember(stim_nr(nn), stim.all_test_im_nrs,'legacy')
-                        stim_info.stim1 = stim_info.stim_nr_left;
-                    end
-                elseif im_loc==2
-                    info_to_delete = cat(2,info_to_delete,'stim_nr_left');
-                    if ismember(stim_nr(nn), stim.all_test_im_nrs,'legacy')
-                        stim_info.stim1 = stim_info.stim_nr_right;
-                    end
-                end
-                    
-                for jj = 1:length(info_to_delete)
-                    stim_info = rmfield(stim_info,(info_to_delete{jj}));
                 end
                 
-                % remove fields with NaNs
-                fnames = fieldnames(stim_info); % get updated fieldnames
-                field_nan  = cellfun(@(x) all(x==1), struct2cell(structfun(@isnan, stim_info, 'UniformOutput', false)));
-                field_nan  = find(field_nan)';
-                for ff = field_nan
-                    stim_info = rmfield(stim_info,(fnames{ff}));
+                % If stimulus number exists in condition_master..
+                if idx~=0
+                    % .. we get stim info for reference first (first
+                    % stimulus array) from the condition master
+                    tmp_info = vcd_info.condition_master(idx,:);
+                    
+                    % add stim loc
+                    if stim_info.stim_class == 5
+                        stim_info.stim_loc = 3;
+                        stim_info.stim_loc_name = 'center';
+                    else
+                        stim_info.stim_loc = im_loc;
+                        stim_info.stim_loc_name = choose(im_loc==1,'left','right');
+                    end
+                    
+                    % loop over fieldnames over stim info that we haven't
+                    % filled yet..
+                    fn = fieldnames(stim_info);
+                    fn = fn(~ismember(fn,{'stim_nr','stim_loc','stim_loc_name',...
+                        'condition_nr','task_class_name','crossing_name'}));
+                    for ff = 1:length(fn)
+                        if strcmp(fn{ff},'condition_name')
+                            tmp_condname0 = tmp_info.(fn{ff});
+                            tmp_condname1 = strsplit(tmp_condname0{1},'-');
+                            tmp_condname2 = [tmp_condname1{1} '-'  tmp_condname1{2} '-' tmp_condname1{3}];
+                            
+                            tmp_idx = ~cellfun(@isempty, regexp(all_condition_names,[tmp_condname2 '\w*']));
+                            stim_info.(fn{ff}) = cat(2,all_condition_names(tmp_idx));
+                            stim_info.condition_nr = vcd_conditionName2Number(stim_info.(fn{ff}));
+                        elseif strcmp(fn{ff},'task_class')
+                            stim_info.task_class = find(exp.crossings(stim_info.stim_class,:));
+                            stim_info.task_class_name = exp.taskclassnames(exp.crossings(stim_info.stim_class,:));
+                        elseif strcmp(fn{ff},'crossing_nr')
+                            stim_info.crossing_nr = find(~cellfun(@isempty, regexp(exp.crossingnames,[stim_info.stim_class_name{1} '\w*'])));
+                            stim_info.crossing_name = exp.crossingnames(stim_info.crossing_nr);
+                        else
+                            if size(tmp_info.(fn{ff}),2) > 1
+                                stim_info.(fn{ff}) = tmp_info.(fn{ff})(im_loc);
+                            else
+                                stim_info.(fn{ff}) = tmp_info.(fn{ff});
+                            end
+                        end
+                    end
+                    
+                    if length(stim_nr) > 1
+                        out{nn} = stim_info;
+                    else
+                        out = stim_info;
+                    end
+                elseif ismember(stim_nr(nn),stim.all_objectcatch_im_nrs)
+                    %%% IN PROGRESS  %%
+%                     
+%                     stim_info.condition_name = {};
+%                     stim_info.condition_nr = vcd_conditionName2Number();
+                    
+                    stim_info.stim_class        = 4;
+                    stim_info.stim_class_name   = {'obj'};
+                    stim_info.task_class        = 4;
+                    stim_info.task_class_name   = {'pc'};
+                    stim_info.crossing_name     = {'pc-obj'};
+                    stim_info.crossing_nr       = find(strcmp(exp.crossingnames,stim_info.crossing_name));
+                    
+                    stim_info.stim_nr           = stim_nr;
+                    stim_info.stim_loc          = [];
+                    stim_info.stim_loc_name     = {};
+                    stim_info.is_objectcatch    = true;
+                    stim_info.orient_dir        = [];
+                    stim_info.contrast          = 1;
+                    stim_info.gbr_phase         = [];
+                    stim_info.rdk_coherence     = [];
+                    stim_info.super_cat         = [];
+                    stim_info.super_cat_name    = {};
+                    stim_info.basic_cat         = [];
+                    stim_info.basic_cat_name    = {};
+                    stim_info.sub_cat           = [];
+                    stim_info.sub_cat_name      = {};
+                    stim_info.affordance_cat    = [];
+                    stim_info.affordance_name   = {};
+                    stim_info.is_special_core   = false;
+                    stim_info.is_lure           = false;
+                    
+                    if length(stim_nr) > 1
+                        out{nn} = stim_info;
+                    else
+                        out = stim_info;
+                    end
                 end
                 
-                out{nn} = stim_info;
             end
             
         case 'conditionnumbertoname'
