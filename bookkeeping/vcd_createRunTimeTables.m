@@ -195,6 +195,9 @@ trial_ID_double_epoch = [params.exp.block.spatial_cue_ID, ...
     params.exp.block.stim_epoch2_ID, ...
     params.exp.block.response_ID];
 
+% Get total block duration in number of time frames
+block_durs = [params.exp.block.total_single_epoch_dur, params.exp.block.total_double_epoch_dur];
+
 % Preallocate space
 time_table_master = [];
 tbl_nrows         = 1000; % pick an arbitrary large number of rows (otherwise table uses 0 for missing values and we don't want that)
@@ -205,16 +208,20 @@ session_time_table = [];
 % Loop over sessions
 for ses = 1:size(all_sessions,3)
     
+    % Loop over session types (version A or B)
     for st = 1:size(all_sessions,4)
         
+        % Check if the selected session type exists
         if ~isnan(all_sessiontypes(ses,st))
             
-            fprintf('SESSION %03d %s..\n',ses,choose(st==1,'A','B'))
+            fprintf('\nSESSION %03d %s..\n',ses,choose(st==1,'A','B'))
             
             % preallocate subject time table
             run_time_table = [];
+            
+            % check if the number of runs in table matches with how many runs we expect..
             curr_run_nrs = unique(condition_master.run_nr(~isnan(condition_master.run_nr) & condition_master.session_nr==ses & condition_master.session_type==st));
-            assert(runs_per_session(ses,st)==length(curr_run_nrs)); % ideally we know exactly how many runs we expect..
+            assert(runs_per_session(ses,st)==length(curr_run_nrs)); 
             
             % Loop over runs
             for rr = curr_run_nrs'
@@ -223,7 +230,7 @@ for ses = 1:size(all_sessions,3)
                 sz = [tbl_nrows size(condition_master(1,:),2)];
                 time_table = vcd_preallocateNaNTable(sz(1), sz(2), condition_master(1,:), []);
                 
-                % add column for event timing and id
+                % add columns for event timing and id
                 time_table.event_start = NaN(tbl_nrows,1);
                 time_table.event_dur   = NaN(tbl_nrows,1);
                 time_table.event_end   = NaN(tbl_nrows,1);
@@ -234,20 +241,23 @@ for ses = 1:size(all_sessions,3)
                 % this particular subject, run, and session. The t_trial table
                 % will be inserted into a bigger time table that includes other
                 % event types, like iti, cues, etc.
-                idx0      = (condition_master.session_nr==ses & condition_master.session_type==st & condition_master.run_nr==rr);
+                idx0      = (condition_master.session_nr==ses & ...
+                             condition_master.session_type==st & ...
+                             condition_master.run_nr==rr);
                 assert(sum(idx0)>0)
-                t_trial   = condition_master(idx0,:);
-                block_nrs = t_trial.block_nr;
+                t_trial   = condition_master(idx0,:); % trials in this run
+                block_nrs = t_trial.block_nr; % get all the block numbers
                 
-                % Reorder trials according to subject's specific order
+                % Reorder blocks and trials according to subject's specific 
+                % block and trial order
                 [block_nrs,block_nrs_idx] = sort(block_nrs,'ascend');
-                t_trial = t_trial(block_nrs_idx,:);
+                [~,nr_unique_blocks]      = unique(block_nrs,'stable');
+                t_trial                   = t_trial(block_nrs_idx,:);
+
+                % Get block durations
+                block_dur = block_durs(t_trial.trial_type(nr_unique_blocks));
                 
-                [~,nr_unique_blocks] = unique(block_nrs,'stable');
-                tmp_durs = [params.exp.block.total_single_epoch_dur, params.exp.block.total_double_epoch_dur];
-                block_dur = tmp_durs(t_trial.trial_type(nr_unique_blocks));
-                
-                % reset counter
+                % reset frame counter and finished run boolean flag
                 total_run_frames = 0;
                 run_finished     = 0;
                 
@@ -256,6 +266,7 @@ for ses = 1:size(all_sessions,3)
                     rounded_session_totalrundur = (floor(session_totalrundur/params.stim.presentationrate_hz)*params.stim.presentationrate_hz);
                     total_ses_dur = rounded_session_totalrundur - params.exp.block.total_eyetracking_block_dur - session_postblankdur - session_preblankdur;
                     assert(isequal(params.exp.run.actual_task_dur_BEHAVIOR,total_ses_dur));
+                    
                     % predefine IBIs, make sure we don't go over the total
                     % run duration we want
                     while 1
@@ -265,12 +276,14 @@ for ses = 1:size(all_sessions,3)
                             break;
                         end
                     end
+                    
                     % for debug purposes
-                    %fprintf('[%s]: Selected IBIs (in time frames): %s \n', mfilename, num2str(ibis))
+                    % fprintf('[%s]: Selected IBIs (in time frames): %s \n', mfilename, num2str(ibis))
                 end
+                
                 % Add eyetracking block and pre-blank period
                 if total_run_frames == 0
-                    
+
                     table_idx = 1;
                     % Add prefixation period (1s)
                     time_table.session_nr(table_idx)       = ses;
@@ -291,7 +304,6 @@ for ses = 1:size(all_sessions,3)
                     time_table.event_end(table_idx)        = time_table.event_start(table_idx) + time_table.event_dur(table_idx);
                     time_table.event_id(table_idx)         = params.exp.block.eye_gaze_fix_ID;
                     time_table.event_name(table_idx)       = {'et_fix'};
-                    
                     
                     total_run_frames = time_table.event_end(table_idx);
                     
