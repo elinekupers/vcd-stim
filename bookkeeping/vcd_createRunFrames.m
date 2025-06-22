@@ -37,6 +37,11 @@ clear rename_me ff p0
 session_nrs  = unique(time_table_master.session_nr);
 run_nrs      = unique(time_table_master.run_nr);
 
+% define time frames from t=0 until t=22559.
+% Note that the time_table_master will have the event_end of time frame 
+% t=22559 as 22560, given that this is the end of last time frame (and
+% technically the start of the next time frame, if there was any..)
+
 all_run_frames     = [];
 time_table_master2 = [];
 
@@ -57,11 +62,19 @@ for ses = 1:length(session_nrs)
                 % check if the last event is a post-blank
                 assert(strcmp(this_run.event_name(end),'post-blank'))
                 
-                 % get run duration (in frames)
+                 % get run duration (in frames), minus one to get nr of
+                 % frames
                 run_dur = this_run.event_end(end);
                 
                 % ensure a run is of reasonable length, and is not longer than 10 min
                 assert((run_dur*params.stim.presentationrate_hz)/3600 < 600)
+                
+                % define time frames from t=0 until t=22559.
+                % Note that the time_table_master will have the event_end of time frame
+                % t=22559 as 22560, given that this is the end of last time frame (and
+                % technically the start of the next time frame, if there was any..)
+                t_frame = 0:(run_dur-1); 
+                nr_frames_per_run = length(t_frame);
                 
                 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                 %%%%%%%%%%% GENERATE FIXATION SEQUENCE %%%%%%%%%%%%%%%
@@ -90,11 +103,12 @@ for ses = 1:length(session_nrs)
                 
                 % add fixation sequence to run_frames table
                 run_frames = table();
-                run_frames.session_nr           = repmat(ses,run_dur,1);
-                run_frames.session_type         = repmat(session_types(ses,st),run_dur,1);
-                run_frames.run_nr               = repmat(rr,run_dur,1);
+                run_frames.session_nr           = repmat(ses,nr_frames_per_run,1);
+                run_frames.session_type         = repmat(session_types(ses,st),nr_frames_per_run,1);
+                run_frames.run_nr               = repmat(rr,nr_frames_per_run,1);
                 run_frames.fix_abs_lum          = fix_matrix(:,2);
                 run_frames.fix_correct_response = fix_matrix(:,4);
+                run_frames.timing               = single(t_frame');
                 
                 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                 
@@ -133,11 +147,12 @@ for ses = 1:length(session_nrs)
                 all_events = []; all_cued = []; all_catch = []; all_crossings = []; all_objectcatch = [];
                 for jj = 1:length(this_run.event_id)
                     if ~isnan(this_run.event_dur(jj)) && this_run.event_dur(jj)~=0
-                        all_events      = cat(1, all_events,      repmat(this_run.event_id(jj),        this_run.event_dur(jj),1));
-                        all_cued        = cat(1, all_cued,        repmat(this_run.is_cued(jj),         this_run.event_dur(jj),1));
-                        all_catch       = cat(1, all_catch,       repmat(this_run.is_catch(jj),        this_run.event_dur(jj),1));
-                        all_objectcatch = cat(1, all_objectcatch, repmat(this_run.is_objectcatch(jj),  this_run.event_dur(jj),1));
-                        all_crossings   = cat(1, all_crossings,   repmat(this_run.crossing_nr(jj),     this_run.event_dur(jj),1));
+                        dur = this_run.event_dur(jj);
+                        all_events      = cat(1, all_events,      repmat(this_run.event_id(jj),        dur,1));
+                        all_cued        = cat(1, all_cued,        repmat(this_run.is_cued(jj),         dur,1));
+                        all_catch       = cat(1, all_catch,       repmat(this_run.is_catch(jj),        dur,1));
+                        all_objectcatch = cat(1, all_objectcatch, repmat(this_run.is_objectcatch(jj),  dur,1));
+                        all_crossings   = cat(1, all_crossings,   repmat(this_run.crossing_nr(jj),     dur,1));
                     end
                 end
                 % If numeric vector: Change zero's to NaN
@@ -173,11 +188,13 @@ for ses = 1:length(session_nrs)
                     
                     % Get frame nrs
                     nframes       = round(this_run.event_dur(stim_row(ii)));
-                    frame_counter = this_run.event_start(stim_row(ii))+1;
-                    curr_frames   = frame_counter:(frame_counter+nframes-1);
+                    timetable_start = this_run.event_start(stim_row(ii));
+                    frametable_start = find(timetable_start==run_frames.timing);
                     
-                    % Get unique stimulus image nrs fpr every frame 
-                    nsides = find(~cellfun(@isempty, this_run.stim_class_name(stim_row(ii),:)));
+                    curr_frames   = frametable_start:(frametable_start+nframes-1);
+                    
+                    % Get unique stimulus image nrs fpr every frame
+                    nsides = find(~cell2mat(cellfun(@(x) any(isnan(x)), this_run.stim_class_name(stim_row(ii),:), 'UniformOutput',false)));
                     
                     if ~isempty(nsides)
                         if isnan(this_run.stim_nr_right(stim_row(ii)))
@@ -200,43 +217,42 @@ for ses = 1:length(session_nrs)
                             % fill in unique_im nr
                             run_frames.frame_im_nr(curr_frames,side) = repmat(unique_im, length(curr_frames),1);
                         end
-                    end
-
-                    % ADD CD in frames
-                    % only for STIMULI:  94 = Stim interval 1, 95 = Stim interval 2,
-                    if (stim_events(ii) == params.exp.block.stim_epoch1_ID ||stim_events(ii) == params.exp.block.stim_epoch2_ID)
                         
-                        % NOT A CATCH TRIAL
-                        if ~this_run.is_catch(stim_row(ii))
+                        
+                        % ADD CD in frames
+                        % only for STIMULI:  94 = Stim interval 1, 95 = Stim interval 2,
+                        if (stim_events(ii) == params.exp.block.stim_epoch1_ID || stim_events(ii) == params.exp.block.stim_epoch2_ID)
                             
-                            % IF CONTRAST DECREMENT TASK BLOCK
-                            if strcmp(this_run.task_class_name(stim_row(ii)),'cd')
-                                pre_onset_time_frames = sum(params.stim.cd.t_cmodfun==1); % time frames at initial contrast level (next one will have dip)
-                                % 20% change we will actually apply the contrast
-                                % decrement change to the cued stimulus
-                                % (uncued stimulus will never change
-                                % contrast).
-                                c_onset      = this_run.cd_start(stim_row(ii));
-                                if ~isnan(c_onset) && c_onset~=0
-                                    cd_cued_side    = mod(this_run.is_cued(stim_row(ii))-1,2)+1;
-                                    c_onset_support = c_onset - pre_onset_time_frames; % we shift the support function to an earlier time point such that the disp occurs at c_onset
-                                    f_cd            = c_onset_support:this_run.event_end(stim_row(ii));
-                                    t_pad           = length(f_cd) - length(params.stim.cd.t_cmodfun);
-                                    run_frames.contrast(f_cd,cd_cued_side) = cat(2,params.stim.cd.t_cmodfun, params.stim.cd.t_cmodfun(end)*ones(1,t_pad))';
-                                    run_frames.button_response_cd(c_onset) = 1;
-                                else
-                                    run_frames.button_response_cd(curr_frames) = 2;
-                                end
+                            % NOT A CATCH TRIAL
+                            if ~this_run.is_catch(stim_row(ii))
                                 
-                            end
-                        end % if catch
-                    end
-                end % events
-                
+                                % IF CONTRAST DECREMENT TASK BLOCK
+                                if strcmp(this_run.task_class_name(stim_row(ii)),'cd')
+                                    pre_onset_time_frames = sum(params.stim.cd.t_cmodfun==1); % time frames at initial contrast level (next one will have dip)
+                                    % 20% change we will actually apply the contrast
+                                    % decrement change to the cued stimulus
+                                    % (uncued stimulus will never change
+                                    % contrast).
+                                    c_onset      = this_run.cd_start(stim_row(ii));
+                                    if ~isnan(c_onset) && c_onset~=0
+                                        cd_cued_side    = mod(this_run.is_cued(stim_row(ii))-1,2)+1;
+                                        c_onset_support = c_onset - pre_onset_time_frames; % we shift the support function to an earlier time point such that the disp occurs at c_onset
+                                        f_cd            = c_onset_support:this_run.event_end(stim_row(ii));
+                                        t_pad           = length(f_cd) - length(params.stim.cd.t_cmodfun);
+                                        run_frames.contrast(f_cd,cd_cued_side) = cat(2,params.stim.cd.t_cmodfun, params.stim.cd.t_cmodfun(end)*ones(1,t_pad))';
+                                        run_frames.button_response_cd(c_onset) = 1;
+                                    else
+                                        run_frames.button_response_cd(curr_frames) = 2;
+                                    end
+                                    
+                                end
+                            end % if catch
+                        end % if cd trial
+                    end % isempty(nsides)
+                end % nr of stim events
                 
                 % Log fixation changes as button presses in
                 % subject's time_table_master
-                all_frames = 1:run_dur; 
                 fix_events = find(strcmp(this_run.task_class_name,'fix'));
                 if  ~isempty(fix_events)
                     % given fixed interval and sampling without
@@ -246,7 +262,7 @@ for ses = 1:length(session_nrs)
                     % sampling process of 5 lum values.
                     % assert(isequal(unique(diff(find(diff(run.fix_correct_response)>0)))', [params.stim.fix.dotmeanchange, 2*params.stim.fix.dotmeanchange]));
                     
-                    fix_block_nrs  = unique(this_run.block_nr(fix_events,:))';        % should be 1 or 2 or 3 blocks per rum
+                    fix_block_nrs  = unique(this_run.block_nr(fix_events,:))';        % should be 1 or 2 or 3 blocks per run
                     fix_update_idx = (run_frames.fix_correct_response>0);             % 1 x 22560 --> 31 or 43 fixation changes per block
                     [~,fix_block_frames] = ismember(this_run.block_nr,fix_block_nrs); % 40 trial events per block
                     fix_block_change_direction = run_frames.fix_correct_response(fix_update_idx); % 1=brighter, 2=dimmer
@@ -254,7 +270,7 @@ for ses = 1:length(session_nrs)
                    
                    
                     % find those frames where the fixation circle updated
-                    time_frames_fix_updated = all_frames(fix_update_idx);
+                    time_frames_fix_updated = t_frame(fix_update_idx);
                     fix_update_sub = find(fix_update_idx);
                     for ff = 1:length(fix_update_sub)
                         t_fix = time_frames_fix_updated(ff);
@@ -263,9 +279,6 @@ for ses = 1:length(session_nrs)
                     end
                     
                 end
-                
-                % add timing
-                run_frames.timing = single(all_frames');
 
                 % Add run_images and alpha_masks to larger cell array
                 all_run_frames = cat(1,all_run_frames,run_frames);
