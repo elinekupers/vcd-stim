@@ -5,13 +5,14 @@ function var_out = isconditionnr(var_in)
 % function var_out = isconditionnr(var_in)
 %
 % <var_in> is a char string or cell list with multiple char strings
-% if <var_in>, is matches one of the 1200 condition names, return <true>.  
+% if <var_in>, is matches any of the condition names, return <true>.  
 % otherwise, return <false>.
 
 input_type = class(var_in);
 
+condition_names = vcd_getConditionNames;
 
-f_conditionnr = @(x) all(x >=1 & x <= 1200);
+f_conditionnr = @(x) all(x >=1 & x <= length(condition_names));
 
 if strcmp(input_type,'cell')
     var_in = cell2mat(var_in);
