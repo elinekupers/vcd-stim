@@ -71,8 +71,9 @@ function results = vcdeyetrackingpreprocessing(filename,behfilename,behresults,w
 
 %% Internal constants
 
-targetwindow = [300 1300];    % number of milliseconds after target onset to extract from
+targetwindow = [500 2000];    % number of milliseconds after target onset to extract from
 onsetwindow = [-1000 5000];   % number of milliseconds for window around stim/taskcue
+etloc = 4;                    % number of dva where eye tracking targets are placed (away from center)
 
 %% Setup
 
@@ -352,8 +353,8 @@ end
 
 figureprep([100 100 500 500],wantfigwin); hold on;
 ii = find(ismember(a1.run_table.event_id,991:995));  % et_sac (the targets)
-targetxxs = [0 -3 3 0 0];  % central, left, right, up, down.
-targetyys = [0  0 0 3 -3];
+targetxxs = [0 -etloc etloc 0 0];  % central, left, right, up, down.
+targetyys = [0  0 0 etloc -etloc];
 colors0 = cool(5);
 for p=1:length(ii)  % for each target, in the order they appear
   ix = a1.run_table.event_id(ii(p)) - 990;  % 1-5 indicating which target number
@@ -368,7 +369,7 @@ for p=1:length(ii)  % for each target, in the order they appear
 
   scatter(targetxxs(ix),targetyys(ix),'ko','filled');
 end
-axis([-6 6 -6 6]);
+axis(2*[-etloc etloc -etloc etloc]);
 axis square;
 xlabel('X-position (deg)');
 ylabel('Y-position (deg)');
