@@ -406,7 +406,7 @@ while 1
   end
   
   % if we encounter 0 in block_nr, it's time to go to the next block
-  if a1.run_table.block_nr(ii) == 0
+  if isnan(a1.run_table.block_nr(ii))
     blockcnt = blockcnt + 1;
     trialcnt = 1;  % reset to 1
     ii = ii + 1;
@@ -422,7 +422,7 @@ while 1
   % OK: we have found the desired block and trial!
   
   % check that the taskIDs is listed in a1.run_table.crossing_nr
-  taskIDs = unique(a1.run_frames.crossingIDs);
+  taskIDs = unique(a1.run_frames.crossingIDs(~isnan(a1.run_frames.crossingIDs)));
   assert(ismember(a1.run_table.crossing_nr(ii),taskIDs));
 
   % deal with conditioncount.
