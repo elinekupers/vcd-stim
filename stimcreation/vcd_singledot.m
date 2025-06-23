@@ -158,8 +158,8 @@ all_angles_deg(all_angles_deg < 0) = 360+all_angles_deg(all_angles_deg < 0);
 all_angles_rad = deg2rad(all_angles_deg);
 
 % add conditions to table
-stim_loc      = repmat({'right','left'},(length(nr_angles)/2),length(dot_ref_locs)); % stim loc refers to hemifield on display. We divide nr angles by 2, because they contain both L/R
-stim_loc_idx  = repmat([2,1],(length(nr_angles)/2),length(dot_ref_locs)); % stim loc refers to hemifield on display. We divide nr angles by 2, because they contain both L/R
+stim_loc      = repmat({'left','right'},(length(nr_angles)/2),length(dot_ref_locs)); % stim loc refers to hemifield on display. We divide nr angles by 2, because they contain both L/R
+stim_loc_idx  = repmat([1,2],(length(nr_angles)/2),length(dot_ref_locs)); % stim loc refers to hemifield on display. We divide nr angles by 2, because they contain both L/R
 dot_ang_idx   = repmat(nr_angles,1,length(dot_ref_locs));
 dot_angle_deg = reshape(all_angles_deg',1,[])';
 dot_eccen     = repmat(params.stim.dot.iso_eccen, size(dot_angle_deg,1),1);
