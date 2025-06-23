@@ -183,6 +183,7 @@ for ii = 1:length(stim_row)
     fprintf('.')
     
     frame_counter = run_table.event_start(stim_row(ii))+1; % t=1 is 0, but we can't use 0 as index
+    assert(run_frames.timing(frame_counter)==run_table.event_start(stim_row(ii)));
     
     nframes     = round(run_table.event_dur(stim_row(ii)));
     curr_frames = frame_counter:(frame_counter+nframes-1);
@@ -253,7 +254,7 @@ for ii = 1:length(stim_row)
                         assert(isequal( run_table.gbr_phase(stim_row(ii),side),   all_images.info.gabor.phase_deg(idx0)));
                         assert(isequal( delta_deg, all_images.info.gabor.delta_deg(idx0)));
                         
-                        delta_idx = 1+ find(delta_deg == params.stim.gabor.delta_from_ref);
+                        delta_idx = 1+ find(delta_deg == params.stim.gabor.delta_from_ref); % add one because 6th dimension in all_images.gabor index delta = [0,1,2,3,4]
                         
                         run_images{curr_frames(1),side}      = all_images.gabor(:,:,:,ori_idx,con_idx, delta_idx);
                         run_alpha_masks{curr_frames(1),side} = []; %all_images.alpha.gabor(:,:,ori_idx,con_idx, delta_idx);
@@ -337,7 +338,7 @@ for ii = 1:length(stim_row)
                         
                     elseif strcmp(run_table.event_name(stim_row(ii)),'stim2') && strcmp(run_table.task_class_name(stim_row(ii)),'wm') && run_table.is_catch(stim_row(ii)) == 0
                         
-                        delta_idx = find(run_table.stim2_delta(stim_row(ii),side) == params.stim.rdk.delta_from_ref);
+                        delta_idx = find(run_table.stim2_delta(stim_row(ii),side) == params.stim.rdk.delta_from_ref); % here we do not +1 because we search for the file name with "delta01", "delta02", etc.
                         
                         
                         if side == 1
@@ -497,8 +498,8 @@ for ii = 1:length(stim_row)
                         ref_dir    = run_table.orient_dir(stim_row(ii),side);
                         test_dir   = run_table.stim2_orient_dir(stim_row(ii),side);
                         delta      = test_dir - ref_dir;
-                        
-                        % dangerous.. grab stim 1 unique im nr
+                        assert(isequal(delta_idx,delta));
+                        % grab stim 1 unique im nr
                         if side == 1
                             corresponding_unique_im = run_table.stim_nr_left(stim_row(ii))==params.stim.obj.unique_im_nrs_core;
                         elseif side == 2
@@ -510,11 +511,13 @@ for ii = 1:length(stim_row)
                             (all_images.info.obj.sub_cat == run_table.sub_cat(stim_row(ii),side)) & ...
                             (all_images.info.obj.abs_rot == ref_dir) );
                         
-                        test_im = run_table.stim2_im_nr(stim_row(ii),side);
-                        delta_idx0 = find(delta==params.stim.obj.delta_from_ref);
+                        test_im         = run_table.stim2_im_nr(stim_row(ii),side);
+                        delta_idx0      = find(delta==params.stim.obj.delta_from_ref) +1; % add one because 5th dimension index delta = [0,1,2,3,4] 
                         assert(strcmp(run_table.sub_cat_name(stim_row(ii),side), all_images.info.obj.sub_cat_name(idx)));
-                        tmp_test_im = reshape(params.stim.obj.unique_im_nrs_wm_test,4,[]);
+                        
+                        tmp_test_im     = reshape(params.stim.obj.unique_im_nrs_wm_test,4,[]);
                         assert(isequal(test_im,tmp_test_im(delta_idx0,corresponding_unique_im)))
+                        
                         run_images{curr_frames(1),side}      = all_images.obj(:,:,:,corresponding_unique_im,delta_idx0);
                         run_alpha_masks{curr_frames(1),side} = all_images.alpha.obj(:,:,corresponding_unique_im,delta_idx0);
                         
