@@ -631,11 +631,11 @@ if params.wanteyetracking
         Eyelink('StopRecording');
         Eyelink('message', sprintf('EXP END %d',GetSecs));
         Eyelink('CloseFile');
-        status = Eyelink('ReceiveFile',eyetempfile, params.savedatadir, 1);
+        status = Eyelink('ReceiveFile',eyetempfile, params.savedatafolder, 1);
         fprintf('ReceiveFile status %d\n', status);
         
         % Rename temporary EDF file to final file name
-        mycmd=['mv ' params.savedatadir '/' eyetempfile ' ' params.savedatadir '/' params.eyelinkfile];
+        mycmd=['mv ' params.savedatafolder '/' eyetempfile ' ' params.savedatafolder '/' params.eyelinkfile];
         system(mycmd);
         if status <= 0, fprintf('\n\nProblem receiving edf file\n\n');
         else
