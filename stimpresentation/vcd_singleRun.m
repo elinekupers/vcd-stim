@@ -667,7 +667,7 @@ else % or just generate the files + dummy data
                             -0.014      {'t'}
                             idealexpdur {'DONE'}};
   data.timing.mfi        = mfi;
-  data.timing.glitchcn   = 0;
+  data.timing.glitchcnt  = 0;
   data.timing.timeframes = linspacefixeddiff(0,mfi,numtimeframes);
   data.timing.starttime  = 12162.00;
   save(fullfile(params.savedatafolder,params.behaviorfile),'params','run_table','run_frames','data');
