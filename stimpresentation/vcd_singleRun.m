@@ -537,25 +537,28 @@ for side = nSides
     apsize_shortlist  = stim.apsize(nonemptycenters,side);
     centers_mat       = cell2mat(centers_shortlist);
     size_mat          = cell2mat(apsize_shortlist);
-    destination_mat = [centers_mat(:,1) - size_mat(:,1)./2, ... x1 top-left-x
+    destination_mat = [centers_mat(:,1) - size_mat(:,1)./2, ... x1 top-left-x 
                        centers_mat(:,2) - size_mat(:,2)./2, ... y1 top-left-y
                        centers_mat(:,1) + size_mat(:,1)./2, ... x2 bottom-right-x
                        centers_mat(:,2) + size_mat(:,2)./2];  % y2 bottom-right-y
                             
     % Create stimulus "rects" for PTB. 
-    % CenterRect cannot handle empty cells or NaNs
-    % stimsize        = [width, height] in pixels
-    % destinationRect = [top-left-x, top-left-y, bottom-right-x, bottom-right-y] pixel location of the stimulus
-    rects_mat       = CenterRect([zeros(size(size_mat,1),1) zeros(size(size_mat,1),1), size_mat(:,1) size_mat(:,2)], ...
-                        [destination_mat(:,1), destination_mat(:,2), ...
-                         destination_mat(:,3), destination_mat(:,4)]);
-    rects_shortlist = mat2cell(rects_mat,ones(size(rects_mat,1),1));
+    % CenterRect cannot handle empty cells or NaNs or multiple
+    % stim/destination rects (hence we use arrayfun)
+    % Inputs to CenterRect are two [1x4] vectors:
+    % * stimsize        = [0, 0, width, height] in pixels
+    % * destinationRect = [top-left-x, top-left-y, bottom-right-x, bottom-right-y] pixel location of the stimulus
+    rects_mat       = arrayfun(@(stim_x1,stim_y1,stim_x2,stim_y2,dest_x1,dest_y1,dest_x2,dest_y2) ...
+                         CenterRect([stim_x1,stim_y1,stim_x2,stim_y2],[dest_x1,dest_y1,dest_x2,dest_y2]), ...
+                        zeros(size(size_mat,1),1), zeros(size(size_mat,1),1), size_mat(:,1), size_mat(:,2), ...
+                        destination_mat(:,1), destination_mat(:,2),destination_mat(:,3), destination_mat(:,4), ...
+                        'UniformOutput', false);
     
     % Insert the "rects" into the struct
-    stim.rects(nonemptycenters,side) = rects_shortlist;
+    stim.rects(nonemptycenters,side) = rects_mat;
 end
 % Clear some memory
-clear centers_shortlist apsize_shortlist rects_shortlist ...
+clear centers_shortlist apsize_shortlist nonemptycenters ...
         centers_mat size_mat destination_mat rects_mat nSides side
 
 
