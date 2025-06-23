@@ -37,10 +37,14 @@ clear rename_me ff p0
 session_nrs  = unique(time_table_master.session_nr);
 run_nrs      = unique(time_table_master.run_nr);
 
+
 % define time frames from t=0 until t=22559.
 % Note that the time_table_master will have the event_end of time frame 
 % t=22559 as 22560, given that this is the end of last time frame (and
 % technically the start of the next time frame, if there was any..)
+
+% time frames at initial contrast level (next one will have dip)
+pre_onset_time_frames = sum(params.stim.cd.t_cmodfun==1); 
 
 all_run_frames     = [];
 time_table_master2 = [];
@@ -211,7 +215,7 @@ for ses = 1:length(session_nrs)
                             elseif strcmp(this_run.event_name(stim_row(ii),1),'stim2')
                                 unique_im = this_run.stim2_im_nr(stim_row(ii),side);
                             else
-                                unique_im = 0;
+                                error('[%s]: Expecting a unique image but found none..',mfilename);
                             end
                             
                             % fill in unique_im nr
@@ -228,16 +232,16 @@ for ses = 1:length(session_nrs)
                                 
                                 % IF CONTRAST DECREMENT TASK BLOCK
                                 if strcmp(this_run.task_class_name(stim_row(ii)),'cd')
-                                    pre_onset_time_frames = sum(params.stim.cd.t_cmodfun==1); % time frames at initial contrast level (next one will have dip)
                                     % 20% change we will actually apply the contrast
                                     % decrement change to the cued stimulus
                                     % (uncued stimulus will never change
                                     % contrast).
-                                    c_onset      = this_run.cd_start(stim_row(ii));
+                                    c_onset   = this_run.cd_start(stim_row(ii)) + 1; % add one for frame indexing
+                                    c_offset  = this_run.event_end(stim_row(ii)) + 1; % add one for frame indexing
                                     if ~isnan(c_onset) && c_onset~=0
                                         cd_cued_side    = mod(this_run.is_cued(stim_row(ii))-1,2)+1;
-                                        c_onset_support = c_onset - pre_onset_time_frames; % we shift the support function to an earlier time point such that the disp occurs at c_onset
-                                        f_cd            = c_onset_support:this_run.event_end(stim_row(ii));
+                                        c_onset_support = c_onset - pre_onset_time_frames; % we shift the support function such that the first frame with a lower contrast aligns with cd_start
+                                        f_cd            = c_onset_support:c_offset; % total frames with cd change + pre_onset_time support
                                         t_pad           = length(f_cd) - length(params.stim.cd.t_cmodfun);
                                         run_frames.contrast(f_cd,cd_cued_side) = cat(2,params.stim.cd.t_cmodfun, params.stim.cd.t_cmodfun(end)*ones(1,t_pad))';
                                         run_frames.button_response_cd(c_onset) = 1;
@@ -255,27 +259,26 @@ for ses = 1:length(session_nrs)
                 % subject's time_table_master
                 fix_events = find(strcmp(this_run.task_class_name,'fix'));
                 if  ~isempty(fix_events)
-                    % given fixed interval and sampling without
-                    % replacement, fix change can only happen every 1.4 s
-                    % (42 frames) or 2.8 s (84 frames) in case we happen to
-                    % sample the same luminance twice when restarting the
-                    % sampling process of 5 lum values.
-                    % assert(isequal(unique(diff(find(diff(run.fix_correct_response)>0)))', [params.stim.fix.dotmeanchange, 2*params.stim.fix.dotmeanchange]));
+                    % Given fixed soa and sampling without replacement,
+                    % fix change can only happen every 1.4 s (42 frames) 
+                    % or shorter in case we happen to run into an IBI.
+                    assert(all(diff(find(abs(diff(run_frames.fix_abs_lum(run_frames.frame_event_nr>90 & run_frames.frame_event_nr<99)))>0)) <= params.stim.fix.dotmeanchange))
                     
-                    fix_block_nrs  = unique(this_run.block_nr(fix_events,:))';        % should be 1 or 2 or 3 blocks per run
-                    fix_update_idx = (run_frames.fix_correct_response>0);             % 1 x 22560 --> 31 or 43 fixation changes per block
-                    [~,fix_block_frames] = ismember(this_run.block_nr,fix_block_nrs); % 40 trial events per block
-                    fix_block_change_direction = run_frames.fix_correct_response(fix_update_idx); % 1=brighter, 2=dimmer
-                    fix_block_abs_lum = run_frames.fix_abs_lum(fix_update_idx); %
-                   
+                    fix_start  = this_run.event_start(fix_events,:);       % when do trials in fixation block start 
+                    fix_end    = this_run.event_end(fix_events,:);         % when do trials in fixation block end 
+                    fix_update_idx = (run_frames.fix_correct_response>0);  % when would the subject press a button to indicate luminance change          
                    
                     % find those frames where the fixation circle updated
-                    time_frames_fix_updated = t_frame(fix_update_idx);
+                    % and tell the run table how many fixation changes we
+                    % expect per trial row
+                    time_fix_updated = run_frames.timing(fix_update_idx);
                     fix_update_sub = find(fix_update_idx);
                     for ff = 1:length(fix_update_sub)
-                        t_fix = time_frames_fix_updated(ff);
-                        t_tbl = find((this_run.event_start <= t_fix) & (this_run.event_end >= t_fix));
-                        this_run.nr_of_fix_changes(t_tbl) = this_run.nr_of_fix_changes(t_tbl) + 1;
+                        t_fix = time_fix_updated(ff);
+                        t_tbl = find((fix_start <= t_fix) & (t_fix <= fix_end));
+                        if ~isempty(t_tbl)
+                            this_run.nr_of_fix_changes(fix_events(t_tbl)) = this_run.nr_of_fix_changes(fix_events(t_tbl)) + 1;
+                        end
                     end
                     
                 end
