@@ -516,7 +516,7 @@ for ii = 1:length(stim_row)
                         assert(strcmp(run_table.sub_cat_name(stim_row(ii),side), all_images.info.obj.sub_cat_name(idx)));
                         
                         tmp_test_im     = reshape(params.stim.obj.unique_im_nrs_wm_test,4,[]);
-                        assert(isequal(test_im,tmp_test_im(delta_idx0,corresponding_unique_im)))
+                        assert(isequal(test_im,tmp_test_im(delta_idx0 -1 ,corresponding_unique_im))) % subtract one here because tmp_test_im does not contain delta00
                         
                         run_images{curr_frames(1),side}      = all_images.obj(:,:,:,corresponding_unique_im,delta_idx0);
                         run_alpha_masks{curr_frames(1),side} = all_images.alpha.obj(:,:,corresponding_unique_im,delta_idx0);
@@ -640,7 +640,7 @@ for ii = 1:length(stim_row)
                         stmclass   = run_table.stim_class_name{stim_row(ii),side};
                         rel_onset  = run_table.cd_start(stim_row(ii)) - run_table.event_start(stim_row(ii)) + 1;
                         pre_onset_frames = sum(params.stim.cd.t_cmodfun==params.stim.cd.t_cmodfun(1));
-                        t_cmod_pad = length([(rel_onset-1+length(params.stim.cd.t_cmodfun)-pre_onset_frames)+1:params.exp.trial.stim_array_dur]);
+                        t_cmod_pad = length([ ((rel_onset + length(params.stim.cd.t_cmodfun)-pre_onset_frames - 1)+1) : params.exp.trial.stim_array_dur]);
                         if strcmp(stmclass,'rdk')
                             [f_im_cd, f_mask_cd] = vcd_applyContrastDecrement(params, ...
                                 rel_onset, stmclass, run_images(curr_frames,side), ...
