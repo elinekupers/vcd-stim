@@ -40,6 +40,10 @@ function results = vcdbehavioralanalysis(filename);
 %   ===
 %   <summary> is a table (documented below)
 %
+% <results.conditioncount> is a 1 x N vector of counts where N is the total number of
+%   conditions in the full condition list. The counts indicate the number of instances of
+%   a given condition that are present in the run.
+%
 % <results.trialinfo> is a table with N rows where N is the number of trials in the run.
 % Note that the fixation task generates many dot change events --- we treat all of these events
 % as if they are trials, even though they are not trials in the conventional VCD sense.
@@ -121,8 +125,12 @@ responsewindow_fix = [100 1500];  % for the fixation task, we accept buttons in 
 % load the data
 a1 = load(filename);
 
+% get full condition list
+acn = vcd_getConditionNames;  % 1 x N cell vector of official condition labels
+
 % initialize results
 clear results;
+results.conditioncount = zeros(1,length(acn));
 results.trialinfo = table;
 results.summary = table;
 
@@ -416,10 +424,36 @@ while 1
   % check that the taskIDs is listed in a1.run_table.crossing_nr
   taskIDs = unique(a1.run_frames.crossingIDs);
   assert(ismember(a1.run_table.crossing_nr(ii),taskIDs));
-  
+
+  % deal with conditioncount.
+  % a few notes:
+  % - the FIX task just produces neutral cue conditions, e.g. {'RDK-0041-L-NCUED-FIX'} {'RDK-0048-R-NCUED-FIX'}
+  % - for many tasks, there are both UNCUED and CUED conditions, e.g. {'RDK-0025-L-UNCUED-PC'} {'RDK-0046-R-CUED-PC'}
+  % - SCC is a little funny, as ALL classic stimuli are intermixed, e.g. {'ALL-0056-L-CUED-SCC'} {'ALL-0014-R-UNCUED-SCC'}
+  % - WM condition labels refer to only the first image (not the test image)
+  % - the CD+ cued condition is special (since it has a contrast change) and distinct from CD cued condition
+  % - the PC+ cued condition for objects is special (since it isn't the canonical rotation) and distinct from PC cued condition
+  % - the catch trials (#) are special
+  cii = find( a1.run_table.block_nr == blockcnt & ...
+              a1.run_table.trial_nr == trialcnt & ...
+              a1.run_table.event_id == 94 );   % Note: always pull from stim1!
+  assert(length(cii)==1);
+  for ccnt=1:2  % we are expecting either 1 or 2 condition names/numbers (for NS, we get just one)
+    condition_name = a1.run_table.condition_name{cii,ccnt};  % e.g. 'GBR-0023-L-UNCUED-CD'
+    condition_nr = a1.run_table.condition_nr(cii,ccnt);      % e.g. 98
+    if ~isnan(condition_name)
+      acnii = find(ismember(acn,condition_name));  % the entry had better be in the big list
+      assert(length(acnii)==1,'the run table condition name was not found in the master list!');
+      if acnii~=condition_nr
+        warning('our determined condition index DOES NOT MATCH the condition_nr entry in run_table. did the code change recently?');
+      end
+      results.conditioncount(acnii) = results.conditioncount(acnii) + 1;
+    end
+  end
+
   % handle tasks that aren't the FIX task
   if a1.run_table.task_class(ii) ~= 1
-
+  
     % record
     results.trialinfo.session_nr(rii) =   a1.run_table.session_nr(ii);
     results.trialinfo.session_type(rii) = a1.run_table.session_type(ii);
