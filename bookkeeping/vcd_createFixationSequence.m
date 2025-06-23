@@ -1,4 +1,4 @@
-function fix_matrix = vcd_createFixationSequence(params,fixsoafun,run_dur,blank_onset,blank_offset)
+function fix_matrix = vcd_createFixationSequence(params,fixsoafun,run_dur,blank_onset,blank_dur)
 % VCD function to create a continuous sequence of fixation circle luminance
 % changes for a given run duration, given a particular
 % stimulus-onset-asynchrony (SOA).
@@ -16,8 +16,8 @@ function fix_matrix = vcd_createFixationSequence(params,fixsoafun,run_dur,blank_
 %                        frozen to mean luminance gray. This can be the 
 %                        pre-run rest period, post-run rest period, or
 %                        interblock interval (IBI).
-%  * blank_offset   : (double) first time frames related to offset of blank
-%                        or "non-stimulus block" period. 
+%  * blank_dur      : (double) duration of each blank onset in time frames 
+%                        
 %
 % OUTPUTS:
 %  * fix_matrix     : (double) Nx4 matrix where N is the number of time
@@ -32,13 +32,14 @@ function fix_matrix = vcd_createFixationSequence(params,fixsoafun,run_dur,blank_
 %% Determine frozen fixation periods
 
 % Convert time frames to indices
+assert(length(blank_onset)==length(blank_dur));
 blank_onset_idx  = blank_onset + 1;
-blank_offset_idx = blank_offset + 1;
 
 % Get frozen time periods
 freeze_me = zeros(run_dur,1);
 for ii = 1:length(blank_onset_idx)
-    freeze_me(blank_onset_idx(ii):(blank_offset_idx(ii)-1)) = 1;
+    blank_offset_idx(ii) = (blank_onset_idx(ii)+blank_dur(ii)-1);
+    freeze_me(blank_onset_idx(ii):blank_offset_idx(ii)) = 1;
 end
 
 % Get twinkle luminance values (i.e., ignore 128 lum value as that's for IBI and blank periods only)
@@ -148,18 +149,19 @@ assert(all(button_response_fix(button_press_mean_lum)~=0))
 assert(all(isnan(button_response_fix(button_press_mean_lum-1)))); 
 
 % check if there is a first button press related to the onset of that fixation block
-blank_onset_mn_lum = blank_onset_idx(ismember(blank_onset_idx,button_press_frame));
-blank_offset_mn_lum = blank_offset_idx(ismember(blank_offset_idx,button_press_frame));
+blank_onset_button_press = blank_onset_idx(ismember(blank_onset_idx,button_press_frame));
+stim_block_onset = blank_offset_idx' + 1;
+stim_block_onset_button_press = stim_block_onset(ismember(stim_block_onset,button_press_frame));
 
-delete_me_onset  = fix_abs_lum(blank_onset_mn_lum)==128;
-delete_me_offset = fix_abs_lum(blank_offset_mn_lum)~=128;
+delete_me_onset  = fix_abs_lum(blank_onset_button_press)==128;
+delete_me_offset = fix_abs_lum(stim_block_onset_button_press)~=128;
 
 if sum(delete_me_onset)>0
-    button_response_fix(blank_onset_mn_lum(delete_me_onset)) = NaN;
+    button_response_fix(blank_onset_button_press(delete_me_onset)) = NaN;
 end
 
 if sum(delete_me_offset)>0
-    button_response_fix(blank_offset_mn_lum(delete_me_onset)) = NaN;
+    button_response_fix(stim_block_onset_button_press(delete_me_onset)) = NaN;
 end
 
 % Record timing, absolute, relative fixation luminance, and button response
