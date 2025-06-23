@@ -61,7 +61,6 @@ oldCLUT     = pton(ptonparams{:});
 win         = firstel(Screen('Windows'));
 oldPriority = Priority(MaxPriority(win));
 rect        = Screen('Rect',win); % get total screen rect   % alternatively: rect = CenterRect(round([0 0 rect(3)*winsize rect(4)*winsize]),rect);
-HideCursor(win); 
 
 % OTHER PTB stuff
 mfi            = Screen('GetFlipInterval',win);     % empirical refresh rate determined when we "opened" the ptb window pointer
