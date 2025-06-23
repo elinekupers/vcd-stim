@@ -705,7 +705,7 @@ vars = vars(cellfun(@(x) ~ismember(x,{'fix', ...
     'timeframes' 'starttime' 'dur' 'frameduration'}),vars)); 
 
 % Save data (button presses, params, etc)
-save(fullfile(params.savedatadir,params.behaviorfile),vars{:});  % '-v7.3'
+save(fullfile(params.savedatafolder,params.behaviorfile),vars{:});  % '-v7.3'
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -714,7 +714,7 @@ save(fullfile(params.savedatadir,params.behaviorfile),vars{:});  % '-v7.3'
 
 
 % Get behavioral performance
-performance = vcdbehavioralanalysis(fullfile(params.savedatadir,params.behaviorfile));
+performance = vcdbehavioralanalysis(fullfile(params.savedatafolder,params.behaviorfile));
 
 % Get feedback display text
 [fb_txt, fbtext_rect] = vcd_getFeedbackDisplay(params, rect, performance);
@@ -730,8 +730,8 @@ ptviewmoviecheck(data.timing.timeframes,data.timeKeys,[],{'5' 't'});
 % Check eyetracking data
 if params.wanteyetracking
     eyeresults = vcdeyetrackingpreprocessing( ...
-        fullfile(params.savedatadir,params.eyelinkfile), ...
-        fullfile(params.savedatadir,params.behaviorfile), performance);
+        fullfile(params.savedatafolder,params.eyelinkfile), ...
+        fullfile(params.savedatafolder,params.behaviorfile), performance);
 end
 
 % Let the user decide when to end the experiment
