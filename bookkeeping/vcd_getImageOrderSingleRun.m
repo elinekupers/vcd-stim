@@ -463,14 +463,16 @@ for ii = 1:length(stim_row)
                     if isempty(all_images.obj)
                         % Complex objects: 4D array: [x,y,16 object, og + 10 rotation]
                         d = dir(sprintf('%s*.mat', params.stim.obj.stimfile));
-                        a = load(fullfile(d(end).folder,d(end).name), 'objects','masks','info');
+                        a = load(fullfile(d(end).folder,d(end).name), 'objects','masks','objects_catch','masks_catch','info');
                         all_images.obj = a.objects; 
+                        all_images.objcatch = a.objects_catch;
                         all_images.alpha.obj = a.masks; 
+                        all_images.alpha.objcatch = a.masks_catch;
                         all_images.info.obj = a.info; 
                         clear a d;
                     end
                     
-                    if strcmp(run_table.event_name(stim_row(ii)),'stim1') && run_table.is_catch(stim_row(ii)) == 0
+                    if strcmp(run_table.event_name(stim_row(ii)),'stim1') && run_table.is_catch(stim_row(ii)) == 0 && run_table.is_objectcatch(stim_row(ii)) == 0
                         
                         idx = find( (all_images.info.obj.super_cat == run_table.super_cat(stim_row(ii),side)) & ...
                             (all_images.info.obj.basic_cat == run_table.basic_cat(stim_row(ii),side)) & ...
@@ -491,6 +493,34 @@ for ii = 1:length(stim_row)
                         
                         run_images{curr_frames(1),side}      = all_images.obj(:,:,:,unique_im==params.stim.obj.unique_im_nrs_core,1);
                         run_alpha_masks{curr_frames(1),side} = all_images.alpha.obj(:,:,unique_im==params.stim.obj.unique_im_nrs_core,1);
+                        
+                    elseif strcmp(run_table.event_name(stim_row(ii)),'stim1') && run_table.is_catch(stim_row(ii)) == 0 && run_table.is_objectcatch(stim_row(ii)) == 1
+                        
+                        idx = find( (all_images.info.obj.super_cat == run_table.super_cat(stim_row(ii),side)) & ...
+                            (all_images.info.obj.basic_cat == run_table.basic_cat(stim_row(ii),side)) & ...
+                            (all_images.info.obj.sub_cat == run_table.sub_cat(stim_row(ii),side)) & ...
+                            (all_images.info.obj.abs_rot == run_table.orient_dir(stim_row(ii),side)) );
+                        
+                        obj_super = all_images.info.obj.super_cat_name(idx);
+                        obj_basic = all_images.info.obj.basic_cat_name(idx);
+                        obj_sub   = all_images.info.obj.sub_cat_name(idx);
+                        obj_rotation = all_images.info.obj.abs_rot(idx);
+                        
+                        % check if stim idx matches
+                        assert(isequal(all_images.info.obj.unique_im(idx),     unique_im));
+                        assert(isequal(obj_super,   run_table.super_cat_name(stim_row(ii),side)));
+                        assert(isequal(obj_basic,   run_table.basic_cat_name(stim_row(ii),side)));
+                        assert(isequal(obj_sub,     run_table.sub_cat_name(stim_row(ii),side)));
+                        assert(isequal(obj_rotation,run_table.orient_dir(stim_row(ii),side)));
+                        
+                        tmp_im = strsplit(run_table.condition_name{stim_row(ii),side},'-');
+                        tmp_im = str2num(tmp_im{2});
+                        corresponding_im = find(tmp_im==params.stim.obj.unique_im_nrs_core);
+                        obj_catch_mat = reshape(params.stim.obj.unique_im_nrs_objcatch,[],16)';
+                        obj_catch_rot = obj_catch_mat(corresponding_im,:);
+                        run_images{curr_frames(1),side}      = all_images.objcatch(:,:,:,corresponding_im, find(unique_im==obj_catch_rot));
+                        run_alpha_masks{curr_frames(1),side} = all_images.alpha.objcatch(:,:,corresponding_im, find(unique_im==obj_catch_rot));
+                      
                         
                     elseif strcmp(run_table.event_name(stim_row(ii)),'stim2') && strcmp(run_table.task_class_name(stim_row(ii)),'wm') && run_table.is_catch(stim_row(ii)) == 0
                         
