@@ -237,7 +237,7 @@ for ses = 1:length(session_nrs)
                                     % (uncued stimulus will never change
                                     % contrast).
                                     c_onset   = this_run.cd_start(stim_row(ii)) + 1; % add one for frame indexing
-                                    c_offset  = this_run.event_end(stim_row(ii)) + 1; % add one for frame indexing
+                                    c_offset  = this_run.event_end(stim_row(ii)) - 1; % remove one to align with stim offset
                                     if ~isnan(c_onset) && c_onset~=0
                                         cd_cued_side    = mod(this_run.is_cued(stim_row(ii))-1,2)+1;
                                         c_onset_support = c_onset - pre_onset_time_frames; % we shift the support function such that the first frame with a lower contrast aligns with cd_start
