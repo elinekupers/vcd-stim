@@ -158,9 +158,9 @@ all_angles_deg(all_angles_deg < 0) = 360+all_angles_deg(all_angles_deg < 0);
 all_angles_rad = deg2rad(all_angles_deg);
 
 % add conditions to table
-stim_loc      = repmat({'left','right'},(length(nr_angles)/2),length(dot_ref_locs)); % stim loc refers to hemifield on display. We divide nr angles by 2, because they contain both L/R
-stim_loc_idx  = repmat([1,2],(length(nr_angles)/2),length(dot_ref_locs)); % stim loc refers to hemifield on display. We divide nr angles by 2, because they contain both L/R
-dot_ang_idx       = repmat(nr_angles,1,length(dot_ref_locs));
+stim_loc      = repmat({'right','left'},(length(nr_angles)/2),length(dot_ref_locs)); % stim loc refers to hemifield on display. We divide nr angles by 2, because they contain both L/R
+stim_loc_idx  = repmat([2,1],(length(nr_angles)/2),length(dot_ref_locs)); % stim loc refers to hemifield on display. We divide nr angles by 2, because they contain both L/R
+dot_ang_idx   = repmat(nr_angles,1,length(dot_ref_locs));
 dot_angle_deg = reshape(all_angles_deg',1,[])';
 dot_eccen     = repmat(params.stim.dot.iso_eccen, size(dot_angle_deg,1),1);
 dot_xpos_pix  = reshape(all_xpos_pix',1,[])';
@@ -241,7 +241,7 @@ if verbose
         figure(1); clf;
         pax = polaraxes;
         polarscatter(info.angle_rad([idx1;idx2])', info.eccen_deg([idx1;idx2])',params.stim.dot.radius_pix,cmap,'LineWidth',3);
-        pax.LineWidth = 0;
+        pax.LineWidth = 1;
         pax.ThetaZeroLocation = 'top';
         pax.ThetaDir = 'clockwise';
         pax.FontSize = 20;
