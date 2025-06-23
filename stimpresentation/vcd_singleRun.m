@@ -393,7 +393,7 @@ if ~exist('scan','var') || ~isfield(scan, 'rects') || isempty(scan.rects)
     
     % Now loop over stimuli
     for nn = 1:size(stim.im,1)
-        
+
         % We only do get centers/sizes for stimulus events or images in the
         % eye tracking block
         if ismember(run_frames.frame_event_nr(nn), ...
@@ -564,9 +564,9 @@ clear centers_shortlist apsize_shortlist rects_shortlist ...
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%% TASK INSTRUCTIONS %%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 introscript.im   = all_images.instr(:,:,:,1);
-introscript.rect = CenterRectOnPoint([0 0 size(introscript.im,1) size(introscript.im,2)], ...
-                    params.stim.xc, params.stim.yc);
-
+introscript.rect = CenterRect([0 0 size(introscript.im,1) size(introscript.im,2)], ...
+                              [0 0 params.disp.w_pix,params.disp.h_pix]);
+ 
 % Find the crossing_nrs for each stimulus block
 taskIDs   = unique(run_table.crossing_nr);
 taskIDs   = taskIDs(~isnan(taskIDs));
@@ -582,7 +582,7 @@ for nn = 1:length(taskIDs)
     
     % load in instruction image
     taskscript.im{nn}   = all_images.instr(:,:,:,taskIDs(nn)+1);  % +1 because introtext is first image
-    taskscript.rect{nn} = CenterRectOnPoint([0 0 size(taskscript.im{nn},1) size(taskscript.im{nn},2)], params.stim.xc, params.stim.yc);
+    taskscript.rect{nn} = CenterRect([0 0 size(taskscript.im{nn},1) size(taskscript.im{nn},2)], [0 0 params.disp.w_pix,params.disp.h_pix]);
     
     % Check we got the right file
     taskName = strrep(taskNames{nn},'-','_');
