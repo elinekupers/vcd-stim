@@ -88,7 +88,7 @@ else
 end
 
 % release images
-all_images = params.all_images; rmfield(params, 'all_images');
+all_images = params.all_images; params = rmfield(params, 'all_images');
 
 
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
