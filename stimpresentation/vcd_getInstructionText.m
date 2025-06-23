@@ -11,6 +11,9 @@ while lcount < 48
     instrtext = [instrtext tl]; %#ok<*AGROW>
     tl = fgets(fd);
     lcount = lcount + 1;
+    if tl == -1 % end of line
+        break;
+    end
 end
 % close text file
 fclose(fd);

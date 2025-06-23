@@ -16,30 +16,13 @@ for nn = 1:length(behavioral_results.summary.crossing_nr)
     script     = d(1).name;
     task_name = vcd_getInstructionText(params, script, rect);
     
-    if length(task_name)>20
-        txt0 = sprintf('Block %d: %s \t %d%% correct', ...
-            nn, task_name, block_accuracy(nn));
-    elseif length(task_name)>17
-        txt0 = sprintf('Block %d: %s \t\t %d%% correct', ...
-            nn, task_name, block_accuracy(nn));
-    elseif length(task_name)>10
-        txt0 = sprintf('Block %d: %s \t\t\t %d%% correct', ...
-            nn, task_name, block_accuracy(nn));
-    else
-        txt0 = sprintf('Block %d: %s \t\t\t\t %d%% correct', ...
-            nn, task_name, block_accuracy(nn));
-    end
-    
-    if length(txt0) < 60
-        txt1 = strcat(txt0,repmat(' ',1,50-length(txt0)));
-    else
-        txt1 = txt0;
-    end
-    
+    txt0 = sprintf('Block %d: %d%% correct - %s', ...
+            nn, block_accuracy(nn),task_name);
+
     if nn~=length(behavioral_results.summary.crossing_nr)
-       txt1 = strcat(txt1,'\n'); 
+       txt0 = strcat(txt0,'\n'); 
     end
-    txt = [txt txt1];
+    txt = [txt txt0];
         
 end
 
