@@ -609,9 +609,9 @@ if nr_reps > 0
                     assert(isequal(sum(conds_shuffle0.stimloc==1),n_unique_cases/2));  % Check left stim loc
                     assert(isequal(sum(conds_shuffle0.stimloc==2),n_unique_cases/2));  % Check right stim loc
                     if ~ismember(taskClass{:}, {'ltm','img'})
-                        assert(isequal(sort(conds_shuffle0.orient_dir,'ascend'),repelem(params.stim.dot.ang_deg,1)')); % Check dot angle
+                        assert(isequal(sort(conds_shuffle0.orient_dir,'ascend'),sort(params.stim.dot.ang_deg)')); % Check dot angle
                     else
-                        assert(isequal(sort(conds_shuffle0.orient_dir,'ascend'),params.stim.dot.ang_deg(ismember(params.stim.dot.unique_im_nrs_core,params.stim.dot.unique_im_nrs_specialcore))')); % Check contrast
+                        assert(isequal(sort(conds_shuffle0.orient_dir,'ascend'),sort(params.stim.dot.ang_deg(ismember(params.stim.dot.unique_im_nrs_core,params.stim.dot.unique_im_nrs_specialcore)))')); % Check contrast
                     end
 
 
@@ -681,7 +681,7 @@ if nr_reps > 0
                         % Ensure that absolute angles of left and right test
                         % stimuli don't overlap (here we use a threshold of
                         % an angle that is more than 20 degrees difference between the two stimuli)
-                        dot_too_close = diff(orient_dir2,[],2) < params.stim.dot.min_ang_distance_test_stim;
+                        dot_too_close = abs(diff(orient_dir2,[],2)) < params.stim.dot.min_ang_distance_test_stim;
                         
                         if sum(dot_too_close)==0
                             break;
