@@ -241,7 +241,7 @@ for ses = 1:length(session_nrs)
                                     % (uncued stimulus will never change
                                     % contrast).
                                     c_onset   = this_run.cd_start(stim_row(ii)) + 1; % add one for frame indexing
-                                    c_offset  = this_run.event_end(stim_row(ii)) - 1; % remove one to align with stim offset
+                                    c_offset  = this_run.event_end(stim_row(ii)); % no additions: we add one for frame indexing, and remove one to align with stim offset
                                     if ~isnan(c_onset) && c_onset~=0
                                         cd_cued_side    = mod(this_run.is_cued(stim_row(ii))-1,2)+1;
                                         c_onset_support = c_onset - pre_onset_time_frames; % we shift the support function such that the first frame with a lower contrast aligns with cd_start
@@ -269,7 +269,7 @@ for ses = 1:length(session_nrs)
                     assert(all(diff(find(abs(diff(run_frames.fix_abs_lum(run_frames.frame_event_nr>90 & run_frames.frame_event_nr<99)))>0)) <= params.stim.fix.dotmeanchange))
                     
                     fix_start_idx  = this_run.event_start(fix_events,:) + 1;    % when do trials in fixation block start 
-                    fix_end_idx    = this_run.event_end(fix_events,:) - 1;      % when do trials in fixation block end 
+                    fix_end_idx    = this_run.event_end(fix_events,:);          % when do trials in fixation block end (no additions because +1 for frame indexing and -1 to get the start of the last event frame cancels eachother out).
                     fix_update_idx = run_frames.fix_correct_response>0;   % when would the subject press a button to indicate luminance change          
                    
                     % find those frames where the fixation circle updated
@@ -280,7 +280,7 @@ for ses = 1:length(session_nrs)
                         t_fix = fix_update_sub(ff);
                         t_tbl = find((fix_start_idx <= t_fix) & (t_fix <= fix_end_idx));
                         if ~isempty(t_tbl)
-                            this_run.nr_of_fix_changes(fix_events(t_tbl)) = this_run.nr_of_fix_changes(fix_events(t_tbl)) + 1;
+                            this_run.nr_of_fix_changes(fix_events(t_tbl)) = this_run.nr_of_fix_changes(fix_events(t_tbl)) + 1; % add another fixation change event to existing counter 
                         end
                     end
                     
