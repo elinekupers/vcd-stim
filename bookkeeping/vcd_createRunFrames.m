@@ -68,7 +68,8 @@ for ses = 1:length(session_nrs)
                 
                  % get run duration (in frames), minus one to get nr of
                  % frames
-                run_dur = this_run.event_end(end);
+                run_dur = length(this_run.event_start(1):(this_run.event_end(end)-1));
+                assert(isequal(run_dur,this_run.event_end(end)))
                 
                 % ensure a run is of reasonable length, and is not longer than 10 min
                 assert((run_dur*params.stim.presentationrate_hz)/3600 < 600)
@@ -89,8 +90,11 @@ for ses = 1:length(session_nrs)
                 % Get rest / blank periods to know when to freeze the
                 % fixation luminance sequence. 
                 % 0: 'pre-blank', 90:'task-cue', 99:'IBI', 999: eyetracking block
-                blank_onset       = this_run.event_start(this_run.block_nr==999 | this_run.event_id==0 | this_run.event_id==90 | this_run.event_id==99); 
-                blank_offset      = this_run.event_end(this_run.block_nr==999 | this_run.event_id==0 | this_run.event_id==90 | this_run.event_id==99); % includes postblank period 
+                % Note that vcd_createFixationSequence will convert time
+                % onset and offset to frame indices by blank_onset +1 and
+                % blank_offset - 1;
+                blank_onset = this_run.event_start(this_run.block_nr==999 | this_run.event_id==0 | this_run.event_id==90 | this_run.event_id==99); 
+                blank_dur   = this_run.event_dur(this_run.block_nr==999 | this_run.event_id==0 | this_run.event_id==90 | this_run.event_id==99); % includes postblank period 
                 
                 % Get fixation sequence
                 % fix_matrix is a matrix with dims: time frames x 4, where 
@@ -98,7 +102,7 @@ for ses = 1:length(session_nrs)
                 % Column 2: absolute luminance values (between 0 and 255)
                 % Column 3: relative change in luminance values compared to the previous time point
                 % Column 4: correct button press associated with the relative luminance change (1=brighter, 2=dimmer).
-                fix_matrix = vcd_createFixationSequence(params,params.stim.fix.fixsoafun, run_dur, blank_onset, blank_offset); 
+                fix_matrix = vcd_createFixationSequence(params,params.stim.fix.fixsoafun, run_dur, blank_onset, blank_dur); 
                 
                 % remove button responses from frozen fixation periods;
                 if sum(fix_matrix(:,4)==0)>0
@@ -264,18 +268,17 @@ for ses = 1:length(session_nrs)
                     % or shorter in case we happen to run into an IBI.
                     assert(all(diff(find(abs(diff(run_frames.fix_abs_lum(run_frames.frame_event_nr>90 & run_frames.frame_event_nr<99)))>0)) <= params.stim.fix.dotmeanchange))
                     
-                    fix_start  = this_run.event_start(fix_events,:);       % when do trials in fixation block start 
-                    fix_end    = this_run.event_end(fix_events,:);         % when do trials in fixation block end 
-                    fix_update_idx = (run_frames.fix_correct_response>0);  % when would the subject press a button to indicate luminance change          
+                    fix_start_idx  = this_run.event_start(fix_events,:) + 1;    % when do trials in fixation block start 
+                    fix_end_idx    = this_run.event_end(fix_events,:) - 1;      % when do trials in fixation block end 
+                    fix_update_idx = run_frames.fix_correct_response>0;   % when would the subject press a button to indicate luminance change          
                    
                     % find those frames where the fixation circle updated
                     % and tell the run table how many fixation changes we
                     % expect per trial row
-                    time_fix_updated = run_frames.timing(fix_update_idx);
                     fix_update_sub = find(fix_update_idx);
                     for ff = 1:length(fix_update_sub)
-                        t_fix = time_fix_updated(ff);
-                        t_tbl = find((fix_start <= t_fix) & (t_fix <= fix_end));
+                        t_fix = fix_update_sub(ff);
+                        t_tbl = find((fix_start_idx <= t_fix) & (t_fix <= fix_end_idx));
                         if ~isempty(t_tbl)
                             this_run.nr_of_fix_changes(fix_events(t_tbl)) = this_run.nr_of_fix_changes(fix_events(t_tbl)) + 1;
                         end
