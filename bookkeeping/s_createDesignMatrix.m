@@ -3,20 +3,22 @@
 % Script to create and store the entire VCD experiment as a MATLAB table
 % including the order in which VCD-core stimuli and tasks are shown to  
 % subject at the granularity of trial events.
+%
 % At a bird's eye level: there are sessions (~1.5-2 hrs), which contain
 % multiple runs (~6.5 mins), which contain multiple blocks interspersed 
 % with rest periods of a gray (mean luminance) screen + fixation circle
 % called Inter-Block-Intervals (IBIs, 5-9 sec) or pre/post-run rest
 % periods.
 %
-% Each block is (~40-60 s) and contains multiple trials of a single 
-% stimulus-task crossing. For a given trial, the subject is presented with
-% gray background + fixation circle that the subject is instructed to 
-% continuously fixate at throughout the run.
+% Each block is 44.5 seconds (single-stimulus presentation trials) or 60.5 
+% seconds (double-stimulus presentation trials) and contains multiple 
+% trials of a single stimulus-task crossing. For a given trial, the subject 
+% is presented with gray background + fixation circle that the subject is 
+% instructed to continuously fixate at throughout the run.
 %
-% A single block contains starts with a task cue (4 sec ON, followed by a 1 
-% sec blank screen), followed by either 8 trials (for single stimulus 
-% presentation blocks, also known as trial_type 1) or 4 trials (double  
+% A single block contains starts with a task cue (4 seconds, followed by a 
+% 1-s blank screen), followed by either 8 trials (for single-stimulus 
+% presentation blocks, also known as trial_type 1) or 4 trials (double-
 % stimulus presentation blocks, also known as trial_type 2). Trials within
 % a block are interspersed with variable (0-1.5 sec) Inter-Trial-Intervals
 % (ITIs).
@@ -53,10 +55,10 @@
 %%%%%% PARAMETERS %%%% 
 %%%%%%%%%%%%%%%%%%%%%%
 
-verbose      = true; % print text and visualize stimuli (true) or not (false)?
-store_imgs   = true; % store debug figures (true) or not (false)?
+verbose      = true;  % print text and visualize stimuli (true) or not (false)?
+store_imgs   = true;  % store debug figures (true) or not (false)?
 load_params  = false; % load stored params (true) or recreate them (false)?
-store_params = true; % save stored params as mat file (true) or not (false)?
+store_params = true;  % save stored params as mat file (true) or not (false)?
 
 params = struct();
 params.saveFigsFolder = fullfile(vcd_rootPath,'figs'); % where to store visualization figures
@@ -120,7 +122,7 @@ params.exp    = vcd_getSessionParams('disp_name', params.disp.name, ...
 % This function contains the following important steps/functions:
 % * vcd_allocateBlocksToRuns
 % * vcd_createRunTimeTables
-% * vcd_addFIXandCDtoTimeTableMaster
+% * vcd_createRunFrames
 [params,condition_master_shuffled,time_table_master_shuffled, all_subj_run_frames] = ...
     vcd_createSessions(params,'condition_master',condition_master,...
                                'load_params',  load_params, ...
