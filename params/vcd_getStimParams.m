@@ -453,19 +453,25 @@ else
                 
                 % DOT LOCATIONS
                 p.num_loc         = 16;                                          % number of equally spaced dot angles (deg), 0 = 12 o'clock
-                p.ang_deg         = [0:(360/p.num_loc):359]+(0.5*(360/p.num_loc)); % idealized angle of center dot loc in deg, 0 deg = 12 o'clock. rotate half a shift away from vertical, to avoid ill-defined response options
-                                                                                   % location angles turn out to be: 11.25 33.75 56.25 78.75 101.25 123.75 146.25 168.75 191.25 213.75 236.25 258.75 281.25 303.75 326.25 348.75
-                p.ang_deg         = p.ang_deg([(((p.num_loc/2)+1):p.num_loc),1:(p.num_loc/2)]);
+                % idealized angle of center dot loc in deg, 0 deg = 12 o'clock. 
+                % rotate half a shift away from vertical, to avoid
+                % ill-defined response options. Angles start with 8 left dots 
+                % (from ~11 o'clock to ~7 o'clock_, then 8 right dots (from 
+                % ~5 o'clock to ~1 o'clock.)
+                p.ang_deg = fliplr([0:(360/p.num_loc):359]+(0.5*(360/p.num_loc))); % single dot location angle (deg) 
+                % location angles turn out to be: [348.75, 326.25, 303.75,
+                % 281.25, 258.75, 236.25, 213.75, 191.25, 168.75, 146.25,
+                % 123.75, 101.25, 78.75, 56.25, 33.75, 11.25] deg
                 
-                p.iso_eccen       = 4.0;                                         % desired iso-eccentric dot location (for all angles)
-                p.eccen_deg       = repmat(p.iso_eccen,1,length(p.ang_deg));     % desired eccen of center dot loc in deg (translation from center screen 0,0)
+                p.iso_eccen = 4.0;                                         % desired iso-eccentric dot location (for all angles)
+                p.eccen_deg = repmat(p.iso_eccen,1,length(p.ang_deg));     % desired eccen of center dot loc in deg (translation from center screen 0,0)
                 
                 % ensure equal distance from cardinal meridians
                 assert(isequal(abs(180-p.ang_deg(1:(p.num_loc/2))), abs(0-p.ang_deg(((p.num_loc/2)+1):p.num_loc))));
                 assert(isequal(abs(270-p.ang_deg(1:(p.num_loc/2))), abs(90-p.ang_deg(((p.num_loc/2)+1):p.num_loc))));
                 
                 % Convert dot polar angle coords to cartesian coords
-                [x,y] = pol2cart(deg2rad(p.ang_deg+90),p.eccen_deg);               % add 90 deg to ensure 0 deg is now 12 o'clock in x,y-pixel space
+                [x,y] = pol2cart(deg2rad(p.ang_deg-90),p.eccen_deg);               % subtract 90 deg to ensure 0 deg is now 12 o'clock in x,y-pixel space
                 p.x0_pix        = disp_params.xc + round(x * disp_params.ppd);     % desired x-center loc in pix (translation from upper left corner [0,0])
                 p.y0_pix        = disp_params.yc + round(y * disp_params.ppd);     % desired y-center loc in pix (translation from upper left corner [0,0])
                 
@@ -487,7 +493,7 @@ else
                     p.ang_deg_delta(dd,:)   = p.ang_deg + p.delta_from_ref(dd);    % desired angle offset for dot loc in deg (translation from center screen 0,0)
                     p.eccen_deg_delta(dd,:) = p.eccen_deg;                         % desired eccen for dot loc in deg (translation from center screen 0,0)
                     
-                    [x_d,y_d] = pol2cart(deg2rad(p.ang_deg_delta(dd,:)+90),p.eccen_deg_delta(dd,:)); % again, note the +90
+                    [x_d,y_d] = pol2cart(deg2rad(p.ang_deg_delta(dd,:)-90),p.eccen_deg_delta(dd,:)); % again, note the -90
                     p.x0_pix_delta(dd,:) = disp_params.xc + round(x_d * disp_params.ppd);  % x-center ref dot loc in pix (translation from upper left corner [0,0])
                     p.y0_pix_delta(dd,:) = disp_params.yc + round(y_d * disp_params.ppd);  % y-center ref dot loc in pix (translation from upper left corner [0,0])
                 end
