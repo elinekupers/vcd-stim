@@ -33,11 +33,9 @@ p0.addParameter('savestim'          , false, @islogical); % store the actual sti
 p0.parse(params, time_table_master, all_run_frames, subj_nr, ses_nr, ses_type, run_nr, env_type, varargin{:});
 
 % Rename variables into general params struct
-rename_me = fieldnames(p0.Results);
-for ff = 1:length(rename_me)
-    eval([sprintf('%s = p0.Results.%s;', rename_me{ff},rename_me{ff})]);
-end
-clear rename_me ff p0
+sfun = @(x) sprintf('%s = p0.Results.%s;',x,x);
+cellfun(@eval, cellfun(sfun, fieldnames(p0.Results), 'UniformOutput', false))
+clear sfun
 
 %% Check if experimental parameters are already defined and load it if needed
 if ~isfield(params,'exp') || isempty(params.exp)
@@ -84,7 +82,7 @@ end
 
 
 %% Load params if requested and we can find the file
-
+tic
 fprintf('\n[%s]: Loading stimuli..\n',mfilename);
     
 
@@ -177,7 +175,7 @@ stim_row    = find(ismember(run_table.event_id, [params.exp.block.stim_epoch1_ID
 
 % Loop over all stimulus rows
 if verbose; fprintf('[%s]: Insert stimuli for each trial into "run_frames"..\n',mfilename); end
-tic; 
+ 
 for ii = 1:length(stim_row)
     
     fprintf('.')
@@ -210,11 +208,11 @@ for ii = 1:length(stim_row)
                     if isempty(all_images.gabor)
                         % GABORS: 6D array: [x,y,8 orient, 4 phase,3 contrast, og + 4 delta]
                         d = dir(sprintf('%s*.mat', params.stim.gabor.stimfile));
-                        a = load(fullfile(d(end).folder,d(end).name), 'gabors','masks','info');
+                        a = load(fullfile(d(end).folder,d(end).name), 'gabors','info'); % also contains 'masks', but we don't need those..
                         
                         all_images.gabor = a.gabors; 
                         all_images.info.gabor  = a.info; 
-                        all_images.alpha.gabor = a.masks; 
+%                         all_images.alpha.gabor = a.masks; 
                         clear a d;
                     end
                     
@@ -299,29 +297,54 @@ for ii = 1:length(stim_row)
                     
                     if strcmp(run_table.event_name(stim_row(ii)),'stim1') && run_table.is_catch(stim_row(ii)) == 0
                         
-                        % RDKs: 130 mat files: 8 directions x 3 coherence levels x 5 deltas (0 + 4 deltas)
-                        stimDir = dir(fullfile(sprintf('%s*',params.stim.rdk.stimfile)));
-                        filename = sprintf('%04d_vcd_rdk_ori%02d_coh%02d_delta%02d',...
-                            unique_im, ...
-                            find(run_table.orient_dir(stim_row(ii),side) == params.stim.rdk.dots_direction), ...
-                            find(run_table.rdk_coherence(stim_row(ii),side) == params.stim.rdk.dots_coherence), ...
-                            0);
-                        
-                        stimfile = fullfile(stimDir(1).folder,stimDir(1).name,sprintf('%s.mat', filename));
-                        if exist(stimfile,'file')
-                            load(stimfile, 'frames','mask', 'rdk_info');
-                        else
-                            error('[%s]: Can''t find RDK stim file!')
-                        end
+                        % attempt to store rdk movies
+%                         tbl_idx = find(ismember([params.stim.rdk.unique_im_nrs_core,params.stim.rdk.unique_im_nrs_wm_test],unique_im));
+%                         
+%                         if ~isfield(all_images.info, 'rdk')
+%                             all_images.info.rdk = [];
+%                         end
+%                             
+%                         if ~isempty(all_images.rdk(:,:,:,:,tbl_idx)) && ...
+%                            ~isempty(all_images.info.rdk) && ismember(unique_im,all_images.info.rdk.unique_im)
+%                             
+%                        
+%                            
+%                             all_images.rdk(:,:,:,:,tbl_idx) = frames;
+%                             
+%                             
+%                         else
 
+                            % RDKs: 130 mat separate files: 8 directions x 3 coherence levels x 5 deltas (0 + 4 deltas)
+                            stimDir = dir(fullfile(sprintf('%s*',params.stim.rdk.stimfile)));
+                            filename = sprintf('%04d_vcd_rdk_ori%02d_coh%02d_delta%02d',...
+                                unique_im, ...
+                                find(run_table.orient_dir(stim_row(ii),side) == params.stim.rdk.dots_direction), ...
+                                find(run_table.rdk_coherence(stim_row(ii),side) == params.stim.rdk.dots_coherence), ...
+                                0);
+                            
+                            stimfile = fullfile(stimDir(1).folder,stimDir(1).name,sprintf('%s.mat', filename));
+                            if exist(stimfile,'file')
+                                load(stimfile, 'frames','rdk_info'); % also contains 'mask', but we don't need that..
+                            else
+                                error('[%s]: Can''t find RDK stim file!')
+                            end
+                            
+                            % ensure stimulus duration
+                            frames =  frames(:,:,:,1:params.stim.rdk.duration);
+                            
+                            %                         all_images.info.rdk = cat(1,all_images.info.rdk, rdk_info);
+                            %                         [~,reorder_idx] = sort(all_images.info.rdk.unique_im,'ascend');
+                            %                         all_images.info.rdk = all_images.info.rdk(reorder_idx,:);
+                            
+%                         end
+                        
                         % check if stim description matches
                         idx0 = find(rdk_info.unique_im == unique_im);
                         dot_motdir = rdk_info.dot_motdir_deg(idx0);
                         dot_coh    = rdk_info.dot_coh(idx0);
                         assert(isequal(run_table.rdk_coherence(stim_row(ii),side),dot_coh));
                         assert(isequal(run_table.orient_dir(stim_row(ii),side),dot_motdir));
-                        
-                        frames =  frames(:,:,:,1:params.stim.rdk.duration);
+
 
                         % expand rdk movies into frames
                         rdk_images = squeeze(mat2cell(frames, size(frames,1), ...
@@ -331,7 +354,7 @@ for ii = 1:length(stim_row)
                             rdk_images = rdk_images';
                         end
                         
-%                         rdk_masks = repmat({mask}, size(rdk_images,1), 1);
+                        % rdk_masks = repmat({mask}, size(rdk_images,1),1); % we are ignoring masks for rdks for now
                         
                         run_images(curr_frames,side) = rdk_images;
                         run_alpha_masks(curr_frames,side) = cell(size(rdk_images,1), 1);
@@ -365,7 +388,7 @@ for ii = 1:length(stim_row)
                         
                         stimfile = fullfile(stimDir(1).folder,stimDir(1).name,sprintf('%s.mat', filename));
                         if exist(stimfile,'file')
-                            load(stimfile, 'frames','mask','rdk_info');
+                            load(stimfile, 'frames','rdk_info'); % also contains 'mask', but we don't need that..
                         else
                             error('[%s]: Can''t find RDK stim file!')
                         end
@@ -464,15 +487,16 @@ for ii = 1:length(stim_row)
                         % Complex objects: 4D array: [x,y,16 object, og + 10 rotation]
                         d = dir(sprintf('%s*.mat', params.stim.obj.stimfile));
                         a = load(fullfile(d(end).folder,d(end).name), 'objects','masks','objects_catch','masks_catch','info');
-                        all_images.obj = a.objects; 
-                        all_images.objcatch = a.objects_catch;
-                        all_images.alpha.obj = a.masks; 
+                        all_images.obj            = a.objects; 
+                        all_images.objcatch       = a.objects_catch;
+                        all_images.alpha.obj      = a.masks; 
                         all_images.alpha.objcatch = a.masks_catch;
-                        all_images.info.obj = a.info; 
+                        all_images.info.obj       = a.info; 
                         clear a d;
                     end
                     
-                    if strcmp(run_table.event_name(stim_row(ii)),'stim1') && run_table.is_catch(stim_row(ii)) == 0 && run_table.is_objectcatch(stim_row(ii)) == 0
+                    if strcmp(run_table.event_name(stim_row(ii)),'stim1') && run_table.is_catch(stim_row(ii)) == 0 ...
+                            && run_table.is_objectcatch(stim_row(ii)) == 0
                         
                         idx = find( (all_images.info.obj.super_cat == run_table.super_cat(stim_row(ii),side)) & ...
                             (all_images.info.obj.basic_cat == run_table.basic_cat(stim_row(ii),side)) & ...
@@ -494,35 +518,50 @@ for ii = 1:length(stim_row)
                         run_images{curr_frames(1),side}      = all_images.obj(:,:,:,unique_im==params.stim.obj.unique_im_nrs_core,1);
                         run_alpha_masks{curr_frames(1),side} = all_images.alpha.obj(:,:,unique_im==params.stim.obj.unique_im_nrs_core,1);
                         
-                    elseif strcmp(run_table.event_name(stim_row(ii)),'stim1') && run_table.is_catch(stim_row(ii)) == 0 && run_table.is_objectcatch(stim_row(ii)) == 1
-                        
-                        idx = find( (all_images.info.obj.super_cat == run_table.super_cat(stim_row(ii),side)) & ...
-                            (all_images.info.obj.basic_cat == run_table.basic_cat(stim_row(ii),side)) & ...
-                            (all_images.info.obj.sub_cat == run_table.sub_cat(stim_row(ii),side)) & ...
-                            (all_images.info.obj.abs_rot == run_table.orient_dir(stim_row(ii),side)) );
-                        
-                        obj_super = all_images.info.obj.super_cat_name(idx);
-                        obj_basic = all_images.info.obj.basic_cat_name(idx);
-                        obj_sub   = all_images.info.obj.sub_cat_name(idx);
-                        obj_rotation = all_images.info.obj.abs_rot(idx);
-                        
-                        % check if stim idx matches
-                        assert(isequal(all_images.info.obj.unique_im(idx),     unique_im));
-                        assert(isequal(obj_super,   run_table.super_cat_name(stim_row(ii),side)));
-                        assert(isequal(obj_basic,   run_table.basic_cat_name(stim_row(ii),side)));
-                        assert(isequal(obj_sub,     run_table.sub_cat_name(stim_row(ii),side)));
-                        assert(isequal(obj_rotation,run_table.orient_dir(stim_row(ii),side)));
-                        
-                        tmp_im = strsplit(run_table.condition_name{stim_row(ii),side},'-');
-                        tmp_im = str2num(tmp_im{2});
-                        corresponding_im = find(tmp_im==params.stim.obj.unique_im_nrs_core);
-                        obj_catch_mat = reshape(params.stim.obj.unique_im_nrs_objcatch,[],16)';
-                        obj_catch_rot = obj_catch_mat(corresponding_im,:);
-                        run_images{curr_frames(1),side}      = all_images.objcatch(:,:,:,corresponding_im, find(unique_im==obj_catch_rot));
-                        run_alpha_masks{curr_frames(1),side} = all_images.alpha.objcatch(:,:,corresponding_im, find(unique_im==obj_catch_rot));
+                    elseif strcmp(run_table.event_name(stim_row(ii)),'stim1') && run_table.is_catch(stim_row(ii)) == 0 ...
+                            && run_table.is_objectcatch(stim_row(ii)) == 1
+
+                            idx = find( (all_images.info.obj.super_cat == run_table.super_cat(stim_row(ii),side)) & ...
+                                (all_images.info.obj.basic_cat == run_table.basic_cat(stim_row(ii),side)) & ...
+                                (all_images.info.obj.sub_cat == run_table.sub_cat(stim_row(ii),side)) & ...
+                                (all_images.info.obj.abs_rot == run_table.orient_dir(stim_row(ii),side)));
+
+                            obj_super = all_images.info.obj.super_cat_name(idx);
+                            obj_basic = all_images.info.obj.basic_cat_name(idx);
+                            obj_sub   = all_images.info.obj.sub_cat_name(idx);
+                            obj_rotation = all_images.info.obj.abs_rot(idx);
+
+                            % check if stim idx matches
+                            assert(isequal(all_images.info.obj.unique_im(idx),     unique_im));
+                            assert(isequal(obj_super,   run_table.super_cat_name(stim_row(ii),side)));
+                            assert(isequal(obj_basic,   run_table.basic_cat_name(stim_row(ii),side)));
+                            assert(isequal(obj_sub,     run_table.sub_cat_name(stim_row(ii),side)));
+                            assert(isequal(obj_rotation,run_table.orient_dir(stim_row(ii),side)));
                       
-                        
-                    elseif strcmp(run_table.event_name(stim_row(ii)),'stim2') && strcmp(run_table.task_class_name(stim_row(ii)),'wm') && run_table.is_catch(stim_row(ii)) == 0
+                            if ismember(unique_im,params.stim.obj.unique_im_nrs_core)
+                                run_images{curr_frames(1),side}      = all_images.obj(:,:,:,unique_im==params.stim.obj.unique_im_nrs_core, 1);
+                                run_alpha_masks{curr_frames(1),side} = all_images.alpha.obj(:,:,unique_im==params.stim.obj.unique_im_nrs_core, 1);
+                                
+                                % or the case when we deal with the objectcatch
+                            elseif ismember(unique_im,params.stim.obj.unique_im_nrs_objcatch)
+                                
+                                assert(all_images.info.obj.is_objectcatch(idx)==true)
+                                
+                                tmp_im = strsplit(run_table.condition_name{stim_row(ii),side},'-');
+                                tmp_im = str2num(tmp_im{2});
+                                assert(strcmp(all_images.info.obj.sub_cat_name(all_images.info.obj.unique_im==tmp_im),obj_sub))
+                                corresponding_im = find(all_images.info.obj.unique_im==tmp_im);
+                                assert(isequal(corresponding_im, find(tmp_im==params.stim.obj.unique_im_nrs_core)));
+                                obj_catch_mat = reshape(params.stim.obj.unique_im_nrs_objcatch,[],16)';
+                                obj_catch_im_nrs = obj_catch_mat(corresponding_im,:);
+                                obj_catch_rot_idx = find(unique_im==obj_catch_im_nrs);
+                                assert(isequal(params.stim.obj.catch_rotation(corresponding_im,find(unique_im==obj_catch_im_nrs)),obj_rotation))
+                                run_images{curr_frames(1),side}      = all_images.objcatch(:,:,:,corresponding_im, obj_catch_rot_idx);
+                                run_alpha_masks{curr_frames(1),side} = all_images.alpha.objcatch(:,:,corresponding_im, obj_catch_rot_idx);
+                            end
+                            
+                    elseif strcmp(run_table.event_name(stim_row(ii)),'stim2') && strcmp(run_table.task_class_name(stim_row(ii)),'wm') ...
+                            && run_table.is_catch(stim_row(ii)) == 0 && run_table.is_objectcatch(stim_row(ii)) ~= 1
                         
                         delta_idx  = run_table.stim2_delta(stim_row(ii),side);
                         ref_dir    = run_table.orient_dir(stim_row(ii),side);
@@ -578,9 +617,9 @@ for ii = 1:length(stim_row)
                         % CBlind: 7D array: [x,y,5 superordinate cat, 2 ns_loc, 3 obj_loc, 4 change images];
                         % Lures: 7D array: [x,y,5 superordinate cat, 2 ns_loc, 3 obj_loc, 4 lure images];
                         d = dir(sprintf('%s*.mat', params.stim.ns.stimfile));
-                        a = load(fullfile(d(end).folder,d(end).name), 'scenes','ltm_lures','wm_im','info');
+                        a = load(fullfile(d(end).folder,d(end).name), 'scenes','wm_im','info'); % also contains 'ltm_lures' but we don't use those
                         all_images.ns.scenes = a.scenes; 
-                        all_images.ns.lures = a.ltm_lures; 
+%                         all_images.ns.lures = a.ltm_lures; 
                         all_images.ns.wm_im = a.wm_im; 
                         all_images.info.ns = a.info; 
                         clear a d;
