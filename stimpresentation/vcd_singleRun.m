@@ -242,6 +242,7 @@ else % if not, then we look user pointed to a timetable_file
         % and create the time_table_master from there..
         d = dir(fullfile(params.timetablefiledir, '%s_condition_master*.mat',sprintf('vcd_subj%03d',params.subj_nr)));
         if ~isempty(d)
+            fprintf('[%s]: Create new time_table_master with local subject-specific condition_master.\n',mfilename);
             load(fullfile(d(end).folder,d(end).name),'condition_master_shuffled');
 
             [time_table_master,all_run_frames] = ...
@@ -259,7 +260,7 @@ else % if not, then we look user pointed to a timetable_file
             % we create both condition_master_shuffled and time_table_master on the spot.
             d = dir(fullfile(vcd_rootPath,'workspaces','info', sprintf('condition_master*%s*.mat', params.disp.name)));
             a1 = load(fullfile(d(end).folder,d(end).name),'condition_master');
-
+            fprintf('[%s]: Create new subject-specific condition_master and time_table_master using general condition_master file.\n',mfilename);
             % make randomization file!
             [~,~, time_table_master, all_run_frames] = vcd_createSessions(params,...
                 'load_params',false, ...
