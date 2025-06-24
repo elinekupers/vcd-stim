@@ -1,4 +1,4 @@
-function [data, all_images] = vcd_singleRun(subj_nr, ses_nr, ses_type, run_nr, dispName, varargin)
+function [data, all_images] = vcd_singleRun(params); %subj_nr, ses_nr, ses_type, run_nr, dispName, varargin)
 % VCD stimulus presentation function to prepare running one VCD core 
 % stimulus run:
 % 
@@ -28,56 +28,53 @@ function [data, all_images] = vcd_singleRun(subj_nr, ses_nr, ses_type, run_nr, d
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%% PARSE INPUTS %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-p = inputParser;
+% p = inputParser;
 % MANDATORY INPUTS
-p.addRequired('subj_nr' , @isnumeric); % subject number (integral number between 1-999)
-p.addRequired('ses_nr'  , @isnumeric); % session number (integral number between 1-27)
-p.addRequired('ses_type', @isnumeric); % session type (either 1 for version A, 2 for version B)
-p.addRequired('run_nr'  , @isnumeric); % run number (integral number between 1-15)
-p.addRequired('dispName', @(x) ismember(x,{'7TAS_BOLDSCREEN32','KKOFFICE_AOCQ3277','PPROOM_EIZOFLEXSCAN','EKHOME_ASUSVE247','CCNYU_VIEWPIXX3D'})) % display name to get the right display params
-
-% OPTIONAL INPUTS
-p.addParameter('savedatafolder'     , ''        , @ischar);                      % place to store data with today's date
-p.addParameter('behaviorfile'       , ''        , @ischar);                      % filename used for stored matlab file with behavioral data (name will add today's date)
-p.addParameter('eyelinkfile'        , ''        , @ischar);                      % filename used for stored eyelink edf file with eyetracking data (name will add today's date)
-p.addParameter('stim'               , []        , @isstruct);                    % if you don't want to reload stimuli, you need stim.im to containing uint8 images (time frames x 2 cell array). 
-p.addParameter('loadparams'         , true      , @islogical)                    % (boolean) whether load stim/condition params or regenerate
-p.addParameter('storeparams'        , true      , @islogical)                    % whether to store stimulus params
-p.addParameter('laptopkey'          , -3        , @isnumeric);                   % listen to all keyboards/boxes (is this similar to k=-3;?)
-p.addParameter('wanteyetracking'    , false     , @islogical);                   % whether to try to hook up to the eyetracker
-p.addParameter('wantdatabypass'     , false     , @islogical);                   % whether to skip the experiment and just save dummy .mat file
-p.addParameter('deviceNr'           , -3        , @isnumeric);                   % kbWait/kbCheck input device number to listen to. Default = -3, listen to all devices. Previously: vcd_checkDevices(params.deviceNr, params.device_check);
-p.addParameter('device_check'       , 'both'    , @char);                        % what type of devices do we want to check for button presses: 'external','internal', or 'both'
-p.addParameter('triggerkey'         , {'5','t'}, @(x) iscell(x) || isstring(x))  % key(s) that starts the experiment
-p.addParameter('triggerkeyname'     , '''5'' or ''t''', @isstring)               % for display only
-p.addParameter('userkeys'           , {'1','2','3','4'}, @(x) iscell(x) || isstring(x)) % key(s) that participants are expected to push
-p.addParameter('offsetpix'          , [0 0]     , @isnumeric);                   % offset of screen in pixels [10 20] means move 10-px right, 20-px down
-p.addParameter('movieflip'          , [0 0]     , @isnumeric)                    % whether to flip up-down, whether to flip left-right
-p.addParameter('wantsynctest'       , true      , @islogical)                    % whether we want to run the PTB sync test or not
-p.addParameter('savestim'           , false     , @islogical)                    % whether we want to store matlab file with stimuli and timing
-p.addParameter('loadstimfromrunfile', false     , @islogical)                    % whether we want to load stim from run file
-p.addParameter('ptbMaxVBLstd'       , 0.0009    , @isnumeric)                    % what standard deviation for screen flip duration do we allow?
-p.addParameter('env_type'           , []        , @(x) ismember(x, {'MRI','BEHAVIOR'})); % are we running the 'BEHAVIOR' (PProom) or 'MRI' (7TAS) version of the VCD core experiment?
-p.addParameter('timetable_file'     , ''        , @ischar);                      % what randomization file are we loading? file should exist in   
-p.addParameter('all_images'         , struct()  , @isstruct);                    % preloaded all_images in a single struct (to save time)
-p.addParameter('verbose'            , true      , @islogical)                    % (boolean) whether to print out text in command window. Default = true. 
-p.addParameter('store_imgs'         , false     , @islogical)                    % (boolean) whether to save figures locally. Default = false.    
-p.addParameter('infofolder'         , fullfile(vcd_rootPath,'workspaces','info')        , @ischar); % where are the *_info.csv file(s)?
-p.addParameter('stimfolder'         , fullfile(vcd_rootPath,'workspaces','stimuli')     , @ischar); % where are the mat-files with store stimuli?
-p.addParameter('instrfolder'        , fullfile(vcd_rootPath,'workspaces','instructions'), @ischar); % where are the txt and png files with task instructions?
+% p.addRequired('subj_nr' , @isnumeric); % subject number (integral number between 1-999)
+% p.addRequired('ses_nr'  , @isnumeric); % session number (integral number between 1-27)
+% p.addRequired('ses_type', @isnumeric); % session type (either 1 for version A, 2 for version B)
+% p.addRequired('run_nr'  , @isnumeric); % run number (integral number between 1-15)
+% p.addRequired('dispName', @(x) ismember(x,{'7TAS_BOLDSCREEN32','KKOFFICE_AOCQ3277','PPROOM_EIZOFLEXSCAN','EKHOME_ASUSVE247','CCNYU_VIEWPIXX3D'})) % display name to get the right display params
+% 
+% % OPTIONAL INPUTS
+% p.addParameter('savedatafolder'     , ''        , @ischar);                      % place to store data with today's date
+% p.addParameter('behaviorfile'       , ''        , @ischar);                      % filename used for stored matlab file with behavioral data (name will add today's date)
+% p.addParameter('eyelinkfile'        , ''        , @ischar);                      % filename used for stored eyelink edf file with eyetracking data (name will add today's date)
+% p.addParameter('stim'               , []        , @isstruct);                    % stim params struct
+% p.addParameter('exp'                , []        , @isstruct);                    % exp params struct
+% p.addParameter('loadparams'         , false     , @islogical)                    % (boolean) whether load stim/condition params or regenerate
+% p.addParameter('storeparams'        , false     , @islogical)                    % whether to store stimulus params
+% p.addParameter('laptopkey'          , -3        , @isnumeric);                   % listen to all keyboards/boxes (is this similar to k=-3;?)
+% p.addParameter('wanteyetracking'    , false     , @islogical);                   % whether to try to hook up to the eyetracker
+% p.addParameter('wantdatabypass'     , false     , @islogical);                   % whether to skip the experiment and just save dummy .mat file
+% p.addParameter('deviceNr'           , -3        , @isnumeric);                   % kbWait/kbCheck input device number to listen to. Default = -3, listen to all devices. Previously: vcd_checkDevices(params.deviceNr, params.device_check);
+% p.addParameter('device_check'       , 'both'    , @char);                        % what type of devices do we want to check for button presses: 'external','internal', or 'both'
+% p.addParameter('triggerkey'         , {'5','t'}, @(x) iscell(x) || isstring(x))  % key(s) that starts the experiment
+% p.addParameter('triggerkeyname'     , '''5'' or ''t''', @isstring)               % for display only
+% p.addParameter('userkeys'           , {'1','2','3','4'}, @(x) iscell(x) || isstring(x)) % key(s) that participants are expected to push
+% p.addParameter('offsetpix'          , [0 0]     , @isnumeric);                   % offset of screen in pixels [10 20] means move 10-px right, 20-px down
+% p.addParameter('movieflip'          , [0 0]     , @isnumeric)                    % whether to flip up-down, whether to flip left-right
+% p.addParameter('wantsynctest'       , true      , @islogical)                    % whether we want to run the PTB sync test or not
+% p.addParameter('savestim'           , false     , @islogical)                    % whether we want to store matlab file with stimuli and timing
+% p.addParameter('loadstimfromrunfile', false     , @islogical)                    % whether we want to load stim from run file
+% p.addParameter('ptbMaxVBLstd'       , 0.0009    , @isnumeric)                    % what standard deviation for screen flip duration do we allow?
+% p.addParameter('env_type'           , []        , @(x) ismember(x, {'MRI','BEHAVIOR'})); % are we running the 'BEHAVIOR' (PProom) or 'MRI' (7TAS) version of the VCD core experiment?
+% p.addParameter('timetable_file'     , ''        , @ischar);                      % what randomization file are we loading? file should exist in   
+% p.addParameter('all_images'         , struct()  , @isstruct);                    % preloaded all_images in a single struct (to save time)
+% p.addParameter('verbose'            , true      , @islogical)                    % (boolean) whether to print out text in command window. Default = true. 
+% p.addParameter('store_imgs'         , false     , @islogical)                    % (boolean) whether to save figures locally. Default = false.    
+% p.addParameter('infofolder'         , fullfile(vcd_rootPath,'workspaces','info')        , @ischar); % where are the *_info.csv file(s)?
+% p.addParameter('stimfolder'         , fullfile(vcd_rootPath,'workspaces','stimuli')     , @ischar); % where are the mat-files with store stimuli?
+% p.addParameter('instrfolder'        , fullfile(vcd_rootPath,'workspaces','instructions'), @ischar); % where are the txt and png files with task instructions?
 
 % Parse inputs
-p.parse(subj_nr, ses_nr, ses_type, run_nr, dispName, varargin{:});
+% p.parse(subj_nr, ses_nr, ses_type, run_nr, dispName, varargin{:});
 
 % Rename variables into general params struct
-rename_me = fieldnames(p.Results);
-for ff = 1:length(rename_me)
-    eval(sprintf('params.%s = p.Results.%s;', rename_me{ff},rename_me{ff}));
-end
-clear rename_me ff p
+% params = p.Results;
 
 % deal with movieflip
-if params.movieflip(1) && params.movieflip(2) %#ok<NODEF>
+if params.movieflip(1) && params.movieflip(2) 
     flipfun = @(x) flipdim(flipdim(x,1),2); %#ok<*DFLIPDIM>
 elseif params.movieflip(1)
     flipfun = @(x) flipdim(x,1);
@@ -121,7 +118,7 @@ else % '7TAS_BOLDSCREEN32','KKOFFICE_AOCQ3277','EKHOME_ASUSVE247', 'CCNYU_VIEWPI
     ptonparams = {[params.disp.w_pix params.disp.h_pix params.disp.refresh_hz 24],[],params.disp.clut, skipsync};
 end
 
-% %%%%%%%%% SETUP RNG %%%%%%%%%
+% %%%%%%%%% SETUP RNG %%%%%%%%% 
 rand('seed', sum(100*clock)); %#ok<RAND>
 randn('seed', sum(100*clock)); %#ok<RAND>
 params.rng.rand  = rand;
@@ -153,14 +150,16 @@ end
 if ~isfield(params, 'stim') || isempty(params.stim)
     if params.loadparams
         d = dir(fullfile(params.infofolder,sprintf('stim_%s*.mat',params.disp.name)));
-        if  isempty(d)
+        if isempty(d)
             warning('[%s]: Can''t find stim params for %s, will reload params without overwriting params',mfilename,params.disp.name);
             params.stim = vcd_getStimParams('disp_name', params.disp.name, ...
                 'load_params',false, ...
                 'store_params', params.storeparams);
         else
-            load(fullfile(d(end).folder,d(end).name),'stim');
-            params.stim = stim; clear stim; %#ok<NODEF>
+            warning('[%s]: Can''t find stim params file for %s, will reload params without overwriting params',mfilename,params.disp.name);
+            params.stim  = vcd_getStimParams('disp_name', params.disp.name, ...
+            'load_params',params.loadparams, ....
+            'store_params', params.storeparams);
         end
     else
         params.stim  = vcd_getStimParams('disp_name', params.disp.name, ...
@@ -177,6 +176,7 @@ if ~isfield(params, 'exp') ||  isempty(params.exp)
             load(fullfile(d(end).folder,d(end).name),'exp');
             params.exp = exp; clear exp;
         else
+            warning('[%s]: Can''t find stim params file for %s, will reload params without overwriting params',mfilename,params.disp.name);
             params.exp = vcd_getSessionParams('disp_name', params.disp.name, ...
                 'load_params', false,...
                 'store_params', params.storeparams);
@@ -302,7 +302,7 @@ else % if not, then we look user pointed to a timetable_file
         if ~exist('all_images','var') && isempty(all_images)
             all_images = struct();
         end
-        
+
         [images, masks, all_images] = vcd_getImageOrderSingleRun(params, ...
             run_table, run_frames, params.subj_nr, params.ses_nr, params.ses_type, params.run_nr, params.env_type, ...
             'all_images', all_images, 'savestim', params.savestim);
@@ -434,7 +434,7 @@ if ~exist('scan','var') || ~isfield(scan, 'rects') || isempty(scan.rects)
                         centers{nn,side} = [dot_x,dot_y];
                         
                     % If it is an object..
-                    elseif ismember(run_frames.frame_im_nr(nn,side), [params.stim.obj.unique_im_nrs_core,params.stim.obj.unique_im_nrs_wm_test])
+                    elseif ismember(run_frames.frame_im_nr(nn,side), [params.stim.obj.unique_im_nrs_core,params.stim.obj.unique_im_nrs_wm_test, params.stim.obj.unique_im_nrs_objcatch])
                         centers{nn,side} = [params.stim.obj.x0_pix(side) + params.stim.xc, ...
                             params.stim.obj.y0_pix(side) + params.stim.yc];
                         
