@@ -164,13 +164,13 @@ dot_ang_idx   = repmat(nr_angles,1,length(dot_ref_locs));
 dot_angle_deg = reshape(all_angles_deg',1,[])';
 dot_eccen     = repmat(params.stim.dot.iso_eccen, size(dot_angle_deg,1),1);
 dot_xpos_pix  = reshape(all_xpos_pix',1,[])';
-dot_ypos_pix   = reshape(all_ypos_pix',1,[])';
+dot_ypos_pix  = reshape(all_ypos_pix',1,[])';
 
-dot_radians   = reshape(all_angles_rad',1,[])';
-dot_ref_locs  = repelem(dot_ref_locs,length(params.stim.dot.ang_deg))';
+dot_radians     = reshape(all_angles_rad',1,[])';
+dot_ref_locs    = repelem(dot_ref_locs,length(params.stim.dot.ang_deg))';
 dot_ref_loc_idx = repelem([0:length(params.stim.dot.delta_from_ref)],length(params.stim.dot.ang_deg))';
-unique_ref_im = reshape(params.stim.dot.unique_im_nrs_wm_test,4,[])';
-unique_im     = [params.stim.dot.unique_im_nrs_core, unique_ref_im(:)'];
+unique_ref_im   = reshape(params.stim.dot.unique_im_nrs_wm_test,4,[])';
+unique_im       = [params.stim.dot.unique_im_nrs_core, unique_ref_im(:)'];
 specialcore_bool  = ismember(unique_im,params.stim.dot.unique_im_nrs_specialcore)';
 assert(sum(specialcore_bool)==8);
 
@@ -257,13 +257,12 @@ if verbose
     im1 = repmat(bckground,[1 1 3]);
     dot_halfsz = (size(dot,1)/2);
 
-    for ang = params.stim.dot.ang_deg
+    for ai = 1:length(info.angle_rad(1:16))
         
-        angle = deg2rad(ang);
-        [x_shift,y_shift] = pol2cart(angle,params.stim.dot.iso_eccen);
+        [x_shift,y_shift] = pol2cart(info.angle_rad(ai),params.stim.dot.iso_eccen);
     
-        ys = params.disp.yc + round(y_shift*params.disp.ppd);
-        xs = params.disp.xc + round(x_shift*params.disp.ppd);
+        ys = params.disp.yc - round(y_shift*params.disp.ppd);
+        xs = params.disp.xc - round(x_shift*params.disp.ppd);
         dot_coords_x = (xs - dot_halfsz) : (xs + dot_halfsz -1);
         dot_coords_y = (ys - dot_halfsz) : (ys + dot_halfsz -1);
     
@@ -298,11 +297,11 @@ if verbose
         hold all;
         h0 = drawcircle('Center',[params.disp.xc,params.disp.yc],'Radius',3,'color', [1 1 1],'LineWidth',1);
         h0.InteractionsAllowed = 'none';
-        h1 = drawcircle('Center',[params.disp.w_pix-xpos_dots_to_plot,params.disp.h_pix-ypos_dots_to_plot],'Radius',params.stim.dot.radius_pix,'color',[1 1 1],'EdgeAlpha',0);
+        h1 = drawcircle('Center',[xpos_dots_to_plot,ypos_dots_to_plot],'Radius',params.stim.dot.radius_pix,'color',[1 1 1],'EdgeAlpha',0);
         h1.InteractionsAllowed = 'none';
         h1.FaceAlpha=1;
         
-        title(sprintf('Angle: %2.2f; Delta: %2.2f',info.angle_deg(aa),dot_ref_locs(dlta)), 'FontSize',20);
+        title(sprintf('Dot stim nr #%03d; Angle: %2.2f; Delta: %2.2f',info.unique_im(aa), info.angle_deg(aa),dot_ref_locs(dlta)), 'FontSize',20);
         axis image tight;
 %         set(gcf, 'InvertHardCopy', 'off');
         if store_imgs
