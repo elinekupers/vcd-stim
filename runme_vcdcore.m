@@ -99,8 +99,8 @@ function [data,all_images] = runme_vcdcore(subj_nr,ses_nr,ses_type,run_nr, dispN
 %                          Default: true
 %   [loadparams]         : if true, load stored parameter values. 
 %                          Default: true
-%   [storeparams]        : if true, store created parameter values. 
-%                          Default: true
+%   [storeparams]        : if true, store created "stim" and "exp" parameter values. 
+%                          Default: false
 %   [savestim]           : if true, store stimuli in matlab file prior to ptb flipping. File is ~25-50 MB!
 %                          Default: false
 %   [loadstimfromrunfile]: if true, load subject single run file with stimuli (to save time a minute and rerun the same run) 
@@ -181,86 +181,93 @@ p.addRequired ('ses_nr'             , @isnumeric); % session number
 p.addRequired ('ses_type'           , @isnumeric); % session type (1=A or 2=B) 
 p.addRequired ('run_nr'             , @isnumeric); % nun number
 p.addRequired('dispName'            , @(x) any(strcmp(x, {'7TAS_BOLDSCREEN32','KKOFFICE_AOCQ3277','PPROOM_EIZOFLEXSCAN','EKHOME_ASUSVE247', 'CCNYU_VIEWPIXX3D'}))); % display name
-p.addParameter('wantsynctest'       , true    , @islogical);
-p.addParameter('loadparams'         , true    , @islogical);
-p.addParameter('storeparams'        , true    , @islogical);
-p.addParameter('savestim'           , false   , @islogical);
-p.addParameter('loadstimfromrunfile', false   , @islogical);
-p.addParameter('verbose'            , false   , @islogical);    
-p.addParameter('storeimgs'          , false   , @islogical);
-p.addParameter('offsetpix'          , [0 0]   , @isnumeric); % [x,y]
-p.addParameter('movieflip'          , [0 0]   , @isnumeric); % up/down, left/right
-p.addParameter('savedatafolder'     , ''      , @ischar);
+p.addParameter('wantsynctest'       , true    , @islogical); % whether we want to run the PTB sync test or not
+p.addParameter('loadparams'         , false   , @islogical);
+p.addParameter('storeparams'        , false   , @islogical);
+p.addParameter('savestim'           , false   , @islogical); % whether we want to store matlab file with stimuli and timing
+p.addParameter('loadstimfromrunfile', false   , @islogical); % whether we want to load stim from run file
+p.addParameter('verbose'            , false   , @islogical); % (boolean) whether to print out text in command window. Default = true.   
+p.addParameter('storeimgs'          , false   , @islogical); % whether we want to store debug figures
+p.addParameter('offsetpix'          , [0 0]   , @isnumeric); % [x,y] % offset of screen in pixels [10 20] means move 10-px right, 20-px down
+p.addParameter('movieflip'          , [0 0]   , @isnumeric); % whether to flip up-down, whether to flip left-right: % up/down, left/right
+p.addParameter('savedatafolder'     , ''      , @ischar);    % place to store data with today's date
 p.addParameter('subjfilename'       , ''      , @ischar);
-p.addParameter('wanteyetracking'    , false   , @islogical);
-p.addParameter('wantdatabypass'     , false   , @islogical);
-p.addParameter('ptbMaxVBLstd'       , 0.0009  , @isnumeric);
-p.addParameter('all_images'         , struct(), @isstruct);
-p.addParameter('timetable_file'     , ''      , @ischar);
+p.addParameter('wanteyetracking'    , false   , @islogical); % whether to try to hook up to the eyetracker
+p.addParameter('wantdatabypass'     , false   , @islogical);  % whether to skip the experiment and just save dummy .mat file
+p.addParameter('ptbMaxVBLstd'       , 0.0009  , @isnumeric); % what standard deviation for screen flip duration do we allow?
+p.addParameter('all_images'         , struct(), @isstruct); % preloaded all_images in a single struct (to save time)
+p.addParameter('timetable_file'     , ''      , @ischar); % what subject time_table_master file are we loading? file should exist in savedatafolder  
 p.addParameter('stimfolder'         , fullfile(vcd_rootPath,'workspaces','stimuli')     , @ischar); % Where do the stimulus mat files live?
 p.addParameter('instrfolder'        , fullfile(vcd_rootPath,'workspaces','instructions'), @ischar); % Where do the task instruction txt and png files live?
 p.addParameter('infofolder'         , fullfile(vcd_rootPath,'workspaces','info')        , @ischar); % where do the *_info.csv file(s) live?
 p.addParameter('exp_env'            , []      , @isnumeric);
+p.addParameter('laptopkey'          , -3        , @isnumeric);                   % listen to all keyboards/boxes (is this similar to k=-3;?)
+p.addParameter('deviceNr'           , -3        , @isnumeric);                   % kbWait/kbCheck input device number to listen to. Default = -3, listen to all devices. Previously: vcd_checkDevices(params.deviceNr, params.device_check);
+p.addParameter('device_check'       , 'both'    , @char);                        % what type of devices do we want to check for button presses: 'external','internal', or 'both'
+p.addParameter('triggerkey'         , {'5','t'}, @(x) iscell(x) || isstring(x))  % key(s) that starts the experiment
+p.addParameter('triggerkeyname'     , '''5'' or ''t''', @isstring)               % for display only
+p.addParameter('userkeys'           , {'1','2','3','4'}, @(x) iscell(x) || isstring(x)) % key(s) that participants are expected to push
+p.addParameter('store_imgs'         , false     , @islogical)                    % (boolean) whether to save figures locally. Default = false.                      
 
 % Parse inputs
 p.parse(subj_nr, ses_nr, ses_type, run_nr, dispName, varargin{:});
 
-% Rename variables into general params struct
-rename_me = fieldnames(p.Results);
-for ff = 1:length(rename_me)
-    eval([sprintf('%s = p.Results.%s;', rename_me{ff},rename_me{ff})]); %#ok<NBRAK>
-end
-clear rename_me ff p
+% Rename variables into struct
+params = p.Results;
+
+% sfun = @(x) sprintf('%s = p.Results.%s;',x,x);
+% cellfun(@eval, cellfun(sfun, fieldnames(p.Results), 'UniformOutput', false))
+% clear sfun p
 
 %% Do startup
 
-vcd_startup(exp_env); % script will navigate to root of vcd-stim code folder
+vcd_startup(params.exp_env); % script will navigate to root of vcd-stim code folder
 
 %% Check environment and input parameters:
        
 % Are we running the behavioral or MRI experiment? Or are we testing on an office monitor?
-if strcmp(dispName,'7TAS_BOLDSCREEN32')
-    env_type = 'MRI';
-elseif ismember(dispName,{'PPROOM_EIZOFLEXSCAN','CCNYU_VIEWPIXX3D','KKOFFICE_AOCQ3277','EKHOME_ASUSVE247'})
-    env_type = 'BEHAVIOR';
+if strcmp(params.dispName,'7TAS_BOLDSCREEN32')
+    params.env_type = 'MRI';
+elseif ismember(params.dispName,{'PPROOM_EIZOFLEXSCAN','CCNYU_VIEWPIXX3D','KKOFFICE_AOCQ3277','EKHOME_ASUSVE247'})
+    params.env_type = 'BEHAVIOR';
 end
 
       
 % Can we actually run this experiment?
-assert(subj_nr>=0 && (subj_nr<=999));
-if strcmp(env_type,'BEHAVIOR')
-    assert(run_nr>=1 && run_nr<=15);
-    assert(isequal(ses_type,1));
-    assert(isequal(ses_nr,1));
-elseif strcmp(env_type,'MRI')
-    assert(ses_nr>=1 && ses_nr<=27);
-    if ismember(ses_nr, [1,27]), assert(ismember(ses_type, [1,2]));
-    else, assert(isequal(ses_type,1)); end
-    if ses_nr == 27, assert(run_nr>=1 && run_nr<=5);
-    else, assert(run_nr>=1 && run_nr<=10); end
+assert(params.subj_nr>=0 && (params.subj_nr<=999));
+if strcmp(params.env_type,'BEHAVIOR')
+    assert(params.run_nr>=1 && params.run_nr<=15);
+    assert(isequal(params.ses_type,1));
+    assert(isequal(params.ses_nr,1));
+elseif strcmp(params.env_type,'MRI')
+    assert(params.ses_nr>=1 && params.ses_nr<=27);
+    if ismember(params.ses_nr, [1,27]), assert(ismember(params.ses_type, [1,2]));
+    else, assert(isequal(params.ses_type,1)); end
+    if params.ses_nr == 27, assert(params.run_nr>=1 && params.run_nr<=5);
+    else, assert(params.run_nr>=1 && params.run_nr<=10); end
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % %%%%%%%%%%%%%%%%%%% Deal with folders and filenames %%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-if isempty(savedatafolder) %#ok<NODEF>
-    savedatafolder = fullfile(vcd_rootPath,'data',env_type,sprintf('vcd_subj%03d_ses%02d',subj_nr, ses_nr));
+if isempty(params.savedatafolder)
+    params.savedatafolder = fullfile(vcd_rootPath,'data',params.env_type,sprintf('vcd_subj%03d_ses%02d',params.subj_nr, params.ses_nr));
 end
-if ~exist(savedatafolder, 'dir'); mkdir(savedatafolder); end
+if ~exist(params.savedatafolder, 'dir'); mkdir(params.savedatafolder); end
 
 
-if isempty(timetable_file) %#ok<NODEF>
+if isempty(params.timetable_file)
    load_existing_timetable = input('No timetable_file was specified, do you want to regenerate the file?  1: YES   2: NO \n');
 
    if load_existing_timetable == 1
        fprintf('OK, will regenerate new time table for this subject''s session and run.\n')
    elseif load_existing_timetable == 2
-       tmp_timetable_dir = fullfile(vcd_rootPath,'data',env_type, sprintf('vcd_subj%03d',subj_nr));
-       if strcmp(dispName,'CCNYU_VIEWPIXX3D')
-           tempfiles = matchfiles(fullfile(tmp_timetable_dir,sprintf('vcd_subj%03d_time_table_master_%s*.mat',subj_nr, 'PPROOM_EIZOFLEXSCAN')));
+       tmp_timetable_dir = fullfile(vcd_rootPath,'data',params.env_type, sprintf('vcd_subj%03d',params.subj_nr));
+       if strcmp(params.dispName,'CCNYU_VIEWPIXX3D')
+           tempfiles = matchfiles(fullfile(tmp_timetable_dir,sprintf('vcd_subj%03d_time_table_master_%s*.mat',params.subj_nr, 'PPROOM_EIZOFLEXSCAN')));
        else
-           tempfiles = matchfiles(fullfile(tmp_timetable_dir,sprintf('vcd_subj%03d_time_table_master_%s*.mat',subj_nr, dispName)));
+           tempfiles = matchfiles(fullfile(tmp_timetable_dir,sprintf('vcd_subj%03d_time_table_master_%s*.mat',params.subj_nr, params.dispName)));
        end
        tempfiles_short = strrep(tempfiles, tmp_timetable_dir, '.');
        fprintf('\nIt appears you have the following time tables already:\n');
@@ -271,8 +278,8 @@ if isempty(timetable_file) %#ok<NODEF>
        
        timetable_idx = input('Type nr of time table file you want to use: \n');
 
-       timetable_file = tempfiles{timetable_idx}; 
-       fprintf('\nWill use timetable_file = %s\n',timetable_file);
+       params.timetable_file = tempfiles{timetable_idx}; 
+       fprintf('\nWill use timetable_file = %s\n',params.timetable_file);
        clear timetable_idx tempfiles_short tmp_timetable_dir load_existing_timetable
    end
 
@@ -280,19 +287,21 @@ end
 
 % Where do we store behavioral and eyetracking data?
 ts0 = gettimestring;
-if isempty(subjfilename)
-    behavioralfilename  = sprintf('behavior_%s_vcd_subj%03d_ses%02d_%s_run%02d.mat',ts0,subj_nr,ses_nr,choose(ses_type==1,'A','B'),run_nr);
-    if wanteyetracking
-        eyelinkfilename = sprintf('eye_%s_vcd_subj%03d_ses%02d_%s_run%02d.edf',ts0,subj_nr,ses_nr,choose(ses_type==1,'A','B'),run_nr);
+if isempty(params.subjfilename)
+    params.behavioralfilename  = sprintf('behavior_%s_vcd_subj%03d_ses%02d_%s_run%02d.mat',...
+        ts0,params.subj_nr,params.ses_nr,choose(params.ses_type==1,'A','B'),params.run_nr);
+    if params.wanteyetracking
+        params.eyelinkfilename = sprintf('eye_%s_vcd_subj%03d_ses%02d_%s_run%02d.edf',...
+            ts0,params.subj_nr,params.ses_nr,choose(params.ses_type==1,'A','B'),params.run_nr);
     else
-        eyelinkfilename = '';
+        params.eyelinkfilename = '';
     end
 else
-    behavioralfilename  = fullfile(savedatafolder,sprintf('%s_%s.mat',ts0,subjfilename));
-    if wanteyetracking
-        eyelinkfilename = fullfile(savedatafolder,sprintf('%s_%s.edf',ts0,subjfilename));
+    params.behavioralfilename  = fullfile(params.savedatafolder,sprintf('%s_%s.mat',ts0,params.subjfilename));
+    if params.wanteyetracking
+        params.eyelinkfilename = fullfile(params.savedatafolder,sprintf('%s_%s.edf',ts0,params.subjfilename));
     else
-        eyelinkfilename = '';
+        params.eyelinkfilename = '';
     end
 end
     
@@ -301,14 +310,14 @@ end
 
 % Tell operator what experiment are running
 fprintf('[%s]: Running VCD core %s experiment: subj_nr %03d - session %02d %s - run %02d \n', ...
-    mfilename, env_type, subj_nr,ses_nr,choose(ses_type==1,'A','B'),run_nr)
-fprintf('[%s]: %s eyetracking \n', mfilename, choose(wanteyetracking,'YES','NO'))
-fprintf('[%s]: Running experiment with images optimized for %s\n', mfilename, dispName)
-if isempty(timetable_file)
+    mfilename, params.env_type, params.subj_nr,params.ses_nr,choose(params.ses_type==1,'A','B'),params.run_nr)
+fprintf('[%s]: %s eyetracking \n', mfilename, choose(params.wanteyetracking,'YES','NO'))
+fprintf('[%s]: Running experiment with images optimized for %s\n', mfilename, params.dispName)
+if isempty(params.timetable_file)
     fprintf('[%s]: Subject''s time table file was NOT specified. Will create one on the fly. \n', mfilename)
 else
-    fprintf('[%s]: Will load subject''s time table file: %s \n', mfilename)
-    fprintf('[%s]: \t %s\n',mfilename, timetable_file)
+    fprintf('[%s]: Will load subject''s time table file:\n', mfilename)
+    fprintf('[%s]: \t %s\n',mfilename, params.timetable_file)
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -316,26 +325,17 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % for optional inputs use: 'var',<val>
-[data, all_images] = vcd_singleRun(subj_nr, ses_nr, ses_type, run_nr, dispName, ... % mandatory inputs
-    'wantsynctest',         wantsynctest, ... % optional inputs
-    'loadparams',           loadparams, ...
-    'storeparams',          storeparams, ...
-    'savestim',             savestim, ...
-    'loadstimfromrunfile',  loadstimfromrunfile, ...
-    'verbose',              verbose, ...
-    'store_imgs',           storeimgs, ...
-    'offsetpix',            offsetpix, ...
-    'movieflip',            movieflip, ...
-    'savedatafolder',       savedatafolder, ...
-    'behaviorfile',         behavioralfilename, ...
-    'eyelinkfile',          eyelinkfilename, ...
-    'wanteyetracking',      wanteyetracking, ...
-    'wantdatabypass',       wantdatabypass, ...
-    'ptbMaxVBLstd',         ptbMaxVBLstd, ...
-    'all_images',           all_images, ...
-    'timetable_file',       timetable_file, ...
-    'infofolder',           infofolder, ...
-    'stimfolder',           stimfolder, ...
-    'instrfolder',          instrfolder, ... 
-    'env_type',             env_type);
+[data, all_images] = vcd_singleRun(params);
+% [data, all_images] = vcd_singleRun(params.subj_nr, params.ses_nr, params.ses_type, params.run_nr, params.dispName, ... % mandatory inputs
+%     'wantsynctest',params.wantsynctest, 'loadparams',params.loadparams, ...
+%     'storeparams',params.storeparams, 'savestim',params.savestim, ...
+%     'loadstimfromrunfile',params.loadstimfromrunfile, 'verbose',params.verbose, ...
+%     'store_imgs',params.storeimgs, 'offsetpix',params.offsetpix, ...
+%     'movieflip',params.movieflip, 'savedatafolder',params.savedatafolder, ...
+%     'behaviorfile', params.behavioralfilename, 'eyelinkfile',params.eyelinkfilename, ...
+%     'wanteyetracking',params.wanteyetracking, 'wantdatabypass',params.wantdatabypass, ...
+%     'ptbMaxVBLstd',params.ptbMaxVBLstd, 'all_images',params.all_images, ...
+%     'timetable_file',params.timetable_file, 'infofolder',params.infofolder, ...
+%     'stimfolder',params.stimfolder, 'instrfolder',params.instrfolder, ... 
+%     'env_type',params.env_type);
     
