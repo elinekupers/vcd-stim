@@ -177,6 +177,18 @@ for ses = 1:length(session_nrs)
                 run_frames.is_objectcatch = logical(all_objectcatch); clear all_objectcatch;
                 run_frames.crossingIDs    = single(all_crossings);    clear all_crossings
                 
+                % use crossingIDs to remove any fixation related button responses outside fixation task blocks
+                fix_crossing_nr = unique(this_run.crossing_nr(find(ismember(this_run.crossing_nr,find(~cellfun(@isempty, regexp(params.exp.crossingnames,'fix')))))));
+                fix_block_on = [];
+                for fc = 1:length(fix_crossing_nr)
+                    fix_block_start = min(this_run.event_start(this_run.crossing_nr == fix_crossing_nr(fc)))+1; % note +1 for frame indexing
+                    fix_block_end   = max(this_run.event_end(this_run.crossing_nr == fix_crossing_nr(fc)))-1; % note -1 to align with end of frame
+                    fix_block_on    = cat(1,fix_block_on,fix_block_start:fix_block_end);
+                end
+                fix_block_off   = setdiff([1:run_dur],fix_block_on);
+                assert(isempty(intersect(fix_block_on,fix_block_off)))
+                run_frames.fix_correct_response(fix_block_off) = NaN;
+
                 % find stimulus and event frames
                 stim_idx    = ismember(this_run.event_id, [params.exp.block.stim_epoch1_ID, params.exp.block.stim_epoch2_ID, ...
                                 params.exp.block.eye_gaze_fix_ID, params.exp.block.eye_gaze_sac_target_ID, ...
