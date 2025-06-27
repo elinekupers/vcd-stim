@@ -153,6 +153,7 @@ for ses = 1:length(session_nrs)
                 % this makes it easier to loop through the frames when we
                 % start flipping the screen
                 all_events = []; all_cued = []; all_catch = []; all_crossings = []; all_objectcatch = [];
+                all_block_nrs = []; all_trial_nrs = []; all_global_block_nrs = []; all_global_trial_nrs = [];
                 for jj = 1:length(this_run.event_id)
                     if ~isnan(this_run.event_dur(jj)) && this_run.event_dur(jj)~=0
                         dur = this_run.event_dur(jj);
@@ -161,6 +162,10 @@ for ses = 1:length(session_nrs)
                         all_catch       = cat(1, all_catch,       repmat(this_run.is_catch(jj),        dur,1));
                         all_objectcatch = cat(1, all_objectcatch, repmat(this_run.is_objectcatch(jj),  dur,1));
                         all_crossings   = cat(1, all_crossings,   repmat(this_run.crossing_nr(jj),     dur,1));
+                        all_block_nrs   = cat(1, all_block_nrs,   repmat(this_run.block_nr(jj),        dur,1));
+                        all_trial_nrs   = cat(1, all_trial_nrs,   repmat(this_run.trial_nr(jj),        dur,1));
+                        all_global_trial_nrs = cat(1, all_global_trial_nrs, repmat(this_run.global_trial_nr(jj), dur,1));
+                        all_global_block_nrs = cat(1, all_global_block_nrs, repmat(this_run.global_block_nr(jj), dur,1));
                     end
                 end
                 % If numeric vector: Change zero's to NaN
@@ -171,11 +176,16 @@ for ses = 1:length(session_nrs)
                 all_objectcatch(isnan(all_objectcatch)) = 0;
                 
                 % Add events to run_frames struct
-                run_frames.frame_event_nr = single(all_events);       clear all_events
-                run_frames.is_cued        = single(all_cued);         clear all_cued;
-                run_frames.is_catch       = logical(all_catch);       clear all_catch;
-                run_frames.is_objectcatch = logical(all_objectcatch); clear all_objectcatch;
-                run_frames.crossingIDs    = single(all_crossings);    clear all_crossings
+                run_frames.block_nr         = single(all_block_nrs);   clear all_block_nrs
+                run_frames.global_block_nr  = single(all_global_block_nrs);   clear all_global_block_nrs
+                run_frames.trial_nr         = single(all_trial_nrs);    clear all_trial_nrs
+                run_frames.global_trial_nr  = single(all_global_trial_nrs);   clear all_global_trial_nrs
+                run_frames.frame_event_nr   = single(all_events);       clear all_events
+                run_frames.is_cued          = single(all_cued);         clear all_cued;
+                run_frames.is_catch         = logical(all_catch);       clear all_catch;
+                run_frames.is_objectcatch   = logical(all_objectcatch); clear all_objectcatch;
+                run_frames.crossingIDs      = single(all_crossings);    clear all_crossings
+                
                 
                 % use crossingIDs to remove any fixation related button responses outside fixation task blocks
                 fix_crossing_nr = unique(this_run.crossing_nr(find(ismember(this_run.crossing_nr,find(~cellfun(@isempty, regexp(params.exp.crossingnames,'fix')))))));
@@ -200,9 +210,9 @@ for ses = 1:length(session_nrs)
                 % contrast levels, button_response related to contrast dip/
                 % we use single class to save memory
                 this_run.nr_of_fix_changes    = zeros(size(this_run,1),1,'single');
-                run_frames.frame_im_nr        = zeros(run_dur,2,'single');
-                run_frames.contrast           = ones(run_dur,2,'single');
-                run_frames.button_response_cd = zeros(run_dur,1,'single');
+                run_frames.frame_im_nr        = NaN(run_dur,2);
+                run_frames.contrast           = ones(run_dur,2,'single'); % relative contrast (1 = mean contrast of image, <1 mean dip in contrast)
+                run_frames.button_response_cd = NaN(run_dur,1);
                 
                 for ii = 1:length(stim_row)
                     
@@ -298,6 +308,12 @@ for ses = 1:length(session_nrs)
                     
                 end
 
+                % set non-fixation periods to NaN
+                fix_block_nrs = unique(this_run.block_nr(fix_events));
+                for fb = 1:length(fix_block_nrs)
+                    non_fix_periods = setdiff([1:size(this_run,1)],min(find(this_run.block_nr==fix_block_nrs(fb))):max(find(this_run.block_nr==fix_block_nrs(fb))));
+                    this_run.nr_of_fix_changes(non_fix_periods) = NaN;
+                end
                 % Add run_images and alpha_masks to larger cell array
                 all_run_frames = cat(1,all_run_frames,run_frames);
                 
