@@ -75,6 +75,9 @@ elseif ismember(dispname,{'PPROOM_EIZOFLEXSCAN','KKOFFICE_AOCQ3277','EKHOME_ASUS
     env_type = 'BEHAVIOR';
 end
 
+% Flag if this is a demo run (true) or not (false)..
+params.is_demo = false;
+
 % SETUP RNG
 params.rng.rand_seed = sum(100*clock);
 rand('seed', params.rng.rand_seed);
