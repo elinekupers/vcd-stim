@@ -1,7 +1,68 @@
 function condition_names = vcd_getConditionNames()
+% VCD function that spits out all possible condition names in the vcd-core
+% experiment.
+%
+%    condition_names = vcd_getConditionNames()
+%
+% Purpose of this function to easily access all possible condition names in 
+% the vcd-core. Each condition name is based on the following logic:
+%  <stimclassname>-<stimnumber>-<stimlocation>-<cuestate>-<taskclassname>
+%  
+%  <stimclassname> : stimulus class name. Possible names are: 
+%                    'GBR (gabor), 'RDK' (random dot motion kinematogram), 
+%                    'DOT' (single dot), 'OBJ' (object), 'NS' (scenes), or
+%                    'ALL' (multiple stimulus classes mixed, only used for 
+%                    'SCC' and 'LTM' task classes). 
+%  <stimnumber>    : stimulus number. Positive integer refering to each 
+%                    unique stimulus (001-1710):
+%                      110 core (001-110)
+%                      312 WM test (111-422)
+%                      940 IMG test (423-1362)
+%                      60 LTM novel lures (1363-1422)
+%                      288 OBJ catch images (1423-1710)
+% <stimlocation>   : stimulus location relative to central fixation circle
+%                    'L' for left,'R' for right, 'C' for central (NS only), 
+%                     or 'X' (catch trial, no stimulus). 
+% <cuestate>       : cued state of the stimulus, options are: 'CUED',
+%                    'UNCUED','NCUED'. If trial is a catch, then there are
+%                    blanks for stimuli and <cuestate> refers to the
+%                    thickening direction of the spatial cue: 
+%                    'LCUED', 'RCUED', 'NCUED'. 
+% <taskclassname>  : task class name. Possible names are: 'FIX,'CD','SCC',
+%                   'PC', 'WM','LTM','IMG','WHAT','WHERE','HOW'.
+%
+% Note that there are NO condition names for the test images shown in the
+% second stimulus array of double-stimulus presentation trials during
+% working memory, long-term memory, or imagery tasks crossings. In those
+% trials, we use the condition name that refers to the core stimulus shown
+% in the first stimulus array (i.e., the reference stimulus). The unique
+% image number of the test image can be found in the run_table.stim2_im_nr.
+%
+% SPECIAL CASES:
+% * Condition names with "#"
+%   Any condition name ending with # indicates a regular catch trial (no 
+%   stimulus presented).
+%
+% * Condition names with "+" 
+%   1) CD trials where condition names end with "+" indicates one of the
+%   20% of trials that has a physically altered stimulus (i.e., the
+%   contrast dipped by 20% relative to mean contrast of the stimulus).
+%   2) PC-OBJ trials where condition names end with "+" indicates one of the
+%   20% "object catch", where the object's orientation is not the core 
+%   orientation but a different, randomly selected orientation between 
+%   0-180 degrees. Note that while the object stimulus is different, we
+%   still use the core stimulus number in the condition name. The unique
+%   object catch image number can be found in the run_table.stim2_im_nr.
 %
 % 
-% Anything with # means regular catch trial (no stimulus presented)
+% INPUTS:
+% * None
+%
+% OUTPUTS:
+% condition_names   : (cell) vector with characters for each condition name, 
+%                     sorted by stimulus class.
+%
+% Written by E. Kupers @ UMN (2025/05)
 
 condition_names = ...
     {'GBR-0000-X-LCUED-CD#', ... general catch condition label (no stim)
