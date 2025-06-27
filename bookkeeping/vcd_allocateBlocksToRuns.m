@@ -97,8 +97,9 @@ for ses = 1:size(all_sessions,3)
         if ~isnan(session_types(ses,st))
             %% First we check how many repeats of stim-task crossings we want to run within a session
             if verbose
-                fprintf('SESSION %03d, session_type %02d..\n',ses,session_types(ses,st))
+               fprintf('%sSESSION %03d, session_type %02d..\n',choose(params.is_demo, 'DEMO ',''), ses,session_types(ses,st));
             end
+            
             % also keep track of local stim-task block allocation
             stimtask_tracker_local = ones(length(params.exp.stimclassnames), length(params.exp.taskclassnames));
             
@@ -108,10 +109,15 @@ for ses = 1:size(all_sessions,3)
 
             % Reset block counter within a session
             % Note: we continue counting scc and ltm blocks instead of relying on stimtask_tracker_global
-            bb = 1; 
+            bb = 1;  half_block_counter = 0;
             run_nr = 1;
             
             for sc = 1:length(params.exp.stimclassnames)
+                
+                % check how many half blocks we have for this stim class?
+                half_block_count = sum(mod(block_distr(sc,:),1)<1 & mod(block_distr(sc,:),1)>0);
+                full_block_count = sum(mod(block_distr(sc,:),1)==1);
+                
                 for tc = 1:length(params.exp.taskclassnames)
                     
                     if strcmp(env_type,'MRI')
@@ -368,16 +374,20 @@ for ses = 1:size(all_sessions,3)
                                 if half_block_flag
                                     stimtask_tracker_local(sc,tc)  = stimtask_tracker_local(sc,tc) + mod(curr_blocks(ii),1);
                                     stimtask_tracker_global(sc,tc) = stimtask_tracker_global(sc,tc) + mod(curr_blocks(ii),1);
-%                                     bb = bb + mod(curr_blocks(ii),1);
+                                    half_block_counter = half_block_counter + curr_blocks(ii);
+                                    if half_block_counter == 1
+                                        bb = bb + 1;
+                                        half_block_counter = 0;
+                                    elseif half_block_count == 1 && full_block_count == 1
+                                        bb = bb + 1;
+                                    end
                                 else
                                     stimtask_tracker_local(sc,tc)  = stimtask_tracker_local(sc,tc)+1;
                                     stimtask_tracker_global(sc,tc) = stimtask_tracker_global(sc,tc)+1;
-                                    
+                                    bb = bb + 1;
                                 end
                                 
-                                bb = bb+1;
-                                
-                                if mod(bb,7)==0 % every 6 blocks we add a run 
+                                if mod(bb,8)==0 % every 7 blocks we add a run 
                                     run_nr = run_nr + 1; 
                                 end
                             end
@@ -423,11 +433,14 @@ for ses = 1:size(all_sessions,3)
                                 allocated_block_nr = setdiff([min(all_block_nrs):max(all_block_nrs)],all_block_nrs);
                             end
                         end
+                        if length(allocated_block_nr)>1
+                            allocated_block_nr = allocated_block_nr(1);
+                        end
                         condition_master.block_nr(trial_idx) = repmat(allocated_block_nr,size(trial_idx,1),1);
                         condition_master.trial_nr(trial_idx) = [1:params.exp.block.n_trials_single_epoch]';
                     end
                     shave_me_off1 = nr_of_uncomb_single_blocks - nr_comb_single_blocks;
-                    bb = bb - shave_me_off1;
+                    bb = bb + shave_me_off1;
                 end
                 
                 if nr_comb_double_blocks > 0
@@ -438,26 +451,22 @@ for ses = 1:size(all_sessions,3)
                         condition_master.trial_nr(trial_idx) = 1:params.exp.block.n_trials_single_epoch;
                     end
                     shave_me_off2 = nr_of_uncomb_double_blocks - nr_comb_double_blocks;
-                    bb = bb - shave_me_off2;  % correct nr of blocks
+                    bb = bb + shave_me_off2;  % correct nr of blocks
                 end
                
+                % check if the block nrs are ascending
+                unused_block_nrs = setdiff([1:max(condition_master.block_nr(~isnan(condition_master.block_nr)))], ...
+                    sort(unique(condition_master.block_nr(~isnan(condition_master.block_nr))))');
+                assert(isempty(unused_block_nrs));
             end
             
             if verbose
-                fprintf('\nTOTAL MINIBLOCKS: %d for SESSION %03d, session_type %02d\n',bb, ses,session_types(ses,st))
+                fprintf('\nTOTAL MINIBLOCKS: %d for %sSESSION %03d, session_type %02d\n',bb, choose(params.is_demo,'DEMO ',''), ses,session_types(ses,st))
             end
             % the number of blocks in the table should be equal to the number of
             % tracked stim-task-crossings allocated, as well as the sum vs vector length
             assert(isequal(stimtask_tracker_local-1,block_distr))
             tmp = max(condition_master.block_nr(~isnan(condition_master.block_nr) & condition_master.session_nr==ses & condition_master.session_type==st));
-            
-            % in case we deal with half blocks, then we want to adjust the nr of total block to nr of combined blocks 
-            if exist('shave_me_off1','var')
-                tmp = tmp - shave_me_off1; % single stim blocks, 
-            end
-            if exist('shave_me_off2','var')
-                tmp = tmp - shave_me_off2; % single stim blocks, 
-            end
             
             assert(isequal(tmp,sum(sum(stimtask_tracker_local-1))))
         end
@@ -515,13 +524,35 @@ end
 % apply reodering!
 condition_master = condition_master(:,newOrder_idx);
 
+
+% IF WE DEAL WITH A DEMO SESSION, DELETE 50% OF TRIALS
+if params.is_demo
+    curr_sessions = unique(condition_master.session_nr);
+    for ss = 1:length(curr_sessions)
+        curr_runs = unique(condition_master.run_nr(condition_master.session_nr == curr_sessions(ss)));
+        
+        for rr = 1:length(curr_runs)
+            delete_me = [];
+            session_trials = (condition_master.session_nr== curr_sessions(ss)  &  condition_master.run_nr==curr_runs(rr)); % find trials in one run, for a given session
+            session_sub    = find(session_trials);
+            blocks         = unique(condition_master.block_nr(session_trials)); % how many unique blocks do we have a given session?
+            for bb = 1:length(blocks)
+                block_idx = condition_master.block_nr(session_trials) == blocks(bb);  % how many trials do we have in a given blovk?
+                block_sub = find(block_idx);
+                delete_me = cat(1, delete_me, block_sub((round(length(block_sub)/2)+1):length(block_sub))); % keep the first half of trials.
+            end
+            condition_master(session_sub(delete_me),:) = [];
+        end
+    end
+end
+  
 % Update trial repeat nr
 condition_master = vcd_getTrialRepeatNr(condition_master);
 
 % add global_trial_nr
 condition_master = vcd_updateGlobalCounters(params, condition_master, env_type);
 % condition_master.global_trial_nr = [1:size(condition_master,1)]';
-condition_master.block_nr = condition_master.global_block_nr;
+% condition_master.block_nr = condition_master.global_block_nr;
 
 %Visualize results
 if verbose
