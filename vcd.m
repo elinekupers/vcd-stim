@@ -367,18 +367,32 @@ if isempty(vcd_info) || ~exist('vcd_info','var')
     end
     
     d = dir(fullfile(vcd_rootPath,'workspaces','info',sprintf('condition_master_*.mat')));
+    dcell = struct2cell(d); filenames = dcell(1,:); clear dcell
+    is_MRI_file  = find(~cellfun(@isempty, (cellfun(@(x) regexp(x,'\w*7TAS\w*','ONCE'), filenames, 'UniformOutput', false))));
+    is_BEH_file  = find(~cellfun(@isempty, (cellfun(@(x) regexp(x,'\w*PPROOM\w*','ONCE'), filenames, 'UniformOutput', false))));    
+    is_DEMO_file = find(~cellfun(@isempty, (cellfun(@(x) regexp(x,'\w*demo\w*','ONCE'), filenames, 'UniformOutput', false))));    
     
-    if isempty(d)
+    % remove demo file from list of condition_master files; we don't want to use that for vcd.m
+    if ~isempty(is_DEMO_file), filenames(is_DEMO_file) = []; end
+    % if we have a PPROOM and/or MRI condition_master files; pick MRI file
+    if ~isempty(is_MRI_file) && ~isempty(is_BEH_file), filenames(is_BEH_file) = []; end
+    
+    if isempty(filenames{1})
         error('[%s]: Can''t find vcd_info! Looking for a file called: "vcd_rootPath/workspaces/info/condition_master*.mat"',mfilename)
     else
+        
+        % ensure we only have one file name left to load
+        assert(length(filenames)==1)
+        filenames = filenames{1}; % release from cell.
+
         if verbose
-        fprintf('[%s]: Found %d vcd info file(s)\n',mfilename,length(d));
             if length(d) > 1
-                fprintf('[%s]: *** WARNING *** Multiple files with the same name exist! Will pick the most recent one', mfilename);
+                fprintf('[%s]: *** WARNING *** \n', mfilename);
+                fprintf('[%s]: Found %d vcd info files with the same name! Will pick the most recent one. (We ignore demo files.) \n', mfilename,length(d));
             end
-            fprintf('[%s]: Loading exp params .mat file: %s\n', mfilename, d(end).name);
+            fprintf('[%s]: Loading exp params .mat file: %s\n', mfilename, filenames);
         end
-        vcd_info = load(fullfile(d(end).folder,d(end).name),'condition_master');
+        vcd_info = load(fullfile(d(end).folder,filenames),'condition_master');
     end
 end
 
