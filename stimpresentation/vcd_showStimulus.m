@@ -302,6 +302,9 @@ else
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % Customize calibration points (include pixel shift, change size and color)
+    Eyelink('command','screen_phys_coords = %.1f, %.1f, %.1f, %.1f', ...
+        params.disp.el_monitor_size(1),params.disp.el_monitor_size(2),params.disp.el_monitor_size(3),params.disp.el_monitor_size(4));  % monitor size in millimeters (center to left, top, right, and bottom). PProom: [-260.0, 162.5, 260.0, -162.5]
+    Eyelink('command','screen_distance = %ld %ld', params.disp.el_screen_distance(1),params.disp.el_screen_distance(2)); % distance in millimeters from eye to top and bottom edge of the monitor. PProom: [1003 1003]
     Eyelink('command','screen_pixel_coords = %ld %ld %ld %ld',0,0,wwidth-1,wheight-1); % X,Y coordinates left/top/right/bottom of display area
     Eyelink('message','DISPLAY_COORDS %ld %ld %ld %ld',0,0,wwidth-1,wheight-1);
     % IF YOU DON'T WANT CUSTOM DOT POSITIONS: Set number of calibration/validation dots and spread: horizontal-only(H) or horizontal-vertical(HV) as H3, HV3, HV5, HV9 or HV13

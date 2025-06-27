@@ -58,6 +58,22 @@ function disp = vcd_getDisplayParams(dispname, varargin)
 %   disp.clut                : (double) parameter used by knkutils functon 
 %                               pton.m to set linear color look up table.
 %   disp.fontsize            : (double) fontsize of text (in points???).
+%   disp.el_monitor_size     : (double) eyelink display params used when
+%                               initializing the eyelink. Numbers refer to 
+%                               monitor size in millimeters (center to left, 
+%                               top, right, and bottom). Field will be 
+%                               empty for 'KKOFFICE_AOCQ3277', 
+%                               'EKHOME_ASUSVE247', 'CCNYU_VIEWPIXX3D' 
+%                               displays as we assume no eyetracking will
+%                               be used for these display environments.
+%   disp.el_screen_distance  : (double) eyelink display params used when
+%                               initializing the eyelink. Number refer to 
+%                               distance in millimeters from eye to top and
+%                               bottom edge of the monitor. Field will be 
+%                               empty for 'KKOFFICE_AOCQ3277', 
+%                               'EKHOME_ASUSVE247', 'CCNYU_VIEWPIXX3D' 
+%                               displays as we assume no eyetracking will
+%                               be used for these display environments.
 %
 % We follow Psychtoolbox-3 (PTB) coordinate convention where [0,0] is the
 % outer left and top edge of the first pixel in the upper left part of the
@@ -88,7 +104,11 @@ function disp = vcd_getDisplayParams(dispname, varargin)
 %      ppd = numpixels / eccen_deg;
 %   For example, for the pp room: ppd = numpixels / 4;
 %
-% Written by E Kupers @ UMN 2024/11, updated 2025/06
+% Written by E Kupers @ UMN
+% 2024/11: initial version
+% 2025/06: updated ppd calculation 
+% 2025/06: added eyelink params
+% 
 
 %% Parse inputs
 
@@ -121,8 +141,8 @@ switch dispname
         % 21-inch iMac MATLAB version 2016b and R2017b, psychtoolbox version 3.0.14 December 30th 2016
         disp.w_cm        = 69.84;               % cm wide; note: beyond what subject can actaully see.
         disp.h_cm        = 39.29;               % cm high;
-        disp.dist_cm     = 176+2+5.5;           % 176 cm from the mirror to glass of BOLDScreen,
-                                                % 2 cm from glass to display, 5.5 from eye to mirror.
+        disp.dist_cm     = 176+2+5.5;           % total of 183.5 cm: 176 cm from the mirror to glass of BOLDScreen +
+                                                % 2 cm from glass to display + 5.5 from eye to mirror.
         disp.h_pix       = 1080;                % in pixels (BOLDscreen vertical, Nova1x32)
         disp.w_pix       = 1920;                % in pixels (BOLDscreen horizontal, Nova1x32)
         disp.h_deg       = pix2deg(disp.h_pix,disp.h_pix,disp.h_cm,disp.dist_cm); % in degrees (BOLDscreen vertical, Nova1x32) should be 12.2 deg
@@ -132,7 +152,9 @@ switch dispname
         disp.yc          = disp.h_pix/2;        % y-center relative to upper left corner (pixels)
         disp.clut        = 0;                   % linear clut
         disp.fontsize    = 25;                  % fontsize of text
-    
+        % EYELINK DISPLAY PARAMS
+        disp.el_monitor_size    = [-349.2, 196.45, 349.2, -196.45]; % monitor size in millimeters (center to left, top, right, and bottom). Numbers come from [39.29 cm height, 69.84 cm width] --> [392.9 cm height, 698.4 cm width] * 0.5.
+        disp.el_screen_distance = [1845 1845];  % distance in millimeters from eye to top and bottom edge of the monitor. Given the 183.5 cm viewing distance, this is calculated as:  sqrt(183.5^2+(32.5/2)^2)*10 and then rounded to nearest integer.    
     case 'PPROOM_EIZOFLEXSCAN'                  
         % Mac tower has MATLAB version 2016b, psychtoolbox version 3.0.14 December 30th 2014
         disp.w_cm        = 52;                  % width in cm
@@ -147,7 +169,9 @@ switch dispname
         disp.yc          = disp.h_pix/2;        % y-center relative to upper left corner (pixels)
         disp.clut        = 0;                   % linear clut: amazingly, no lookup table needed!! when using user3 - gamma 2.2
         disp.fontsize    = 18;                  % fontsize of text
-        
+        % EYELINK DISPLAY PARAMS
+        disp.el_monitor_size    = [-260.0, 162.5, 260.0, -162.5]; % monitor size in millimeters (center to left, top, right, and bottom). Numbers come from [32.5 cm height, 52 cm width] --> [325 cm height, 520 cm width] * 0.5
+        disp.el_screen_distance = [1003 1003];  % distance in millimeters from eye to top and bottom edge of the monitor. Given the 99 cm viewing distance, this is calculated as:  sqrt(99^2+(32.5/2)^2)*10 and then rounded to nearest integer.
     case 'KKOFFICE_AOCQ3277'                    
         % Used as external monitor + EK stimulus laptop
         % MATLAB version 2018b, psychtoolbox version ??? Nov 17 2020 (git commit ef093cbf296115badddb995fa06452e34c8c7d02)
@@ -164,7 +188,9 @@ switch dispname
         disp.yc          = disp.h_pix/2;        % y-center relative to upper left corner (pixels)
         disp.clut        = 0;                   % linear clut
         disp.fontsize    = 12;                  % fontsize of text
-        
+        % EYELINK DISPLAY PARAMS
+        disp.el_monitor_size    = [];           % assume no eyetracking
+        disp.el_screen_distance = [];           % assume no eyetracking
      case 'EKHOME_ASUSVE247'                    
         % Used as external monitor + EK stimulus laptop
         % MATLAB version 2018b, Psychtoolbox-3 version ??? Nov 17 2020 (git commit ef093cbf296115badddb995fa06452e34c8c7d02)
@@ -181,7 +207,9 @@ switch dispname
         disp.yc          = disp.h_pix/2;        % y-center relative to upper left corner (pixels)       
         disp.clut        = 0;                   % linear clut
         disp.fontsize    = 12;                  % fontsize of text
-        
+        % EYELINK DISPLAY PARAMS
+        disp.el_monitor_size    = [];           % assume no eyetracking
+        disp.el_screen_distance = [];           % assume no eyetracking
     case 'CCNYU_VIEWPIXX3D'                     
         % A 23.5-inch ViewPixx display + iMac, 24in, M1, 2021. Psychtoolbox-3 version 3.0.19 on MATLAB 9.13
         disp.w_cm        = 30.1625;             % cm wide; (11.875in)
@@ -197,6 +225,9 @@ switch dispname
         disp.yc          = disp.h_pix/2;        % y-center relative to upper left corner (pixels)       
         disp.clut        = 0;                   % assume linear clut (Check!!)
         disp.fontsize    = 12;                  % fontsize of text
+        % EYELINK DISPLAY PARAMS
+        disp.el_monitor_size    = [];           % assume no eyetracking
+        disp.el_screen_distance = [];           % assume no eyetracking
 end
 
 % PIX PER DEGREE CALCULATION
