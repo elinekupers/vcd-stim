@@ -461,7 +461,6 @@ while 1
     results.trialinfo.block_nr(rii) =     a1.run_table.block_nr(ii);
     results.trialinfo.crossing_nr(rii) =  a1.run_table.crossing_nr(ii);
     results.trialinfo.trial_nr(rii) =     a1.run_table.trial_nr(ii);
-    results.trialinfo.is_catch(rii) =     a1.run_table.is_catch(ii);
     
     % figure out if this is a single- or double-image trial
     if a1.run_table.trial_type(ii)==1
@@ -485,12 +484,13 @@ while 1
     windowexcess= stimonset + responsewindow_reg(3)/1000;
 
     % record
+    results.trialinfo.is_catch(rii)         = a1.run_table.is_catch(ii);
     results.trialinfo.onset_start(rii)      = a1.run_table.event_start(ii);
     results.trialinfo.onset_abstime(rii)    = matlabnowtime + stimonset/60/60/24;  % convert from seconds to days and then add in
     results.trialinfo.correct_response(rii) = a1.run_table.correct_response(ii);  % NOTE: catch trials should be NaN
 
     % if this is a catch trial
-    if a1.run_table.is_catch(ii) == 1
+    if results.trialinfo.is_catch(rii) == 1
     
       results.trialinfo.stim_cued{rii}        = NaN;
       results.trialinfo.excess_buttons(rii)   = NaN;
@@ -500,9 +500,6 @@ while 1
       results.trialinfo.rt(rii)               = NaN;
       
     else
-      
-      % record
-      results.trialinfo.is_catch(rii) = 0; % previous record of results.trialinfo.is_catch is from beginning of block (NaN). We update here with the actual value of is_catch
       
       % deal with stim_cued    
       results.trialinfo.stim_cued{rii} = a1.run_table.stim_class_name{ii,mod2(a1.run_table.is_cued(ii),2)};
