@@ -33,14 +33,17 @@ tmp_cued_side = cd_blocks_cued_side;
 tmp_cued_side(tmp_cued_side==3) = 1;
 cd_blocks_stimclass = cd_trials.stim_class;
 
-% There should be no nans for "cd_blocks_cued_side"
-assert(isequal(size(cd_trials,1),length(~isnan(cd_blocks_cued_side))))
+% There should be no nans for "cd_blocks_cued_side" (we let this constraint
+% loose for demo sessions)
+if ~params.is_demo
+    assert(isequal(size(cd_trials,1),length(~isnan(cd_blocks_cued_side))))
+end
 
 % How many cued trials across all CD blocks do we have?
 nr_cued_cd_trials = length(cd_blocks_cued_side);
 
 % How often do we expect a trial with a CD change?
-expected_nr_cd_trials = nr_cued_cd_trials*params.exp.trial.cd.prob_change;
+expected_nr_cd_trials = ceil(nr_cued_cd_trials*params.exp.trial.cd.prob_change);
 expected_nr_cd_trials_per_cue = round(histcounts(cd_blocks_cued_side)*params.exp.trial.cd.prob_change);
 assert(isequal(sum(expected_nr_cd_trials_per_cue),expected_nr_cd_trials));
 
