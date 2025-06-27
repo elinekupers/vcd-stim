@@ -394,7 +394,11 @@ else % Recreate conditions and blocks and trials
         if strcmp(env_type,'MRI')
             task_crossings = find( params.exp.crossings(bsc_idx,:));
         elseif strcmp(env_type,'BEHAVIOR')
-            task_crossings = find(params.exp.n_unique_trial_repeats_behavior(bsc_idx,:)>0);
+            if params.is_demo
+                task_crossings = find(params.exp.n_unique_trial_repeats_demo(bsc_idx,:)>0);
+            else
+                task_crossings = find(params.exp.n_unique_trial_repeats_behavior(bsc_idx,:)>0);
+            end
         end
                 
         % Loop over each task crossing for this stim class
@@ -425,7 +429,7 @@ else % Recreate conditions and blocks and trials
             else
                 n_trials_per_block    = params.exp.block.n_trials_double_epoch;
             end
-            
+
             %% ---- IMPORTANT FUNCTION: Create condition master table ---- %%
             % Create condition master table, where unique images are
             % shuffled and distributed across blocks according to the
@@ -434,6 +438,9 @@ else % Recreate conditions and blocks and trials
             % contrasts within a block at least once.
             tbl = vcd_createConditionMaster(params, t_cond, env_type);
             
+            if ~any(ismember(tbl.Properties.VariableNames,'unique_trial_nr')) % check for the first column in the table to make sure we actually generated conditions
+                error('[%s]: No condition table was made! Hint: Check params.exp.n_unique_trial_repeats and/or inputs/outputs of vcd_createConditionMaster', mfilename)
+            end
             % --- Allocate space for block nr ---
             tbl.stim_class_unique_block_nr = NaN(size(tbl,1),1);
             tbl.trial_nr = NaN(size(tbl,1),1);
@@ -453,7 +460,7 @@ else % Recreate conditions and blocks and trials
             % set Nans for cd onset (we will deal with it later)
             tbl.cd_start = NaN(size(tbl,1),1);
             
-            % Concatete single stim-task crossing table to master table
+            % Concatenate single stim-task crossing table to master table
             stim_table = cat(1,stim_table,tbl);
             
         end % task class idx
@@ -473,9 +480,9 @@ else % Recreate conditions and blocks and trials
     % replacement). Ensure we distribute object catch trials across
     % left/right cued locations and unique objects (as much as possible)
     while 1
-        objcatch_ok = [false, false];
+        objcatch_ok = false(1,3);
         
-        objcatch_idx    = datasample(pcobj_trial_idx,nr_objectcatch_trials_per_rep,'Replace',false);
+        objcatch_idx = datasample(pcobj_trial_idx,nr_objectcatch_trials_per_rep,'Replace',false);
  
         % Check the cued stimulus in those selected trials
         cued_loc_objcatch = condition_master.is_cued(objcatch_idx);
@@ -488,6 +495,14 @@ else % Recreate conditions and blocks and trials
         if length(unique(obj_objcatch))==length(obj_objcatch) || ...
                 length(unique(obj_objcatch))==length(unique(condition_master.sub_cat_name(pcobj_trial_idx)))
             objcatch_ok(2) = true;
+        end
+        
+        % Check the button response in those selected trials
+        for nn = 1:size(condition_master(objcatch_idx,:),1)
+            button_objcatch(nn) = vcd_getCorrectButtonResponse(params, condition_master(objcatch_idx(nn),:));
+        end
+        if abs(diff(histcounts(button_objcatch,[1:3])))<=1
+            objcatch_ok(3) = true;
         end
         
         if sum(objcatch_ok)==length(objcatch_ok)
@@ -519,6 +534,7 @@ else % Recreate conditions and blocks and trials
         possible_objcatch_rotations0 = possible_objcatch_rotations(old_stim_obj_nr,:);
         possible_objcatch_rotations1 = possible_objcatch_rotations0(~isnan(possible_objcatch_rotations0));
         
+        % randomly select object catch rotation
         objcatch_rot = randi(length(possible_objcatch_rotations1),1);
         
         % update rotation of object
@@ -604,64 +620,71 @@ else % Recreate conditions and blocks and trials
     curr_tc = curr_tc(curr_tc~=1); % exclude fixation
     for jj = 1:length(curr_sc)
         for mm = 1:length(curr_tc)
-            if ismember(curr_tc(mm),[2,4,5,6,7]) % cd, pc, wm, ltm, img have 2 response options
-                nr_responses = 2;
-            elseif ismember(curr_tc(mm),[3,8,10]) % scc, what, how have 4 response options
-                nr_responses = 4;
-            elseif ismember(curr_tc(mm),[9]) % where has 3 response options
-                nr_responses = 3;
-            end
-            resp = condition_master.correct_response( ...
-                condition_master.stim_class==curr_sc(jj) & ...
-                condition_master.task_class==curr_tc(mm));
-            n = histcounts(resp,1:(nr_responses+1));
-            % For WHAT/HOW tasks we go by category info, because we combine
-            % object and foods into one button press..
-            if ismember(curr_sc(jj),[4,5]) && ismember(curr_tc(mm),8)
-                supercat = condition_master.super_cat(condition_master.stim_class==curr_sc(jj) & condition_master.task_class==curr_tc(mm),:);
-                if curr_sc(jj) == 4 % objects
-                    cued0  = condition_master.is_cued(condition_master.stim_class==curr_sc(jj) & condition_master.task_class==curr_tc(mm));
-                    n0     = histcounts([supercat(cued0==1,1);supercat(cued0==2,2)],1:6);
-                elseif curr_sc(jj) == 5 % scenes, no left/right, only center
-                    n0     = histcounts(supercat,1:6);
+            % check if we have such a crossing
+            if sum(ismember(condition_master.task_class,curr_tc(mm)) & ismember(condition_master.stim_class,curr_sc(jj)))>0
+                if ismember(curr_tc(mm),[2,4,5,6,7]) % cd, pc, wm, ltm, img have 2 response options
+                    nr_responses = 2;
+                elseif ismember(curr_tc(mm),[3,8,10]) % scc, what, how have 4 response options
+                    nr_responses = 4;
+                elseif ismember(curr_tc(mm),[9]) % where has 3 response options
+                    nr_responses = 3;
                 end
-                n1 = [n0([1,2]), n0(3)+n0(4), n0(5)];
-                assert(all(n==n1))
-            elseif ismember(curr_sc(jj),4) && ismember(curr_tc(mm),4) % PC-OBJ
-                resp2 = resp(condition_master.is_objectcatch( ...
+                resp = condition_master.correct_response( ...
                     condition_master.stim_class==curr_sc(jj) & ...
-                    condition_master.task_class==curr_tc(mm))==0);
-                n2 = histcounts(resp2,1:(nr_responses+1));
-                if mod(length(resp2),2)==1 % if we have an uneven nr of trials after we removed objectcatch trials
-                    assert(diff(n2)<=1); % we allow for a difference of one
-                else % assume we have an even nr of trials after we removed objectcatch trials
-                    assert(all(n==n0))  % we don't allow for a difference of one
+                    condition_master.task_class==curr_tc(mm));
+                n = histcounts(resp,1:(nr_responses+1));
+                % For WHAT/HOW tasks we go by category info, because we combine
+                % object and foods into one button press..
+                if ismember(curr_sc(jj),[4,5]) && ismember(curr_tc(mm),8)
+                    supercat = condition_master.super_cat(condition_master.stim_class==curr_sc(jj) & condition_master.task_class==curr_tc(mm),:);
+                    if curr_sc(jj) == 4 % objects
+                        cued0  = condition_master.is_cued(condition_master.stim_class==curr_sc(jj) & condition_master.task_class==curr_tc(mm));
+                        n0     = histcounts([supercat(cued0==1,1);supercat(cued0==2,2)],1:6);
+                    elseif curr_sc(jj) == 5 % scenes, no left/right, only center
+                        n0     = histcounts(supercat,1:6);
+                    end
+                    n1 = [n0([1,2]), n0(3)+n0(4), n0(5)];
+                    assert(all(n==n1))
+                elseif ismember(curr_sc(jj),4) && ismember(curr_tc(mm),4) % PC-OBJ
+                    resp2 = resp(condition_master.is_objectcatch( ...
+                        condition_master.stim_class==curr_sc(jj) & ...
+                        condition_master.task_class==curr_tc(mm))==0);
+                    n2 = histcounts(resp2,1:(nr_responses+1));
+                    if mod(length(resp2),2)==1 % if we have an uneven nr of trials after we removed objectcatch trials
+                        if ~(diff(n2)<=1) % we allow for a difference of one, but not more
+                            error('[%s]: Button response counts diverge more than 1 and are considered unbalanced across options! Please rerun vcd_createConditions.m',mfilename);
+                        end
+                    else % assume we have an even nr of trials after we removed objectcatch trials
+                        if ~(all(n==n0)) % we don't allow for a difference of one
+                            error('[%s]: Uneven nr of button responses! Please rerun vcd_createConditions.m',mfilename);
+                        end
+                    end
+                elseif ismember(curr_sc(jj),5) && ismember(curr_tc(mm),9) % NS-WHERE
+                    subcat = condition_master.sub_cat(condition_master.stim_class==curr_sc(jj) & condition_master.task_class==curr_tc(mm),:);
+                    n0     = histcounts(subcat,1:(nr_responses+1));
+                    assert(all(n==n0))
+                elseif ismember(curr_sc(jj),[4,5]) && ismember(curr_tc(mm),10) % OBJ-HOW & NS-HOW
+                    affordcat = condition_master.affordance_cat(condition_master.stim_class==curr_sc(jj) & condition_master.task_class==curr_tc(mm),:);
+                    if curr_sc(jj) == 4
+                        cued0 = condition_master.is_cued(condition_master.stim_class==curr_sc(jj) & condition_master.task_class==curr_tc(mm));
+                        n1    = histcounts([affordcat(cued0==1,1);affordcat(cued0==2,2)],1:(nr_responses+1));
+                    elseif curr_sc(jj) == 5
+                        n1     = histcounts(affordcat,1:(nr_responses+1));
+                    end
+                    assert(all(n==n1))
+                elseif ismember(curr_sc(jj),99) || ismember(curr_tc(mm),3) % scc-all
+                    % Check if we sample all core images across trials
+                    stmclass0 = condition_master.stim_class_name(condition_master.stim_class==curr_sc(jj) & condition_master.task_class==curr_tc(mm),:);
+                    cued0     = condition_master.is_cued(condition_master.stim_class==curr_sc(jj) & condition_master.task_class==curr_tc(mm));
+                    stmclass0_cued = [stmclass0(cued0==1,1);stmclass0(cued0==2,2)];
+                    [~,stmclass_cued_i] = ismember(stmclass0_cued,params.exp.stimclassnames([1,3,2,4]));
+                    n1 = histcounts(stmclass_cued_i,1:(nr_responses+1));
+                    assert(all(n==n1))
+                elseif all(n==0) && curr_tc(mm)~=2 && ~ismember(curr_tc(mm),[8,9,10])
+                    error('[%s]: No correct responses found?!',mfilename);
+                else
+                    assert(all(diff(n)==0))
                 end
-            elseif ismember(curr_sc(jj),5) && ismember(curr_tc(mm),9) % NS-WHERE
-                subcat = condition_master.sub_cat(condition_master.stim_class==curr_sc(jj) & condition_master.task_class==curr_tc(mm),:);
-                n0     = histcounts(subcat,1:(nr_responses+1));
-                assert(all(n==n0))
-            elseif ismember(curr_sc(jj),[4,5]) && ismember(curr_tc(mm),10) % OBJ-HOW & NS-HOW
-                affordcat = condition_master.affordance_cat(condition_master.stim_class==curr_sc(jj) & condition_master.task_class==curr_tc(mm),:);
-                if curr_sc(jj) == 4
-                    cued0 = condition_master.is_cued(condition_master.stim_class==curr_sc(jj) & condition_master.task_class==curr_tc(mm));
-                    n1    = histcounts([affordcat(cued0==1,1);affordcat(cued0==2,2)],1:(nr_responses+1));
-                elseif curr_sc(jj) == 5
-                    n1     = histcounts(affordcat,1:(nr_responses+1)); 
-                end
-                assert(all(n==n1))
-            elseif ismember(curr_sc(jj),99) || ismember(curr_tc(mm),3) % scc-all
-                % Check if we sample all core images across trials
-                stmclass0 = condition_master.stim_class_name(condition_master.stim_class==curr_sc(jj) & condition_master.task_class==curr_tc(mm),:);
-                cued0     = condition_master.is_cued(condition_master.stim_class==curr_sc(jj) & condition_master.task_class==curr_tc(mm));
-                stmclass0_cued = [stmclass0(cued0==1,1);stmclass0(cued0==2,2)];
-                [~,stmclass_cued_i] = ismember(stmclass0_cued,params.exp.stimclassnames([1,3,2,4]));
-                n1 = histcounts(stmclass_cued_i,1:(nr_responses+1));
-                assert(all(n==n1))
-            elseif all(n==0) && curr_tc(mm)~=2 && ~ismember(curr_tc(mm),[8,9,10])
-                error('[%s]: No correct responses found?!',mfilename);
-            else
-                assert(all(diff(n)==0))
             end
         end
     end
@@ -683,7 +706,12 @@ else % Recreate conditions and blocks and trials
         fprintf('[%s]:Storing condition_master..\n',mfilename)
         saveDir = fullfile(vcd_rootPath,'workspaces','info');
         if ~exist(saveDir,'dir'), mkdir(saveDir); end
-        save(fullfile(saveDir,sprintf('condition_master_%s_%s.mat',params.disp.name,datestr(now,30))),'condition_master','all_unique_im','all_cond')
+        if params.is_demo
+            fname = sprintf('condition_master_demo_%s_%s.mat',params.disp.name,datestr(now,30));
+        else
+            fname = sprintf('condition_master_%s_%s.mat',params.disp.name,datestr(now,30));
+        end
+        save(fullfile(saveDir,fname),'condition_master','all_unique_im','all_cond')
     end
     
     
@@ -695,16 +723,22 @@ else % Recreate conditions and blocks and trials
     if strcmp(env_type,'MRI')
         assert(isequal(unique(condition_master.task_class)',1:length(params.exp.taskclassnames)));
     elseif strcmp(env_type,'BEHAVIOR')
-        assert(isequal(unique(condition_master.task_class)', find(any(params.exp.n_unique_trial_repeats_behavior,1))))
+        if params.is_demo
+            assert(isequal(unique(condition_master.task_class)', find(any(params.exp.n_unique_trial_repeats_demo,1))))
+        else
+            assert(isequal(unique(condition_master.task_class)', find(any(params.exp.n_unique_trial_repeats_behavior,1))))
+        end
     end
-    % Cued vs uncued stimuli should be matched
-    assert(isequal(sum(condition_master.is_cued==1),sum(condition_master.is_cued==2)))
+    
+    % Cued vs uncued stimuli should be matched for non-demo sessions
+    if ~params.is_demo
+        assert(isequal(sum(condition_master.is_cued==1),sum(condition_master.is_cued==2)))
+    end
     
     % Now dive into each stimulus class
     unique_im_from_table = [];
     N_tbl = NaN(5,30); 
     adjusted_crossings = params.exp.nr_unique_trials_per_crossing;
-    
                 
     all_sessions = vcd_getSessionEnvironmentParams(params, env_type);
     for ii = 1:length(params.exp.stimclassnames)
@@ -716,8 +750,9 @@ else % Recreate conditions and blocks and trials
             [N, ~] = histcounts(tmp.stim_nr_left(strcmp(tmp.stim_class_name(:,1), params.exp.stimclassnames{ii})));
         
             N_tbl(ii,1:length(N)) = N;
-            assert(isequal(size(N,2), length(all_unique_im.(params.exp.stimclassnames{ii}).unique_im_nr)))
-
+            if ~params.is_demo
+                assert(isequal(size(N,2), length(all_unique_im.(params.exp.stimclassnames{ii}).unique_im_nr)))
+            end
             unique_im_from_table(ii) = length(unique(tmp.stim_nr_left));
 
         
@@ -732,7 +767,11 @@ else % Recreate conditions and blocks and trials
 %                     unique_trial_repeats(half_blocks)=all_sessions(half_blocks);
 %                 end
 %             end
-            expected_nr_of_trials = sum(all_sessions(ii,:).*params.exp.nr_trials_per_block(ii,:));
+
+            expected_nr_of_trials = sum(sum(all_sessions(ii,:,:).*params.exp.nr_trials_per_block(ii,:,:)));
+            if params.is_demo
+                expected_nr_of_trials = 0.5*expected_nr_of_trials;
+            end
             empirical_nr_of_trials = size(tmp,1);
             assert(isequal(empirical_nr_of_trials, expected_nr_of_trials))
             
@@ -743,14 +782,21 @@ else % Recreate conditions and blocks and trials
                                             tmp.stim_nr_right(strcmp(tmp.stim_class_name(:,2), params.exp.stimclassnames{ii}))));
             
             N_tbl(ii,1:length(N)) = N;
-            assert(isequal(size(N,2), length(all_unique_im.(params.exp.stimclassnames{ii}).unique_im_nr)))
+            if ~params.is_demo
+                assert(isequal(size(N,2), length(all_unique_im.(params.exp.stimclassnames{ii}).unique_im_nr)))
+            end
             colsL = tmp.stim_nr_left(tmp.task_class ~=3 & strcmp(tmp.stim_class_name(:,1), params.exp.stimclassnames{ii}));
             colsR = tmp.stim_nr_right(tmp.task_class ~=3 & strcmp(tmp.stim_class_name(:,2), params.exp.stimclassnames{ii}));
             colsLR = [colsL(:),colsR(:)];
             unique_im_from_table(ii) = length(unique(colsLR));
             colsLR_scc = [tmp.stim_nr_left(tmp.task_class ==3 & strcmp(tmp.stim_class_name(:,1), params.exp.stimclassnames{ii})); ...
                             tmp.stim_nr_right(tmp.task_class ==3 & strcmp(tmp.stim_class_name(:,2), params.exp.stimclassnames{ii}))];
-            expected_nr_of_trials = sum(all_sessions(ii,:).*params.exp.nr_trials_per_block(ii,:));
+            
+            expected_nr_of_trials = sum(sum(all_sessions(ii,:,:).*params.exp.nr_trials_per_block(ii,:)));
+            if params.is_demo
+                expected_nr_of_trials = expected_nr_of_trials*0.5;
+            end
+            
             if strcmp(params.exp.stimclassnames{ii},'obj')
                 empirical_nr_of_trials = sum([size(colsLR,1),size(unique(colsLR_scc),1)/2])+sum(condition_master.is_objectcatch);
             else
