@@ -649,9 +649,9 @@ for ses = 1:length(unique_sessions)
             if size(sorted_trial_types_tmp,1) < size(sorted_trial_types_tmp,2)
                 sorted_trial_types_tmp = sorted_trial_types_tmp';
             end
-            assert(isequal(sort(run_crossings(run_crossings>0)),sorted_crossing_start_tmp))
-            assert(isequal(sort(run_matrix(run_matrix>0)),sorted_block_start_tmp));
-            assert(isequal(sort(run_trial_types(run_trial_types>0)),sorted_trial_types_tmp))
+            assert(isequal(sort(reshape(run_crossings(run_crossings>0),[],1)),sorted_crossing_start_tmp))
+            assert(isequal(sort(reshape(run_matrix(run_matrix>0),[],1)),sorted_block_start_tmp));
+            assert(isequal(sort(reshape(run_trial_types(run_trial_types>0),[],1)),sorted_trial_types_tmp))
             
             % Shuffle trials within each block
             glbl_block_cnt = 0;
