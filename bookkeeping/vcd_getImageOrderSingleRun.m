@@ -67,8 +67,13 @@ if strcmp(env_type, 'MRI')
         run_ok = ismember([1:params.exp.session.mri.deep.n_runs_per_session(ses_nr,ses_type)],run_nr); 
     end
 elseif strcmp(env_type, 'BEHAVIOR')
-    ses_ok = ismember([1:params.exp.session.n_behavioral_sessions],ses_nr);
-    run_ok = ismember([1:params.exp.session.behavior.n_runs_per_session],run_nr);
+    if params.is_demo
+        ses_ok = ismember([1:params.exp.session.n_demo_sessions],ses_nr);
+        run_ok = ismember([1:params.exp.session.demo.n_runs_per_session(ses_nr,ses_type)],run_nr);
+    else
+        ses_ok = ismember([1:params.exp.session.n_behavioral_sessions],ses_nr);
+        run_ok = ismember([1:params.exp.session.behavior.n_runs_per_session],run_nr);
+    end
 end
 
 if isempty(ses_ok)
