@@ -500,7 +500,10 @@ while 1
       results.trialinfo.rt(rii)               = NaN;
       
     else
-
+      
+      % record
+      results.trialinfo.is_catch(rii) = 0; % previous record of results.trialinfo.is_catch is from beginning of block (NaN). We update here with the actual value of is_catch
+      
       % deal with stim_cued    
       results.trialinfo.stim_cued{rii} = a1.run_table.stim_class_name{ii,mod2(a1.run_table.is_cued(ii),2)};
 
