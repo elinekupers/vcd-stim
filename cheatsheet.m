@@ -5,7 +5,9 @@ all_images = struct;
 'all_images',all_images, 'exp_env',2);
 
 %% Run demo
-
+% Demo Session 1: FIX-GBR, WM-RDK, CD-DOT, HOW-OBJ, WHAT-NS, SCC-ALL (2x)
+% Demo Session 2: WM-GBR, PC-RDK, FIX-DOT, PC-DOT, PC-OBJ, CD-NS, WHERE-NS
+% Demo session 3: PC-GBR, CD-RDK, WM-DOT, WHAT-OBJ, FIX-NS, WM-NS, HOW-NS                                           
 demo_session = 1; % can be 1, 2, or 3.
 all_images = struct;
 [data,all_images] = runme_vcdcore(999, demo_session, 1, 1, 'PPROOM_EIZOFLEXSCAN', ...
