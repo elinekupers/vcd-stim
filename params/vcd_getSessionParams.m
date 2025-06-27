@@ -416,10 +416,10 @@ else
                                                 1	1  0	 4   8	 0	 0	 4	 4	  4]; % ns
 
    % DEMO session 1 for behavior (7 blocks)    fix cd  scc  pc  wm ltm img what where how
-   exp.session.demo.ses_blocks(:,:,1,1)     = [ 1	0  0.5	0	 0	 0	 0	 0	 0	  0; % FIX-Gabor,  SCC-ALL
-                                                0	0  0.5	0	 1	 0	 0	 0	 0	  0; % WM-RDK, SCC-ALL
-                                                0	1  0.5	0	 0	 0	 0	 0	 0	  0; % CD-Dot, SCC-ALL
-                                                0	0  0.5	0	 0	 0	 0	 0	 0	  1; % HOW-OBJ, SCC-ALL
+   exp.session.demo.ses_blocks(:,:,1,1)     = [ 1	0  0.5	0	 0	 0	 0	 0	 0	  0; % FIX-Gabor,  SCC-ALL 2x
+                                                0	0  0.5	0	 1	 0	 0	 0	 0	  0; % WM-RDK
+                                                0	1  0.5	0	 0	 0	 0	 0	 0	  0; % CD-Dot
+                                                0	0  0.5	0	 0	 0	 0	 0	 0	  1; % HOW-OBJ
                                                 0	0  0    0    0	 0	 0	 1	 0	  0]; % WHAT-NS
 
    % DEMO session 2 for behavior (7 blocks)    fix cd  scc  pc  wm ltm img what where how
@@ -434,7 +434,7 @@ else
                                                 0	1  0	0	 0	 0	 0	 0	 0	  0; % CD-RDK
                                                 0	0  0	0	 1	 0	 0	 0	 0	  0; % WM-Dot
                                                 0	0  0	0	 0	 0	 0	 1	 0	  0; % WHAT-OBJ
-                                                1	0  0	0    1	 0	 0	 0	 0	  1]; % FIX-NS, WM-NS
+                                                1	0  0	0    1	 0	 0	 0	 0	  1]; % FIX-NS, WM-NS, HOW-NS
 
     % %%%% MRI SESSIONS %%%%
     % sessions WIDE 1A                    fix cd scc  pc  wm ltm img what where  how  
