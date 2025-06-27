@@ -264,7 +264,7 @@ extent        = params.stim.obj.crop_img_sz_pix.*params.stim.obj.dres;
 objects       = uint8(ones(extent, extent, 3, n_obj, length(delta_rotations)));
 masks         = uint8(ones(extent, extent, n_obj, length(delta_rotations)));
 objects_catch = uint8(ones(extent, extent, 3, n_obj, n_catch_images));
-masks_catch   = uint8(ones(extent, extent, 3, n_obj, n_catch_images));
+masks_catch   = uint8(ones(extent, extent, n_obj, n_catch_images));
 
 % keep track of individual objects
 obj_sub      = cat(2,[1:16],repelem([1:16],n_wm_changes), repelem([1:16],n_catch_images))';
