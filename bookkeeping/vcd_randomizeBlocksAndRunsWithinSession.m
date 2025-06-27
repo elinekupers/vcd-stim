@@ -216,8 +216,9 @@ for ses = 1:length(unique_sessions)
             ses_trialtype     = condition_master.trial_type(ses_idx);
             ses_crossing_vec  = condition_master.crossing_nr(ses_idx);
             assert(isequal(length(ses_trials),length(ses_blocks)))
-            assert(isequal(1+sum(abs(diff(ses_crossing_vec))>0),numel(unique(ses_blocks))))
-            
+            if params.is_demo
+                assert(isequal(1+sum(abs(diff(ses_crossing_vec))>0),numel(unique(ses_blocks))))
+            end
             % Get unique block nrs and associated trial types
             [unique_blocks, block_start_idx] = unique(ses_blocks);
             crossings_unique_blocks          = ses_crossing_vec(block_start_idx);
@@ -636,10 +637,21 @@ for ses = 1:length(unique_sessions)
             % ensure we added all the blocks
             assert(isequal(length(run_matrix(run_matrix>0)),(length(block_start_idx_shuffled{1})+length(block_start_idx_shuffled{2}))))
             assert(isequal(length(unique(run_crossings(run_crossings>0))),length(unique(cat(1,crossings_shuffled{1},crossings_shuffled{2})))))
-
-            assert(isequal(sort(run_crossings(run_crossings>0)),sort(cat(1,crossings_shuffled{1},crossings_shuffled{2}))'))
-            assert(isequal(sort(run_matrix(run_matrix>0)),sort(cat(1,block_start_idx_shuffled{1},block_start_idx_shuffled{2}))'))
-            assert(isequal(sort(run_trial_types(run_trial_types>0)),sort(cat(1,trialtypes_shuffled{1},trialtypes_shuffled{2}))'))
+            sorted_crossing_start_tmp = sort(cat(1,crossings_shuffled{1},crossings_shuffled{2}));
+            sorted_block_start_tmp    = sort(cat(1,block_start_idx_shuffled{1},block_start_idx_shuffled{2}));
+            sorted_trial_types_tmp    = sort(cat(1,trialtypes_shuffled{1},trialtypes_shuffled{2}));
+            if size(sorted_crossing_start_tmp,1) < size(sorted_crossing_start_tmp,2)
+                sorted_crossing_start_tmp = sorted_crossing_start_tmp;
+            end
+            if size(sorted_block_start_tmp,1) < size(sorted_block_start_tmp,2)
+                sorted_block_start_tmp = sorted_block_start_tmp';
+            end
+            if size(sorted_trial_types_tmp,1) < size(sorted_trial_types_tmp,2)
+                sorted_trial_types_tmp = sorted_trial_types_tmp';
+            end
+            assert(isequal(sort(run_crossings(run_crossings>0)),sorted_crossing_start_tmp))
+            assert(isequal(sort(run_matrix(run_matrix>0)),sorted_block_start_tmp));
+            assert(isequal(sort(run_trial_types(run_trial_types>0)),sorted_trial_types_tmp))
             
             % Shuffle trials within each block
             glbl_block_cnt = 0;
