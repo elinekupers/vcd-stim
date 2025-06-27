@@ -45,22 +45,34 @@ if strcmp(env_type,'MRI')
     postblank_run_dur    = params.exp.run.post_blank_dur_MRI;
 
 elseif strcmp(env_type,'BEHAVIOR')
-    all_sessions         = params.exp.session.behavior.ses_blocks;
-    session_types        = params.exp.session.behavior.session_types;
-    nr_session_types     = 1;
     
-    n_runs_per_session   = params.exp.session.behavior.n_runs_per_session;
-    nr_blocks_per_run    = params.exp.session.behavior.nr_blocks_per_run;
-    unique_trial_repeats = params.exp.n_unique_trial_repeats_behavior;
     catch_trial_flag     = false;
-    
-    min_run_dur          = params.exp.run.min_run_dur_BEHAVIOR;
-    total_run_dur        = params.exp.run.total_run_dur_BEHAVIOR;
-    actual_task_run_dur  = params.exp.run.actual_task_dur_BEHAVIOR;
+    nr_session_types     = 1;
     IBI                  = params.exp.block.IBI_BEHAVIOR;
-    preblank_run_dur     = params.exp.run.pre_blank_dur_BEHAVIOR;
-    postblank_run_dur    = params.exp.run.post_blank_dur_BEHAVIOR;
-
+    if params.is_demo
+        all_sessions         = params.exp.session.demo.ses_blocks;
+        session_types        = params.exp.session.demo.session_types;
+        n_runs_per_session   = params.exp.session.demo.n_runs_per_session;
+        nr_blocks_per_run    = params.exp.session.demo.nr_blocks_per_run;
+        unique_trial_repeats = params.exp.n_unique_trial_repeats_demo;
+        min_run_dur          = params.exp.run.min_run_dur_DEMO;
+        total_run_dur        = params.exp.run.total_run_dur_DEMO;
+        actual_task_run_dur  = params.exp.run.actual_task_dur_DEMO;
+        preblank_run_dur     = params.exp.run.pre_blank_dur_DEMO;
+        postblank_run_dur    = params.exp.run.post_blank_dur_DEMO;
+    else
+        all_sessions         = params.exp.session.behavior.ses_blocks;
+        session_types        = params.exp.session.behavior.session_types;
+        n_runs_per_session   = params.exp.session.behavior.n_runs_per_session;
+        nr_blocks_per_run    = params.exp.session.behavior.nr_blocks_per_run;
+        unique_trial_repeats = params.exp.n_unique_trial_repeats_behavior;
+        min_run_dur          = params.exp.run.min_run_dur_BEHAVIOR;
+        total_run_dur        = params.exp.run.total_run_dur_BEHAVIOR;
+        actual_task_run_dur  = params.exp.run.actual_task_dur_BEHAVIOR;
+        IBI                  = params.exp.block.IBI_BEHAVIOR;
+        preblank_run_dur     = params.exp.run.pre_blank_dur_BEHAVIOR;
+        postblank_run_dur    = params.exp.run.post_blank_dur_BEHAVIOR;
+    end
 else 
     error('[%s]: Session type doesn''t exist! Choose: "MRI" or "BEHAVIOR".',mfilename)
 end
