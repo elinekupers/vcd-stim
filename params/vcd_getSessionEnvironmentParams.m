@@ -1,7 +1,7 @@
 function [all_sessions,session_types,n_runs_per_session,min_run_dur, ...
           total_run_dur,actual_task_run_dur, IBI, nr_session_types, ...
           preblank_run_dur, postblank_run_dur, unique_trial_repeats, ...
-          nr_blocks_per_run,catch_trial_flag] = ...
+          nr_blocks_per_run,catch_trial_flag,all_block_dur] = ...
             vcd_getSessionEnvironmentParams(params, env_type)
 
 %% WRITE ME DESCRIPTION OF OUTPUTS
@@ -43,6 +43,7 @@ if strcmp(env_type,'MRI')
     IBI                  = params.exp.block.IBI_MRI;
     preblank_run_dur     = params.exp.run.pre_blank_dur_MRI;
     postblank_run_dur    = params.exp.run.post_blank_dur_MRI;
+    all_block_dur        = [params.exp.block.total_single_epoch_dur, params.exp.block.total_double_epoch_dur];
 
 elseif strcmp(env_type,'BEHAVIOR')
     
@@ -60,6 +61,7 @@ elseif strcmp(env_type,'BEHAVIOR')
         actual_task_run_dur  = params.exp.run.actual_task_dur_DEMO;
         preblank_run_dur     = params.exp.run.pre_blank_dur_DEMO;
         postblank_run_dur    = params.exp.run.post_blank_dur_DEMO;
+        all_block_dur        = [params.exp.block.demo.total_single_epoch_dur, params.exp.block.demo.total_double_epoch_dur]; %  durations of [single, double]-stim block 
     else
         all_sessions         = params.exp.session.behavior.ses_blocks;
         session_types        = params.exp.session.behavior.session_types;
@@ -72,6 +74,7 @@ elseif strcmp(env_type,'BEHAVIOR')
         IBI                  = params.exp.block.IBI_BEHAVIOR;
         preblank_run_dur     = params.exp.run.pre_blank_dur_BEHAVIOR;
         postblank_run_dur    = params.exp.run.post_blank_dur_BEHAVIOR;
+        all_block_dur = [params.exp.block.total_single_epoch_dur, params.exp.block.total_double_epoch_dur];
     end
 else 
     error('[%s]: Session type doesn''t exist! Choose: "MRI" or "BEHAVIOR".',mfilename)
