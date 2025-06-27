@@ -53,7 +53,7 @@ else
     if load_params % load condition_master and params if requested
         
         % load condition master
-        d = dir(fullfile(vcd_rootPath,'workspaces','info',sprintf('condition_master*%s*.mat',params.disp.name)));
+        d = dir(fullfile(vcd_rootPath,'workspaces','info',sprintf('condition_master_%s%s*.mat',choose(params.is_demo,'demo_',''),params.disp.name)));
         if isempty(d)
             error('[%s]: Can''t find condition master .mat files! Please check or run vcd_createConditions.m\n', mfilename);
         elseif ~isempty(d(end).name)

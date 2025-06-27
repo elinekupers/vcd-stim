@@ -119,7 +119,7 @@ else
     if ~exist('condition_master','var') || isempty(condition_master)
         
         % load trial info
-        d = dir(fullfile(vcd_rootPath,'workspaces','data',subj_id, [subj_id '_condition_master*' env_type '*.mat']));
+        d = dir(fullfile(vcd_rootPath,'workspaces','data',subj_id, sprintf('%s_condition_master_%s*%s*.mat',subj_id, choose(params.is_demo,'demo_',''),env_type)));
         
         if ~isempty(d(end).name)
             if length(d) > 1

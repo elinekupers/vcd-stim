@@ -306,7 +306,7 @@ end
 
 % Load params if requested and we can find the file
 if load_params
-    d = dir(fullfile(vcd_rootPath,'workspaces','info',sprintf('condition_master_%s_%s*.mat',params.disp.name,env_type)));
+    d = dir(fullfile(vcd_rootPath,'workspaces','info',sprintf('condition_master_%s%s_%s*.mat',choose(params.is_demo,'demo_',''), params.disp.name,env_type)));
     fprintf('\n[%s]: Found %d condition_master .mat file(s)\n',mfilename,length(d));
     if ~isempty(d)
         if length(d) > 1
