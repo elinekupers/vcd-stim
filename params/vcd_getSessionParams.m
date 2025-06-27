@@ -129,16 +129,21 @@ else
     
     % BEHAVIORAL
     exp.session.behavior.session_nrs                    = 1;                % Sessions dedicated to behavioral experiment
-    exp.session.behavior.session_types                  = 1;                % Only 1 BEHAVIOR session type (no A/B)
+    exp.session.behavior.session_types                  = [1,NaN];          % Only 1 BEHAVIOR session type (no A/B)
     exp.session.behavior.n_runs_per_session             = 12;               % There are 12 runs for the BEHAVIOR session
+    
+    % BEHAVIORAL DEMO runs
+    exp.session.demo.session_nrs                        = 3;                % 3 different demo runs
+    exp.session.demo.session_types                      = repmat([1,NaN],3,1); % Only 1 demo session type (no A/B)
+    exp.session.demo.n_runs_per_session                 = ones(3,1);        % Only 1 run for each of the three demo sessions
 
-    % WIDE: Includes WIDE01A/WIDE01B
+    % MRI WIDE: Includes WIDE01A/WIDE01B
     % WIDE session 1A and 1B both have 10x 6.05 min runs per session
     exp.session.mri.wide.session_nrs                    = [1,1];            % [Session nr,session type]
     exp.session.mri.wide.session_types                  = [1,2];            % Refers to WIDE 1A and WIDE 1B
     exp.session.mri.wide.n_runs_per_session             = [10,10];          
 
-    % DEEP: Includes DEEP001 to DEEP025, DEEP26A and DEEP26B
+    % MRI DEEP: Includes DEEP001 to DEEP025, DEEP26A and DEEP26B
     % there are 10x 6.05 min runs for DEEP sessions 1-25, 26A and 26B have 4 runs each
     exp.session.mri.deep.session_nrs                    = [1:26];           %#ok<*NBRAK> % Session nr, deep subject sampling
     exp.session.mri.deep.session_types                  = NaN(26,2);        % [Session nr,session type] 
@@ -152,6 +157,7 @@ else
 
     % MORE GENERAL PARAMS
     exp.session.n_behavioral_sessions                   = unique(exp.session.behavior.session_nrs);
+    exp.session.n_demo_sessions                         = unique(exp.session.demo.session_nrs);
     exp.session.n_deep_sessions                         = unique(exp.session.mri.deep.session_nrs);
     exp.session.n_wide_sessions                         = unique(exp.session.mri.wide.session_nrs);  
     exp.session.n_mri_sessions                          = [exp.session.n_wide_sessions,exp.session.n_deep_sessions];
@@ -170,15 +176,19 @@ else
     % timing MRI
     exp.run.pre_blank_dur_MRI          = presentationrate_hz * 4.0;         % pre-run blank period: 4 seconds in number of presentation frames
     exp.run.post_blank_dur_MRI         = presentationrate_hz * 12;          % 12 seconds in number of presentation frames
-    exp.run.total_run_dur_BEHAVIOR     = presentationrate_hz * 376;         % TOTAL RUN DUR = 376 s or 22,560 time frames
+    exp.run.total_run_dur_MRI          = presentationrate_hz * 376;         % TOTAL RUN DUR = 376 s or 235 EPI volumes (1.6 s TR) or 22,560 time frames
+    assert(isintnearzero(exp.run.total_run_dur_MRI/exp.TR));                % ensure MRI run duration results in an integer nr of TRs
     
     % timing BEHAVIOR
     exp.run.pre_blank_dur_BEHAVIOR     = presentationrate_hz * 4.0;         % pre-run blank period: 4 seconds in number of presentation frames
     exp.run.post_blank_dur_BEHAVIOR    = presentationrate_hz * 12.0;        % post-blank period: 4 seconds in number of presentation frames
-    exp.run.total_run_dur_MRI          = presentationrate_hz * 376;         % TOTAL RUN DUR = 376 s or 235 EPI volumes (1.6 s TR) or 22,560 time frames
-    assert(isintnearzero(exp.run.total_run_dur_MRI/exp.TR));                % ensure MRI run duration results in an integer nr of TRs
+    exp.run.total_run_dur_BEHAVIOR     = presentationrate_hz * 376;         % TOTAL RUN DUR = 376 s or 22,560 time frames
 
-   
+   % timing DEMO
+    exp.run.pre_blank_dur_DEMO     = presentationrate_hz * 4.0;             % pre-run blank period: 4 seconds in number of presentation frames
+    exp.run.post_blank_dur_DEMO    = presentationrate_hz * 4.0;             % post-blank period: 4 seconds in number of presentation frames
+    exp.run.total_run_dur_DEMO     = presentationrate_hz * 250;             % TOTAL RUN DUR = 250 s or 15,000 time frames
+
 
     
     
@@ -236,11 +246,13 @@ else
     % Calculate min and max run durations based on duration of events.
     exp.run.min_run_dur_MRI        = exp.block.total_eyetracking_block_dur + exp.run.pre_blank_dur_MRI + exp.run.post_blank_dur_MRI;
     exp.run.min_run_dur_BEHAVIOR   = exp.block.total_eyetracking_block_dur + exp.run.pre_blank_dur_BEHAVIOR + exp.run.post_blank_dur_BEHAVIOR;
+    exp.run.min_run_dur_DEMO       = exp.block.total_eyetracking_block_dur + exp.run.pre_blank_dur_DEMO + exp.run.post_blank_dur_DEMO;
     
     % nr of presentation frames we actually spend doing the experiment
     exp.run.actual_task_dur_MRI      = exp.run.total_run_dur_MRI - exp.run.min_run_dur_MRI;
     exp.run.actual_task_dur_BEHAVIOR = exp.run.total_run_dur_BEHAVIOR - exp.run.min_run_dur_BEHAVIOR;
-    
+    exp.run.actual_task_dur_DEMO     = exp.run.total_run_dur_DEMO - exp.run.min_run_dur_DEMO;
+
     
     %% %%%% TRIAL PARAMS %%%%
     
@@ -261,7 +273,7 @@ else
     exp.block.IBI_BEHAVIOR           = presentationrate_hz * [5:0.5:9];     % seconds inter-block interval -- currently the same as MRI exp
     exp.block.total_single_epoch_dur = presentationrate_hz * 44.5;          % 44.5 seconds in number of presentation frames (excl. IBI)
     exp.block.total_double_epoch_dur = presentationrate_hz * 60.5;          % 60.5 seconds in number of presentation frames (excl. IBI)
-    
+        
     % Make we have integer number of frames
     assert(all(isint(exp.block.IBI_MRI))); 
     assert(all(isint(exp.block.IBI_BEHAVIOR)));
@@ -294,6 +306,19 @@ else
     
     assert( nearZero(mod(exp.trial.single_epoch_dur / 0.5*presentationrate_hz,1))); % ensure our durations are in 0.5 second time chunks
 
+    % DEMO RUNS HAVE HALF BLOCK SIZE, SO A SHORTER BLOCK DURATION
+    % we remove half the nr of trials per block (and corresponding ITIs)
+    % single stim presentation blocks: 4 trials + ITI: 0, 0.5, or 1 s 
+    % double stim presentation blocks: 2 trials + ITI: 0.5 s 
+    exp.block.demo.n_trials_single_epoch = 0.5 * exp.block.n_trials_single_epoch;
+    exp.block.demo.n_trials_double_epoch = 0.5 * exp.block.n_trials_double_epoch;
+    
+    exp.block.demo.total_single_epoch_dur = presentationrate_hz * (44.5 - (4*(exp.trial.single_epoch_dur/presentationrate_hz)) - 1.5); % 25 seconds in number of presentation frames (excl. IBI)
+    exp.block.demo.total_double_epoch_dur = presentationrate_hz * (60.5 - (2*(exp.trial.double_epoch_dur/presentationrate_hz)) - 1);   % 32.5 seconds in number of presentation frames (excl. IBI)
+    
+
+    
+    
     %% In each run, we have manipulations that we prioritize to fully sample,
     % To make it easier to compare conditions (e.g., we want to sample
     % all contrast levels within the run). We mention these manipulations
@@ -359,11 +384,13 @@ else
     % blocks.
     % * Last deep session (26) has two session types (A and B), with majority NS-stimulus crossings.
 
-    exp.session.behavior.nr_blocks_per_run           = [7,NaN]; % 7 blocks/run, one session types
-    exp.session.mri.wide.nr_blocks_per_run           = [7,7];   % 7 blocks/run, two session types
-    exp.session.mri.deep.nr_blocks_per_run           = NaN(26,2);
+    exp.session.behavior.nr_blocks_per_run           = [7,NaN];              % 7 blocks/run, one session, one session types
+    exp.session.demo.nr_blocks_per_run               = repmat([7,NaN],3,1);  % 7 blocks/run, three sessions, one session types
+    exp.session.mri.wide.nr_blocks_per_run           = [7,7];                % 7 blocks/run, two session types
+    
+    exp.session.mri.deep.nr_blocks_per_run           = NaN(26,2);            % allocate space for 26 sessions
     exp.session.mri.deep.nr_blocks_per_run(1:25,:)   = repmat([7,NaN],25,1); % 7 blocks/run, one session types
-    exp.session.mri.deep.nr_blocks_per_run(26,:)     = [7,7];   % 7 blocks/run, two session types
+    exp.session.mri.deep.nr_blocks_per_run(26,:)     = [7,7];                % 7 blocks/run, two session types
     
     %% SPECIFIC CROSSINGS SHOWN PER SESSION
     % The goal is to achieve least 10 repetitions for each unique
@@ -375,10 +402,12 @@ else
     % runs, and then we cut whatever we don't need. Some crossings have
     % more repetitions, such as FIX, as we want at least one FIX block per
     % session.
-    exp.session.behavior.ses_blocks = zeros(size(exp.crossings,1),size(exp.crossings,2),length(exp.session.n_behavioral_sessions)); % last dim represents session type
-    exp.session.wide.ses_blocks     = zeros(size(exp.crossings,1),size(exp.crossings,2),length(exp.session.n_wide_sessions),2);
-    exp.session.deep.ses_blocks     = zeros(size(exp.crossings,1),size(exp.crossings,2),length(exp.session.n_deep_sessions),2);
+    exp.session.behavior.ses_blocks = zeros(size(exp.crossings,1),size(exp.crossings,2),length(exp.session.n_behavioral_sessions)); 
+    exp.session.demo.ses_blocks     = zeros(size(exp.crossings,1),size(exp.crossings,2),length(exp.session.n_demo_sessions));
+    exp.session.wide.ses_blocks     = zeros(size(exp.crossings,1),size(exp.crossings,2),length(exp.session.n_wide_sessions),2); % last dim represents session type
+    exp.session.deep.ses_blocks     = zeros(size(exp.crossings,1),size(exp.crossings,2),length(exp.session.n_deep_sessions),2); % last dim represents session type
 
+    % %%%% BEHAVIOR SESSIONS %%%%
     % sessions for behavior 1                  fix cd  scc  pc  wm ltm img what where how  
     exp.session.behavior.ses_blocks(:,:,1,1) = [1	1  0.5	 3	 6	 0	 0	 0	 0	  0; % gabor
                                                 1	1  0.5	 3	 6	 0	 0	 0	 0	  0; % rdk
@@ -386,7 +415,28 @@ else
                                                 1	1  0.5	 2	 4	 0	 0	 2	 0	  2; % obj
                                                 1	1  0	 4   8	 0	 0	 4	 4	  4]; % ns
 
+   % DEMO session 1 for behavior (7 blocks)    fix cd  scc  pc  wm ltm img what where how
+   exp.session.demo.ses_blocks(:,:,1,1)     = [ 1	0  0.5	0	 0	 0	 0	 0	 0	  0; % FIX-Gabor,  SCC-ALL
+                                                0	0  0.5	0	 1	 0	 0	 0	 0	  0; % WM-RDK, SCC-ALL
+                                                0	1  0.5	0	 0	 0	 0	 0	 0	  0; % CD-Dot, SCC-ALL
+                                                0	0  0.5	0	 0	 0	 0	 0	 0	  1; % HOW-OBJ, SCC-ALL
+                                                0	0  0    0    0	 0	 0	 1	 0	  0]; % WHAT-NS
 
+   % DEMO session 2 for behavior (7 blocks)    fix cd  scc  pc  wm ltm img what where how
+   exp.session.demo.ses_blocks(:,:,2,1)     = [ 0	0  0	0	 1	 0	 0	 0	 0	  0; % WM-Gabor
+                                                0	0  0	1	 0	 0	 0	 0	 0	  0; % PC-RDK
+                                                1	0  0	1	 0	 0	 0	 0	 0	  0; % FIX-DOT, PC-DOT
+                                                0	0  0	1	 0	 0	 0	 0	 0	  0; % PC-OBJ
+                                                0	1  0	0    0	 0	 0	 0	 1	  0]; % CD-NS, WHERE-NS
+
+   % DEMO session 3 for behavior (7 blocks)    fix cd  scc  pc  wm ltm img what where how
+   exp.session.demo.ses_blocks(:,:,3,1)     = [ 0	0  0	1	 0	 0	 0	 0	 0	  0; % PC-Gabor
+                                                0	1  0	0	 0	 0	 0	 0	 0	  0; % CD-RDK
+                                                0	0  0	0	 1	 0	 0	 0	 0	  0; % WM-Dot
+                                                0	0  0	0	 0	 0	 0	 1	 0	  0; % WHAT-OBJ
+                                                1	0  0	0    1	 0	 0	 0	 0	  1]; % FIX-NS, WM-NS
+
+    % %%%% MRI SESSIONS %%%%
     % sessions WIDE 1A                    fix cd scc  pc  wm ltm img what where  how  
     exp.session.mri.wide.ses_blocks(:,:,1,1) = [2	2	2	2	4	0	0	0	0	0; % gabor
                                                 2	2	2	2	4	0	0	0	0	0;
@@ -603,10 +653,12 @@ else
     exp.n_unique_trial_repeats_mri = ceil((ses_type_1_trials + ses_type_2_trials) .*  exp.nr_trials_per_block) ./  exp.nr_unique_trials_per_crossing;
    
     exp.n_unique_trial_repeats_behavior = ceil((exp.session.behavior.ses_blocks .*  exp.nr_trials_per_block)  ./  exp.nr_unique_trials_per_crossing);                                 
+    exp.n_unique_trial_repeats_demo     = ceil((sum(sum(exp.session.demo.ses_blocks,3),4) .*  exp.nr_trials_per_block)  ./  exp.nr_unique_trials_per_crossing);
+
     
     % Store params struct if requested
     if store_params
-        if verbose, fprintf('[%s]: Storing session data..\n',mfilename); end
+        if verbose, fprintf('[%s]: Storing session params..\n',mfilename); end
         saveDir = fullfile(vcd_rootPath,'workspaces','info');
         if ~exist(saveDir,'dir'), mkdir(saveDir); end
         save(fullfile(saveDir, sprintf('exp_%s_%s.mat',disp_name, datestr(now,30))),'exp','-v7.3');
