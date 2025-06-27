@@ -134,7 +134,8 @@ function [data,all_images] = runme_vcdcore(subj_nr,ses_nr,ses_type,run_nr, dispN
 %   [infofolder]         : folder where pre-made stimuli are stored.
 %                          Default: fullfile(vcd_rootPath,'workspaces','info')
 %   [exp_env]            : argument to vcd_startup.m. Default: []. Choose between 1:'7tas', 2:'cmrr pproom', 2:'nyu pproom', 4:'other'
-%   
+%   [is_demo]            : if true, we will treat this as a demo run. if false, we treat this as a normal run.
+%                          Default: false;
 %
 % OUTPUTS:
 %   data                 : struct with behavioral button presses and monitor
@@ -208,6 +209,7 @@ p.addParameter('triggerkey'         , {'5','t'}, @(x) iscell(x) || isstring(x)) 
 p.addParameter('triggerkeyname'     , '''5'' or ''t''', @isstring)               % for display only
 p.addParameter('userkeys'           , {'1','2','3','4'}, @(x) iscell(x) || isstring(x)) % key(s) that participants are expected to push
 p.addParameter('store_imgs'         , false     , @islogical)                    % (boolean) whether to save figures locally. Default = false.                      
+p.addParameter('is_demo'            , false     , @islogical)                    % (boolean) whether this is a demo run or not.
 
 % Parse inputs
 p.parse(subj_nr, ses_nr, ses_type, run_nr, dispName, varargin{:});
@@ -236,9 +238,15 @@ end
 % Can we actually run this experiment?
 assert(params.subj_nr>=0 && (params.subj_nr<=999));
 if strcmp(params.env_type,'BEHAVIOR')
-    assert(params.run_nr>=1 && params.run_nr<=15);
+    if params.is_demo
+        if params.run_nr~=1, error('[%s]: Run number can only be 1 for demo runs',mfilename); end
+        if ~ismember(params.ses_nr,[1:3]), error('[%s]: Session number can only be 1, 3, or 3 for demo runs',mfilename); end
+    else
+        assert(params.run_nr>=1 && params.run_nr<=15);
+        assert(isequal(params.ses_nr,1));
+    end
     assert(isequal(params.ses_type,1));
-    assert(isequal(params.ses_nr,1));
+    
 elseif strcmp(params.env_type,'MRI')
     assert(params.ses_nr>=1 && params.ses_nr<=27);
     if ismember(params.ses_nr, [1,27]), assert(ismember(params.ses_type, [1,2]));
@@ -265,9 +273,9 @@ if isempty(params.timetable_file)
    elseif load_existing_timetable == 2
        tmp_timetable_dir = fullfile(vcd_rootPath,'data',params.env_type, sprintf('vcd_subj%03d',params.subj_nr));
        if strcmp(params.dispName,'CCNYU_VIEWPIXX3D')
-           tempfiles = matchfiles(fullfile(tmp_timetable_dir,sprintf('vcd_subj%03d_time_table_master_%s*.mat',params.subj_nr, 'PPROOM_EIZOFLEXSCAN')));
+           tempfiles = matchfiles(fullfile(tmp_timetable_dir,sprintf('vcd_subj%03d_time_table_master_%s%s*.mat',params.subj_nr, choose(params.is_demo,'demo_',''),'PPROOM_EIZOFLEXSCAN')));
        else
-           tempfiles = matchfiles(fullfile(tmp_timetable_dir,sprintf('vcd_subj%03d_time_table_master_%s*.mat',params.subj_nr, params.dispName)));
+           tempfiles = matchfiles(fullfile(tmp_timetable_dir,sprintf('vcd_subj%03d_time_table_master_%s%s*.mat',params.subj_nr, choose(params.is_demo,'demo_',''),params.dispName)));
        end
        tempfiles_short = strrep(tempfiles, tmp_timetable_dir, '.');
        fprintf('\nIt appears you have the following time tables already:\n');
