@@ -6,7 +6,8 @@ function [filenames, unique_im_nrs] = vcd_getOBJfilenames()
 % 
 % 65-80 are 16 core images (the same as params.stim.obj.unique_im_nrs_core)
 % 367:430 are 64 wm test images (the same as params.stim.obj.unique_im_nrs_wm_test)
-% 1423:1710 are 288 pc object catch images (the same as params.stim.obj.unique_im_nrs_objcatch)
+% 1423:1710 are 288 pc object catch images (the same as 
+% params.stim.obj.unique_im_nrs_objcatch, but in vector format)
 % 
 % There are 91 "raw" rotation files per object (e.g., animals_bear_rotXX.png)
 % where XX ranges from [01-91]. These rotation numbers correspond to
@@ -27,15 +28,16 @@ function [filenames, unique_im_nrs] = vcd_getOBJfilenames()
 %  None.
 %
 % OUTPUTS:
-%  filenames     : (cell) filenames for each of the core and wm test images.
-%  unique_im_nrs : (integer) corresponding unique image nrs for object core 
-%                   and wm test images.
+%  filenames     : (cell) PNG filenames for each of the core, wm test, 
+%                   and object catch stimuli.
+%  unique_im_nrs : (integer) corresponding unique image nrs for object core, 
+%                   wm test, and object catch stimuli.
 %
 % Written by Eline Kupers @ UMN 2025/04
 
 % Define unique_im_nrs (get from those defined in vcd_getStimParams OBJ field)
 stim = vcd_getStimParams('load_params',false,'store_params',false, 'verbose',false);
-unique_im_nrs = cat(2,stim.obj.unique_im_nrs_core, stim.obj.unique_im_nrs_wm_test,stim.all_objcatch_im_nrs)'; % [65:80,239:302, 1423:1710]
+unique_im_nrs = cat(2,stim.obj.unique_im_nrs_core, stim.obj.unique_im_nrs_wm_test,stim.all_objectcatch_im_nrs)'; % [65:80,239:302, 1423:1710]
 
 % convert rotation in degrees to filename number
 rot2fname = @(x) 1+(x/2); % we have 91 raw images, in steps of 2 degrees, and count files from 01
