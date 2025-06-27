@@ -68,7 +68,7 @@ function [condition_master_shuffled, fname, condition_master_shuffle_idx, ...
 %    exceed the number defined by: 
 %       params.exp.session.mri.[wide/deep/behavior].n_runs_per_session.
 %  % Block allocation. We must assign all the blocks to the session.
-% If we shuffled all blocks more than 2000 times, code will throw an error.
+% If we shuffled all blocks more than 10,000 times, code will throw an error.
 %
 % Additional (tweakable) constraints:
 % User can set some additional constraints when to stop inserting blocks 
@@ -188,29 +188,26 @@ unique_sessions  = unique(condition_master.session_nr);
 
 % Get session parameters depending on whether this is the Behavioral
 % experiment or MRI experiment.
-[~,session_types,runs_per_session,run_dur_min,run_dur_max,~,IBIs, ~, ~, ~, ...
-    ~,nr_blocks_per_run] = vcd_getSessionEnvironmentParams(params, env_type);
-
-% Get durations of [single, double]-stim block 
-all_block_dur = [params.exp.block.total_single_epoch_dur, params.exp.block.total_double_epoch_dur];
+[~,session_types,runs_per_session,run_dur_min, ...
+ run_dur_max,~, IBIs, ~, ~, ~, ~, nr_blocks_per_run,~,all_block_dur] = ...
+    vcd_getSessionEnvironmentParams(params, env_type);
 
 % Get additional IBI duration (in case we deal with a short run)
 additional_IBIs = max(IBIs)-min(IBIs);
 
 % Preallocate space
 condition_master_shuffled    = [];
-condition_master_shuffle_idx = cell(length(unique_sessions),length(session_types));
-session_crossing_matrix      = cell(length(unique_sessions),length(session_types));
-session_block_matrix         = cell(length(unique_sessions),length(session_types));
+condition_master_shuffle_idx = cell(length(unique_sessions),find(sum(~isnan(session_types))));
+session_crossing_matrix      = cell(length(unique_sessions),find(sum(~isnan(session_types))));
+session_block_matrix         = cell(length(unique_sessions),find(sum(~isnan(session_types))));
 
 tic;
 
 %% Loop over sessions..
 for ses = 1:length(unique_sessions)
-    for st = 1:length(session_types)
+    for st = 1:size(session_types,2)
         if ~isnan(session_types(ses,st))
             blocks_per_run = nr_blocks_per_run(ses,st);
-            
             
             % Get session information about blocks and trials.
             ses_idx           = (condition_master.session_nr==ses & condition_master.session_type==st);
@@ -218,7 +215,8 @@ for ses = 1:length(unique_sessions)
             ses_trials        = condition_master.trial_nr(ses_idx);
             ses_trialtype     = condition_master.trial_type(ses_idx);
             ses_crossing_vec  = condition_master.crossing_nr(ses_idx);
-            assert(isequal([1:length(unique(ses_blocks))]',sort(unique(ses_blocks))))
+            assert(isequal(length(ses_trials),length(ses_blocks)))
+            assert(isequal(1+sum(abs(diff(ses_crossing_vec))>0),numel(unique(ses_blocks))))
             
             % Get unique block nrs and associated trial types
             [unique_blocks, block_start_idx] = unique(ses_blocks);
@@ -297,7 +295,6 @@ for ses = 1:length(unique_sessions)
                 run_matrix                = zeros(runs_to_fill,blocks_per_run); % max 7 possible slots
                 run_crossings             = run_matrix;
                 run_trial_types           = run_matrix;
-                nr_blocks_per_run         = [];
                 run_dur                   = [];
                 trialtypes_shuffled0      = trialtypes_shuffled;
                 block_start_idx_shuffled0 = block_start_idx_shuffled;
@@ -317,7 +314,7 @@ for ses = 1:length(unique_sessions)
                     % how many blocks do we have in the run right now?
                     curr_nr_blocks = sum(run_matrix(rr_cnt,:)>0);
                     
-                    % if one list is empty, just use the other one
+                    % if double-stim list is empty, use single-stim list
                     if ~isempty(trialtypes_shuffled0{1}) && isempty(trialtypes_shuffled0{2})
                         
                         total_nr_blocks_left = length(trialtypes_shuffled0{1});
@@ -329,6 +326,13 @@ for ses = 1:length(unique_sessions)
                         potential_block_dur(2)      = [NaN];
                         potential_block_crossing(2) = [NaN];
                         potential_block_idx(2)      = [NaN];
+                        
+                        % check if accidentally picked the empty side,
+                        % switch block index to the non empty side
+                        if isnan(potential_block_idx(bbi))
+                            bbi = setdiff([1,2],bbi);
+                            assert(~isnan(potential_block_idx(bbi)))
+                        end
                         
                         if (ibi + curr_run_dur + run_dur_min + max_run_deviation) < run_dur_max
                             % if this run needs another block, then let's continue as usual
@@ -379,7 +383,7 @@ for ses = 1:length(unique_sessions)
                             
                             check_blocks = false;
                         end
-                        
+                       % if no more single-stim blocks, then only use double-stim blocks 
                     elseif isempty(trialtypes_shuffled0{1}) && ~isempty(trialtypes_shuffled0{2})
                            potential_block_dur(1)      = [NaN];
                            potential_block_crossing(1) = [NaN];
@@ -441,7 +445,9 @@ for ses = 1:length(unique_sessions)
                                check_blocks = false;
                            end
                     else
-                        
+                        % if both single and double blocks exists, we
+                        % consider them both as potential blocks (1:
+                        % single; 2: double)
                         potential_block_dur(1)      = all_block_dur(trialtypes_shuffled0{1}(1));
                         potential_block_dur(2)      = all_block_dur(trialtypes_shuffled0{2}(1));
                         potential_block_crossing(1) = crossings_shuffled0{1}(1);
@@ -451,7 +457,7 @@ for ses = 1:length(unique_sessions)
                         
                         check_blocks = true;
                     end
-                    
+                    % if we are ready with potential block options
                     if check_blocks
                     
                         % see if we can add another block..
@@ -489,7 +495,6 @@ for ses = 1:length(unique_sessions)
                                 curr_run_dur = curr_run_dur + ibi + potential_block_dur(bbi);
 
                             else % we just add to the available run
-
                                 % if we have enough time left in the run, add the first potential block
                                 if (ibi + curr_run_dur + potential_block_dur(bbi)) < (run_dur_max-run_dur_min)
 
@@ -515,7 +520,7 @@ for ses = 1:length(unique_sessions)
                                     crossings_shuffled0{setdiff([1,2],bbi)}(1) = [];
                                     block_start_idx_shuffled0{setdiff([1,2],bbi)}(1) = [];
                                     trialtypes_shuffled0{setdiff([1,2],bbi)}(1) = [];
-
+                                    
                                 else % if both blocks make the run too long, we move potential blocks to the next run
                                     run_dur(rr_cnt) = curr_run_dur + run_dur_min;
                                     rr_cnt = rr_cnt+1;
@@ -555,7 +560,7 @@ for ses = 1:length(unique_sessions)
                 for xx = 1:size(run_matrix,1); tmp_blocks_per_run(xx) = sum(run_matrix(xx,:)>0); end
                         
                 % if runs are longer than expected, then start over
-                if sum(run_dur > run_dur_max) > 0 
+                if sum(run_dur > run_dur_max) > 0
                     runs_ok = false;
                 end
                 
@@ -606,12 +611,19 @@ for ses = 1:length(unique_sessions)
                     end
                 end
                 
+                % if this is a demo, and there are not 7 blocks in one run, then start over
+                if runs_ok && params.is_demo
+                    if tmp_blocks_per_run ~= params.exp.session.demo.nr_blocks_per_run(ses,st)
+                        runs_ok = false;
+                    end
+                end
+
                 % Did we pass all the checks???
                 if runs_ok
                     break; % if we passed all checks, we break the while loop and move on
                 end
                 
-                % If we shuffled all blocks more than 2000 times, we will throw an error.
+                % If we shuffled all blocks more than 10,000 times, we will throw an error.
                 if attempts>10000
                     error('[%s]: Can''t seem to find a solution after 10000 attempts! Try running the same code again!\n',mfilename)
                 end
@@ -625,17 +637,17 @@ for ses = 1:length(unique_sessions)
             assert(isequal(length(run_matrix(run_matrix>0)),(length(block_start_idx_shuffled{1})+length(block_start_idx_shuffled{2}))))
             assert(isequal(length(unique(run_crossings(run_crossings>0))),length(unique(cat(1,crossings_shuffled{1},crossings_shuffled{2})))))
 
-            assert(isequal(sort(run_crossings(run_crossings>0)),sort(cat(1,crossings_shuffled{1},crossings_shuffled{2}))))
-            assert(isequal(sort(run_matrix(run_matrix>0)),sort(cat(1,block_start_idx_shuffled{1},block_start_idx_shuffled{2}))))
-            assert(isequal(sort(run_trial_types(run_trial_types>0)),sort(cat(1,trialtypes_shuffled{1},trialtypes_shuffled{2}))))
+            assert(isequal(sort(run_crossings(run_crossings>0)),sort(cat(1,crossings_shuffled{1},crossings_shuffled{2}))'))
+            assert(isequal(sort(run_matrix(run_matrix>0)),sort(cat(1,block_start_idx_shuffled{1},block_start_idx_shuffled{2}))'))
+            assert(isequal(sort(run_trial_types(run_trial_types>0)),sort(cat(1,trialtypes_shuffled{1},trialtypes_shuffled{2}))'))
             
             % Shuffle trials within each block
             glbl_block_cnt = 0;
             trial_order_local_shuffled  = cell(size(run_matrix));
             trial_order_global_shuffled = cell(size(run_matrix));
             
-            % For convenience, we make a copy of the condition master with shuffled blocks
-            condition_master0 = condition_master;
+            % First, we make a copy of the condition master with shuffled blocks
+            condition_master0 = condition_master(condition_master.session_nr==ses & condition_master.session_type==st,:);
             
             % reset the temporary run and block nrs
             condition_master0.run_nr   = NaN(size(condition_master0.run_nr));
@@ -650,7 +662,6 @@ for ses = 1:length(unique_sessions)
             % a copy of the condition_master
             for run_idx = 1:length(run_order)
                 
-                % Show user the block order within a run
                 % get blocks for a given run
                 curr_block_start = run_matrix(run_idx,:);
                 curr_block_start = curr_block_start(curr_block_start>0);
@@ -659,15 +670,34 @@ for ses = 1:length(unique_sessions)
                     glbl_block_cnt = glbl_block_cnt +1;
                     % What type of block are we dealing with
                     if run_trial_types(run_idx,bb_idx)==1
-                        nr_trials = params.exp.block.n_trials_single_epoch;
+                        if params.is_demo
+                            nr_trials = params.exp.block.demo.n_trials_single_epoch;
+                        else
+                            nr_trials = params.exp.block.n_trials_single_epoch;
+                        end
                     elseif run_trial_types(run_idx,bb_idx)==2
-                        nr_trials = params.exp.block.n_trials_double_epoch;
+                        if params.is_demo
+                            nr_trials = params.exp.block.demo.n_trials_double_epoch;
+                        else
+                            nr_trials = params.exp.block.n_trials_double_epoch;
+                        end
                     end
                     
-                    % Shuffle local trial order (e.g.: [1,2,3,4] --> [2,4,1,3])
-                    local_trial_order = shuffle_concat(1:nr_trials,1);
-                    trial_order = curr_block_start(bb_idx):(curr_block_start(bb_idx)+nr_trials-1);
-                    trial_order = trial_order(local_trial_order);
+                    trial_order_not_ok = true;
+                    while trial_order_not_ok
+                        % Shuffle local trial order (e.g.: [1,2,3,4] --> [2,4,1,3])
+                        local_trial_order = shuffle_concat(1:nr_trials,1);
+                        % get trial order within the run
+                        trial_order       = curr_block_start(bb_idx):(curr_block_start(bb_idx)+nr_trials-1);
+                        trial_order       = trial_order(local_trial_order);
+
+                        % check order of image nrs, if we have any repeats, we shuffle
+                        % the order of stimuli in a block
+                        if all(diff(condition_master0.stim_nr_left(trial_order))~=0) || ...
+                                all(diff(condition_master0.stim_nr_right(trial_order))~=0)
+                            trial_order_not_ok = false;
+                        end
+                    end
                     
                     trial_order_global_shuffled{run_idx,bb_idx} = trial_order;
                     trial_order_local_shuffled{run_idx,bb_idx}  = local_trial_order;
@@ -695,8 +725,8 @@ for ses = 1:length(unique_sessions)
             condition_master0 = vcd_getTrialRepeatNr(condition_master0);
             
             % Get order of shuffled trials within a session
-            [~,global_trial_row_idx] = intersect(condition_master0.global_trial_nr,condition_master.global_trial_nr);
-            assert(isequal(condition_master0.global_trial_nr(global_trial_row_idx),condition_master.global_trial_nr));
+            [~,global_trial_row_idx] = intersect(condition_master0.global_trial_nr,condition_master.global_trial_nr(condition_master.session_nr==ses & condition_master.session_type==st));
+            assert(isequal(condition_master0.global_trial_nr(global_trial_row_idx),condition_master.global_trial_nr(condition_master.session_nr==ses & condition_master.session_type==st)));
 
             % concatenate condition_master, run_matrix, and global trial
             % indices
@@ -727,7 +757,7 @@ if store_params
     end
     if ~exist(saveDir,'dir'), mkdir(saveDir); end    
     
-    fname = sprintf('%scondition_master_%s_%s.mat',[subj_id '_'],params.disp.name, datestr(now,30));
+    fname = sprintf('%scondition_master_%s%s_%s.mat',[subj_id '_'],choose(params.is_demo,'demo_',''),params.disp.name, datestr(now,30));
     fprintf('\n[%s]: Storing shuffled condition master and randomization file here:\n',mfilename)
     fprintf('\t%s', fullfile(saveDir,fname))
     save(fullfile(saveDir,fname),'condition_master_shuffled','condition_master_shuffle_idx','session_block_matrix','session_crossing_matrix','randomization_params');
