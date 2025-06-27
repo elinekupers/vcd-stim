@@ -1,3 +1,8 @@
+%% Official vcdpp01 experiment (SUBJECTID is an integer up to 3 digits, RUNNUMBER is 1-12)
+all_images = struct;
+[data,all_images] = runme_vcdcore(SUBJECTID, 1, 1, RUNNUMBER, 'PPROOM_EIZOFLEXSCAN', ...
+  'wanteyetracking', true, 'all_images', all_images, 'exp_env', 2);
+
 %% a run
 
 all_images = struct;
