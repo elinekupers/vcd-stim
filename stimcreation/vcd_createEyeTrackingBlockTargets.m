@@ -10,7 +10,7 @@ function [sac_im,pupil_im_white,pupil_im_black] = vcd_createEyeTrackingBlockTarg
 %
 % An eye tracking block has the following sequence;
 %   1. a 1-second fixation period (central fixation target on a mid-gray luminance)
-%   2. 5 x 1.2 second = 6 seconds of saccades (mimicing EL HV5 grid,±4 deg in all directions)
+%   2. 5 x 2 second = 6 seconds of saccades (mimicing EL HV5 grid,±4 deg in all directions)
 %   3. a 2-seconds rest period (central fixation target on a mid-gray luminance)
 %   4. a 4-seconds pupil trial: 3-s black adaptation, 1-s white screen to evoke max pupil response.
 %
@@ -19,14 +19,14 @@ function [sac_im,pupil_im_white,pupil_im_black] = vcd_createEyeTrackingBlockTarg
 % [top-left-x top-left-y bottom-right-x bottom-right-y].
 %
 % The distance between the center and 4 left/right/up/down targets are set
-% as [xc,yc] ± xxx pixels (BOLDscreen) or ± 256 pixels (EIZOFLEXSCAN). 
+% as [xc,yc] ± 352 pixels (BOLDscreen) or ± 256 pixels (EIZOFLEXSCAN). 
 % This results in dots at the following pixel coordinates for the 5 targets
 % BOLDscreen target rect coordinates in pixels 
 % [x1,y1,x1,y2] = [top-left-x, top-left-y, bottom-right-x bottom-right-y]:
 %
-%                    [x,x,x,x]
-% [x,x,x,x]          [x,x,x,x]          [x,x,x,x]
-%                    [x,x,x,x]
+%                    [949,177,972,200]
+% [597,529,620,552]  [949,529,972,552]   [1301,529,1324, 552]
+%                    [949,881,972,904]
 %
 % EIZOFLEXSCAN target rect coordinates in pixels 
 % [x1,y1,x1,y2] = [top-left-x, top-left-y, bottom-right-x bottom-right-y]:
@@ -37,7 +37,7 @@ function [sac_im,pupil_im_white,pupil_im_black] = vcd_createEyeTrackingBlockTarg
 %
 
 % EMPIRICAL target distance:
-% * BOLDscreen: xxx pixels, which corresponds to xxx degrees.
+% * BOLDscreen: 352 pixels, which corresponds to 3.9914 degrees.
 % * PP room EIZOFLEX: 256 pixels, which corresponds to 4.0061 degrees.
 %
 % See vcd_setEyelinkParams.m for other parameters regarding Eyelink.
@@ -46,10 +46,10 @@ function [sac_im,pupil_im_white,pupil_im_black] = vcd_createEyeTrackingBlockTarg
 %  params           : (struct) parameter struct, which should contain the following fields:
 %   * exp.block.nr_of_saccades         :  nr of saccade targets (positive integral number) (default is 5)
 %   * stim.bckgrnd_grayval             :  mid-gray luminance level (default is 128)
-%   * stim.el.point2point_distance_deg :  desired target distance in degrees from center of the screen (default = 3 deg)
-%   * stim.el.point2point_distance_pix :  desired target distance in pixels from center of the screen (default is  264 pixels for BOLD screen and 192 pixels for PP room eizoflex)
+%   * stim.el.point2point_distance_deg :  desired target distance in degrees from center of the screen (default = 4 deg)
+%   * stim.el.point2point_distance_pix :  desired target distance in pixels from center of the screen (default is 352 pixels for BOLD screen and 256 pixels for PP room eizoflex)
 %   * stim.el.total_target_diam_pix    :  total diameter of target (inner circle + outer rim) in pixels (same as thick fixation circle, 22 pixels for BOLDscreen)
-%   * stim.el.target_center_diam_pix   :  diameter of the inner circle of the target in pixels (same as fixation circle,10 pixels for BOLDscreen)
+%   * stim.el.target_center_diam_pix   :  diameter of the inner circle of the target in pixels (same as fixation circle, 12 pixels for BOLDscreen)
 %   * disp.h_pix                       :  height of the display in pixels
 %   * disp.w_pix                       :  width of the display in pixels
 % verbose           : (logical) show debug figures
