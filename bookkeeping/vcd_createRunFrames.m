@@ -1,11 +1,52 @@
 function [time_table_master,all_run_frames] = vcd_createRunFrames(params, time_table_master, env_type, varargin)
-% [WRITE ME]
+% VCD function to create an expanded version of the time_table_master at 
+% the granularity of individual presentation frames. 
 % 
 %    [time_table_master,all_run_frames] = vcd_createRunFrames(params, time_table_master, env_type)
 %
+% This function takes the time_table_master and does two things:
+% First, it expands several columns at the granularity of a single time 
+% frame, where the frame rate defined by params.stim.presentationrate_hz, 
+% see vcd_getStimulusParams.m). In the vcd-core experiment, this
+% presentation rate is set to 60 Hz. This means that 1 one-second stimulus
+% ON period will be coded as 60 rows in the all_run_frames table.
+% 
+% For PProom: time frames range from t=0 until t=22559.
+% For demo, time frames range from t=0 until t=14999.
 %
-%
-%
+% Note that when we define time frames in the time_table_master, we use 
+% 1-based indexing. This means that time_table_master.event_start = n
+% corresponds to run_frames row n+1. One can refer to the time_table_master
+% time in the run_frames.timing column.
+% 
+% For the event_end column in the time_table_master, we code the end of 
+% last time frame (which is also the onset of the next frame, i.e., you are
+% technically at a point in time in between monitor refreshes). 
+% This means that one needs to subtract 1 time frame from time_table_event
+% end, but given the 1-based indexing for the time_table_master,
+% time_table_master.event_end = n, corresponds to run_frames row n as we 
+% add one frame and subtract one frame, which cancels eachother out.
+% 
+% all_run_frames: 
+%         {'session_nr'          }
+%         {'session_type'        }
+%         {'run_nr'              }
+%         {'fix_abs_lum'         }
+%         {'fix_correct_response'}
+%         {'timing'              }
+%         {'block_nr'            }
+%         {'global_block_nr'     }
+%         {'trial_nr'            }
+%         {'global_trial_nr'     }
+%         {'frame_event_nr'      }
+%         {'is_cued'             }
+%         {'is_catch'            }
+%         {'is_objectcatch'      }
+%         {'crossingIDs'         }
+%         {'frame_im_nr'         }
+%         {'contrast'            }
+%         {'button_response_cd'  }
+
 
 %% %%%%%%%%%%%%% PARSE INPUTS %%%%%%%%%%%%%
 p0 = inputParser;
@@ -36,12 +77,6 @@ clear rename_me ff p0
 % Preallocate space for generated subject run frames and updated time table master
 session_nrs  = unique(time_table_master.session_nr);
 run_nrs      = unique(time_table_master.run_nr);
-
-
-% define time frames from t=0 until t=22559.
-% Note that the time_table_master will have the event_end of time frame 
-% t=22559 as 22560, given that this is the end of last time frame (and
-% technically the start of the next time frame, if there was any..)
 
 % time frames at initial contrast level (next one will have dip)
 pre_onset_time_frames = sum(params.stim.cd.t_cmodfun==1); 
@@ -209,7 +244,6 @@ for ses = 1:length(session_nrs)
                 % Preallocate space for nr of fixation changes, frame nrs,
                 % contrast levels, button_response related to contrast dip/
                 % we use single class to save memory
-                this_run.nr_of_fix_changes    = zeros(size(this_run,1),1,'single');
                 run_frames.frame_im_nr        = NaN(run_dur,2);
                 run_frames.contrast           = ones(run_dur,2,'single'); % relative contrast (1 = mean contrast of image, <1 mean dip in contrast)
                 run_frames.button_response_cd = NaN(run_dur,1);
@@ -302,7 +336,13 @@ for ses = 1:length(session_nrs)
                         t_fix = fix_update_sub(ff);
                         t_tbl = find((fix_start_idx <= t_fix) & (t_fix <= fix_end_idx));
                         if ~isempty(t_tbl)
-                            this_run.nr_of_fix_changes(fix_events(t_tbl)) = this_run.nr_of_fix_changes(fix_events(t_tbl)) + 1; % add another fixation change event to existing counter 
+                            % if this is the first count, then redefine NaN
+                            % as 1..
+                            if isnan(this_run.nr_fix_changes(fix_events(t_tbl)))
+                                this_run.nr_fix_changes(fix_events(t_tbl)) = 1;
+                            else % is this is not the first count, then add one to the existing count
+                                this_run.nr_fix_changes(fix_events(t_tbl)) = this_run.nr_fix_changes(fix_events(t_tbl)) + 1; % add another fixation change event to existing counter 
+                            end
                         end
                     end
                     
@@ -312,7 +352,7 @@ for ses = 1:length(session_nrs)
                 fix_block_nrs = unique(this_run.block_nr(fix_events));
                 for fb = 1:length(fix_block_nrs)
                     non_fix_periods = setdiff([1:size(this_run,1)],min(find(this_run.block_nr==fix_block_nrs(fb))):max(find(this_run.block_nr==fix_block_nrs(fb))));
-                    this_run.nr_of_fix_changes(non_fix_periods) = NaN;
+                    this_run.nr_fix_changes(non_fix_periods) = NaN;
                 end
                 % Add run_images and alpha_masks to larger cell array
                 all_run_frames = cat(1,all_run_frames,run_frames);
