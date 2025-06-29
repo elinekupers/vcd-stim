@@ -7,9 +7,9 @@ function [rdks, masks, info] = vcd_rdk(params, verbose, store_imgs)
 %   For rdk stimulus parameters see vcd_getStimParams.m
 %
 %   We have 24 core rdk images sorted as follows:
-%   * im 25:32  8 motion directions for coherence level 1
-%   * im 33:40  8 motion directions for coherence level 2
-%   * im 41:48  8 motion directions for coherence level 3
+%   * im 25:32  8 motion directions for coherence level 1 (0.30)
+%   * im 33:40  8 motion directions for coherence level 2 (0.65)
+%   * im 41:48  8 motion directions for coherence level 3 (1,0)
 %
 %   2 spatial locations (left/right) are evenly distributed across 24
 %   core images.
@@ -77,26 +77,29 @@ function [rdks, masks, info] = vcd_rdk(params, verbose, store_imgs)
 %                   highest coherence level.
 %  info         : table with rdk stimulus information
 %      unique_im        : (double) unique image nr for each RDK movie:
-%                           range 25-48 for core RDKs, 143-174 for wm test movies.
+%                          range 25-48 for core RDKs, 143-174 for wm test movies.
 %      stim_pos_i       : (double) stimulus position index. 1=left, 2=right
 %      stim_pos         : (cell) stimulus position, same as stim_loc_i but
-%                           human readable ({'left'} or {'right'})
+%                          human readable ({'left'} or {'right'})
 %      dot_motdir_deg   : (double) motion direction in degrees (0 = 12
-%                           o'clock).
+%                          o'clock, 90 = 3 o'clock): 33.75, 78.75, 123.75,
+%                          168.75, 213.75, 258.75, 303.75, 348.75 deg)
 %      dot_motdir_deg_i : (double) same as dot_motdir_deg but indexed 1
-%                           (smallest: 22.5 deg) to 8 (largest: 337.5 deg)
+%                          (smallest: 33.75 deg) to 8 (largest: 348.75 deg)
 %      dot_coh          : (double) coherence level (fraction of 1),
-%      dot_coh_i        : (double) same as dot_coh but indexed 1 (lowest: 0.064)
-%                           2 (medium: 0.128) or 3 (highest: 0.512).
+%      dot_coh_i        : (double) same as dot_coh but indexed 1 (lowest: 0.30)
+%                          2 (medium: 0.65) or 3 (highest: 1.0).
 %      rel_motdir_deg   : (double) motion direction relative from
 %                           corresponding core RDK 0, -20, -10, +10, +20 (deg)
-%      rel_motdir_deg_i : (double) same as rel_motdir_deg but indexed 1
-%                           (-20 deg), 2 (-10 deg), 3 (+10 deg), or 4 (+20 deg).
-%      dot_pos          : {1×1 cell} 200x2xtime dot positions on each frame
-%                           relative to the center of the aperture (pixels).
+%      rel_motdir_deg_i : (double) same as rel_motdir_deg but indexed 0 (0 deg) 
+%                          1 (-20 deg), 2 (-10 deg), 3 (+10 deg), or 4 (+20 deg).
+%      dot_pos          : {1×1 cell} [x,y] dot positions on each frame
+%                          relative to the center of the aperture (pixels).
+%                           Dimensions for cells: BOLDscreen: 478×2×60 or
+%                           PProom: 480x2x60 
 %      is_specialcore    : (logical) whether the RDK movie is part of the
-%                           subselected stimuli used in imagery and
-%                           long-term memory task.
+%                          subselected stimuli used in imagery and
+%                          long-term memory task.
 %
 % Written by Eline Kupers 2024/12, updated 2025/04
 
@@ -109,10 +112,10 @@ function [rdks, masks, info] = vcd_rdk(params, verbose, store_imgs)
 % support scale factor is not exactly 1.5 because we want an even number of
 % pixels for the total frame size.
 if strcmp(params.disp.name, '7TAS_BOLDSCREEN32')
-    scf = 544/params.stim.rdk.img_sz_pix; % scf = 1.545454545454545; convert square support image from [92.52, 78.44, 545.6, 573.76] into [0 0 544 544];
+    scf = 546/params.stim.rdk.img_sz_pix; % scf = 1.551136363636364; creates square support image of [0 0 546 546];
     rect_box_sz = 546;
 elseif strcmp(params.disp.name, 'PPROOM_EIZOFLEXSCAN')
-    scf = 396/params.stim.rdk.img_sz_pix; % scf = 1.546875000000000; convert square support image from [67.56, 57.32, 396.8, 417.28] into [0 0 396 396];
+    scf = 396/params.stim.rdk.img_sz_pix; % scf = 1.546875000000000; creates square support image from [0 0 396 396];
     rect_box_sz = 396;
 else
     scf = 1.545;
@@ -148,9 +151,10 @@ support_radius    = [rect_box_sz rect_box_sz]./2;     % [w h] in pixels
 % how many dots do we need to preserve the overall density.
 support_area_deg2 = (pi*((support_radius(1)/params.disp.ppd).^2));  % 30.2 deg2 for PProom
 
-% We calculate the new number of dots that you'll need
+% We calculate the new number of dots that you'll need (we ensure a round
+% number such that we have an equal nr of white and blank dots)
 % Get number of dots within a frame
-ndots_support = round(params.stim.rdk.dots_density * support_area_deg2); % 480 dots for PProom
+ndots_support = round((params.stim.rdk.dots_density * support_area_deg2)/2)*2; % 480 dots for PProom, 478 dots for BOLDscreen
 ndots_stim    = params.stim.rdk.max_dots_per_frame;
 
 % Define number of frames within a single RDK video
