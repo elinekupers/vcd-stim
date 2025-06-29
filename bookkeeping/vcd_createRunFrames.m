@@ -315,19 +315,37 @@ for ses = 1:length(session_nrs)
                     end % isempty(nsides)
                 end % nr of stim events
                 
-                % Log fixation changes as button presses in
-                % subject's time_table_master
+                % Log fixation changes as button presses in subject's time_table_master
                 fix_events = find(strcmp(this_run.task_class_name,'fix'));
+                
+                % count how many times subject should press the button for
+                % each time period in a given table row.
                 if  ~isempty(fix_events)
+                    
+                    % Set fixation periods to 0 and check that non-fixation
+                    % periods are set to NaN.
+                    fix_block_nrs = unique(this_run.block_nr(fix_events));
+                    fix_periods   = [];
+                    for fb = 1:length(fix_block_nrs)
+                        % Fixation blocks
+                        fix_periods = cat(2,fix_periods,[min(find(this_run.block_nr==fix_block_nrs(fb))):max(find(this_run.block_nr==fix_block_nrs(fb)))]); %#ok<MXFND>
+                    end
+                    % set initial nr of fix changes to zero for fixation block (including ITIs).
+                    this_run.nr_fix_changes(fix_periods) = 0;
+                    
+                    % check if non-fixation blocks are all NaN
+                    non_fix_periods = setdiff([1:size(this_run,1)],fix_periods);
+                    assert(all(isnan(this_run.nr_fix_changes(non_fix_periods))));
+                    
+                    
                     % Given fixed soa and sampling without replacement,
-                    % fix change can only happen every 1.4 s (42 frames) 
+                    % fix change can only happen every 1.4 s (42 frames)
                     % or shorter in case we happen to run into an IBI.
                     assert(all(diff(find(abs(diff(run_frames.fix_abs_lum(run_frames.frame_event_nr>90 & run_frames.frame_event_nr<99)))>0)) <= params.stim.fix.dotmeanchange))
-                    
-                    fix_start_idx  = this_run.event_start(fix_events,:) + 1;    % when do trials in fixation block start 
+                    fix_start_idx  = this_run.event_start(fix_events,:) + 1;    % when do trials in fixation block start
                     fix_end_idx    = this_run.event_end(fix_events,:);          % when do trials in fixation block end (no additions because +1 for frame indexing and -1 to get the start of the last event frame cancels eachother out).
-                    fix_update_idx = run_frames.fix_correct_response>0;   % when would the subject press a button to indicate luminance change          
-                   
+                    fix_update_idx = run_frames.fix_correct_response>0;   % when would the subject press a button to indicate luminance change
+
                     % find those frames where the fixation circle updated
                     % and tell the run table how many fixation changes we
                     % expect per trial row
@@ -335,6 +353,8 @@ for ses = 1:length(session_nrs)
                     for ff = 1:length(fix_update_sub)
                         t_fix = fix_update_sub(ff);
                         t_tbl = find((fix_start_idx <= t_fix) & (t_fix <= fix_end_idx));
+                        % if we have no fixation luminance changes for this
+                        % particular event, then set nr_fix_changes to zero
                         if ~isempty(t_tbl)
                             % if this is the first count, then redefine NaN
                             % as 1..
@@ -345,15 +365,8 @@ for ses = 1:length(session_nrs)
                             end
                         end
                     end
-                    
                 end
 
-                % set non-fixation periods to NaN
-                fix_block_nrs = unique(this_run.block_nr(fix_events));
-                for fb = 1:length(fix_block_nrs)
-                    non_fix_periods = setdiff([1:size(this_run,1)],min(find(this_run.block_nr==fix_block_nrs(fb))):max(find(this_run.block_nr==fix_block_nrs(fb))));
-                    this_run.nr_fix_changes(non_fix_periods) = NaN;
-                end
                 % Add run_images and alpha_masks to larger cell array
                 all_run_frames = cat(1,all_run_frames,run_frames);
                 
