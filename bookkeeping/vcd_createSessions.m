@@ -8,6 +8,12 @@ function [params,condition_master_shuffled,time_table_master_shuffled, all_subj_
 %
 % [WRITE ME]
 %
+% Example:
+% { ...
+% params.stim = vcd_getStimParams('load_params',false,'store_params',false, 'verbose',false);
+% params.exp  = vcd_getSessionParams('load_params',false,'store_params',false, 'verbose',false);
+%    vcd_createSessions(params);
+% }
 %% %%%%%%%%%%%%% PARSE INPUTS %%%%%%%%%%%%%
 p0 = inputParser;
 p0.addRequired('params'                 , @isstruct);
@@ -45,13 +51,22 @@ end
 
 %% Load subject files if we can
 if ~isempty(randomization_file_pth)
-    % load provided randomized condition master file
-    load(fullfile(randomization_file_pth,sprintf('%scondition_master_shuffled_%s_%s_*.mat',[subj_id '_'], params.disp.name, env_type)),'condition_master_shuffled');
-    load(fullfile(randomization_file_pth,sprintf('%stime_table_master_shuffled_%s_%s_*.mat',[subj_id '_'], params.disp.name, env_type)),'time_table_master_shuffled','all_subj_run_frames');
+    % load provided randomized time table master file
+    a1 = load(fullfile(randomization_file_pth),'time_table_master','all_run_frames');
+    % allocate variables to output arguments
+    time_table_master_shuffled  = a1.time_table_master;
+    all_subj_run_frames         = a1.all_run_frames;
+    
+    % find subject-specific condition_master file (assume it lives in the
+    % same folder as subject-specific time table master file.
+    if ~isfield(params,'is_demo'), params.is_demo = false; end
+    subj_data_folder = fileparts(randomization_file_pth);
+    a1 = load(fullfile(subj_data_folder,sprintf('%s_condition_master_%s%s_%s_*.mat',subj_id,choose(params.is_demo,'demo_',''), params.disp.name)),'condition_master_shuffled');
+    condition_master_shuffled   = a1.condition_master_shuffled;
 else
     
     if load_params % load condition_master and params if requested
-        
+        if ~isfield(params,'is_demo'), params.is_demo = false; end
         % load condition master
         d = dir(fullfile(vcd_rootPath,'workspaces','info',sprintf('condition_master_%s%s*.mat',choose(params.is_demo,'demo_',''),params.disp.name)));
         if isempty(d)
