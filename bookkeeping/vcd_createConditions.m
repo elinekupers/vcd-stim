@@ -306,6 +306,7 @@ end
 
 % Load params if requested and we can find the file
 if load_params
+    if ~isfield(params,'is_demo'), params.is_demo = false; end
     d = dir(fullfile(vcd_rootPath,'workspaces','info',sprintf('condition_master_%s%s_%s*.mat',choose(params.is_demo,'demo_',''), params.disp.name,env_type)));
     fprintf('\n[%s]: Found %d condition_master .mat file(s)\n',mfilename,length(d));
     if ~isempty(d)
@@ -369,6 +370,9 @@ else % Recreate conditions and blocks and trials
         tic
         fprintf('\n[%s]: Start creating conditions for %s experiment.. \n',mfilename,env_type);
     end
+    
+    % assume we don't run a demo run if parameter isn't specified;
+    if ~isfield(params,'is_demo'), params.is_demo = false; end
     
     all_unique_im     = struct();  % details about unique core images present in VCD-core experiment. This information is also present in condition_master.
     all_cond          = struct();  % details about unique conditions (unique images x cueing condition) present in VCD-core experiment. This information is also present in condition_master.
@@ -700,7 +704,9 @@ else % Recreate conditions and blocks and trials
     %% ---- IMPORTANT FUNCTION: Add contrast decrement
     condition_master = vcd_determineContrastDecrementChangeTrials(params, condition_master);
     
+    % Convert is_objectcatch vector in logical.. 
     condition_master.is_objectcatch = logical(condition_master.is_objectcatch);
+    
     %% Store condition_master if requested
     if store_params
         fprintf('[%s]:Storing condition_master..\n',mfilename)
