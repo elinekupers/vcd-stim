@@ -184,6 +184,7 @@ end
 clear rename_me ff p0
 
 %% Infer other inputs
+if ~isfield(params,'is_demo'), params.is_demo = false; end
 unique_sessions  = unique(condition_master.session_nr);
 
 % Get session parameters depending on whether this is the Behavioral
