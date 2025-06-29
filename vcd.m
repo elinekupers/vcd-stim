@@ -376,21 +376,37 @@ if isempty(vcd_info) || ~exist('vcd_info','var')
     if ~isempty(is_DEMO_file), filenames(is_DEMO_file) = []; end
     % if we have a PPROOM and/or MRI condition_master files; pick MRI file
     if ~isempty(is_MRI_file) && ~isempty(is_BEH_file), filenames(is_BEH_file) = []; end
-    
+
+    % Check if we have a condition_master filename to load
     if isempty(filenames{1})
         error('[%s]: Can''t find vcd_info! Looking for a file called: "vcd_rootPath/workspaces/info/condition_master*.mat"',mfilename)
     else
+        % if we have multiple condition_master files, take the most recent one.
+        if length(filenames) > 1
+            if verbose
+                fprintf('[%s]: *** WARNING *** \n', mfilename);
+                fprintf('[%s]: Found %d vcd info files with the same name! Will pick the most recent one. (We ignore demo files.) \n', mfilename,length(filenames));
+            end
+            
+            if ~isempty(is_MRI_file) && isempty(is_BEH_file)
+                d = dir(fullfile(vcd_rootPath,'workspaces','info',sprintf('condition_master_7TAS*.mat')));
+            elseif isempty(is_MRI_file) && ~isempty(is_BEH_file)
+                d = dir(fullfile(vcd_rootPath,'workspaces','info',sprintf('condition_master_PPROOM*.mat')));
+            end
+            % pick the most recent one
+            filenames0 = d(end).name;
+            % Check if the most recent filename is one we are considering
+            assert(ismember(filenames0,filenames))
+            % replace filenames variable
+            filenames = {filenames0};
+        end
         
         % ensure we only have one file name left to load
         assert(length(filenames)==1)
         filenames = filenames{1}; % release from cell.
 
         if verbose
-            if length(d) > 1
-                fprintf('[%s]: *** WARNING *** \n', mfilename);
-                fprintf('[%s]: Found %d vcd info files with the same name! Will pick the most recent one. (We ignore demo files.) \n', mfilename,length(d));
-            end
-            fprintf('[%s]: Loading exp params .mat file: %s\n', mfilename, filenames);
+            fprintf('[%s]: Loading condition_master .mat file: %s\n', mfilename, filenames);
         end
         vcd_info = load(fullfile(d(end).folder,filenames),'condition_master');
     end
