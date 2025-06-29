@@ -57,4 +57,8 @@ for rr = 1:12
     dd = dir(fullfile(vcd_rootPath,'data','BEHAVIOR',subj_folder,mat_file));
     load(fullfile(dd(end).folder,dd(end).name));
     performance = vcdbehavioralanalysis(fullfile(params.savedatafolder,params.behaviorfile));
+
+    writetable(run_frames,sprintf('~/Desktop/run_frames%02d.csv',rr));
+    writetable(run_table,sprintf('~/Desktop/run_table%02d.csv',rr));
+    
 end
