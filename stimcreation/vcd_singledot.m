@@ -52,14 +52,14 @@ function [dot, mask, info] = vcd_singledot(params, verbose, store_imgs)
 %  store_imgs        : (logical) store stimuli and debug figures as pngs 
 %
 % OUTPUTS:
-%  dot                     : (uint8) dot image used for VCD experiment
-%                               height (pixels) by width (pixels) x 3 (rgb)
-%  masks                   : (uint8) alpha masks  used for VCD experiment, to crop out image edges:
-%                               height (pixels) by width (pixels))
-%  info                    : (table) info about sinlge dot images
+%  dot               : (uint8) dot image used for VCD experiment
+%                              height (pixels) by width (pixels) x 3 (rgb)
+%  masks             : (uint8) alpha masks  used for VCD experiment, to crop out image edges:
+%                              height (pixels) by width (pixels))
+%  info              : (table) 80x12 info table about single dot stimuli
 %      unique_im     : (double) unique image nr for each dot location: 
-%                     range 49-64 for core images, 303-366 for WM test
-%                     images.
+%                       range 49-64 for core images, 303-366 for WM test
+%                       images.
 %      stim_pos      : (cell) stimulus position, same as stim_loc_i but
 %                           human readable ({'left'} or {'right'})
 %      stim_pos_i    : (double) stimulus position index. 1=left, 2=right
