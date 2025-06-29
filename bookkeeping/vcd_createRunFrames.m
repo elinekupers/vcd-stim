@@ -325,10 +325,13 @@ for ses = 1:length(session_nrs)
                     % Set fixation periods to 0 and check that non-fixation
                     % periods are set to NaN.
                     fix_block_nrs = unique(this_run.block_nr(fix_events));
-                    fix_periods   = [];
+                    fix_periods = []; fix_start_idx = []; fix_end_idx = [];
                     for fb = 1:length(fix_block_nrs)
                         % Fixation blocks
-                        fix_periods = cat(2,fix_periods,[min(find(this_run.block_nr==fix_block_nrs(fb))):max(find(this_run.block_nr==fix_block_nrs(fb)))]); %#ok<MXFND>
+                        curr_fix_block = [min(find(this_run.block_nr==fix_block_nrs(fb))):max(find(this_run.block_nr==fix_block_nrs(fb)))]; %#ok<MXFND>
+                        fix_start_idx  = cat(1,fix_start_idx,this_run.event_start(curr_fix_block,:) + 1); % when do trials in fixation block start
+                        fix_end_idx    = cat(1,fix_end_idx,this_run.event_end(curr_fix_block,:));         % when do trials in fixation block end (no additions because +1 for frame indexing and -1 to get the start of the last event frame cancels eachother out).
+                        fix_periods    = cat(2,fix_periods,curr_fix_block);
                     end
                     % set initial nr of fix changes to zero for fixation block (including ITIs).
                     this_run.nr_fix_changes(fix_periods) = 0;
@@ -336,16 +339,14 @@ for ses = 1:length(session_nrs)
                     % check if non-fixation blocks are all NaN
                     non_fix_periods = setdiff([1:size(this_run,1)],fix_periods);
                     assert(all(isnan(this_run.nr_fix_changes(non_fix_periods))));
-                    
-                    
+                    assert(isequal(length(fix_periods), length(fix_periods)))
+
                     % Given fixed soa and sampling without replacement,
                     % fix change can only happen every 1.4 s (42 frames)
                     % or shorter in case we happen to run into an IBI.
                     assert(all(diff(find(abs(diff(run_frames.fix_abs_lum(run_frames.frame_event_nr>90 & run_frames.frame_event_nr<99)))>0)) <= params.stim.fix.dotmeanchange))
-                    fix_start_idx  = this_run.event_start(fix_events,:) + 1;    % when do trials in fixation block start
-                    fix_end_idx    = this_run.event_end(fix_events,:);          % when do trials in fixation block end (no additions because +1 for frame indexing and -1 to get the start of the last event frame cancels eachother out).
                     fix_update_idx = run_frames.fix_correct_response>0;   % when would the subject press a button to indicate luminance change
-
+                    
                     % find those frames where the fixation circle updated
                     % and tell the run table how many fixation changes we
                     % expect per trial row
@@ -358,18 +359,25 @@ for ses = 1:length(session_nrs)
                         if ~isempty(t_tbl)
                             % if this is the first count, then redefine NaN
                             % as 1..
-                            if isnan(this_run.nr_fix_changes(fix_events(t_tbl)))
-                                this_run.nr_fix_changes(fix_events(t_tbl)) = 1;
+                            if isnan(this_run.nr_fix_changes(fix_periods(t_tbl)))
+                                this_run.nr_fix_changes(fix_periods(t_tbl)) = 1;
                             else % is this is not the first count, then add one to the existing count
-                                this_run.nr_fix_changes(fix_events(t_tbl)) = this_run.nr_fix_changes(fix_events(t_tbl)) + 1; % add another fixation change event to existing counter 
+                                this_run.nr_fix_changes(fix_periods(t_tbl)) = this_run.nr_fix_changes(fix_periods(t_tbl)) + 1; % add another fixation change event to existing counter 
                             end
                         end
                     end
+                    % check if the nr of changes in run_table matches with
+                    % run_frames and what we would expect given the soa of the
+                    % fixation circle
+                    assert(isequal(sum(this_run.nr_fix_changes,'omitnan'), length(fix_update_sub)))
+                    expected_nr_fix_changes = (params.exp.block.total_single_epoch_dur - params.exp.trial.task_cue_dur) / params.stim.fix.fixsoafun(); % subtract 4s task cue because there is no fixation circle
+                    expected_nr_fix_changes_range = length(fix_block_nrs).*[floor(expected_nr_fix_changes),ceil(expected_nr_fix_changes)];
+                    assert(sum(this_run.nr_fix_changes,'omitnan') >= expected_nr_fix_changes_range(1) && sum(this_run.nr_fix_changes,'omitnan') <=expected_nr_fix_changes_range(2))
                 end
-
-                % Add run_images and alpha_masks to larger cell array
-                all_run_frames = cat(1,all_run_frames,run_frames);
                 
+                % Add this run's run_frames to larger all_run_frames
+                all_run_frames = cat(1,all_run_frames,run_frames);
+                % Add this_run's time_table to larger time_table_master
                 time_table_master2 = cat(1,time_table_master2,this_run);
                 
             end % runs
