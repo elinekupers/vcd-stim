@@ -421,7 +421,7 @@ for ses = 1:size(all_sessions,3)
                                                 condition_master.session_type==condition_master.session_type(trial_idx(1)) & ...
                                                 condition_master.run_nr==condition_master.run_nr(trial_idx(1))));
                         all_block_nrs = setdiff(all_block_nrs, condition_master.block_nr(trial_idx));
-                        if any(all_block_nrs~=1) && all(all_block_nrs<8)
+                        if all(all_block_nrs~=1) && all(all_block_nrs<8)
                             allocated_block_nr = setdiff([1:max(all_block_nrs)],all_block_nrs);
                         else
                             if isequal([min(all_block_nrs):max(all_block_nrs)]',all_block_nrs)
