@@ -40,7 +40,7 @@ total_nr_of_blocks   = max(condition_master.global_block_nr);
 total_nr_of_trials   = max(condition_master.global_trial_nr);
 total_nr_of_taskclasses = max(condition_master.global_trial_nr);
 
-assert(total_nr_of_runs
+% assert(total_nr_of_runs
 
 
 % More specific stats
