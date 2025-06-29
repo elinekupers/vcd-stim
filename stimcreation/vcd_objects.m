@@ -67,19 +67,23 @@ function [objects, masks, objects_catch, masks_catch, info] = vcd_objects(params
 % OUTPUTS:
 %  objects      :   uint8 5D array with images of individual object stimuli
 %                   dimensions are:
-%                   width (512 pixels) x height (512 pixels) x 3 (rgb)
+%                   width (BOLDscreen: 512 pixels; PProom: 512 pixels) 
+%                   x height (BOLDscreen: 512 pixels; PProom: 512 pixels) 
+%                   x 3 (rgb)
 %                   x 16 object's subordinate categories (e.g., damon, lisa, etc.)
 %                   x 5 rotations (0, -24, -12, +12, +24 degrees).
 %  masks        :   uint8 4D array with alpha transparency masks for
 %                   Psychtoolbox to remove the object from the background.
 %                   Dimensions are:
-%                   width (512 pixels) x height (512 pixels)
+%                   width (BOLDscreen: 512 pixels; PProom: 512 pixels) 
+%                   x height (BOLDscreen: 512 pixels; PProom: 512 pixels)
 %                   x 16 object's subordinate categories (e.g., damon, lisa, etc.)
 %                   x 5 rotations (0, -24, -12, +12, +24 degrees).
 % objects_catch :   uint8 5D array with object catch images for each
 %                   individual object, dimension are:
-%                   For BOLDscreen:
-%                   height (512 pixels) x width (512 pixels) x 3 (rgb)
+%                   height (BOLDscreen: 512 pixels; PProom: 512 pixels) 
+%                   x width (BOLDscreen: 512 pixels; PProom: 512 pixels) 
+%                   x 3 (rgb)
 %                   x 16 object subordinate categories (e.g., damon, lisa, etc.)
 %                   x 18 catch rotations sampled from all rotation objects
 %                   (0-180 degrees), except the core rotation of that
@@ -87,14 +91,16 @@ function [objects, masks, objects_catch, masks_catch, info] = vcd_objects(params
 % masks_catch :   uint8 4D array with alpha transparency masks for
 %                   Psychtoolbox to remove the object from the background.
 %                   Dimensions are:
-%                   width (512 pixels) x height (512 pixels)
+%                   width (BOLDscreen: 512 pixels; PProom: 512 pixels) 
+%                   x height (BOLDscreen: 512 pixels; PProom: 512 pixels) 
 %                   x 16 object's subordinate categories (e.g., damon, lisa, etc.)
 %                   x 18 catch rotations sampled from all rotation objects
 %                   (0-180 degrees), except the core rotation of that
 %                   particular object.
-%  info         :   Loaded csv from workspaces/stimuli/ with png file names
-%                   and object category information.
-%      filename             : (cell) filename of original png, e.g.: {'faces_damonwayans_rot30.png'} or {'places_watertower_rot66.png'}
+%  info         :   386x12 table with information about object stimuli.
+%                   Columns include:
+%      filename             : (cell) filename of original png, e.g.: 
+%                             {'faces_damonwayans_rot30.png'} or {'places_watertower_rot66.png'}
 %      unique_im            : (double) unique image nr for each object:
 %                              range 65-80 (core images), 239-302 (wm test images).
 %      stim_pos_name        : (cell) stimulus position ({'left'} or {'right'}),
