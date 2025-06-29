@@ -66,7 +66,13 @@ function cond_master = vcd_createConditionMaster(params, cond_table, env_type)
 %   18: {'is_cued'        } what spatial location did we cue with rim of
 %                           fixation circle: 1 = left, 2 = right, 3 = both sides/neutral cue
 %   19: {'is_catch'       } is this a catch trial where no stimulus was shown in trial (true) or not (false)?
-%   20: {'is_objectcatch' } is this a objectcatch trial where a randomly chosen non-core rotation was shown (true) or not (false). objectcatch trial can only occur for OBJ stimuli.
+%   20: {'is_objectcatch' } is this a objectcatch trial where a randomly 
+%                           chosen non-core rotation was shown (true) or not 
+%                           (false). Object catch trials only occur for OBJ stimuli.
+%                           stimuli in PC-task crossing. Condition master
+%                           only preallocates false at this stage for each
+%                           trial because we determine the nr of object
+%                           catch trials (20%) across the entire session.
 %   21: {'unique_trial_nr'} unique trial nr
 %   22: {'stim2_delta'    } for  WM/IMG/LTM task: what delta gabor tilt/
 %                           rdk motion dir / dot angle / object rotation /
@@ -175,7 +181,8 @@ if nr_reps > 0
                     % Add cue vec column
                     conds_shuffle0.is_cued = cue_vec;
 
-                    % Add is_objectcatch trial vector (randomly chosen non-core rotation, only for OBJ)
+                    % Preallocate space for is_objectcatch trial vector 
+                    % (randomly chosen non-core rotation, only for OBJ)
                     conds_shuffle0.is_objectcatch = false(size(conds_shuffle0,1),1);
                     
                     % Do some checks on unique trial condition master table:
@@ -392,7 +399,8 @@ if nr_reps > 0
                     % Add catch trial vector
                     conds_shuffle0.is_catch = false(size(conds_shuffle0,1),1);
 
-                    % Add is_objectcatch trial vector (randomly chosen non-core rotation, only for OBJ)
+                    % Preallocate space for is_objectcatch trial vector
+                    % (randomly chosen non-core rotation, only for OBJ)
                     conds_shuffle0.is_objectcatch = false(size(conds_shuffle0,1),1);
                     
                     % Do some checks:
@@ -601,7 +609,8 @@ if nr_reps > 0
                     % Add catch trial vector
                     conds_shuffle0.is_catch = false(size(conds_shuffle0,1),1);
 
-                    % Add is_objectcatch trial vector (randomly chosen non-core rotation, only for OBJ)
+                    % Preallocate space for is_objectcatch trial vector
+                    % (randomly chosen non-core rotation, only for OBJ)
                     conds_shuffle0.is_objectcatch = false(size(conds_shuffle0,1),1);
                     
                     % Do some checks:
@@ -872,10 +881,8 @@ if nr_reps > 0
                     % Add general catch trial vector (no stim)
                     conds_shuffle0.is_catch = false(size(conds_shuffle0,1),1);
                     
-                    % Add is_objectcatch trial vector (randomly chosen non-core rotation, only for OBJ-PC)
-                     % we will add the occurance of object catch trials
-                     % later, because we need to know how many OBJ-PC
-                     % trials we have before selecting 20%
+                    % Preallocate space for is_objectcatch trial vector
+                    % (randomly chosen non-core rotation, only for OBJ-PC)
                     conds_shuffle0.is_objectcatch = false(size(conds_shuffle0,1),1);
 
                     % Do some checks:
@@ -1101,7 +1108,8 @@ if nr_reps > 0
                 % Add catch trial vector
                 conds_master_single_rep.is_catch = false(size(conds_master_single_rep,1),1);
                 
-                % Add is_objectcatch trial vector (randomly chosen non-core rotation, only for OBJ)
+                % Preallocate space for is_objectcatch trial vector
+                % (randomly chosen non-core rotation, only for OBJ-PC)
                 conds_master_single_rep.is_objectcatch = false(size(conds_master_single_rep,1),1);
                 
                 if catch_trial_flag
