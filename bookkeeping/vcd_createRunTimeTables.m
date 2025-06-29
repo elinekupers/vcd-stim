@@ -232,6 +232,7 @@ for ses = 1:size(all_sessions,3)
                 time_table.event_end   = NaN(tbl_nrows,1);
                 time_table.event_id    = NaN(tbl_nrows,1);
                 time_table.event_name  = repmat({''},tbl_nrows,1);
+                time_table.nr_fix_changes = NaN(tbl_nrows,1);
                 
                 % Find corresponding trials (rows in table) and block nrs for
                 % this particular subject, run, and session. The t_trial table
@@ -301,7 +302,6 @@ for ses = 1:size(all_sessions,3)
                     time_table.event_end(table_idx)        = time_table.event_start(table_idx) + time_table.event_dur(table_idx);
                     time_table.event_id(table_idx)         = params.exp.block.eye_gaze_fix_ID;
                     time_table.event_name(table_idx)       = {'et_fix'};
-                    
                     total_run_frames = time_table.event_end(table_idx);
                     
                     % update time table idx
@@ -660,6 +660,7 @@ for ses = 1:size(all_sessions,3)
                                 tmp1.global_block_nr = curr_global_block_nr;
                                 tmp1.global_trial_nr = curr_global_trial_nr;
                                 tmp1.is_objectcatch  = curr_objectcatch;
+                                tmp1.nr_fix_changes  = NaN;
                                 time_table(table_idx,:) = tmp1;
                                 total_run_frames = time_table.event_end(table_idx);
                                 
@@ -689,7 +690,7 @@ for ses = 1:size(all_sessions,3)
                                 tmp2.is_cued         = curr_spatial_cue;
                                 tmp2.correct_response = curr_correct_response;
                                 tmp2.is_objectcatch  = curr_objectcatch;
-                                
+                                tmp2.nr_fix_changes  = NaN;
                                 time_table(table_idx,:) = tmp2;
                                 
                                 % reset correct_response to NaN for
@@ -933,9 +934,9 @@ for ses = 1:size(all_sessions,3)
                         'super_cat','super_cat_name','basic_cat','basic_cat_name',...
                         'sub_cat','sub_cat_name','affordance_cat','affordance_name',...
                         'stim2_im_nr', 'stim2_delta', 'stim2_orient_dir',...
-                        'is_special_core','is_lure','repeat_nr','trial_type'};
+                        'is_special_core','is_lure','repeat_nr','trial_type','nr_fix_changes'};
                     
-                    % check if we missed and columns
+                    % check if we missed any columns
                     assert(all(ismember(time_table2.Properties.VariableNames,col_order)));
                     
                     % apply the reordering
