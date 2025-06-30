@@ -277,18 +277,31 @@ if isempty(params.timetable_file)
        else
            tempfiles = matchfiles(fullfile(tmp_timetable_dir,sprintf('vcd_subj%03d_time_table_master_%s%s*.mat',params.subj_nr, choose(params.is_demo,'demo_',''),params.dispName)));
        end
-       tempfiles_short = strrep(tempfiles, tmp_timetable_dir, '.');
-       fprintf('\nIt appears you have the following time tables already:\n');
-
-       for mm = 1:length(tempfiles_short)
-            fprintf('  %d: %s\n', mm, tempfiles_short{mm})
+       % If user doesn't want to generate a time table and we can't find any, end the run gracefully
+       if isempty(tempfiles)
+           fprintf('\nIt appears you have NO time tables for this specific subject and session. Will abort the run.\n');
+           data = []; all_images = struct;
+           return
+       else
+           tempfiles_short = strrep(tempfiles, tmp_timetable_dir, '.');
+           fprintf('\nIt appears you have the following time tables already:\n');
+           
+           for mm = 1:length(tempfiles_short)
+               fprintf('  %d: %s\n', mm, tempfiles_short{mm})
+           end
+           
+           timetable_idx = input('Type nr of time table file you want to use: \n');
+           if ismember(timetable_idx, 1:length(tempfiles)) % check if we can load the user's requested file               
+               params.timetable_file = tempfiles{timetable_idx};
+               fprintf('\nWill use timetable_file = %s\n',params.timetable_file);
+           else
+               % If user selects a file number that doesn't exists, we also end the run gracefully
+               fprintf('\nRequested timetable_file doesn''t exist. Please rerun and pick an existing time table file.\n');
+               data = []; all_images = struct;
+               return
+           end
+           clear timetable_idx tempfiles_short tmp_timetable_dir load_existing_timetable
        end
-       
-       timetable_idx = input('Type nr of time table file you want to use: \n');
-
-       params.timetable_file = tempfiles{timetable_idx}; 
-       fprintf('\nWill use timetable_file = %s\n',params.timetable_file);
-       clear timetable_idx tempfiles_short tmp_timetable_dir load_existing_timetable
    end
 
 end
