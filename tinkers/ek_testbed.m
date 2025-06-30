@@ -1,7 +1,7 @@
 % EK testbed
 
 %% dry run demo exp
-subj_nr = 999;
+subj_nr = 998;
 data_dir = fullfile(vcd_rootPath, 'data','BEHAVIOR',sprintf('vcd_subj%03d',subj_nr));
 
 all_images = struct;
@@ -17,8 +17,8 @@ end
 
 
 load(fullfile(tt_file(end).folder, tt_file(end).name));
-writetable(time_table_master,'~/Desktop/time_table_master.csv');
-writetable(all_run_frames,'~/Desktop/all_run_frames.csv');
+writetable(time_table_master,'~/Desktop/time_table_master_demo.csv');
+writetable(all_run_frames,'~/Desktop/all_run_frames_demo.csv');
 
 
 for p = 1:3
