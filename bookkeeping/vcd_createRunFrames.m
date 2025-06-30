@@ -370,8 +370,10 @@ for ses = 1:length(session_nrs)
                     % run_frames and what we would expect given the soa of the
                     % fixation circle
                     assert(isequal(sum(this_run.nr_fix_changes,'omitnan'), length(fix_update_sub)))
-                    expected_nr_fix_changes = (params.exp.block.total_single_epoch_dur - params.exp.trial.task_cue_dur) / params.stim.fix.fixsoafun(); % subtract 4s task cue because there is no fixation circle
-                    expected_nr_fix_changes_range = length(fix_block_nrs).*[floor(expected_nr_fix_changes),ceil(expected_nr_fix_changes)];
+                    if params.is_demo
+                        expected_nr_fix_changes = ((params.exp.block.total_single_epoch_dur/2) - params.exp.trial.task_cue_dur) / params.stim.fix.fixsoafun(); % subtract 4s task cue because there is no fixation circle
+                        expected_nr_fix_changes_range = length(fix_block_nrs).*[floor(expected_nr_fix_changes),ceil(expected_nr_fix_changes)];
+                    end
                     assert(sum(this_run.nr_fix_changes,'omitnan') >= expected_nr_fix_changes_range(1) && sum(this_run.nr_fix_changes,'omitnan') <=expected_nr_fix_changes_range(2))
                 end
                 
