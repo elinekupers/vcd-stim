@@ -274,7 +274,11 @@ for vt = 1:sz(2)
                         end
                     elseif size(conds_master_reordered_merged.(colName2),2)==1 % single width columns
                         if strcmp(varTypes(vt),'double')
-                            assert(isequal(table2array(conds_master_reordered(trial_nr,vt)), table2array(conds_master_reordered(trial_nr+1,vt))));
+                            if  isnan(table2array(conds_master_reordered(trial_nr,vt)))
+                                assert(isequalwithequalnans(table2array(conds_master_reordered(trial_nr,vt)), table2array(conds_master_reordered(trial_nr+1,vt))));
+                            else
+                                assert(isequal(table2array(conds_master_reordered(trial_nr,vt)), table2array(conds_master_reordered(trial_nr+1,vt))));
+                            end
                             conds_master_reordered_merged.(colName2)(tt) = table2array(conds_master_reordered(trial_nr,vt));
                         elseif strcmp(varTypes(vt),'cell')
                             assert(isequal(table2cell(conds_master_reordered(trial_nr,vt)), table2cell(conds_master_reordered(trial_nr+1,vt))));
@@ -293,7 +297,7 @@ end
 
 % Randomize catch trial loc
 sz = size(conds_master_reordered_merged);
-catch_trials = find(conds_master_reordered_merged.is_catch(:,1)==true);
+catch_trials = find(conds_master_reordered_merged.is_catch(:,1)==1);
 if ~isempty(catch_trials)
     
     while 1
