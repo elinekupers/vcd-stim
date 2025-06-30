@@ -180,8 +180,10 @@ else
     stim.fix.color                  = [255, 255, 255; 255 0 0; 0 0 0];     % white and red (for spatial cue) and black (pre eyetracking run) 
 
     if verbose
-        fprintf('*** FIXATION CIRCLE: inner center diameter = %d, inner+thin rim = %d, inner+thick rim = %d pixels ***\n', ...
-        stim.fix.dotcenterdiam_pix,stim.fix.dotthinborderdiam_pix,stim.fix.dotthickborderdiam_pix);
+        fprintf('*** FIXATION CIRCLE: thin rim diameter = %1.2f deg (inner center diameter = %d pixels, inner+thin rim = %d pixels) ***\n', ...
+            stim.fix.dotthinborderdiam_deg, stim.fix.dotcenterdiam_pix,stim.fix.dotthinborderdiam_pix);
+        fprintf('*** FIXATION CIRCLE: thick rim diameter = %1.2f deg (inner center diameter = %d pixels, inner+thick rim = %d pixels) ***\n', ...
+            stim.fix.dotthickborderdiam_deg, stim.fix.dotcenterdiam_pix,stim.fix.dotthickborderdiam_pix);
     end
     
     %% CONTRAST DECREMENT -- TEMPORAL MODULATION FUNCTION
