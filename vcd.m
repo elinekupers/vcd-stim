@@ -1048,8 +1048,8 @@ for ii = 1:2:length(requested_info)
                     stim_info.sub_cat_name      = {};
                     stim_info.affordance_cat    = [];
                     stim_info.affordance_name   = {};
-                    stim_info.is_special_core   = false;
-                    stim_info.is_lure           = false;
+                    stim_info.is_special_core   = 0;
+                    stim_info.is_lure           = 0;
                     
                     if length(stim_nr) > 1
                         out{nn} = stim_info;
