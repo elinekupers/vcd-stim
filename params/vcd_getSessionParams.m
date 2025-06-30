@@ -312,11 +312,14 @@ else
     % double stim presentation blocks: 2 trials + ITI: 0.5 s 
     exp.block.demo.n_trials_single_epoch = 0.5 * exp.block.n_trials_single_epoch;
     exp.block.demo.n_trials_double_epoch = 0.5 * exp.block.n_trials_double_epoch;
-    
-    exp.block.demo.total_single_epoch_dur = presentationrate_hz * (44.5 - (4*(exp.trial.single_epoch_dur/presentationrate_hz)) - 1.5); % 25 seconds in number of presentation frames (excl. IBI)
-    exp.block.demo.total_double_epoch_dur = presentationrate_hz * (60.5 - (2*(exp.trial.double_epoch_dur/presentationrate_hz)) - 1);   % 32.5 seconds in number of presentation frames (excl. IBI)
-    
 
+    exp.trial.demo.ITI_single_block        = presentationrate_hz .* [0, 0.5, 1]; % in units of [0,30,60] time frames (each time frame is 16.67 ms). Presentation code will shuffle these ITIs prior to allocation within a block
+    exp.trial.demo.ITI_double_block        = presentationrate_hz .* [0, 0.5];    % in units of [0,30] time frames (each time frame is 16.67 ms). Presentation code will shuffle these ITIs prior to allocation within a block
+    
+    exp.block.demo.total_single_epoch_dur = presentationrate_hz * 24.5;     % 24.5 seconds in number of presentation frames (excl. IBI)
+    exp.block.demo.total_double_epoch_dur = presentationrate_hz * 32.5;     % 32.5 seconds in number of presentation frames (excl. IBI)
+    
+ 
     
     
     %% In each run, we have manipulations that we prioritize to fully sample,
