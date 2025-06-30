@@ -123,8 +123,8 @@ switch stimClass
         stimloc_name_vec = repmat({'left','right'}, 1,  n_unique_cases/n_stim_loc);  % stimulus location: human readible
         con_vec     = repelem(p.stim.gabor.contrast,    n_unique_cases/n_contrasts); % contrast
         im_nr_vec   = p.stim.gabor.unique_im_nrs_core;                               % allocated unique image nrs
-        special_core_vec     = false(size(con_vec));                                 % if image is part of imagery subset
-        special_core_vec(ismember(p.stim.gabor.unique_im_nrs_core,p.stim.gabor.unique_im_nrs_specialcore)) = true;
+        special_core_vec     = zeros(size(con_vec));                                 % if image is part of imagery subset
+        special_core_vec(ismember(p.stim.gabor.unique_im_nrs_core,p.stim.gabor.unique_im_nrs_specialcore)) = 1;
         
         nan_vec = NaN(size(con_vec))';
         
@@ -170,8 +170,8 @@ switch stimClass
         stimloc_name_vec = repmat({'left','right'},     1, n_unique_cases/n_stim_loc);
         coh_vec     = repelem(p.stim.rdk.dots_coherence,   n_unique_cases/n_coh);
         im_nr_vec   = p.stim.rdk.unique_im_nrs_core;                                    % allocated unique image nrs
-        special_core_vec     = false(size(coh_vec)); 
-        special_core_vec(ismember(p.stim.rdk.unique_im_nrs_core,p.stim.rdk.unique_im_nrs_specialcore)) = true;
+        special_core_vec     = zeros(size(coh_vec)); 
+        special_core_vec(ismember(p.stim.rdk.unique_im_nrs_core,p.stim.rdk.unique_im_nrs_specialcore)) = 1;
         
         contrast_vec = ones(size(stimloc_vec))';
         nan_vec      = NaN(size(stimloc_vec))';
@@ -216,8 +216,8 @@ switch stimClass
         stimloc_vec = repelem(loc_stim,  n_unique_cases/n_stim_loc);
         stimloc_name_vec = repelem({'left','right'}, n_unique_cases/n_stim_loc);
         im_nr_vec   = p.stim.dot.unique_im_nrs_core;                                    % allocated unique image nrs
-        special_core_vec     = false(size(dot_loc_vec)); 
-        special_core_vec(ismember(p.stim.dot.unique_im_nrs_core,p.stim.dot.unique_im_nrs_specialcore)) = true;
+        special_core_vec     = zeros(size(dot_loc_vec)); 
+        special_core_vec(ismember(p.stim.dot.unique_im_nrs_core,p.stim.dot.unique_im_nrs_specialcore)) = 1;
         
         contrast_vec = ones(size(stimloc_vec))';
         nan_vec      = NaN(size(stimloc_vec))';
@@ -300,8 +300,8 @@ switch stimClass
         im_nr_vec        = p.stim.obj.unique_im_nrs_core;                                    % allocated unique image nrs
 
         % add imagery image selection
-        special_core_vec          = false(size(stimloc_vec)); 
-        special_core_vec(ismember(p.stim.obj.unique_im_nrs_core,p.stim.obj.unique_im_nrs_specialcore)) = true;
+        special_core_vec          = zeros(size(stimloc_vec)); 
+        special_core_vec(ismember(p.stim.obj.unique_im_nrs_core,p.stim.obj.unique_im_nrs_specialcore)) = 1;
         
         % create filler vectors
         contrast_vec = ones(size(stimloc_vec))';
@@ -363,8 +363,8 @@ switch stimClass
         end
         stimloc_vec      = repmat(loc_stim, 1, n_unique_cases);
         stimloc_name_vec = repmat({'center'}, 1, n_unique_cases);
-        special_core_vec          = false(size(stimloc_vec));
-        special_core_vec(ismember(p.stim.ns.unique_im_nrs_core,p.stim.ns.unique_im_nrs_specialcore)) = true;
+        special_core_vec          = zeros(size(stimloc_vec));
+        special_core_vec(ismember(p.stim.ns.unique_im_nrs_core,p.stim.ns.unique_im_nrs_specialcore)) = 1;
 
         super_cat_name = p.stim.ns.super_cat(super_cat_vec);
         basic_cat_name = {}; sub_cat_name ={};
