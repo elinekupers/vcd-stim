@@ -239,7 +239,8 @@ for ii = 1:length(stim_row)
                         run_images{curr_frames(1),side} = all_images.gabor(:,:,:,ori_idx,con_idx,1);
                         run_alpha_masks{curr_frames(1),side} = []; %all_images.alpha.gabor(:,:,ori_idx,con_idx,1);
                         
-                    elseif strcmp(run_table.event_name(stim_row(ii)),'stim2') && strcmp(run_table.task_class_name(stim_row(ii)),'wm') && run_table.is_catch(stim_row(ii)) == 0
+                    elseif strcmp(run_table.event_name(stim_row(ii)),'stim2') && strcmp(run_table.task_class_name(stim_row(ii)),'wm') ...
+                            && run_table.is_catch(stim_row(ii)) == 0
                         delta_deg = run_table.stim2_delta(stim_row(ii),side);
                         
                         idx0 = find( (all_images.info.gabor.orient_deg == (run_table.orient_dir(stim_row(ii),side))) & ...
@@ -262,7 +263,8 @@ for ii = 1:length(stim_row)
                         run_images{curr_frames(1),side}      = all_images.gabor(:,:,:,ori_idx,con_idx, delta_idx);
                         run_alpha_masks{curr_frames(1),side} = []; %all_images.alpha.gabor(:,:,ori_idx,con_idx, delta_idx);
                         
-                    elseif strcmp(run_table.event_name(stim_row(ii)),'stim2') && strcmp(run_table.task_class_name(stim_row(ii)),'ltm') && run_table.is_catch(stim_row(ii)) == 0
+                    elseif strcmp(run_table.event_name(stim_row(ii)),'stim2') && strcmp(run_table.task_class_name(stim_row(ii)),'ltm') ...
+                            && run_table.is_catch(stim_row(ii)) == 0
                         
                         
                         if run_table.islure(stim_row(ii)) % same stim class
@@ -275,7 +277,8 @@ for ii = 1:length(stim_row)
                         end
                         
                         
-                    elseif strcmp(run_table.event_name(stim_row(ii)),'stim2') && strcmp(run_table.task_class_name(stim_row(ii)),'img') && run_table.is_catch(stim_row(ii)) == 0
+                    elseif strcmp(run_table.event_name(stim_row(ii)),'stim2') && strcmp(run_table.task_class_name(stim_row(ii)),'img') ...
+                            && run_table.is_catch(stim_row(ii)) == 0
                         
                         if run_table.response(stim_row(ii),side) % yes -- dots overlap
                             run_images{curr_frames(1),side}      = [];
@@ -364,7 +367,8 @@ for ii = 1:length(stim_row)
                         run_images(curr_frames,side) = rdk_images;
                         run_alpha_masks(curr_frames,side) = cell(size(rdk_images,1), 1);
                         
-                    elseif strcmp(run_table.event_name(stim_row(ii)),'stim2') && strcmp(run_table.task_class_name(stim_row(ii)),'wm') && run_table.is_catch(stim_row(ii)) == 0
+                    elseif strcmp(run_table.event_name(stim_row(ii)),'stim2') && strcmp(run_table.task_class_name(stim_row(ii)),'wm') ...
+                            && run_table.is_catch(stim_row(ii)) == 0
                         
                         delta_idx = find(run_table.stim2_delta(stim_row(ii),side) == params.stim.rdk.delta_from_ref); % here we do not +1 because we search for the file name with "delta01", "delta02", etc.
                         
@@ -419,7 +423,8 @@ for ii = 1:length(stim_row)
                         run_images(curr_frames,side) = rdk_images;
                         run_alpha_masks(curr_frames,side) = cell(size(rdk_images,1), 1);
                         
-                    elseif strcmp(run_table.event_name(stim_row(ii)),'stim2') && strcmp(run_table.task_class_name(stim_row(ii)),'ltm') && run_table.is_catch(stim_row(ii)) == 0
+                    elseif strcmp(run_table.event_name(stim_row(ii)),'stim2') && strcmp(run_table.task_class_name(stim_row(ii)),'ltm') ...
+                            && run_table.is_catch(stim_row(ii)) == 0
                         
                         if run_table.islure(stim_row(ii),side) % same stim class
                             pair_im = [];
@@ -501,7 +506,7 @@ for ii = 1:length(stim_row)
                     end
                     
                     if strcmp(run_table.event_name(stim_row(ii)),'stim1') && run_table.is_catch(stim_row(ii)) == 0 ...
-                            && run_table.is_objectcatch(stim_row(ii)) == 0
+                            && (run_table.is_objectcatch(stim_row(ii)) == 0 || isnan(run_table.is_objectcatch(stim_row(ii))))
                         
                         idx = find( (all_images.info.obj.super_cat == run_table.super_cat(stim_row(ii),side)) & ...
                             (all_images.info.obj.basic_cat == run_table.basic_cat(stim_row(ii),side)) & ...
@@ -550,7 +555,7 @@ for ii = 1:length(stim_row)
                                 % or the case when we deal with the objectcatch
                             elseif ismember(unique_im,params.stim.obj.unique_im_nrs_objcatch)
                                 
-                                assert(all_images.info.obj.is_objectcatch(idx)==true)
+                                assert(all_images.info.obj.is_objectcatch(idx)==1)
                                 
                                 tmp_im = strsplit(run_table.condition_name{stim_row(ii),side},'-');
                                 tmp_im = str2num(tmp_im{2});
@@ -566,7 +571,7 @@ for ii = 1:length(stim_row)
                             end
                             
                     elseif strcmp(run_table.event_name(stim_row(ii)),'stim2') && strcmp(run_table.task_class_name(stim_row(ii)),'wm') ...
-                            && run_table.is_catch(stim_row(ii)) == 0 && run_table.is_objectcatch(stim_row(ii)) ~= 1
+                            && run_table.is_catch(stim_row(ii)) == 0 && (run_table.is_objectcatch(stim_row(ii)) == 0 || isnan(run_table.is_objectcatch(stim_row(ii))))
                         
                         delta_idx  = run_table.stim2_delta(stim_row(ii),side);
                         ref_dir    = run_table.orient_dir(stim_row(ii),side);
@@ -595,7 +600,8 @@ for ii = 1:length(stim_row)
                         run_images{curr_frames(1),side}      = all_images.obj(:,:,:,corresponding_unique_im,delta_idx0);
                         run_alpha_masks{curr_frames(1),side} = all_images.alpha.obj(:,:,corresponding_unique_im,delta_idx0);
                         
-                    elseif strcmp(run_table.event_name(stim_row(ii)),'stim2') && strcmp(run_table.task_class_name(stim_row(ii)),'ltm') && run_table.is_catch(stim_row(ii)) == 0
+                    elseif strcmp(run_table.event_name(stim_row(ii)),'stim2') && strcmp(run_table.task_class_name(stim_row(ii)),'ltm') ...
+                            && run_table.is_catch(stim_row(ii)) == 0
                         
                         if run_table.islure(stim_row(ii),side) % same stim class
                             pair_im = [];
@@ -656,7 +662,8 @@ for ii = 1:length(stim_row)
                         run_images{curr_frames(1),side} = all_images.ns.scenes(:,:,:,i4,i5,i6);
                         run_alpha_masks{curr_frames(1),side} = [];
                         
-                    elseif strcmp(run_table.event_name(stim_row(ii)),'stim2') && strcmp(run_table.task_class_name(stim_row(ii)),'wm') && run_table.is_catch(stim_row(ii)) == 0
+                    elseif strcmp(run_table.event_name(stim_row(ii)),'stim2') && strcmp(run_table.task_class_name(stim_row(ii)),'wm') ...
+                            && run_table.is_catch(stim_row(ii)) == 0
                         
                         wm_change = run_table.stim2_delta(stim_row(ii),1);
                         wm_im_nr  = run_table.stim2_im_nr(stim_row(ii), 1); % {'easy_added','hard_added','easy_removed','hard_removed'}
@@ -672,7 +679,8 @@ for ii = 1:length(stim_row)
                         run_images{curr_frames(1),side} = all_images.ns.wm_im(:,:,:,i4,i5,i6,wm_change == params.stim.ns.change_im);
                         run_alpha_masks{curr_frames(1),side} = [];
                         
-                    elseif strcmp(run_table.event_name(stim_row(ii)),'stim2') && strcmp(run_table.task_class_name(stim_row(ii)),'ltm') && run_table.is_catch(stim_row(ii)) == 0
+                    elseif strcmp(run_table.event_name(stim_row(ii)),'stim2') && strcmp(run_table.task_class_name(stim_row(ii)),'ltm') ...
+                            && run_table.is_catch(stim_row(ii)) == 0
                         
                         if run_table.islure(stim_row(ii),1)
                             
