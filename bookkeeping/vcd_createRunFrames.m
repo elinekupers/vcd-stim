@@ -206,20 +206,16 @@ for ses = 1:length(session_nrs)
                 % If numeric vector: Change zero's to NaN
                 all_cued(all_cued==0) = NaN;
                 
-                % If logical vector: Change  NaN's to zeros
-                all_catch(isnan(all_catch))             = 0;
-                all_objectcatch(isnan(all_objectcatch)) = 0;
-                
                 % Add events to run_frames struct
-                run_frames.block_nr         = single(all_block_nrs);   clear all_block_nrs
+                run_frames.block_nr         = single(all_block_nrs);          clear all_block_nrs
                 run_frames.global_block_nr  = single(all_global_block_nrs);   clear all_global_block_nrs
-                run_frames.trial_nr         = single(all_trial_nrs);    clear all_trial_nrs
+                run_frames.trial_nr         = single(all_trial_nrs);          clear all_trial_nrs
                 run_frames.global_trial_nr  = single(all_global_trial_nrs);   clear all_global_trial_nrs
-                run_frames.frame_event_nr   = single(all_events);       clear all_events
-                run_frames.is_cued          = single(all_cued);         clear all_cued;
-                run_frames.is_catch         = logical(all_catch);       clear all_catch;
-                run_frames.is_objectcatch   = logical(all_objectcatch); clear all_objectcatch;
-                run_frames.crossingIDs      = single(all_crossings);    clear all_crossings
+                run_frames.frame_event_nr   = single(all_events);             clear all_events
+                run_frames.is_cued          = single(all_cued);               clear all_cued;
+                run_frames.is_catch         = single(all_catch);              clear all_catch;
+                run_frames.is_objectcatch   = single(all_objectcatch);        clear all_objectcatch;
+                run_frames.crossingIDs      = single(all_crossings);          clear all_crossings
                 
                 
                 % use crossingIDs to remove any fixation related button responses outside fixation task blocks
@@ -288,7 +284,7 @@ for ses = 1:length(session_nrs)
                         if (stim_events(ii) == params.exp.block.stim_epoch1_ID || stim_events(ii) == params.exp.block.stim_epoch2_ID)
                             
                             % NOT A CATCH TRIAL
-                            if ~this_run.is_catch(stim_row(ii))
+                            if this_run.is_catch(stim_row(ii))==0
                                 
                                 % IF CONTRAST DECREMENT TASK BLOCK
                                 if strcmp(this_run.task_class_name(stim_row(ii)),'cd')
@@ -371,9 +367,9 @@ for ses = 1:length(session_nrs)
                     % fixation circle
                     assert(isequal(sum(this_run.nr_fix_changes,'omitnan'), length(fix_update_sub)))
                     if params.is_demo
-                        expected_nr_fix_changes = ((params.exp.block.total_single_epoch_dur/2) - params.exp.trial.task_cue_dur) / params.stim.fix.fixsoafun(); % subtract 4s task cue because there is no fixation circle
+                        expected_nr_fix_changes = (params.exp.block.demo.total_single_epoch_dur - params.exp.trial.task_cue_dur) / params.stim.fix.fixsoafun(); % subtract 4s task cue because there is no fixation circle
                     else
-                        expected_nr_fix_changes = ((params.exp.block.total_single_epoch_dur) - params.exp.trial.task_cue_dur) / params.stim.fix.fixsoafun(); % subtract 4s task cue because there is no fixation circle
+                        expected_nr_fix_changes = (params.exp.block.total_single_epoch_dur - params.exp.trial.task_cue_dur) / params.stim.fix.fixsoafun(); % subtract 4s task cue because there is no fixation circle
                     end
                     expected_nr_fix_changes_range = length(fix_block_nrs).*[floor(expected_nr_fix_changes),ceil(expected_nr_fix_changes)];
                     assert(sum(this_run.nr_fix_changes,'omitnan') >= expected_nr_fix_changes_range(1) && sum(this_run.nr_fix_changes,'omitnan') <=expected_nr_fix_changes_range(2))
