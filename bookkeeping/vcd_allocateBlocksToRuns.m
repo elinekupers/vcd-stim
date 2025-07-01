@@ -300,12 +300,15 @@ for ses = 1:size(all_sessions,3)
                                 for tt = 1:nr_trials
                                     
                                     if condition_master.is_catch(sub_idx(tt))==1
+                                            % Left-side general catch trials
                                         if condition_master.is_cued(sub_idx(tt))==1
                                             cue_label = {sprintf('%s 0000 X LCUED %s#',stim_class_tmp_name,task_class_abbr{tc}), ...
                                                 sprintf('%s 0000 X LCUED %s#',stim_class_tmp_name,task_class_abbr{tc})};
+                                            % Right-side general catch trials
                                         elseif condition_master.is_cued(sub_idx(tt))==2
                                             cue_label = {sprintf('%s 0000 X RCUED %s#',stim_class_tmp_name,task_class_abbr{tc}), ...
                                                 sprintf('%s 0000 X RCUED %s#',stim_class_tmp_name,task_class_abbr{tc})};
+                                            % Center or FIX general catch trials
                                         elseif condition_master.is_cued(sub_idx(tt))==3
                                             if strcmp(stim_class_tmp_name,'NS')
                                                 cue_label = {sprintf('%s 0000 X NCUED %s#',stim_class_tmp_name,task_class_abbr{tc}), NaN};
@@ -313,28 +316,38 @@ for ses = 1:size(all_sessions,3)
                                                 cue_label = {sprintf('%s 0000 X NCUED %s#',stim_class_tmp_name,task_class_abbr{tc}), ...
                                                     sprintf('%s 0000 X NCUED %s#',stim_class_tmp_name,task_class_abbr{tc})};
                                             end
+                                        else
+                                            error('[%s]: Can''t tell what type of trial this is..',mfilename)
                                         end
                                     elseif condition_master.is_cued(sub_idx(tt))==1
-                                        if condition_master.is_objectcatch(sub_idx(tt))>0
+                                        % Left-side object catch trials
+                                        if ~isnan(condition_master.is_objectcatch(sub_idx(tt))) && condition_master.is_objectcatch(sub_idx(tt))>0
                                             cue_label = {sprintf('%s %04d L CUED %s+',stim_class_tmp_name,condition_master.stim_nr_left(sub_idx(tt)),task_class_abbr{tc}), ...
                                                 sprintf('%s %04d R UNCUED %s',stim_class_tmp_name,condition_master.stim_nr_right(sub_idx(tt)),task_class_abbr{tc})};
-                                            condition_master.stim_nr_left(sub_idx(tt)) = condition_master.is_objectcatch(sub_idx(tt)); % replace image nr
-                                            condition_master.is_objectcatch(sub_idx(tt)) = 1; % Now we reset is_objectcatch to logical
-                                        else
+                                            condition_master.stim_nr_left(sub_idx(tt)) = condition_master.is_objectcatch(sub_idx(tt)); % replace image nr with unique im nr associated with objectcatch
+                                            condition_master.is_objectcatch(sub_idx(tt)) = 1; % Now we reset is_objectcatch to 1
+                                            % Left-side NON-object catch trials
+                                        elseif isnan(condition_master.is_objectcatch(sub_idx(tt))) || condition_master.is_objectcatch(sub_idx(tt))==0
                                             cue_label = {sprintf('%s %04d L CUED %s',stim_class_tmp_name,condition_master.stim_nr_left(sub_idx(tt)),task_class_abbr{tc}), ...
                                                 sprintf('%s %04d R UNCUED %s',stim_class_tmp_name,condition_master.stim_nr_right(sub_idx(tt)),task_class_abbr{tc})};
+                                        else
+                                            error('[%s]: Can''t tell what type of trial this is..',mfilename)
                                         end
                                        
                                         
                                     elseif condition_master.is_cued(sub_idx(tt))==2
-                                        if condition_master.is_objectcatch(sub_idx(tt))>0
+                                           % Right-side object catch trials
+                                        if ~isnan(condition_master.is_objectcatch(sub_idx(tt))) && condition_master.is_objectcatch(sub_idx(tt))>0
                                             cue_label = {sprintf('%s %04d L UNCUED %s',stim_class_tmp_name,condition_master.stim_nr_left(sub_idx(tt)),task_class_abbr{tc}),...
                                             sprintf('%s %04d R CUED %s+',stim_class_tmp_name,condition_master.stim_nr_right(sub_idx(tt)),task_class_abbr{tc})};
-                                            condition_master.stim_nr_right(sub_idx(tt)) = condition_master.is_objectcatch(sub_idx(tt)); % replace image nr
-                                            condition_master.is_objectcatch(sub_idx(tt)) = 1; % Now we reset is_objectcatch to logical
-                                        else
+                                            condition_master.stim_nr_right(sub_idx(tt)) = condition_master.is_objectcatch(sub_idx(tt)); % replace image nr with unique im nr associated with objectcatch
+                                            condition_master.is_objectcatch(sub_idx(tt)) = 1; % Now we reset is_objectcatch to 1
+                                            % Right-side NON-object catch trials
+                                        elseif isnan(condition_master.is_objectcatch(sub_idx(tt)))  || condition_master.is_objectcatch(sub_idx(tt))==0
                                             cue_label = {sprintf('%s %04d L UNCUED %s',stim_class_tmp_name,condition_master.stim_nr_left(sub_idx(tt)),task_class_abbr{tc}),...
                                             sprintf('%s %04d R CUED %s',stim_class_tmp_name,condition_master.stim_nr_right(sub_idx(tt)),task_class_abbr{tc})};
+                                        else
+                                            error('[%s]: Can''t tell what type of trial this is..',mfilename)
                                         end
                                         
                                     elseif condition_master.is_cued(sub_idx(tt))==3
@@ -352,6 +365,8 @@ for ses = 1:size(all_sessions,3)
                                             cue_label = {sprintf('%s %04d L NCUED %s',stim_class_tmp_name,condition_master.stim_nr_left(sub_idx(tt)),task_class_abbr{tc}), ...
                                                 sprintf('%s %04d R NCUED %s',stim_class_tmp_name,condition_master.stim_nr_right(sub_idx(tt)),task_class_abbr{tc})};
                                         end
+                                    else
+                                        error('[%s]: Can''t tell cue type this is..',mfilename)
                                     end
                                     
                                     % add dash here, otherwise sprintf interprets dash as left align
