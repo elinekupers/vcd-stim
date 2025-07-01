@@ -139,9 +139,9 @@ function [params, condition_master, all_unique_im, all_cond] = vcd_createConditi
 %                            thickening the fixation circle rim where 
 %                            1 = left side, 2 = right side, 3 = both
 %                            sides/neutral cue.
-%  20: 'is_catch'         : (logical, true/false) whether the trial is
+%  20: 'is_catch'         : (double, 0/1) whether the trial is
 %                            a catch trial where no stimulus showed up.
-%                            true = yes, this is a catch trial. false = no,
+%                            1 = yes, this is a catch trial. 0 = no,
 %                            this is a regular, NON catch trial.
 %  21: 'correct_response' : (double, integral) what is the correct response
 %                            for the cued stimulus this given trial? 
@@ -244,14 +244,14 @@ function [params, condition_master, all_unique_im, all_cond] = vcd_createConditi
 %                            Dot angular position (degrees), object facing 
 %                            direction (degrees) between the first stimulus
 %                            and the second stimulus shown after the delay.
-%  38: 'is_special_core'  : (logical, true/false) Is this stimulus part of
-%                            the special core stimulus set (true) or not 
-%                            (false)? Special core stimuli are a subset of 
+%  38: 'is_special_core'  : (double, 0/1) Is this stimulus part of
+%                            the special core stimulus set (1) or not 
+%                            (0)? Special core stimuli are a subset of 
 %                            core stimuli that are only used for LTM and
 %                            IMG task crossings.
-%  39: 'is_lure'          : (logical, true/false) For LTM task crossings: 
-%                            did we use a novel lure stimulus (true)
-%                            or not (false).
+%  39: 'is_lure'          : (double, 0/1) For LTM task crossings: 
+%                            did we use a novel lure stimulus (1)
+%                            or not (0).
 %  40: 'repeat_nr'        : (double, integral): How many times has this exact trial been
 %                            repeated thusfar in the experiment, across all
 %                            the sessions and runs.
@@ -275,7 +275,7 @@ function [params, condition_master, all_unique_im, all_cond] = vcd_createConditi
 p0 = inputParser;
 p0.addRequired('params'        , @isstruct);
 p0.addParameter('load_params'  , false, @islogical);
-p0.addParameter('store_params' , true, @islogical);
+p0.addParameter('store_params' , true,  @islogical);
 p0.addParameter('store_imgs'   , false, @islogical);
 p0.addParameter('verbose'      , false, @islogical);
 p0.addParameter('env_type'     , '', @(x) any(strcmp(x,{'BEHAVIOR','MRI'})));
@@ -424,7 +424,7 @@ else % Recreate conditions and blocks and trials
             
             % If IMG or LTM, we only want to use a subset of unique images
             if strcmp(taskClass_name,'ltm') || strcmp(taskClass_name,'img')
-                t_cond = t_cond(t_cond.is_special_core,:);
+                t_cond = t_cond(t_cond.is_special_core==1,:);
             end
             
             % Get the number of trials and blocks, which depend on task
@@ -478,86 +478,89 @@ else % Recreate conditions and blocks and trials
     % ---- Add object catch trials ----
     % How many trials are object catch given the 20% probility?
     pcobj_trial_idx = find(condition_master.stim_class == 4 & condition_master.task_class == 4);
-    nr_objectcatch_trials_per_rep = round(size(condition_master(pcobj_trial_idx,:),1)*params.exp.trial.pc.prob_objcatch);
-    
-    % Select object catch trials randomly from the total list (without
-    % replacement). Ensure we distribute object catch trials across
-    % left/right cued locations and unique objects (as much as possible)
-    while 1
-        objcatch_ok = false(1,3);
-        
-        objcatch_idx = datasample(pcobj_trial_idx,nr_objectcatch_trials_per_rep,'Replace',false);
- 
-        % Check the cued stimulus in those selected trials
-        cued_loc_objcatch = condition_master.is_cued(objcatch_idx);
-        if (abs(diff(histcounts(cued_loc_objcatch, [1:3]))) <= 1)
-            objcatch_ok(1) = true;
+    if ~isempty(pcobj_trial_idx)
+        nr_objectcatch_trials_per_rep = round(size(condition_master(pcobj_trial_idx,:),1)*params.exp.trial.pc.prob_objcatch);
+
+        % Select object catch trials randomly from the total list (without
+        % replacement). Ensure we distribute object catch trials across
+        % left/right cued locations and unique objects (as much as possible)
+        while 1
+            objcatch_ok = false(1,3);
+
+            objcatch_idx = datasample(pcobj_trial_idx,nr_objectcatch_trials_per_rep,'Replace',false);
+
+            % Check the cued stimulus in those selected trials
+            cued_loc_objcatch = condition_master.is_cued(objcatch_idx);
+            if (abs(diff(histcounts(cued_loc_objcatch, [1:3]))) <= 1)
+                objcatch_ok(1) = true;
+            end
+
+            % Check the object stimulus in those selected trials
+            obj_objcatch = condition_master.sub_cat_name(objcatch_idx);
+            if length(unique(obj_objcatch))==length(obj_objcatch) || ...
+                    length(unique(obj_objcatch))==length(unique(condition_master.sub_cat_name(pcobj_trial_idx)))
+                objcatch_ok(2) = true;
+            end
+
+            % Check the button response in those selected trials
+            for nn = 1:size(condition_master(objcatch_idx,:),1)
+                button_objcatch(nn) = vcd_getCorrectButtonResponse(params, condition_master(objcatch_idx(nn),:));
+            end
+            if abs(diff(histcounts(button_objcatch,[1:3])))<=1
+                objcatch_ok(3) = true;
+            end
+
+            if sum(objcatch_ok)==length(objcatch_ok)
+                break
+            end
         end
-        
-        % Check the object stimulus in those selected trials
-        obj_objcatch = condition_master.sub_cat_name(objcatch_idx);
-        if length(unique(obj_objcatch))==length(obj_objcatch) || ...
-                length(unique(obj_objcatch))==length(unique(condition_master.sub_cat_name(pcobj_trial_idx)))
-            objcatch_ok(2) = true;
-        end
-        
-        % Check the button response in those selected trials
-        for nn = 1:size(condition_master(objcatch_idx,:),1)
-            button_objcatch(nn) = vcd_getCorrectButtonResponse(params, condition_master(objcatch_idx(nn),:));
-        end
-        if abs(diff(histcounts(button_objcatch,[1:3])))<=1
-            objcatch_ok(3) = true;
-        end
-        
-        if sum(objcatch_ok)==length(objcatch_ok)
-            break
-        end
+
+
+        % Get the unique image numbers for object catch stimuli
+        % (reshape to 16 objects x 18 catch rotations)
+        catch_im_nr = reshape(params.stim.obj.unique_im_nrs_objcatch',[],params.stim.obj.num_unique_objects)';
+
+        % Copy catch rotations such that we can remove them when used in a trial.
+        possible_objcatch_rotations = params.stim.obj.catch_rotation; % dims: 16 x 18
+
+        % Loop over object catch trials
+        for cc = 1:length(objcatch_idx)
+            % is this a right or left cued stimulus location?
+            if cued_loc_objcatch(cc)==1 % if we are dealing with a left cued stimulus
+                old_stim_nr       = condition_master.stim_nr_left(objcatch_idx(cc));
+            elseif cued_loc_objcatch(cc)==2 % if we are dealing with a right cued stimulus
+                old_stim_nr       = condition_master.stim_nr_right(objcatch_idx(cc));
+            else
+                error('[%s]: Stimulus location must be 1 or 2 for defining objectcatch!',mfilename)
+            end
+
+            % What core object (1-16) are we dealing with?
+            old_stim_obj_nr   = (old_stim_nr==params.stim.obj.unique_im_nrs_core);
+
+            % What are the possible object catch rotations we can use?
+            possible_objcatch_rotations0 = possible_objcatch_rotations(old_stim_obj_nr,:);
+            possible_objcatch_rotations1 = possible_objcatch_rotations0(~isnan(possible_objcatch_rotations0));
+
+            % randomly select object catch rotation
+            objcatch_rot = randi(length(possible_objcatch_rotations1),1);
+
+            % update rotation of object
+            condition_master.orient_dir(objcatch_idx(cc),cued_loc_objcatch(cc)) = possible_objcatch_rotations1(objcatch_rot);
+
+            % remove rotation from list
+            possible_objcatch_rotations(old_stim_obj_nr,objcatch_rot) = NaN;
+
+            % Update special core column (objectcatch stimuli can never be 
+            % special core stimuli)
+            condition_master.is_special_core(objcatch_idx(cc),cued_loc_objcatch(cc)) = 0;
+
+            % Insert object catch image number into "is_objectcatch" for now..
+            % (we need to hold on to the core object number for the condition
+            % label).
+            condition_master.is_objectcatch(objcatch_idx(cc)) = catch_im_nr(old_stim_obj_nr,objcatch_rot);
+        end   
+        condition_master.is_objectcatch(setdiff(pcobj_trial_idx,objcatch_idx)) = 0;
     end
-    
-        
-    % Get the unique image numbers for object catch stimuli
-    % (reshape to 18 catch rotations x 16 objects)
-    catch_im_nr = reshape(params.stim.obj.unique_im_nrs_objcatch',[],params.stim.obj.num_unique_objects)';
-    
-    % Copy catch rotations such that we can remove them when used in a trial.
-    possible_objcatch_rotations = params.stim.obj.catch_rotation; % dims: 16 x 18
-    
-    % Loop over object catch trials
-    for cc = 1:length(objcatch_idx)
-        % is this a right or left cued stimulus location?
-        if cued_loc_objcatch(cc)==1 % if we are dealing with a left cued stimulus
-            old_stim_nr       = condition_master.stim_nr_left(objcatch_idx(cc));
-        elseif cued_loc_objcatch(cc)==2 % if we are dealing with a right cued stimulus
-            old_stim_nr       = condition_master.stim_nr_right(objcatch_idx(cc));
-        end
-        
-        % What core object (1-16) are we dealing with?
-        old_stim_obj_nr   = (old_stim_nr==params.stim.obj.unique_im_nrs_core);
-        
-        % What are the possible object catch rotations we can use?
-        possible_objcatch_rotations0 = possible_objcatch_rotations(old_stim_obj_nr,:);
-        possible_objcatch_rotations1 = possible_objcatch_rotations0(~isnan(possible_objcatch_rotations0));
-        
-        % randomly select object catch rotation
-        objcatch_rot = randi(length(possible_objcatch_rotations1),1);
-        
-        % update rotation of object
-        condition_master.orient_dir(objcatch_idx(cc),cued_loc_objcatch(cc)) = possible_objcatch_rotations1(objcatch_rot);
-        
-        % remove rotation from list
-        possible_objcatch_rotations(old_stim_obj_nr,objcatch_rot) = NaN;
-
-        % Update special core column (objectcatch stimuli can never be 
-        % special core stimuli)
-        condition_master.is_special_core(objcatch_idx(cc),cued_loc_objcatch(cc)) = false;
-
-        % Insert object catch image number into "is_objectcatch" for now..
-        % (we need to hold on to the core object number for the condition
-        % label).
-        condition_master.is_objectcatch(objcatch_idx(cc)) = catch_im_nr(old_stim_obj_nr,objcatch_rot);
-
-    end    
-    
     
     % ---- IMPORTANT STEP: Shuffle stimuli for SCC and LTM task ----
     condition_master = vcd_shuffleStimForTaskClass(params,  'scc', condition_master, params.exp.block.n_trials_single_epoch,env_type);
@@ -568,10 +571,10 @@ else % Recreate conditions and blocks and trials
     % ---- IMPORTANT STEP: Add correct button press ----
     button_response = NaN(size(condition_master,1),1);
     for ii = 1:size(condition_master,1)
-        if  condition_master.is_catch(ii)
+        if condition_master.is_catch(ii)==1
             button_response(ii) = NaN;
         else
-            button_response(ii) = vcd_getCorrectButtonResponse(params, condition_master(ii,:));
+            button_response(ii) = vcd_getCorrectButtonResponse(params, condition_master(ii,:)); % note: PC-OBJ button press relies on orient_dir, which has been updated for objectcatch trials above.
         end
     end
     condition_master.correct_response = button_response;
@@ -652,15 +655,19 @@ else % Recreate conditions and blocks and trials
                 elseif ismember(curr_sc(jj),4) && ismember(curr_tc(mm),4) % PC-OBJ
                     resp2 = resp(condition_master.is_objectcatch( ...
                         condition_master.stim_class==curr_sc(jj) & ...
-                        condition_master.task_class==curr_tc(mm))==0);
+                        condition_master.task_class==curr_tc(mm))==0); % only check non-obj catch  trials
                     n2 = histcounts(resp2,1:(nr_responses+1));
-                    if mod(length(resp2),2)==1 % if we have an uneven nr of trials after we removed objectcatch trials
-                        if ~(diff(n2)<=1) % we allow for a difference of one, but not more
-                            error('[%s]: Button response counts diverge more than 1 and are considered unbalanced across options! Please rerun vcd_createConditions.m',mfilename);
-                        end
-                    else % assume we have an even nr of trials after we removed objectcatch trials
-                        if ~(all(n==n0)) % we don't allow for a difference of one
-                            error('[%s]: Uneven nr of button responses! Please rerun vcd_createConditions.m',mfilename);
+                    if all(diff(n)==0)
+                        % ideally all responses are balanced
+                    elseif all(diff(n)~=0) % but if not, we assume we have an uneven nr of trials due to objectcatch trials.
+                        if mod(length(resp2),2)==1 % if we have an uneven nr of trials after we removed objectcatch trials
+                            if ~(diff(n2)<=1) % we allow for a difference of one, but not more
+                                error('[%s]: Button response counts diverge more than 1 and are considered unbalanced across options! Please rerun vcd_createConditions.m',mfilename);
+                            end
+                        else % assume we have an even nr of trials after we removed objectcatch trials
+                            if ~(all(n==n0)) % we don't allow for a difference of one
+                                error('[%s]: Uneven nr of button responses! Please rerun vcd_createConditions.m',mfilename);
+                            end
                         end
                     end
                 elseif ismember(curr_sc(jj),5) && ismember(curr_tc(mm),9) % NS-WHERE
@@ -704,12 +711,9 @@ else % Recreate conditions and blocks and trials
     %% ---- IMPORTANT FUNCTION: Add contrast decrement
     condition_master = vcd_determineContrastDecrementChangeTrials(params, condition_master);
     
-    % Convert is_objectcatch vector in logical.. 
-    condition_master.is_objectcatch = logical(condition_master.is_objectcatch);
-    
     %% Store condition_master if requested
     if store_params
-        fprintf('[%s]:Storing condition_master..\n',mfilename)
+        fprintf('[%s]: Storing condition_master..\n',mfilename)
         saveDir = fullfile(vcd_rootPath,'workspaces','info');
         if ~exist(saveDir,'dir'), mkdir(saveDir); end
         if params.is_demo
@@ -751,7 +755,7 @@ else % Recreate conditions and blocks and trials
         
         % Check nr of unique stimuli per stimulus class
         if ii == 5
-            tmp = condition_master(~condition_master.is_catch & ~condition_master.is_objectcatch & strcmp(condition_master.stim_class_name(:,1), params.exp.stimclassnames{ii}),:);
+            tmp = condition_master(condition_master.is_catch==0 & isnan(condition_master.is_objectcatch) & strcmp(condition_master.stim_class_name(:,1), params.exp.stimclassnames{ii}),:);
         
             [N, ~] = histcounts(tmp.stim_nr_left(strcmp(tmp.stim_class_name(:,1), params.exp.stimclassnames{ii})));
         
@@ -782,8 +786,11 @@ else % Recreate conditions and blocks and trials
             assert(isequal(empirical_nr_of_trials, expected_nr_of_trials))
             
         else
-            tmp = condition_master(~condition_master.is_catch & ~condition_master.is_objectcatch & any(strcmp(condition_master.stim_class_name, params.exp.stimclassnames{ii}),2),:);
-            
+            if ismember(ii,[1:3])
+                tmp = condition_master(condition_master.is_catch==0 & isnan(condition_master.is_objectcatch) & any(strcmp(condition_master.stim_class_name, params.exp.stimclassnames{ii}),2),:);
+            elseif ii == 4
+                tmp = condition_master(condition_master.is_catch==0 & condition_master.is_objectcatch~=1 & any(strcmp(condition_master.stim_class_name, params.exp.stimclassnames{ii}),2),:);
+            end
             [N, ~] = histcounts(cat(1,tmp.stim_nr_left(strcmp(tmp.stim_class_name(:,1), params.exp.stimclassnames{ii})),....
                                             tmp.stim_nr_right(strcmp(tmp.stim_class_name(:,2), params.exp.stimclassnames{ii}))));
             
@@ -804,7 +811,7 @@ else % Recreate conditions and blocks and trials
             end
             
             if strcmp(params.exp.stimclassnames{ii},'obj')
-                empirical_nr_of_trials = sum([size(colsLR,1),size(unique(colsLR_scc),1)/2])+sum(condition_master.is_objectcatch);
+                empirical_nr_of_trials = ceil(sum([size(colsLR,1),size(unique(colsLR_scc),1)/2])+sum(condition_master.is_objectcatch==1));
             else
                 empirical_nr_of_trials = sum([size(colsLR,1),size(unique(colsLR_scc),1)/2]);
             end
@@ -815,8 +822,8 @@ else % Recreate conditions and blocks and trials
     % Now dive into each task class
     M_tbl = NaN(length(params.exp.taskclassnames),length(params.stim.all_core_im_nrs)+1);
     for ii = unique(condition_master.task_class)'
-        [M, ~] = histcounts([condition_master.stim_nr_left(~condition_master.is_catch & (condition_master.task_class==ii)); ...
-                                    condition_master.stim_nr_left(~condition_master.is_catch & (condition_master.task_class==ii))],[0:1:length(params.stim.all_core_im_nrs)+1]);
+        [M, ~] = histcounts([condition_master.stim_nr_left(condition_master.is_catch==0 & (condition_master.task_class==ii)); ...
+                                    condition_master.stim_nr_left(condition_master.is_catch==0 & (condition_master.task_class==ii))],[0:1:length(params.stim.all_core_im_nrs)+1]);
         M_tbl(ii,1:length(M)) = M;
     end
     
