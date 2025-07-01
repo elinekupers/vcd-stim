@@ -33,7 +33,8 @@ function [time_table_master, all_run_frames] = vcd_createRunTimeTables(params, v
 %     {'stim_nr_left'        } : (double) unique stimulus number for left spatial stimulus location or center location in case of NS
 %     {'stim_nr_right'       } : (double) unique stimulus number for left spatial stimulus location, left empty in case of NS
 %     {'is_cued'             } : (double) if stimulus is cued left (1), right (2), or neutral (3)
-%     {'is_catch'            } : (bool) if stimulus is a catch trial (true) or not (false)
+%     {'is_catch'            } : (double) if stimulus is a catch trial (1) or not (NaN)
+%     {'is_objectcatch'      } : (double) if a PC-OBJ trial has a catch rotation (1) or not (NaN)
 %     {'trial_type'          } : (double) if it is a single-stimulus or double-stimulus presentation trial
 %     {'crossing_nr'         } : (double) stimulus-task crossing (1:32), see params.exp.stimtaskcrossings
 %     {'event_start'         } : (double) event onset in 33 ms frames
@@ -62,7 +63,7 @@ function [time_table_master, all_run_frames] = vcd_createRunTimeTables(params, v
 %                                 example, for -8 + 18 = 10 degrees gabor
 %                                 tilt for quiz image after delay.
 %     {'ltm_stim_pair'       } : (double) Long term memory paired stimulus
-%     {'is_lure'             } : (bool) if LTM quiz image is lure (true) or not (false)
+%     {'is_lure'             } : (double) if LTM quiz image is lure (1) or not (0)
 %     {'repeat_nr'           } : (double) how often this particular stimulus-task crossing has been repeated across sessions for a subject
 %     {'global_block_nr'     } : (double) block number across all sessions for a subject
 
@@ -810,9 +811,17 @@ for ses = 1:size(all_sessions,3)
                             % need to insert ITI
                             if isempty(itis)
                                 if time_table.trial_type(table_idx-1) == 1
-                                    itis = shuffle_concat(params.exp.trial.ITI_single_block,1);
+                                    if params.is_demo
+                                        itis = shuffle_concat(params.exp.trial.demo.ITI_single_block,1);
+                                    else
+                                        itis = shuffle_concat(params.exp.trial.ITI_single_block,1);
+                                    end
                                 else
-                                    itis = shuffle_concat(params.exp.trial.ITI_double_block,1);
+                                    if params.is_demo
+                                        itis = shuffle_concat(params.exp.trial.demo.ITI_double_block,1);
+                                    else
+                                        itis = shuffle_concat(params.exp.trial.ITI_double_block,1);
+                                    end
                                 end
                                 % OLD: itis = vcd_optimizeITIs(max_block_dur-params.exp.trial.task_cue_dur, max_trial_dur, itis_to_use, max_nr_trials);
                             end
@@ -870,11 +879,7 @@ for ses = 1:size(all_sessions,3)
                         post_blank_dur = session_postblankdur + postblank_to_add + round_me_out;
                     elseif total_run_time2 > session_totalrundur
                         if postblank_to_add  == 0
-                            if special_run_flag
-                                postblank_to_add = session_postblankdur;
-                            else
-                                error('[%s]: We have too many frames for this run!!')
-                            end
+                            error('[%s]: We have too many frames for this run!!')
                         elseif (total_run_frames + session_postblankdur) < session_totalrundur
                             left_over_blank = (session_totalrundur - (total_run_frames + session_postblankdur));
                             post_blank_dur  = session_postblankdur + left_over_blank;
@@ -946,14 +951,6 @@ for ses = 1:size(all_sessions,3)
                     time_table2 = time_table2(:,new_col_order);
                     
                     % Clean up table
-                    
-%                     % Turn logical vectors into zeroes and ones
-%                     time_table2.is_lure(isnan(time_table2.is_lure(:,1)),1)=0;
-%                     time_table2.is_lure(isnan(time_table2.is_lure(:,2)),2)=0;
-%                     time_table2.is_catch(isnan(time_table2.is_catch))=0;
-%                     time_table2.is_objectcatch(isnan(time_table2.is_catch))=0;
-%                     time_table2.is_special_core(isnan(time_table2.is_special_core(:,1)),1)=0;
-%                     time_table2.is_special_core(isnan(time_table2.is_special_core(:,2)),2)=0;
                     
                     % Set names to NaN if empty
                     time_table2.condition_name(cellfun(@isempty,time_table2.condition_name))   = {NaN};
