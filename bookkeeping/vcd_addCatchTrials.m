@@ -16,10 +16,10 @@ if isequal(unique(condition_table_in.stimloc),[1;2])
     tmp_table.task_class(new_row_idx)      = condition_table_in.task_class(end-1);
     tmp_table.task_class_name(new_row_idx) = condition_table_in.task_class_name(end-1);
 
-    tmp_table.is_catch(new_row_idx)         = true(2*n_catch_trials,1);
-    
+    tmp_table.is_catch(new_row_idx)        = ones(2*n_catch_trials,1);
+    tmp_table.is_objectcatch(new_row_idx)  = NaN(2*n_catch_trials,1);
     if strcmp(condition_table_in.task_class_name,{'fix'})
-        tmp_table.is_cued(new_row_idx)         = NaN(length(new_row_idx),1);
+        tmp_table.is_cued(new_row_idx)     = NaN(length(new_row_idx),1);
     else
     
         if exist('cue_dir','var')
@@ -75,7 +75,8 @@ elseif isequal(unique(condition_table_in.stimloc),3)
 
     % update catch/loc/etc.
     tmp_table.unique_im_nr(new_row_idx)    = zeros(n_catch_trials,1);
-    tmp_table.is_catch(new_row_idx)         = true(n_catch_trials,1);
+    tmp_table.is_catch(new_row_idx)        = ones(n_catch_trials,1);
+    tmp_table.is_objectcatch(new_row_idx)  = NaN(n_catch_trials,1);
     tmp_table.stimloc(new_row_idx)         = 3;
     tmp_table.stimloc_name(new_row_idx)    = {'center'};
     tmp_table.stim_class(new_row_idx)      = condition_table_in.stim_class(end-1);
