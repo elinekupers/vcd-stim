@@ -304,6 +304,7 @@ function outputs = vcd(varargin)
 % Get experimental and stimulus parameters.
 exp  = vcd_getSessionParams('load_params',false,'store_params',false, 'verbose',false);
 stim = vcd_getStimParams('load_params',false,'store_params',false, 'verbose',false);
+all_condition_names = vcd_getConditionNames;
 
 p0 = inputParser;
 
@@ -910,8 +911,7 @@ for ii = 1:2:length(requested_info)
                 stim_nr = info_val{:};
             end
             
-            all_condition_names = vcd_getConditionNames;
-            
+            % prepare output
             if length(stim_nr) > 1
                 out = cell(1,length(stim_nr));
             else
@@ -919,6 +919,7 @@ for ii = 1:2:length(requested_info)
             end
             
             for nn = 1:length(stim_nr)
+                % preallocate stim_info struct for each stimulus nr
                 stim_info = struct('condition_nr',[], 'condition_name',[],...
                     'stim_class', [], 'stim_class_name', [], 'task_class', [], ...
                     'task_class_name', [], 'crossing_nr', [], 'crossing_name', [], ...
@@ -929,13 +930,11 @@ for ii = 1:2:length(requested_info)
                     'sub_cat_name', [], 'affordance_cat', [], 'affordance_name', [], ...
                     'is_special_core', [],'is_lure', []);
                 
-                
-                
                 % if we deal with a core stimulus
                 if ismember(stim_nr(nn), stim.all_core_im_nrs,'legacy')
-                    
+                    % find unique stim number for left core image 
                     [~,idx] = ismember(stim_nr(nn),vcd_info.condition_master.stim_nr_left,'legacy');
-                    if idx == 0
+                    if idx == 0 % if we can't find it, we assume this is a stimulus on the right
                         [~,idx] = ismember(stim_nr(nn), vcd_info.condition_master.stim_nr_right,'legacy');
                         im_loc = 2; % right stim
                         stim_info.stim_nr = vcd_info.condition_master.stim_nr_right(idx);
@@ -943,11 +942,11 @@ for ii = 1:2:length(requested_info)
                         im_loc = 1; % left stim
                         stim_info.stim_nr = vcd_info.condition_master.stim_nr_left(idx);
                     end
-                    
+                % if we deal with a test image (i.e., wm test, img test, or ltm lure)
                 elseif ismember(stim_nr(nn), stim.all_test_im_nrs)
-                    % find unique stim number for test image
+                    % find unique stim number for left test image 
                     [~,idx] = ismember(stim_nr(nn),vcd_info.condition_master.stim2_im_nr(:,1),'legacy');
-                    if idx == 0
+                    if idx == 0 % if we can't find it, we assume this is a test stimulus on the right
                         [~,idx] = ismember(stim_nr(nn), vcd_info.condition_master.stim2_im_nr(:,2),'legacy');
                         im_loc = 2; % right stim
                         stim_info.stim_nr = vcd_info.condition_master.stim2_im_nr(idx,2);
@@ -955,11 +954,11 @@ for ii = 1:2:length(requested_info)
                         im_loc = 1; % left stim
                         stim_info.stim_nr = vcd_info.condition_master.stim2_im_nr(idx,1);
                     end
-                    
+                % if we deal with an object catch image    
                 elseif ismember(stim_nr(nn),stim.all_objectcatch_im_nrs)
                     % find unique stim number for test image
                     [~,idx] = ismember(stim_nr(nn),vcd_info.condition_master.stim2_im_nr(:,1),'legacy');
-                    if idx == 0
+                    if idx == 0 % if we can't find it, we assume this is an object catch stimulus on the right
                         [~,idx] = ismember(stim_nr(nn), vcd_info.condition_master.stim2_im_nr(:,2),'legacy');
                         im_loc = 2; % right stim
                         stim_info.stim_nr = vcd_info.condition_master.stim_nr_right(idx);
@@ -967,13 +966,13 @@ for ii = 1:2:length(requested_info)
                         im_loc = 1; % left stim
                         stim_info.stim_nr = vcd_info.condition_master.stim_nr_left(idx);
                     end
-                    
+                else
+                    error('[%s]: Not sure what type of image this is..',mfilename);
                 end
                 
                 % If stimulus number exists in condition_master..
                 if idx~=0
-                    % .. we get stim info for reference first (first
-                    % stimulus array) from the condition master
+                    % get stim info
                     tmp_info = vcd_info.condition_master(idx,:);
                     
                     % add stim loc
@@ -1019,45 +1018,7 @@ for ii = 1:2:length(requested_info)
                     else
                         out = stim_info;
                     end
-                elseif ismember(stim_nr(nn),stim.all_objectcatch_im_nrs)
-                    %%% IN PROGRESS  %%
-%                     
-%                     stim_info.condition_name = {};
-%                     stim_info.condition_nr = vcd_conditionName2Number();
-                    
-                    stim_info.stim_class        = 4;
-                    stim_info.stim_class_name   = {'obj'};
-                    stim_info.task_class        = 4;
-                    stim_info.task_class_name   = {'pc'};
-                    stim_info.crossing_name     = {'pc-obj'};
-                    stim_info.crossing_nr       = find(strcmp(exp.crossingnames,stim_info.crossing_name));
-                    
-                    stim_info.stim_nr           = stim_nr;
-                    stim_info.stim_loc          = [];
-                    stim_info.stim_loc_name     = {};
-                    stim_info.is_objectcatch    = true;
-                    stim_info.orient_dir        = [];
-                    stim_info.contrast          = 1;
-                    stim_info.gbr_phase         = [];
-                    stim_info.rdk_coherence     = [];
-                    stim_info.super_cat         = [];
-                    stim_info.super_cat_name    = {};
-                    stim_info.basic_cat         = [];
-                    stim_info.basic_cat_name    = {};
-                    stim_info.sub_cat           = [];
-                    stim_info.sub_cat_name      = {};
-                    stim_info.affordance_cat    = [];
-                    stim_info.affordance_name   = {};
-                    stim_info.is_special_core   = 0;
-                    stim_info.is_lure           = 0;
-                    
-                    if length(stim_nr) > 1
-                        out{nn} = stim_info;
-                    else
-                        out = stim_info;
-                    end
                 end
-                
             end
             
         case 'conditionnumbertoname'
@@ -1081,7 +1042,7 @@ for ii = 1:2:length(requested_info)
             
             out = vcd_conditionName2Number(info_val);
             
-    end
+    end % end of switch/case statement
     
     % Check outputs
     if length(requested_info) > 2
