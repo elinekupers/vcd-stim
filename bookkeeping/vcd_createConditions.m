@@ -365,6 +365,12 @@ else % Recreate conditions and blocks and trials
     end
     
     %% %%%%%%%%%%%%% CREATE CONDITIONS %%%%%%%%%%%%%
+    % condition_master table with all conditions shown across all sessions. 
+    % Note that block_nr counts continuously because we will shuffle the 
+    % block order later for each subject. Same holds for run_nr, these
+    % numbers do not represent the final nr of runs as they will change
+    % depending on the allocation of blocks to each run within a session.
+    
     % Preallocate space and set up tables/structs
     if verbose
         tic
@@ -377,17 +383,11 @@ else % Recreate conditions and blocks and trials
     all_unique_im     = struct();  % details about unique core images present in VCD-core experiment. This information is also present in condition_master.
     all_cond          = struct();  % details about unique conditions (unique images x cueing condition) present in VCD-core experiment. This information is also present in condition_master.
     
-    % master table with all conditions shown across all sessions. 
-    % Note that block_nr counts continuously because we will shuffle the 
-    % block order later for each subject. Same holds for run_nr, these
-    % numbers do not represent the final nr of runs as they will change
-    % depending on the allocation of blocks to each run within a session.
-    condition_master  = table();   
     
     % Define block content for each stimulus class
     for stimClass_idx = 1:length(params.exp.stimclassnames)
         
-        stim_table = table();
+        clear stim_table
         
         % Get stimclass name
         stimClass_name = params.exp.stimclassnames{stimClass_idx};
@@ -465,6 +465,9 @@ else % Recreate conditions and blocks and trials
             tbl.cd_start = NaN(size(tbl,1),1);
             
             % Concatenate single stim-task crossing table to master table
+            if ~exist('stim_table','var')
+                stim_table = tbl([],:);
+            end
             stim_table = cat(1,stim_table,tbl);
             
         end % task class idx
@@ -472,12 +475,15 @@ else % Recreate conditions and blocks and trials
         % Accumulate condition master and info
         all_cond.(stimClass_name) = stim_table;
         
+        if ~exist('condition_master','var')
+            condition_master = stim_table([],:); % create empty table with the same columns
+        end
         condition_master = cat(1,condition_master,stim_table);
     end % stim idx
     
     % ---- Add object catch trials ----
     % How many trials are object catch given the 20% probility?
-    pcobj_trial_idx = find(condition_master.stim_class == 4 & condition_master.task_class == 4);
+    pcobj_trial_idx = find(condition_master.stim_class == 4 & condition_master.task_class == 4 & condition_master.is_catch==0);
     if ~isempty(pcobj_trial_idx)
         nr_objectcatch_trials_per_rep = round(size(condition_master(pcobj_trial_idx,:),1)*params.exp.trial.pc.prob_objcatch);
 
