@@ -65,12 +65,12 @@ function cond_master = vcd_createConditionMaster(params, cond_table, env_type)
 %   17: {'task_class'     } task class nr (1:10)
 %   18: {'is_cued'        } what spatial location did we cue with rim of
 %                           fixation circle: 1 = left, 2 = right, 3 = both sides/neutral cue
-%   19: {'is_catch'       } is this a catch trial where no stimulus was shown in trial (true) or not (false)?
+%   19: {'is_catch'       } is this a catch trial where no stimulus was shown in trial (1) or not (0)?
 %   20: {'is_objectcatch' } is this a objectcatch trial where a randomly 
-%                           chosen non-core rotation was shown (true) or not 
-%                           (false). Object catch trials only occur for OBJ stimuli.
+%                           chosen non-core rotation was shown (1) or not 
+%                           (0). Object catch trials only occur for OBJ stimuli.
 %                           stimuli in PC-task crossing. Condition master
-%                           only preallocates false at this stage for each
+%                           only preallocates NaN at this stage for each
 %                           trial because we determine the nr of object
 %                           catch trials (20%) across the entire session.
 %   21: {'unique_trial_nr'} unique trial nr
@@ -84,7 +84,8 @@ function cond_master = vcd_createConditionMaster(params, cond_table, env_type)
 %   24: {'stim2_orient_dir'} for  WM/IMG/LTM task: absolute gabor tilt/rdk motion direction/dot
 %                           angle/obj rotation of test stimulus (so after
 %                           delta is applied to core stimulus feature)
-%   25: {'is_lure'        } for LTM task: is stim2_im_nr a lure stimulus or not.
+%   25: {'is_lure'        } for LTM task: is stim2_im_nr a lure stimulus (1) or
+%                           not (0). Preallocated with NaN for now.
 %   26: {'ltm_stim_pair'  } for LTM task: each unique image nr is associated with
 %                           another stimulus
 %   27: {'repeat_nr'      } Keep track how many times has this unique image has
@@ -173,7 +174,7 @@ if nr_reps > 0
                     conds_shuffle0 = cond_table(shuffle_c,:);
 
                     % Add catch trial vector
-                    conds_shuffle0.is_catch = false(size(conds_shuffle0,1),1);
+                    conds_shuffle0.is_catch = zeros(size(conds_shuffle0,1),1);
 
                     % get covert spatial attention cuing direction vector
                     [cue_vec,im_cue_vec_loc1] = vcd_getSpatialAttCueingDir(loc,cue_vec,im_cue_vec_loc1,conds_shuffle0, stimloc_cues, taskClass);
@@ -183,7 +184,7 @@ if nr_reps > 0
 
                     % Preallocate space for is_objectcatch trial vector 
                     % (randomly chosen non-core rotation, only for OBJ)
-                    conds_shuffle0.is_objectcatch = false(size(conds_shuffle0,1),1);
+                    conds_shuffle0.is_objectcatch = NaN(size(conds_shuffle0,1),1);
                     
                     % Do some checks on unique trial condition master table:
                     assert(isequal(length(conds_shuffle0.unique_im_nr),n_unique_cases)); % Check unique image nr
@@ -249,15 +250,19 @@ if nr_reps > 0
                     
                     % create offset vector
                     n_deltas            = length(params.stim.gabor.delta_from_ref);
-                    delta_vec           = NaN(size(conds_single_rep_merged.orient_dir));
                     noncatch_trials_idx = ~isnan(conds_single_rep_merged.orient_dir(:,1));
-                    delta_vec(conds_single_rep_merged.is_cued(noncatch_trials_idx)==1,1)    = shuffle_concat(repelem(params.stim.gabor.delta_from_ref, n_unique_cases/2/n_deltas),1); % left cued
-                    delta_vec(~(conds_single_rep_merged.is_cued(noncatch_trials_idx)==1),1) = shuffle_concat(repelem(params.stim.gabor.delta_from_ref, n_unique_cases/2/n_deltas),1); % left uncued
-                    delta_vec(conds_single_rep_merged.is_cued(noncatch_trials_idx)==2,2)    = shuffle_concat(repelem(params.stim.gabor.delta_from_ref, n_unique_cases/2/n_deltas),1); % right cued
-                    delta_vec(~(conds_single_rep_merged.is_cued(noncatch_trials_idx)==2),2) = shuffle_concat(repelem(params.stim.gabor.delta_from_ref, n_unique_cases/2/n_deltas),1); % right uncued
+                    delta_vec           = NaN(size(conds_single_rep_merged.orient_dir));
+                    delta_vec0          = NaN(size(conds_single_rep_merged.orient_dir(noncatch_trials_idx,:)));
+                    orient_dir2         = NaN(size(conds_single_rep_merged.orient_dir));
                     
+                    delta_vec0(conds_single_rep_merged.is_cued(noncatch_trials_idx)==1,1)    = shuffle_concat(repelem(params.stim.gabor.delta_from_ref, n_unique_cases/2/n_deltas),1); % left cued
+                    delta_vec0(~(conds_single_rep_merged.is_cued(noncatch_trials_idx)==1),1) = shuffle_concat(repelem(params.stim.gabor.delta_from_ref, n_unique_cases/2/n_deltas),1); % left uncued
+                    delta_vec0(conds_single_rep_merged.is_cued(noncatch_trials_idx)==2,2)    = shuffle_concat(repelem(params.stim.gabor.delta_from_ref, n_unique_cases/2/n_deltas),1); % right cued
+                    delta_vec0(~(conds_single_rep_merged.is_cued(noncatch_trials_idx)==2),2) = shuffle_concat(repelem(params.stim.gabor.delta_from_ref, n_unique_cases/2/n_deltas),1); % right uncued
+                    
+                    delta_vec(noncatch_trials_idx,:) = delta_vec0;
                     % calculate absolute orientation of stim 2
-                    orient_dir2 = conds_single_rep_merged.orient_dir + delta_vec;
+                    orient_dir2(noncatch_trials_idx,:) = conds_single_rep_merged.orient_dir(noncatch_trials_idx,:) + delta_vec0; 
                     
                     % find unique WM test im nr
                     idx_wm      = reshape(params.stim.gabor.unique_im_nrs_wm_test,4,[]);
@@ -266,7 +271,7 @@ if nr_reps > 0
                     assert(isequal(length(idx_l),length(idx_r)))
                     
                     stim2_im_nr = NaN(size(conds_single_rep_merged,1),2);
-                    [~,shuffle_delta] = ismember(delta_vec,params.stim.gabor.delta_from_ref);
+                    [~,shuffle_delta] = ismember(delta_vec0,params.stim.gabor.delta_from_ref); clear delta_vec0;
                     clear tmp;
                     
                     non_nan_trials = find(noncatch_trials_idx);
@@ -275,12 +280,12 @@ if nr_reps > 0
                         [~,idx_ori_r] = find(conds_single_rep_merged.orient_dir(non_nan_trials(kk),2)==params.stim.gabor.ori_deg);
                         tmp(kk,:) = [idx_wm(shuffle_delta(kk,1),idx_ori_l); idx_wm(shuffle_delta(kk,2),idx_ori_r)]';
                     end
-                    stim2_im_nr(noncatch_trials_idx,:)  = tmp;
+                     stim2_im_nr(noncatch_trials_idx,:)  = tmp;
                      % add to table
                      conds_single_rep_merged.stim2_delta       = delta_vec;
                      conds_single_rep_merged.stim2_im_nr       = stim2_im_nr;
                      conds_single_rep_merged.stim2_orient_dir  = orient_dir2;
-                     conds_single_rep_merged.is_lure          = false(size(conds_single_rep_merged,1),2); % should be boolean                
+                     conds_single_rep_merged.is_lure           = NaN(size(conds_single_rep_merged,1),2);  
                 
                 elseif strcmp(taskClass{:},'img')
                     % Add IMG text prompt and quiz dots
@@ -296,39 +301,79 @@ if nr_reps > 0
                     % find unique IMG test im nr                    
                     [~,idx_l] = ismember(conds_single_rep_merged.stim_nr_left(noncatch_trials_idx),params.stim.gabor.unique_im_nrs_specialcore);
                     [~,idx_r] = ismember(conds_single_rep_merged.stim_nr_right(noncatch_trials_idx),params.stim.gabor.unique_im_nrs_specialcore);
-                    idx_img   = reshape(params.stim.gabor.unique_im_nrs_img_test,length(params.stim.gabor.imagery_quiz_images),[]); % 10 yes + 10 no overlap test images per unique image
-                    idx_img_yes = idx_img(params.stim.gabor.imagery_quiz_images==1,:);
-                    idx_img_no  = idx_img(params.stim.gabor.imagery_quiz_images==2,:);
-                    tmp = NaN(size(delta_vec(noncatch_trials_idx,:)));
-                    for ll = unique(idx_l)'
-                        tmp( (delta_vec(noncatch_trials_idx,1)==1 & idx_l==ll),1) = idx_img_no(randi(size(idx_img_no,1),[sum(delta_vec(noncatch_trials_idx,1)==1 & idx_l==ll),1]),ll);
-                        tmp( (delta_vec(noncatch_trials_idx,1)==2 & idx_l==ll),1) = idx_img_yes(randi(size(idx_img_yes,1),[sum(delta_vec(noncatch_trials_idx,1)==2 & idx_l==ll),1]),ll);
+                    idx_img   = reshape(params.stim.gabor.unique_im_nrs_img_test,length(params.stim.gabor.imagery_quiz_images),[]); % 20x8 matrix: 10 yes + 10 no overlap test images per unique image x 8 trials
+                    idx_img_yes = idx_img(params.stim.gabor.imagery_quiz_images==1,:); % 10x8 matrix: 10 yes overlap test images per unique image x 8 unique gabors
+                    idx_img_no  = idx_img(params.stim.gabor.imagery_quiz_images==2,:); % 10x8 matrix: 10 no overlap test images per unique image x 8 unique gabors
+                    tmp = NaN(size(delta_vec(noncatch_trials_idx,:))); % without catch trials
+                    yes_trial_idx_l = delta_vec(noncatch_trials_idx,1)==1; % Quiz dots overlap (1=yes) or not (2=no) left
+                    no_trial_idx_l  = delta_vec(noncatch_trials_idx,1)==2; % Quiz dots overlap (1=yes) or not (2=no) left
+                    yes_trial_idx_r = delta_vec(noncatch_trials_idx,2)==1; % Quiz dots overlap (1=yes) or not (2=no) right 
+                    no_trial_idx_r  = delta_vec(noncatch_trials_idx,2)==2; % Quiz dots overlap (1=yes) or not (2=no) right
+                    assert(isequal(size(idx_img_yes),size(idx_img_no)));
+                    nr_of_img_test_im = size(idx_img_no,1);
+                    randomly_selected_yes_test_images_l  = randsample(nr_of_img_test_im,sum(yes_trial_idx_l), false); % sample WITHOUT replacement
+                    randomly_selected_no_test_images_l   = randsample(nr_of_img_test_im,sum(no_trial_idx_l), false); % sample WITHOUT replacement
+                    randomly_selected_yes_test_images_r  = randsample(nr_of_img_test_im,sum(yes_trial_idx_r), false); % sample WITHOUT replacement
+                    randomly_selected_no_test_images_r  = randsample(nr_of_img_test_im,sum(no_trial_idx_r), false); % sample WITHOUT replacement
+                    
+                    yes_counter = 1; no_counter = 1;
+                    for ll = 1:length(idx_l) % loop over unique images on the left
+                        if yes_trial_idx_l(ll)
+                            tmp(ll,1) = idx_img_yes(randomly_selected_yes_test_images_l(yes_counter),idx_l(ll));
+                            yes_counter = yes_counter+1;
+                        elseif no_trial_idx_l(ll)
+                            tmp(ll,1) = idx_img_no(randomly_selected_no_test_images_l(no_counter),idx_l(ll));
+                            no_counter = no_counter+1;
+                        else
+                            error('[%s]: Imagery test image must be "yes" or "no".',mfilename);
+                        end
                     end
-                    for ll = unique(idx_r)'
-                        tmp( (delta_vec(noncatch_trials_idx,2)==1 & idx_r==ll),2) = idx_img_no(randi(size(idx_img_no,1),[sum(delta_vec(noncatch_trials_idx,2)==1 & idx_r==ll),1]),ll);
-                        tmp( (delta_vec(noncatch_trials_idx,2)==2 & idx_r==ll),2) = idx_img_yes(randi(size(idx_img_yes,1),[sum(delta_vec(noncatch_trials_idx,2)==2 & idx_r==ll),1]),ll);
+                    
+                    yes_counter = 1; no_counter = 1;
+                    for ll = 1:length(idx_r) % loop over unique images on the right
+                        if yes_trial_idx_r(ll)
+                            tmp(ll,2) = idx_img_yes(randomly_selected_yes_test_images_r(yes_counter),idx_r(ll));
+                            yes_counter = yes_counter+1;
+                        elseif no_trial_idx_r(ll)
+                            tmp(ll,2) = idx_img_no(randomly_selected_no_test_images_r(no_counter),idx_r(ll));
+                            no_counter = no_counter+1;
+                        else
+                            error('[%s]: Imagery test image must be "yes" or "no".',mfilename);
+                        end
                     end
-                    assert(all(ismember(tmp(delta_vec(noncatch_trials_idx,:)==2),idx_img_yes)));
-                    assert(all(ismember(tmp(delta_vec(noncatch_trials_idx,:)==1),idx_img_no)));
+                    assert(length(unique(tmp(:)))==length(tmp(:)))
+                    assert(all(ismember(tmp(delta_vec(noncatch_trials_idx)==1),idx_img_yes))); % Quiz dots overlap (1=yes) or not (2=no)
+                    assert(all(ismember(tmp(delta_vec(noncatch_trials_idx)==2),idx_img_no))); % Quiz dots overlap (1=yes) or not (2=no)
+%                     tmp = NaN(size(delta_vec(noncatch_trials_idx,:)));
+%                     for ll = unique(idx_l)'
+%                         tmp( (delta_vec(noncatch_trials_idx,1)==1 & idx_l==ll),1) = idx_img_no(randi(size(idx_img_no,1),[sum(delta_vec(noncatch_trials_idx,1)==1 & idx_l==ll),1]),ll);
+%                         tmp( (delta_vec(noncatch_trials_idx,1)==2 & idx_l==ll),1) = idx_img_yes(randi(size(idx_img_yes,1),[sum(delta_vec(noncatch_trials_idx,1)==2 & idx_l==ll),1]),ll);
+%                     end
+%                     for ll = unique(idx_r)'
+%                         tmp( (delta_vec(noncatch_trials_idx,2)==1 & idx_r==ll),2) = idx_img_no(randi(size(idx_img_no,1),[sum(delta_vec(noncatch_trials_idx,2)==1 & idx_r==ll),1]),ll);
+%                         tmp( (delta_vec(noncatch_trials_idx,2)==2 & idx_r==ll),2) = idx_img_yes(randi(size(idx_img_yes,1),[sum(delta_vec(noncatch_trials_idx,2)==2 & idx_r==ll),1]),ll);
+%                     end
+%                     assert(all(ismember(tmp(delta_vec(noncatch_trials_idx,:)==2),idx_img_yes)));
+%                     assert(all(ismember(tmp(delta_vec(noncatch_trials_idx,:)==1),idx_img_no)));
                     stim2_im_nr = NaN(size(conds_single_rep_merged.orient_dir,1),2);
                     stim2_im_nr(noncatch_trials_idx,:) = tmp;
                     
                     conds_single_rep_merged.stim2_delta    = delta_vec;
                     conds_single_rep_merged.stim2_im_nr    = stim2_im_nr;
                     conds_single_rep_merged.stim2_orient_dir = NaN(size(conds_single_rep_merged,1),2);
-                    conds_single_rep_merged.is_lure          = false(size(conds_single_rep_merged,1),2); % should be boolean
+                    conds_single_rep_merged.is_lure          = NaN(size(conds_single_rep_merged,1),2);
                     
                 % Add LTM pairs
                 elseif strcmp(taskClass{:}, 'ltm')
                     conds_single_rep_merged.stim2_im_nr    = NaN(size(conds_single_rep_merged,1),2);
                     conds_single_rep_merged.stim2_orient_dir  = NaN(size(conds_single_rep_merged,1),2);
                     conds_single_rep_merged.stim2_delta       = NaN(size(conds_single_rep_merged,1),2);
-                    conds_single_rep_merged.is_lure        = false(size(conds_single_rep_merged,1),2); % should be boolean
+                    conds_single_rep_merged.is_lure           = NaN(size(conds_single_rep_merged,1),2);
                 else
                     conds_single_rep_merged.stim2_delta      = NaN(size(conds_single_rep_merged,1),2);
                     conds_single_rep_merged.stim2_im_nr      = NaN(size(conds_single_rep_merged,1),2);
                     conds_single_rep_merged.stim2_orient_dir = NaN(size(conds_single_rep_merged,1),2);
-                    conds_single_rep_merged.is_lure          = false(size(conds_single_rep_merged,1),2); % should be boolean
+                    conds_single_rep_merged.is_lure          = NaN(size(conds_single_rep_merged,1),2); 
                 end
                 
                 % Keep track of the times a unique condition has been repeated
@@ -397,11 +442,11 @@ if nr_reps > 0
                     conds_shuffle0.is_cued = cue_vec;
 
                     % Add catch trial vector
-                    conds_shuffle0.is_catch = false(size(conds_shuffle0,1),1);
+                    conds_shuffle0.is_catch = zeros(size(conds_shuffle0,1),1);
 
                     % Preallocate space for is_objectcatch trial vector
                     % (randomly chosen non-core rotation, only for OBJ)
-                    conds_shuffle0.is_objectcatch = false(size(conds_shuffle0,1),1);
+                    conds_shuffle0.is_objectcatch = NaN(size(conds_shuffle0,1),1);
                     
                     % Do some checks:
                     assert(isequal(length(conds_shuffle0.unique_im_nr),n_unique_cases)); % Check unique image nr
@@ -465,13 +510,17 @@ if nr_reps > 0
                     n_deltas            = length(params.stim.rdk.delta_from_ref);
                     noncatch_trials_idx = ~isnan(conds_single_rep_merged.orient_dir(:,1));
                     delta_vec           = NaN(size(conds_single_rep_merged.orient_dir));
-                    delta_vec(conds_single_rep_merged.is_cued(noncatch_trials_idx)==1,1) = shuffle_concat(repelem(params.stim.rdk.delta_from_ref, (n_unique_cases/2/n_deltas)),1); % left cued
-                    delta_vec(~(conds_single_rep_merged.is_cued(noncatch_trials_idx)==1),1) = shuffle_concat(repelem(params.stim.rdk.delta_from_ref, (n_unique_cases/2/n_deltas)),1); % left uncued
-                    delta_vec(conds_single_rep_merged.is_cued(noncatch_trials_idx)==2,2) = shuffle_concat(repelem(params.stim.rdk.delta_from_ref, (n_unique_cases/2/n_deltas)),1); % right cued
-                    delta_vec(~(conds_single_rep_merged.is_cued(noncatch_trials_idx)==2),2) = shuffle_concat(repelem(params.stim.rdk.delta_from_ref, (n_unique_cases/2/n_deltas)),1); % right uncued
-                     
+                    delta_vec0          = NaN(size(conds_single_rep_merged.orient_dir(noncatch_trials_idx,:)));
+                    orient_dir2         = NaN(size(conds_single_rep_merged.orient_dir));
+                    
+                    delta_vec0(conds_single_rep_merged.is_cued(noncatch_trials_idx)==1,1) = shuffle_concat(repelem(params.stim.rdk.delta_from_ref, (n_unique_cases/2/n_deltas)),1); % left cued
+                    delta_vec0(~(conds_single_rep_merged.is_cued(noncatch_trials_idx)==1),1) = shuffle_concat(repelem(params.stim.rdk.delta_from_ref, (n_unique_cases/2/n_deltas)),1); % left uncued
+                    delta_vec0(conds_single_rep_merged.is_cued(noncatch_trials_idx)==2,2) = shuffle_concat(repelem(params.stim.rdk.delta_from_ref, (n_unique_cases/2/n_deltas)),1); % right cued
+                    delta_vec0(~(conds_single_rep_merged.is_cued(noncatch_trials_idx)==2),2) = shuffle_concat(repelem(params.stim.rdk.delta_from_ref, (n_unique_cases/2/n_deltas)),1); % right uncued
+                    delta_vec(noncatch_trials_idx,:) = delta_vec0; 
+                    
                     % Calculate absolute orientation of stim 2
-                    orient_dir2 = conds_single_rep_merged.orient_dir + delta_vec;
+                    orient_dir2(noncatch_trials_idx,:)   = conds_single_rep_merged.orient_dir(noncatch_trials_idx,:) + delta_vec0;
 
                     % find unique WM test im nr
                     idx_wm = reshape(params.stim.rdk.unique_im_nrs_wm_test,4,[]);
@@ -480,7 +529,7 @@ if nr_reps > 0
                     assert(isequal(length(idx_l),length(idx_r)))
                     
                     stim2_im_nr = NaN(size(conds_single_rep_merged,1),2);
-                    [~,shuffle_delta] = ismember(delta_vec,params.stim.rdk.delta_from_ref);
+                    [~,shuffle_delta] = ismember(delta_vec0,params.stim.rdk.delta_from_ref); clear delta_vec0;
                     non_nan_trials = find(noncatch_trials_idx);
                     clear tmp;
                     for kk = 1:length(idx_l)
@@ -493,7 +542,7 @@ if nr_reps > 0
                     conds_single_rep_merged.stim2_delta       = delta_vec; 
                     conds_single_rep_merged.stim2_im_nr       = stim2_im_nr;
                     conds_single_rep_merged.stim2_orient_dir  = orient_dir2;
-                    conds_single_rep_merged.is_lure = false(size(conds_single_rep_merged,1),2); % should be boolean
+                    conds_single_rep_merged.is_lure           = NaN(size(conds_single_rep_merged,1),2);
 
 
                 % Add IMG text prompt and quiz dots
@@ -513,39 +562,79 @@ if nr_reps > 0
                     idx_img   = reshape(params.stim.rdk.unique_im_nrs_img_test,length(params.stim.rdk.imagery_quiz_images),[]); % 10 yes + 10 no overlap test images per unique image
                     idx_img_yes = idx_img(params.stim.rdk.imagery_quiz_images==1,:);
                     idx_img_no  = idx_img(params.stim.rdk.imagery_quiz_images==2,:);
-                    tmp = NaN(size(delta_vec(noncatch_trials_idx,:)));
-                    for ll = unique(idx_l)'
-                        tmp( (delta_vec(noncatch_trials_idx,1)==1 & idx_l==ll),1) = idx_img_no(randi(size(idx_img_no,1),[sum(delta_vec(noncatch_trials_idx,1)==1 & idx_l==ll),1]),ll);
-                        tmp( (delta_vec(noncatch_trials_idx,1)==2 & idx_l==ll),1) = idx_img_yes(randi(size(idx_img_yes,1),[sum(delta_vec(noncatch_trials_idx,1)==2 & idx_l==ll),1]),ll);
-                    end
-                    for ll = unique(idx_r)'
-                        tmp( (delta_vec(noncatch_trials_idx,2)==1 & idx_r==ll),2) = idx_img_no(randi(size(idx_img_no,1),[sum(delta_vec(noncatch_trials_idx,2)==1 & idx_r==ll),1]),ll);
-                        tmp( (delta_vec(noncatch_trials_idx,2)==2 & idx_r==ll),2) = idx_img_yes(randi(size(idx_img_yes,1),[sum(delta_vec(noncatch_trials_idx,2)==2 & idx_r==ll),1]),ll);
+                    tmp = NaN(size(delta_vec(noncatch_trials_idx,:))); % without catch trials
+                    yes_trial_idx_l = delta_vec(noncatch_trials_idx,1)==1; % Quiz dots overlap (1=yes) or not (2=no) left
+                    no_trial_idx_l  = delta_vec(noncatch_trials_idx,1)==2; % Quiz dots overlap (1=yes) or not (2=no) left
+                    yes_trial_idx_r = delta_vec(noncatch_trials_idx,2)==1; % Quiz dots overlap (1=yes) or not (2=no) right 
+                    no_trial_idx_r  = delta_vec(noncatch_trials_idx,2)==2; % Quiz dots overlap (1=yes) or not (2=no) right
+                    assert(isequal(size(idx_img_yes),size(idx_img_no)));
+                    nr_of_img_test_im = size(idx_img_no,1);
+                    randomly_selected_yes_test_images_l  = randsample(nr_of_img_test_im,sum(yes_trial_idx_l), false); % sample WITHOUT replacement
+                    randomly_selected_no_test_images_l   = randsample(nr_of_img_test_im,sum(no_trial_idx_l), false); % sample WITHOUT replacement
+                    randomly_selected_yes_test_images_r  = randsample(nr_of_img_test_im,sum(yes_trial_idx_r), false); % sample WITHOUT replacement
+                    randomly_selected_no_test_images_r  = randsample(nr_of_img_test_im,sum(no_trial_idx_r), false); % sample WITHOUT replacement
+                    
+                    yes_counter = 1; no_counter = 1;
+                    for ll = 1:length(idx_l) % loop over unique images on the left
+                        if yes_trial_idx_l(ll)
+                            tmp(ll,1) = idx_img_yes(randomly_selected_yes_test_images_l(yes_counter),idx_l(ll));
+                            yes_counter = yes_counter+1;
+                        elseif no_trial_idx_l(ll)
+                            tmp(ll,1) = idx_img_no(randomly_selected_no_test_images_l(no_counter),idx_l(ll));
+                            no_counter = no_counter+1;
+                        else
+                            error('[%s]: Imagery test image must be "yes" or "no".',mfilename);
+                        end
                     end
                     
-                    assert(all(ismember(tmp(delta_vec(noncatch_trials_idx,:)==2),idx_img_yes)));
-                    assert(all(ismember(tmp(delta_vec(noncatch_trials_idx,:)==1),idx_img_no)));
+                    yes_counter = 1; no_counter = 1;
+                    for ll = 1:length(idx_r) % loop over unique images on the right
+                        if yes_trial_idx_r(ll)
+                            tmp(ll,2) = idx_img_yes(randomly_selected_yes_test_images_r(yes_counter),idx_r(ll));
+                            yes_counter = yes_counter+1;
+                        elseif no_trial_idx_r(ll)
+                            tmp(ll,2) = idx_img_no(randomly_selected_no_test_images_r(no_counter),idx_r(ll));
+                            no_counter = no_counter+1;
+                        else
+                            error('[%s]: Imagery test image must be "yes" or "no".',mfilename);
+                        end
+                    end
+                    assert(length(unique(tmp(:)))==length(tmp(:)))
+                    assert(all(ismember(tmp(delta_vec(noncatch_trials_idx)==1),idx_img_yes))); % Quiz dots overlap (1=yes) or not (2=no)
+                    assert(all(ismember(tmp(delta_vec(noncatch_trials_idx)==2),idx_img_no))); % Quiz dots overlap (1=yes) or not (2=no)
+
+%                     for ll = unique(idx_l)'
+%                         tmp( (delta_vec(noncatch_trials_idx,1)==1 & idx_l==ll),1) = idx_img_no(randi(size(idx_img_no,1),[sum(delta_vec(noncatch_trials_idx,1)==1 & idx_l==ll),1]),ll);
+%                         tmp( (delta_vec(noncatch_trials_idx,1)==2 & idx_l==ll),1) = idx_img_yes(randi(size(idx_img_yes,1),[sum(delta_vec(noncatch_trials_idx,1)==2 & idx_l==ll),1]),ll);
+%                     end
+%                     for ll = unique(idx_r)'
+%                         tmp( (delta_vec(noncatch_trials_idx,2)==1 & idx_r==ll),2) = idx_img_no(randi(size(idx_img_no,1),[sum(delta_vec(noncatch_trials_idx,2)==1 & idx_r==ll),1]),ll);
+%                         tmp( (delta_vec(noncatch_trials_idx,2)==2 & idx_r==ll),2) = idx_img_yes(randi(size(idx_img_yes,1),[sum(delta_vec(noncatch_trials_idx,2)==2 & idx_r==ll),1]),ll);
+%                     end
+%                     
+%                     assert(all(ismember(tmp(delta_vec(noncatch_trials_idx,:)==2),idx_img_yes)));
+%                     assert(all(ismember(tmp(delta_vec(noncatch_trials_idx,:)==1),idx_img_no)));
                     
                     stim2_im_nr = NaN(size(conds_single_rep_merged.orient_dir,1),2);
                     stim2_im_nr(noncatch_trials_idx,:) = tmp;
                     
-                    conds_single_rep_merged.stim2_delta    = delta_vec;
-                    conds_single_rep_merged.stim2_im_nr    = stim2_im_nr;
+                    conds_single_rep_merged.stim2_delta       = delta_vec;
+                    conds_single_rep_merged.stim2_im_nr       = stim2_im_nr;
                     conds_single_rep_merged.stim2_orient_dir  = NaN(size(conds_single_rep_merged,1),2);
-                    conds_single_rep_merged.is_lure = false(size(conds_single_rep_merged,1),2); % should be boolean
+                    conds_single_rep_merged.is_lure           = NaN(size(conds_single_rep_merged,1),2); 
 
 
                 % Add ltm pair.
                 elseif strcmp(taskClass{:},'ltm')
-                    conds_single_rep_merged.stim2_im_nr   = NaN(size(conds_single_rep_merged,1),2);
+                    conds_single_rep_merged.stim2_im_nr       = NaN(size(conds_single_rep_merged,1),2);
                     conds_single_rep_merged.stim2_orient_dir  = NaN(size(conds_single_rep_merged,1),2);
                     conds_single_rep_merged.stim2_delta       = NaN(size(conds_single_rep_merged,1),2);
-                    conds_single_rep_merged.is_lure = false(size(conds_single_rep_merged,1),2); % should be boolean
+                    conds_single_rep_merged.is_lure           = NaN(size(conds_single_rep_merged,1),2);
                 else
                     conds_single_rep_merged.stim2_delta       = NaN(size(conds_single_rep_merged,1),2);
                     conds_single_rep_merged.stim2_im_nr       = NaN(size(conds_single_rep_merged,1),2);
                     conds_single_rep_merged.stim2_orient_dir  = NaN(size(conds_single_rep_merged,1),2);
-                    conds_single_rep_merged.is_lure = false(size(conds_single_rep_merged,1),2); % should be boolean
+                    conds_single_rep_merged.is_lure           = NaN(size(conds_single_rep_merged,1),2); 
                 end
                 % Keep track of repeat
                 conds_single_rep_merged.repeat_nr = rep.*ones(size(conds_single_rep_merged,1),1);
@@ -607,11 +696,11 @@ if nr_reps > 0
                     conds_shuffle0.is_cued = cue_vec;
 
                     % Add catch trial vector
-                    conds_shuffle0.is_catch = false(size(conds_shuffle0,1),1);
+                    conds_shuffle0.is_catch = zeros(size(conds_shuffle0,1),1);
 
                     % Preallocate space for is_objectcatch trial vector
                     % (randomly chosen non-core rotation, only for OBJ)
-                    conds_shuffle0.is_objectcatch = false(size(conds_shuffle0,1),1);
+                    conds_shuffle0.is_objectcatch = NaN(size(conds_shuffle0,1),1);
                     
                     % Do some checks:
                     assert(isequal(length(conds_shuffle0.unique_im_nr),n_unique_cases)); % Check unique image nr
@@ -676,7 +765,7 @@ if nr_reps > 0
                     n_deltas      = length(params.stim.dot.delta_from_ref);
                     noncatch_trials_idx = ~isnan(conds_single_rep_merged.orient_dir(:,1));
                     delta_vec     = NaN(size(conds_single_rep_merged.orient_dir));
-
+                    orient_dir2   = NaN(size(conds_single_rep_merged.orient_dir));
                     while 1
                         % create shuffled delta vector
                         delta_vec0(conds_single_rep_merged.is_cued(noncatch_trials_idx)==1,1) = shuffle_concat(repelem(params.stim.dot.delta_from_ref, (n_unique_cases/2/n_deltas)),1); % left cued
@@ -685,7 +774,7 @@ if nr_reps > 0
                         delta_vec0(~(conds_single_rep_merged.is_cued(noncatch_trials_idx)==2),2) = shuffle_concat(repelem(params.stim.dot.delta_from_ref, (n_unique_cases/2/n_deltas)),1); % right uncued
                         
                         % calculate absolute angle of stim 2 (test stim)
-                        orient_dir2   = conds_single_rep_merged.orient_dir + delta_vec0;
+                        orient_dir2(noncatch_trials_idx,:)   = conds_single_rep_merged.orient_dir(noncatch_trials_idx,:) + delta_vec0;
                         
                         % Ensure that absolute angles of left and right test
                         % stimuli don't overlap (here we use a threshold of
@@ -697,7 +786,7 @@ if nr_reps > 0
                         end
                     end
                     
-                    delta_vec(noncatch_trials_idx,:) = delta_vec0;
+                    delta_vec(noncatch_trials_idx,:) = delta_vec0; 
                     
                     % find unique WM test im nr
                     idx_wm      = reshape(params.stim.dot.unique_im_nrs_wm_test,4,[]);
@@ -706,7 +795,7 @@ if nr_reps > 0
                     assert(isequal(length(idx_l),length(idx_r)))
 
                     stim2_im_nr = NaN(size(conds_single_rep_merged,1),2);
-                    [~,shuffle_delta] = ismember(delta_vec0,params.stim.dot.delta_from_ref);
+                    [~,shuffle_delta] = ismember(delta_vec0,params.stim.dot.delta_from_ref); clear delta_vec0;
                     non_nan_trials = find(noncatch_trials_idx);
                     clear tmp;
                     for kk = 1:length(idx_l)
@@ -720,7 +809,7 @@ if nr_reps > 0
                     conds_single_rep_merged.stim2_delta       = delta_vec;
                     conds_single_rep_merged.stim2_im_nr       = stim2_im_nr;
                     conds_single_rep_merged.stim2_orient_dir  = orient_dir2;
-                    conds_single_rep_merged.is_lure = false(size(conds_single_rep_merged,1),2); % should be boolean
+                    conds_single_rep_merged.is_lure           = NaN(size(conds_single_rep_merged,1),2); 
                 
 
                 % Add IMG text prompt and quiz dots
@@ -740,18 +829,59 @@ if nr_reps > 0
                     idx_img   = reshape(params.stim.dot.unique_im_nrs_img_test,length(params.stim.dot.imagery_quiz_images),[]); % 10 yes + 10 no overlap test images per unique image
                     idx_img_yes = idx_img(params.stim.dot.imagery_quiz_images==1,:);
                     idx_img_no  = idx_img(params.stim.dot.imagery_quiz_images==2,:);
-                    tmp = NaN(size(delta_vec(noncatch_trials_idx,:)));
-                    for ll = unique(idx_l)'
-                        tmp( (delta_vec(noncatch_trials_idx,1)==1 & idx_l==ll),1) = idx_img_no(randi(size(idx_img_no,1),[sum(delta_vec(noncatch_trials_idx,1)==1 & idx_l==ll),1]),ll);
-                        tmp( (delta_vec(noncatch_trials_idx,1)==2 & idx_l==ll),1) = idx_img_yes(randi(size(idx_img_yes,1),[sum(delta_vec(noncatch_trials_idx,1)==2 & idx_l==ll),1]),ll);
+                    
+                   tmp = NaN(size(delta_vec(noncatch_trials_idx,:))); % without catch trials
+                    yes_trial_idx_l = delta_vec(noncatch_trials_idx,1)==1; % Quiz dots overlap (1=yes) or not (2=no) left
+                    no_trial_idx_l  = delta_vec(noncatch_trials_idx,1)==2; % Quiz dots overlap (1=yes) or not (2=no) left
+                    yes_trial_idx_r = delta_vec(noncatch_trials_idx,2)==1; % Quiz dots overlap (1=yes) or not (2=no) right 
+                    no_trial_idx_r  = delta_vec(noncatch_trials_idx,2)==2; % Quiz dots overlap (1=yes) or not (2=no) right
+                    assert(isequal(size(idx_img_yes),size(idx_img_no)));
+                    nr_of_img_test_im = size(idx_img_no,1);
+                    randomly_selected_yes_test_images_l  = randsample(nr_of_img_test_im,sum(yes_trial_idx_l), false); % sample WITHOUT replacement
+                    randomly_selected_no_test_images_l   = randsample(nr_of_img_test_im,sum(no_trial_idx_l), false); % sample WITHOUT replacement
+                    randomly_selected_yes_test_images_r  = randsample(nr_of_img_test_im,sum(yes_trial_idx_r), false); % sample WITHOUT replacement
+                    randomly_selected_no_test_images_r  = randsample(nr_of_img_test_im,sum(no_trial_idx_r), false); % sample WITHOUT replacement
+                    
+                    yes_counter = 1; no_counter = 1;
+                    for ll = 1:length(idx_l) % loop over unique images on the left
+                        if yes_trial_idx_l(ll)
+                            tmp(ll,1) = idx_img_yes(randomly_selected_yes_test_images_l(yes_counter),idx_l(ll));
+                            yes_counter = yes_counter+1;
+                        elseif no_trial_idx_l(ll)
+                            tmp(ll,1) = idx_img_no(randomly_selected_no_test_images_l(no_counter),idx_l(ll));
+                            no_counter = no_counter+1;
+                        else
+                            error('[%s]: Imagery test image must be "yes" or "no".',mfilename);
+                        end
                     end
-                    for ll = unique(idx_r)'
-                        tmp( (delta_vec(noncatch_trials_idx,2)==1 & idx_r==ll),2) = idx_img_no(randi(size(idx_img_no,1),[sum(delta_vec(noncatch_trials_idx,2)==1 & idx_r==ll),1]),ll);
-                        tmp( (delta_vec(noncatch_trials_idx,2)==2 & idx_r==ll),2) = idx_img_yes(randi(size(idx_img_yes,1),[sum(delta_vec(noncatch_trials_idx,2)==2 & idx_r==ll),1]),ll);
+                    
+                    yes_counter = 1; no_counter = 1;
+                    for ll = 1:length(idx_r) % loop over unique images on the right
+                        if yes_trial_idx_r(ll)
+                            tmp(ll,2) = idx_img_yes(randomly_selected_yes_test_images_r(yes_counter),idx_r(ll));
+                            yes_counter = yes_counter+1;
+                        elseif no_trial_idx_r(ll)
+                            tmp(ll,2) = idx_img_no(randomly_selected_no_test_images_r(no_counter),idx_r(ll));
+                            no_counter = no_counter+1;
+                        else
+                            error('[%s]: Imagery test image must be "yes" or "no".',mfilename);
+                        end
                     end
+                    assert(length(unique(tmp(:)))==length(tmp(:)))
+                    assert(all(ismember(tmp(delta_vec(noncatch_trials_idx)==1),idx_img_yes))); % Quiz dots overlap (1=yes) or not (2=no)
+                    assert(all(ismember(tmp(delta_vec(noncatch_trials_idx)==2),idx_img_no))); % Quiz dots overlap (1=yes) or not (2=no)
 
-                    assert(all(ismember(tmp(delta_vec(noncatch_trials_idx,:)==2),idx_img_yes)));
-                    assert(all(ismember(tmp(delta_vec(noncatch_trials_idx,:)==1),idx_img_no)));
+%                     for ll = unique(idx_l)'
+%                         tmp( (delta_vec(noncatch_trials_idx,1)==1 & idx_l==ll),1) = idx_img_no(randi(size(idx_img_no,1),[sum(delta_vec(noncatch_trials_idx,1)==1 & idx_l==ll),1]),ll);
+%                         tmp( (delta_vec(noncatch_trials_idx,1)==2 & idx_l==ll),1) = idx_img_yes(randi(size(idx_img_yes,1),[sum(delta_vec(noncatch_trials_idx,1)==2 & idx_l==ll),1]),ll);
+%                     end
+%                     for ll = unique(idx_r)'
+%                         tmp( (delta_vec(noncatch_trials_idx,2)==1 & idx_r==ll),2) = idx_img_no(randi(size(idx_img_no,1),[sum(delta_vec(noncatch_trials_idx,2)==1 & idx_r==ll),1]),ll);
+%                         tmp( (delta_vec(noncatch_trials_idx,2)==2 & idx_r==ll),2) = idx_img_yes(randi(size(idx_img_yes,1),[sum(delta_vec(noncatch_trials_idx,2)==2 & idx_r==ll),1]),ll);
+%                     end
+% 
+%                     assert(all(ismember(tmp(delta_vec(noncatch_trials_idx,:)==2),idx_img_yes)));
+%                     assert(all(ismember(tmp(delta_vec(noncatch_trials_idx,:)==1),idx_img_no)));
                     
                     stim2_im_nr = NaN(size(conds_single_rep_merged.orient_dir,1),2);
                     stim2_im_nr(noncatch_trials_idx,:) = tmp;
@@ -759,19 +889,19 @@ if nr_reps > 0
                     conds_single_rep_merged.stim2_delta       = delta_vec;
                     conds_single_rep_merged.stim2_im_nr       = stim2_im_nr;
                     conds_single_rep_merged.stim2_orient_dir  = NaN(size(conds_single_rep_merged,1),2);
-                    conds_single_rep_merged.is_lure = false(size(conds_single_rep_merged,1),2); % should be boolean
+                    conds_single_rep_merged.is_lure           = NaN(size(conds_single_rep_merged,1),2); 
                     
                 % Add ltm pair.
                 elseif strcmp(taskClass{:},'ltm')
                     conds_single_rep_merged.stim2_im_nr       = NaN(size(conds_single_rep_merged,1),2);
                     conds_single_rep_merged.stim2_orient_dir  = NaN(size(conds_single_rep_merged,1),2);
                     conds_single_rep_merged.stim2_delta       = NaN(size(conds_single_rep_merged,1),2);
-                    conds_single_rep_merged.is_lure = false(size(conds_single_rep_merged,1),2); % should be boolean
+                    conds_single_rep_merged.is_lure           = NaN(size(conds_single_rep_merged,1),2); 
                 else
                     conds_single_rep_merged.stim2_im_nr       = NaN(size(conds_single_rep_merged,1),2);
                     conds_single_rep_merged.stim2_orient_dir  = NaN(size(conds_single_rep_merged,1),2);
                     conds_single_rep_merged.stim2_delta       = NaN(size(conds_single_rep_merged,1),2);
-                    conds_single_rep_merged.is_lure = false(size(conds_single_rep_merged,1),2); % should be boolean
+                    conds_single_rep_merged.is_lure           = NaN(size(conds_single_rep_merged,1),2);
                 end
 
                 % Keep track of repeat
@@ -879,11 +1009,11 @@ if nr_reps > 0
                     conds_shuffle0.is_cued = cue_vec;
 
                     % Add general catch trial vector (no stim)
-                    conds_shuffle0.is_catch = false(size(conds_shuffle0,1),1);
+                    conds_shuffle0.is_catch = zeros(size(conds_shuffle0,1),1);
                     
                     % Preallocate space for is_objectcatch trial vector
                     % (randomly chosen non-core rotation, only for OBJ-PC)
-                    conds_shuffle0.is_objectcatch = false(size(conds_shuffle0,1),1);
+                    conds_shuffle0.is_objectcatch = NaN(size(conds_shuffle0,1),1);
 
                     % Do some checks:
                     assert(isequal(length(conds_shuffle0.unique_im_nr),n_unique_cases)); % Check unique image nr
@@ -949,15 +1079,15 @@ if nr_reps > 0
                     % create shuffled delta vector
                     n_deltas            = length(params.stim.obj.delta_from_ref);
                     noncatch_trials_idx = ~isnan(conds_single_rep_merged.orient_dir(:,1));
+                    facing_dir2         = NaN(size(conds_single_rep_merged.orient_dir));
+                    delta_vec           = NaN(size(conds_single_rep_merged.orient_dir));
                     delta_vec0(conds_single_rep_merged.is_cued(noncatch_trials_idx)==1,1) = shuffle_concat(repelem(params.stim.obj.delta_from_ref, (n_unique_cases/2/n_deltas)),1); % left cued
                     delta_vec0(~(conds_single_rep_merged.is_cued(noncatch_trials_idx)==1),1) = shuffle_concat(repelem(params.stim.obj.delta_from_ref, (n_unique_cases/2/n_deltas)),1); % left uncued
                     delta_vec0(conds_single_rep_merged.is_cued(noncatch_trials_idx)==2,2) = shuffle_concat(repelem(params.stim.obj.delta_from_ref, (n_unique_cases/2/n_deltas)),1); % right cued
                     delta_vec0(~(conds_single_rep_merged.is_cued(noncatch_trials_idx)==2),2) = shuffle_concat(repelem(params.stim.obj.delta_from_ref, (n_unique_cases/2/n_deltas)),1); % right uncued
                     
-                    facing_dir2   = conds_single_rep_merged.orient_dir(noncatch_trials_idx,:) + delta_vec0;
-                   
-                    delta_vec = NaN(size(conds_single_rep_merged.orient_dir));
-                    delta_vec(noncatch_trials_idx,:) = delta_vec0; clear delta_vec0;
+                    facing_dir2(noncatch_trials_idx,:) = conds_single_rep_merged.orient_dir(noncatch_trials_idx,:) + delta_vec0;
+                    delta_vec(noncatch_trials_idx,:)   = delta_vec0; 
                     
                     % find unique WM test im nr
                     idx_wm = reshape(params.stim.obj.unique_im_nrs_wm_test,4,[]);
@@ -966,7 +1096,7 @@ if nr_reps > 0
                     assert(isequal(length(idx_l),length(idx_r)))
                     
                     stim2_im_nr = NaN(size(conds_single_rep_merged,1),2);
-                    [~,shuffle_delta] = ismember(delta_vec,params.stim.obj.delta_from_ref);
+                    [~,shuffle_delta] = ismember(delta_vec0,params.stim.obj.delta_from_ref); clear delta_vec0;
                     non_nan_trials = find(noncatch_trials_idx);
                     clear tmp;
                     for kk = 1:length(idx_l)
@@ -978,7 +1108,7 @@ if nr_reps > 0
                     conds_single_rep_merged.stim2_delta      = delta_vec;
                     conds_single_rep_merged.stim2_im_nr      = stim2_im_nr; 
                     conds_single_rep_merged.stim2_orient_dir = facing_dir2; 
-                    conds_single_rep_merged.is_lure          = false(size(conds_single_rep_merged,1),2); % should be boolean
+                    conds_single_rep_merged.is_lure          = NaN(size(conds_single_rep_merged,1),2);
                 
 
                 % Add IMG text prompt and quiz dots
@@ -996,19 +1126,59 @@ if nr_reps > 0
                     [~,idx_l] = ismember(conds_single_rep_merged.stim_nr_left(noncatch_trials_idx),params.stim.obj.unique_im_nrs_specialcore);
                     [~,idx_r] = ismember(conds_single_rep_merged.stim_nr_right(noncatch_trials_idx),params.stim.obj.unique_im_nrs_specialcore);
                     idx_img   = reshape(params.stim.obj.unique_im_nrs_img_test,length(params.stim.obj.imagery_quiz_images),[]); % 10 yes + 10 no overlap test images per unique image
-                    idx_img_yes = idx_img(params.stim.obj.imagery_quiz_images==1,:);
-                    idx_img_no  = idx_img(params.stim.obj.imagery_quiz_images==2,:);
-                    tmp = NaN(size(delta_vec(noncatch_trials_idx,:)));
-                    for ll = unique(idx_l)'
-                        tmp( (delta_vec(noncatch_trials_idx,1)==1 & idx_l==ll),1) = idx_img_no(randi(size(idx_img_no,1),[sum(delta_vec(noncatch_trials_idx,1)==1 & idx_l==ll),1]),ll);
-                        tmp( (delta_vec(noncatch_trials_idx,1)==2 & idx_l==ll),1) = idx_img_yes(randi(size(idx_img_yes,1),[sum(delta_vec(noncatch_trials_idx,1)==2 & idx_l==ll),1]),ll);
+                    idx_img_yes = idx_img(params.stim.obj.imagery_quiz_images==1,:); % 1 = yes
+                    idx_img_no  = idx_img(params.stim.obj.imagery_quiz_images==2,:); % 2 = no
+                    
+                   tmp = NaN(size(delta_vec(noncatch_trials_idx,:))); % without catch trials
+                    yes_trial_idx_l = delta_vec(noncatch_trials_idx,1)==1; % Quiz dots overlap (1=yes) or not (2=no) left
+                    no_trial_idx_l  = delta_vec(noncatch_trials_idx,1)==2; % Quiz dots overlap (1=yes) or not (2=no) left
+                    yes_trial_idx_r = delta_vec(noncatch_trials_idx,2)==1; % Quiz dots overlap (1=yes) or not (2=no) right 
+                    no_trial_idx_r  = delta_vec(noncatch_trials_idx,2)==2; % Quiz dots overlap (1=yes) or not (2=no) right
+                    assert(isequal(size(idx_img_yes),size(idx_img_no)));
+                    nr_of_img_test_im = size(idx_img_no,1);
+                    randomly_selected_yes_test_images_l  = randsample(nr_of_img_test_im,sum(yes_trial_idx_l), false); % sample WITHOUT replacement
+                    randomly_selected_no_test_images_l   = randsample(nr_of_img_test_im,sum(no_trial_idx_l), false); % sample WITHOUT replacement
+                    randomly_selected_yes_test_images_r  = randsample(nr_of_img_test_im,sum(yes_trial_idx_r), false); % sample WITHOUT replacement
+                    randomly_selected_no_test_images_r  = randsample(nr_of_img_test_im,sum(no_trial_idx_r), false); % sample WITHOUT replacement
+                    
+                    yes_counter = 1; no_counter = 1;
+                    for ll = 1:length(idx_l) % loop over unique images on the left
+                        if yes_trial_idx_l(ll)
+                            tmp(ll,1) = idx_img_yes(randomly_selected_yes_test_images_l(yes_counter),idx_l(ll));
+                            yes_counter = yes_counter+1;
+                        elseif no_trial_idx_l(ll)
+                            tmp(ll,1) = idx_img_no(randomly_selected_no_test_images_l(no_counter),idx_l(ll));
+                            no_counter = no_counter+1;
+                        else
+                            error('[%s]: Imagery test image must be "yes" or "no".',mfilename);
+                        end
                     end
-                    for ll = unique(idx_r)'
-                        tmp( (delta_vec(noncatch_trials_idx,2)==1 & idx_r==ll),2) = idx_img_no(randi(size(idx_img_no,1),[sum(delta_vec(noncatch_trials_idx,2)==1 & idx_r==ll),1]),ll);
-                        tmp( (delta_vec(noncatch_trials_idx,2)==2 & idx_r==ll),2) = idx_img_yes(randi(size(idx_img_yes,1),[sum(delta_vec(noncatch_trials_idx,2)==2 & idx_r==ll),1]),ll);
+                    
+                    yes_counter = 1; no_counter = 1;
+                    for ll = 1:length(idx_r) % loop over unique images on the right
+                        if yes_trial_idx_r(ll)
+                            tmp(ll,2) = idx_img_yes(randomly_selected_yes_test_images_r(yes_counter),idx_r(ll));
+                            yes_counter = yes_counter+1;
+                        elseif no_trial_idx_r(ll)
+                            tmp(ll,2) = idx_img_no(randomly_selected_no_test_images_r(no_counter),idx_r(ll));
+                            no_counter = no_counter+1;
+                        else
+                            error('[%s]: Imagery test image must be "yes" or "no".',mfilename);
+                        end
                     end
-                    assert(all(ismember(tmp(delta_vec(noncatch_trials_idx,:)==2),idx_img_yes)));
-                    assert(all(ismember(tmp(delta_vec(noncatch_trials_idx,:)==1),idx_img_no)));
+                    assert(length(unique(tmp(:)))==length(tmp(:)))
+                    assert(all(ismember(tmp(delta_vec(noncatch_trials_idx)==1),idx_img_yes))); % Quiz dots overlap (1=yes) or not (2=no)
+                    assert(all(ismember(tmp(delta_vec(noncatch_trials_idx)==2),idx_img_no))); % Quiz dots overlap (1=yes) or not (2=no)
+%                     for ll = unique(idx_l)'
+%                         tmp( (delta_vec(noncatch_trials_idx,1)==1 & idx_l==ll),1) = idx_img_no(randi(size(idx_img_no,1),[sum(delta_vec(noncatch_trials_idx,1)==1 & idx_l==ll),1]),ll);
+%                         tmp( (delta_vec(noncatch_trials_idx,1)==2 & idx_l==ll),1) = idx_img_yes(randi(size(idx_img_yes,1),[sum(delta_vec(noncatch_trials_idx,1)==2 & idx_l==ll),1]),ll);
+%                     end
+%                     for ll = unique(idx_r)'
+%                         tmp( (delta_vec(noncatch_trials_idx,2)==1 & idx_r==ll),2) = idx_img_no(randi(size(idx_img_no,1),[sum(delta_vec(noncatch_trials_idx,2)==1 & idx_r==ll),1]),ll);
+%                         tmp( (delta_vec(noncatch_trials_idx,2)==2 & idx_r==ll),2) = idx_img_yes(randi(size(idx_img_yes,1),[sum(delta_vec(noncatch_trials_idx,2)==2 & idx_r==ll),1]),ll);
+%                     end
+%                     assert(all(ismember(tmp(delta_vec(noncatch_trials_idx,:)==2),idx_img_yes)));
+%                     assert(all(ismember(tmp(delta_vec(noncatch_trials_idx,:)==1),idx_img_no)));
 
                     stim2_im_nr = NaN(size(conds_single_rep_merged.orient_dir,1),2);
                     stim2_im_nr(noncatch_trials_idx,:) = tmp;
@@ -1016,19 +1186,19 @@ if nr_reps > 0
                     conds_single_rep_merged.stim2_delta    = delta_vec;
                     conds_single_rep_merged.stim2_im_nr    = stim2_im_nr;
                     conds_single_rep_merged.stim2_orient_dir  = NaN(size(conds_single_rep_merged,1),2);
-                    conds_single_rep_merged.is_lure          = false(size(conds_single_rep_merged,1),2); % should be boolean
+                    conds_single_rep_merged.is_lure           = NaN(size(conds_single_rep_merged,1),2); 
                 
                     % Add ltm pair.
                 elseif strcmp(taskClass{:},'ltm')
                     conds_single_rep_merged.stim2_im_nr      = NaN(size(conds_single_rep_merged,1),2);
                     conds_single_rep_merged.stim2_delta      = NaN(size(conds_single_rep_merged,1),2);
                     conds_single_rep_merged.stim2_orient_dir = NaN(size(conds_single_rep_merged,1),2);
-                    conds_single_rep_merged.is_lure          = false(size(conds_single_rep_merged,1),2); % should be boolean
+                    conds_single_rep_merged.is_lure          = NaN(size(conds_single_rep_merged,1),2); 
                 else
                     conds_single_rep_merged.stim2_im_nr      = NaN(size(conds_single_rep_merged,1),2);
                     conds_single_rep_merged.stim2_delta      = NaN(size(conds_single_rep_merged,1),2);
                     conds_single_rep_merged.stim2_orient_dir = NaN(size(conds_single_rep_merged,1),2);
-                    conds_single_rep_merged.is_lure          = false(size(conds_single_rep_merged,1),2); % should be boolean
+                    conds_single_rep_merged.is_lure          = NaN(size(conds_single_rep_merged,1),2); 
                 end
 
                 % Keep track of repeat
@@ -1106,11 +1276,11 @@ if nr_reps > 0
 
 
                 % Add catch trial vector
-                conds_master_single_rep.is_catch = false(size(conds_master_single_rep,1),1);
+                conds_master_single_rep.is_catch = zeros(size(conds_master_single_rep,1),1);
                 
                 % Preallocate space for is_objectcatch trial vector
                 % (randomly chosen non-core rotation, only for OBJ-PC)
-                conds_master_single_rep.is_objectcatch = false(size(conds_master_single_rep,1),1);
+                conds_master_single_rep.is_objectcatch = NaN(size(conds_master_single_rep,1),1);
                 
                 if catch_trial_flag
                     % Check if we want to skip a catch trial
@@ -1172,7 +1342,7 @@ if nr_reps > 0
                 % add WM change
                 if strcmp(taskClass{:},'wm')
                     n_changes            = length(params.stim.ns.change_im);
-                    noncatch_trials_idx  = ~conds_master_single_rep2.is_catch(:,1);
+                    noncatch_trials_idx  = conds_master_single_rep2.is_catch(:,1)==0;
 
                     while 1
                         shuffle_delta    = shuffle_concat(params.stim.ns.change_im, ceil(size(conds_master_single_rep2.unique_trial_nr,1)/n_changes))';
@@ -1197,13 +1367,13 @@ if nr_reps > 0
                     conds_master_single_rep2.stim2_delta      = delta_vec;
                     conds_master_single_rep2.stim2_im_nr      = stim2_im_nr;
                     conds_master_single_rep2.stim2_orient_dir = NaN(size(conds_master_single_rep2.orient_dir,1),2);
-                    conds_master_single_rep2.is_lure          = false(size(conds_master_single_rep2,1),2); % should be boolean
+                    conds_master_single_rep2.is_lure          = NaN(size(conds_master_single_rep2,1),2);
 
 
                 % take subset of IMG trials, add text prompt and quiz dots loc
                 elseif strcmp(taskClass{:},'img')
                     n_quiz_images       = length(unique(params.stim.ns.imagery_quiz_images));
-                    noncatch_trials_idx = ~(conds_master_single_rep2.is_catch);
+                    noncatch_trials_idx = conds_master_single_rep2.is_catch==0;
                     shuffle_delta       = shuffle_concat(1:n_quiz_images, 1+(size(conds_master_single_rep2(noncatch_trials_idx,:),1)/n_quiz_images))';
                     shuffle_delta       = shuffle_delta(noncatch_trials_idx);
                     % create yes/no overlap vector
@@ -1211,27 +1381,41 @@ if nr_reps > 0
                     delta_vec(noncatch_trials_idx,1) = shuffle_delta;
                     
                     % find unique IMG test im nr
-                    [~,idx_c] = ismember(conds_master_single_rep2.stim_nr_left(noncatch_trials_idx),params.stim.ns.unique_im_nrs_specialcore);
-                    idx_img   = reshape(params.stim.ns.unique_im_nrs_img_test,length(params.stim.ns.imagery_quiz_images),[]); % 10 yes + 10 no overlap test images per unique image
-                    idx_img_yes = idx_img(params.stim.ns.imagery_quiz_images==1,:);
-                    idx_img_no  = idx_img(params.stim.ns.imagery_quiz_images==2,:);
+                    [~,idx_c] = ismember(conds_master_single_rep2.stim_nr_left(noncatch_trials_idx),params.stim.ns.unique_im_nrs_specialcore); % central image only
+                    idx_img   = reshape(params.stim.ns.unique_im_nrs_img_test,length(params.stim.ns.imagery_quiz_images),[]); % 20x15 matrix: 10 yes + 10 no overlap test images for each of the 15 special core images
+                    idx_img_yes = idx_img(params.stim.ns.imagery_quiz_images==1,:); % Quiz dots overlap (1=yes) or not (2=no)
+                    idx_img_no  = idx_img(params.stim.ns.imagery_quiz_images==2,:); % Quiz dots overlap (1=yes) or not (2=no)
+                    assert(isequal(size(idx_img_yes),size(idx_img_no)))
                     
-                    non_nan_trials = find(noncatch_trials_idx);
-                    tmp = NaN(size(idx_c));
-                    for ll = unique(idx_c)'
-                        tmp( (delta_vec(noncatch_trials_idx,1)==1 & idx_c==non_nan_trials(ll)),1) = idx_img_no(randi(size(idx_img_no,1),[sum(delta_vec(noncatch_trials_idx,1)==1 & idx_c==non_nan_trials(ll)),1]),non_nan_trials(ll));
-                        tmp( (delta_vec(noncatch_trials_idx,1)==2 & idx_c==non_nan_trials(ll)),1) = idx_img_yes(randi(size(idx_img_yes,1),[sum(delta_vec(noncatch_trials_idx,1)==2 & idx_c==non_nan_trials(ll)),1]),non_nan_trials(ll));
+                    tmp = NaN(size(idx_c)); % without catch trials
+                    yes_trial_idx = delta_vec(noncatch_trials_idx,1)==1; % Quiz dots overlap (1=yes) or not (2=no) for central image 
+                    no_trial_idx  = delta_vec(noncatch_trials_idx,1)==2; % Quiz dots overlap (1=yes) or not (2=no) for central image 
+                    nr_of_img_test_im = size(idx_img_no,1);
+                    randomly_selected_yes_test_images = randsample(nr_of_img_test_im,sum(yes_trial_idx), false); % sample WITHOUT replacement
+                    randomly_selected_no_test_images  = randsample(nr_of_img_test_im,sum(no_trial_idx), false); % sample WITHOUT replacement
+                    yes_counter = 1; no_counter = 1;
+                    for ll = 1:length(idx_c) % loop over unique images
+                        if yes_trial_idx(ll)
+                            tmp(ll) = idx_img_yes(randomly_selected_yes_test_images(yes_counter),idx_c(ll));
+                            yes_counter = yes_counter+1;
+                        elseif no_trial_idx(ll)
+                            tmp(ll) = idx_img_no(randomly_selected_no_test_images(no_counter),idx_c(ll));
+                            no_counter = no_counter+1;
+                        else
+                            error('[%s]: Imagery test image must be "yes" or "no".',mfilename);
+                        end
                     end
-                    assert(all(ismember(tmp(delta_vec(noncatch_trials_idx)==2),idx_img_yes)));
-                    assert(all(ismember(tmp(delta_vec(noncatch_trials_idx)==1),idx_img_no)));
+                    assert(length(unique(tmp(:)))==length(tmp(:)))
+                    assert(all(ismember(tmp(delta_vec(noncatch_trials_idx)==1),idx_img_yes))); % Quiz dots overlap (1=yes) or not (2=no)
+                    assert(all(ismember(tmp(delta_vec(noncatch_trials_idx)==2),idx_img_no))); % Quiz dots overlap (1=yes) or not (2=no)
                     
                     stim2_im_nr = NaN(size(conds_master_single_rep2.stim_nr_left,1),2);
                     stim2_im_nr(noncatch_trials_idx,1) = tmp;
                     
-                    conds_master_single_rep2.stim2_delta    = delta_vec;
-                    conds_master_single_rep2.stim2_im_nr    = stim2_im_nr;
+                    conds_master_single_rep2.stim2_delta       = delta_vec;
+                    conds_master_single_rep2.stim2_im_nr       = stim2_im_nr;
                     conds_master_single_rep2.stim2_orient_dir  = NaN(size(conds_master_single_rep2,1),2);
-                    conds_master_single_rep2.is_lure          = false(size(conds_master_single_rep2,1),2); % should be boolean
+                    conds_master_single_rep2.is_lure           = NaN(size(conds_master_single_rep2,1),2); 
                                     
 
                 % Add ltm pair.
@@ -1239,12 +1423,12 @@ if nr_reps > 0
                     conds_master_single_rep2.stim2_im_nr      = NaN(size(conds_master_single_rep2,1),2);
                     conds_master_single_rep2.stim2_orient_dir = NaN(size(conds_master_single_rep2,1),2);
                     conds_master_single_rep2.stim2_delta      = NaN(size(conds_master_single_rep2,1),2);
-                    conds_master_single_rep2.is_lure          = false(size(conds_master_single_rep2,1),2); % should be boolean
+                    conds_master_single_rep2.is_lure          = NaN(size(conds_master_single_rep2,1),2); 
                 else
                     conds_master_single_rep2.stim2_im_nr   = NaN(size(conds_master_single_rep2,1),2);
                     conds_master_single_rep2.stim2_orient_dir = NaN(size(conds_master_single_rep2,1),2);
                     conds_master_single_rep2.stim2_delta      = NaN(size(conds_master_single_rep2,1),2);
-                    conds_master_single_rep2.is_lure          = false(size(conds_master_single_rep2,1),2); % should be boolean
+                    conds_master_single_rep2.is_lure          = NaN(size(conds_master_single_rep2,1),2); 
                 end
 
                 % Keep track of repeat
