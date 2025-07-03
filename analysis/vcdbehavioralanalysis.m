@@ -405,7 +405,7 @@ while 1
     break;
   end
   
-  % if we encounter 0 in block_nr, it's time to go to the next block
+  % if we encounter NaN in block_nr, it's time to go to the next block
   if isnan(a1.run_table.block_nr(ii))
     blockcnt = blockcnt + 1;
     trialcnt = 1;  % reset to 1
@@ -434,20 +434,32 @@ while 1
   % - the CD+ cued condition is special (since it has a contrast change) and distinct from CD cued condition
   % - the PC+ cued condition for objects is special (since it isn't the canonical rotation) and distinct from PC cued condition
   % - the catch trials (#) are special
-  cii = find( a1.run_table.block_nr == blockcnt & ...
-              a1.run_table.trial_nr == trialcnt & ...
-              a1.run_table.event_id == 94 );   % Note: always pull from stim1!
-  assert(length(cii)==1);
-  for ccnt=1:2  % we are expecting either 1 or 2 condition names/numbers (for NS, we get just one)
-    condition_name = a1.run_table.condition_name{cii,ccnt};  % e.g. 'GBR-0023-L-UNCUED-CD'
-    condition_nr = a1.run_table.condition_nr(cii,ccnt);      % e.g. 98
-    if ~isnan(condition_name)
-      acnii = find(ismember(acn,condition_name));  % the entry had better be in the big list
-      assert(length(acnii)==1,'the run table condition name was not found in the master list!');
-      if acnii~=condition_nr
-        warning('our determined condition index DOES NOT MATCH the condition_nr entry in run_table. did the code change recently?');
+
+  % if this is the FIX task, we need to process all of the trials in this block.
+  % this is because our behavioral analysis automatically deals with all the
+  % fixation pseudo-trials and finishes the block.
+  if a1.run_table.task_class(ii) == 1  % if FIX task
+    assert(trialcnt==1);               % assert that we are at the beginning
+    cii = find( a1.run_table.block_nr == blockcnt & ...  % Note that we try to find ALL trials in the block!
+                a1.run_table.event_id == 94 );   % Note: always pull from stim1!
+  else
+    cii = find( a1.run_table.block_nr == blockcnt & ...
+                a1.run_table.trial_nr == trialcnt & ...
+                a1.run_table.event_id == 94 );   % Note: always pull from stim1!
+    assert(length(cii)==1);
+  end
+  for p=1:length(cii)
+    for ccnt=1:2  % we are expecting either 1 or 2 condition names/numbers (for NS, we get just one)
+      condition_name = a1.run_table.condition_name{cii(p),ccnt};  % e.g. 'GBR-0023-L-UNCUED-CD'
+      condition_nr = a1.run_table.condition_nr(cii(p),ccnt);      % e.g. 98
+      if ~isnan(condition_name)
+        acnii = find(ismember(acn,condition_name));  % the entry had better be in the big list
+        assert(length(acnii)==1,'the run table condition name was not found in the master list!');
+        if acnii~=condition_nr
+          warning('our determined condition index DOES NOT MATCH the condition_nr entry in run_table. did the code change recently?');
+        end
+        results.conditioncount(acnii) = results.conditioncount(acnii) + 1;
       end
-      results.conditioncount(acnii) = results.conditioncount(acnii) + 1;
     end
   end
 
