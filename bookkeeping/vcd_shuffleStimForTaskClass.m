@@ -45,15 +45,15 @@ assert(isequal(nr_of_trials_per_block, choose(strcmp(task_class_name_to_shuffle,
 %% Get nr of cueing directions
 cued_stim_loc = unique(master_table.is_cued(strcmp(master_table.task_class_name,{task_class_name_to_shuffle})));
     
-% Get all the rows with SCC and the corresponsing stim classes
+% Get all the rows with corresponsing stim class name
 all_task_rows = strcmp(master_table.task_class_name,{task_class_name_to_shuffle});
 
 % get all indices for left and right stimuli, separate for
 % cued/uncued/ncued conditions
-for kk = 1:length(cued_stim_loc) % left, right, neutral
+for kk = 1:length(cued_stim_loc) % (1:left, 2:right, 3:neutral)
 
     % get task trials (filter out catch trials)
-    m0_idx          = ~master_table.is_catch & strcmp(master_table.task_class_name,{task_class_name_to_shuffle}) & master_table.is_cued == cued_stim_loc(kk);
+    m0_idx          = master_table.is_catch==0 & strcmp(master_table.task_class_name,{task_class_name_to_shuffle}) & master_table.is_cued == cued_stim_loc(kk);
     m0_sub          = find(m0_idx); % keep track of row nr
     
     if cued_stim_loc(kk) == 3 % scenes
@@ -97,9 +97,9 @@ for kk = 1:length(cued_stim_loc) % left, right, neutral
         end
         
         % record catch trials
-        if sum(master_table.is_catch) > 1
-            m0_center_catch  = master_table.stim_nr_left(master_table.is_catch & strcmp(master_table.task_class_name,{task_class_name_to_shuffle}) & master_table.is_cued == cued_stim_loc(kk));
-            sub_center_catch = find(master_table.is_catch & strcmp(master_table.task_class_name,{task_class_name_to_shuffle}) & master_table.is_cued == cued_stim_loc(kk));
+        if sum(master_table.is_catch==1) > 1
+            m0_center_catch  = master_table.stim_nr_left(master_table.is_catch==1 & strcmp(master_table.task_class_name,{task_class_name_to_shuffle}) & master_table.is_cued == cued_stim_loc(kk));
+            sub_center_catch = find(master_table.is_catch==1 & strcmp(master_table.task_class_name,{task_class_name_to_shuffle}) & master_table.is_cued == cued_stim_loc(kk));
         end
         
     else % gabor/rdk/dot/obj
@@ -112,8 +112,10 @@ for kk = 1:length(cued_stim_loc) % left, right, neutral
 %         n_catch_l       = length(m0_left_catch);
 %         n_catch_r       = length(m0_right_catch);
 %         
-        % shape into an 8 trials x m blocks matrix, such that the
-        % columns contain different stimulus classes
+        % try to shape nr of trials into an 8 trials x m blocks matrix, 
+        % such that the columns contain different stimulus classes. If we
+        % have a nr of trials that can't be divided by 8, we call them
+        % "leftovers" and string them along
         n_leftovers_l = mod(size(m0_left_img_nr,1),nr_of_trials_per_block);
         n_leftovers_r = mod(size(m0_right_img_nr,1),nr_of_trials_per_block);
         
@@ -132,7 +134,16 @@ for kk = 1:length(cued_stim_loc) % left, right, neutral
         % keep track of row nr 
         tmp_sub_rz            = reshape(m0_sub,[],nr_of_trials_per_block);
         
+        % set a limit to the number of trial shuffles to avoid infinite loop
+        fprintf('[%s]: Shuffle trials and try to get equally distributed nr of stimulus classes across trials\n',mfilename);
+        attempts = 0;
+        
         while 1
+            attempts = attempts+1;
+            
+            if attempts > 10000
+                error('[%s]: Can''t find a solution even though we tried more than 10,000 times! Aborting!', mfilename)
+            end
             % shuffle the order across columns such that gabors, rdks, dots, obj's get mixed
             shuffled_ind_left  = nr_of_trials_per_block*[0:(size(tmp_img_nr_left_rz,1)-1)]' ...
                 + reshape(shuffle_concat([1:nr_of_trials_per_block],size(tmp_img_nr_left_rz,1)),nr_of_trials_per_block,[])';
@@ -171,7 +182,7 @@ for kk = 1:length(cued_stim_loc) % left, right, neutral
             % check if stimclasses are balanced 
             [~,stimclss_idx] = ismember(master_table.stim_class_name(trial_order),params.exp.stimclassnames);
             chance_of_stimclass = histcounts(stimclss_idx)./sum(histcounts(stimclss_idx));
-            dt = max(1./chance_of_stimclass);
+            dt = ceil(max(1./chance_of_stimclass));
             n_start = 1:dt:size(trial_order,1);
             sample_ok = [];
             for nn = 1:length(n_start)
@@ -191,7 +202,6 @@ for kk = 1:length(cued_stim_loc) % left, right, neutral
             if sum(sample_ok) == length(n_start)
                 break;
             end
-            fprintf('[%s]: Reshuffle trials to get equally distributed nr of stimulus classes across trials\n',mfilename);
         end
 
         img_nr_shuffle_left(kk,:)  = tmp_img_nr_left2(:); % this will fail if we don't have equal nr of trials per stimloc/cueing status
@@ -210,9 +220,9 @@ for kk = 1:length(cued_stim_loc) % left, right, neutral
         end
 
         % record catch trials
-        if sum(master_table.is_catch) > 1
-            img_nr_left_catch(kk,:)  = master_table.stim_nr_left(master_table.is_catch & strcmp(master_table.task_class_name,{task_class_name_to_shuffle}) & master_table.is_cued == cued_stim_loc(kk));
-            img_nr_right_catch(kk,:) = master_table.stim_nr_right(master_table.is_catch & strcmp(master_table.task_class_name,{task_class_name_to_shuffle}) & master_table.is_cued == cued_stim_loc(kk));
+        if sum(master_table.is_catch==1) > 1
+            img_nr_left_catch(kk,:)  = master_table.stim_nr_left(master_table.is_catch==1 & strcmp(master_table.task_class_name,{task_class_name_to_shuffle}) & master_table.is_cued == cued_stim_loc(kk));
+            img_nr_right_catch(kk,:) = master_table.stim_nr_right(master_table.is_catch==1 & strcmp(master_table.task_class_name,{task_class_name_to_shuffle}) & master_table.is_cued == cued_stim_loc(kk));
             sub_shuffle_left_catch(kk,:)   = find(img_nr_left_catch(kk,:));
             sub_shuffle_right_catch(kk,:)  = find(img_nr_right_catch(kk,:));
         end
@@ -292,7 +302,7 @@ if exist('sub_shuffle_center','var')
         combined_trial_shuffleABC(insert_classics_here,:) = combined_trial_shuffleAB3;
     end
     % shuffle catch trials
-    if sum(master_table.is_catch) > 1
+    if sum(master_table.is_catch==1) > 1
         shuffle_vec_catch = shuffle_concat(sub_center_catch(1,:),1);
         catch_table       = catch_table.stim_class_name(shuffle_vec_catch(:,1),1);
     end
@@ -300,7 +310,7 @@ else
     combined_trial_shuffleABC = combined_trial_shuffleAB3;
     
     % Shuffle catch trials
-    if sum(master_table.is_catch) > 1
+    if sum(master_table.is_catch==1) > 1
         shuffle_vec_catch = [shuffle_concat(sub_shuffle_left_catch(1,:),1); shuffle_concat(sub_shuffle_right_catch(2,:),1)];
         catch_table1 = master_table(shuffle_vec_catch(:,1),1);
         catch_table2 = master_table(shuffle_vec_catch(:,2),2);
@@ -381,7 +391,7 @@ end
 % copy master table without current task rows
 master_table2     = master_table(~all_task_rows, :);
 
-if sum(master_table.is_catch) > 1
+if sum(master_table.is_catch==1) > 1
     % Add catch trials back into shuffled_master_table
     shuffled_master_table2 = cat(1,shuffled_master_table,catch_table);
     shuffle_w_catch = randperm((size(shuffled_master_table,1)+1):(size(shuffled_master_table,1)+1)+length(shuffled_master_table2),length(catch_table));
