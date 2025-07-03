@@ -73,16 +73,12 @@ clear rename_me ff p0
 % get session environment params
 [~,session_types,~,~,~,~, ~, nr_session_types ] = vcd_getSessionEnvironmentParams(params, env_type);
         
-
 % Preallocate space for generated subject run frames and updated time table master
 session_nrs  = unique(time_table_master.session_nr);
 run_nrs      = unique(time_table_master.run_nr);
 
 % time frames at initial contrast level (next one will have dip)
 pre_onset_time_frames = sum(params.stim.cd.t_cmodfun==1); 
-
-all_run_frames     = [];
-time_table_master2 = [];
 
 % loop over sessions
 for ses = 1:length(session_nrs)
@@ -375,8 +371,17 @@ for ses = 1:length(session_nrs)
                     assert(sum(this_run.nr_fix_changes,'omitnan') >= expected_nr_fix_changes_range(1) && sum(this_run.nr_fix_changes,'omitnan') <=expected_nr_fix_changes_range(2))
                 end
                 
+                % create empty table with the same columns if "all_run_frames" doesn't exist yet
+                if ~exist('all_run_frames','var')
+                    all_run_frames = run_frames([],:); 
+                end
                 % Add this run's run_frames to larger all_run_frames
                 all_run_frames = cat(1,all_run_frames,run_frames);
+                
+                 % create empty table with the same columns if "time_table_master2" doesn't exist yet
+                if ~exist('time_table_master2','var')
+                    time_table_master2 = this_run([],:); % create empty table with the same columns)
+                end
                 % Add this_run's time_table to larger time_table_master
                 time_table_master2 = cat(1,time_table_master2,this_run);
                 
