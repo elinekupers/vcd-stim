@@ -198,9 +198,9 @@ trial_ID_double_epoch = [params.exp.block.spatial_cue_ID, ...
     params.exp.block.stim_epoch2_ID, ...
     params.exp.block.response_ID];
 
-% Preallocate space
-time_table_master = [];
-tbl_nrows         = 1000; % pick an arbitrary large number of rows (otherwise table uses 0 for missing values and we don't want that)
+% pick an arbitrary large number of rows for new table
+% (otherwise table uses 0 for missing values and we don't want that)
+tbl_nrows = 1000; 
 
 % Loop over sessions
 for ses = 1:size(all_sessions,3)
@@ -213,9 +213,8 @@ for ses = 1:size(all_sessions,3)
             
             fprintf('\nSESSION %03d %s..\n',ses,choose(st==1,'A','B'))
             
-            % preallocate subject time table
-            run_time_table = [];
-            
+            clear run_time_table
+
             % check if the number of runs in table matches with how many runs we expect..
             curr_run_nrs = unique(condition_master.run_nr(~isnan(condition_master.run_nr) & condition_master.session_nr==ses & condition_master.session_type==st));
             assert(runs_per_session(ses,st)==length(curr_run_nrs)); 
@@ -288,7 +287,7 @@ for ses = 1:size(all_sessions,3)
                     time_table.session_type(table_idx)     = st;
                     time_table.run_nr(table_idx)           = rr;
                     time_table.block_nr(table_idx)         = 999;
-                    time_table.crossing_nr(table_idx)      = 999;
+                    time_table.crossing_nr(table_idx)      = NaN;
                     time_table.stim_class(table_idx)       = NaN;
                     time_table.task_class(table_idx)       = NaN;
                     time_table.repeat_nr(table_idx)        = NaN;
@@ -325,7 +324,7 @@ for ses = 1:size(all_sessions,3)
                         time_table.global_block_nr(table_idx)   = NaN;
                         time_table.correct_response(table_idx)  = NaN;
                         time_table.is_objectcatch(table_idx)    = NaN;
-                        time_table.crossing_nr(table_idx)       = 999;
+                        time_table.crossing_nr(table_idx)       = NaN;
                         time_table.trial_nr(table_idx)          = NaN;
                         time_table.stim_class(table_idx)        = NaN;
                         time_table.task_class(table_idx)        = NaN;
@@ -344,7 +343,7 @@ for ses = 1:size(all_sessions,3)
                     time_table.session_nr(table_idx)            = ses;
                     time_table.session_type(table_idx)          = st;
                     time_table.run_nr(table_idx)                = rr;
-                    time_table.crossing_nr(table_idx)           = 999;
+                    time_table.crossing_nr(table_idx)           = NaN;
                     time_table.global_run_nr(table_idx)         = t_trial.global_run_nr(1);
                     time_table.global_trial_nr(table_idx)       = NaN; 
                     time_table.global_block_nr(table_idx)       = NaN;
@@ -370,7 +369,7 @@ for ses = 1:size(all_sessions,3)
                     time_table.session_nr(table_idx)            = ses;
                     time_table.session_type(table_idx)          = st;
                     time_table.run_nr(table_idx)                = rr;
-                    time_table.crossing_nr(table_idx)           = 999;
+                    time_table.crossing_nr(table_idx)           = NaN;
                     time_table.global_run_nr(table_idx)         = t_trial.global_run_nr(1);
                     time_table.global_trial_nr(table_idx)       = NaN;
                     time_table.global_block_nr(table_idx)       = NaN;
@@ -397,7 +396,7 @@ for ses = 1:size(all_sessions,3)
                     time_table.session_nr(table_idx)            = ses;
                     time_table.session_type(table_idx)          = st;
                     time_table.run_nr(table_idx)                = rr;
-                    time_table.crossing_nr(table_idx)           = 999;
+                    time_table.crossing_nr(table_idx)           = NaN;
                     time_table.global_run_nr(table_idx)         = t_trial.global_run_nr(1);
                     time_table.global_trial_nr(table_idx)       = NaN; 
                     time_table.global_block_nr(table_idx)       = NaN;
@@ -424,7 +423,7 @@ for ses = 1:size(all_sessions,3)
                     time_table.session_nr(table_idx)            = ses;
                     time_table.session_type(table_idx)          = st;
                     time_table.run_nr(table_idx)                = rr;
-                    time_table.crossing_nr(table_idx)           = 999;
+                    time_table.crossing_nr(table_idx)           = NaN;
                     time_table.global_run_nr(table_idx)         = t_trial.global_run_nr(1);
                     time_table.global_trial_nr(table_idx)       = NaN;
                     time_table.global_block_nr(table_idx)       = NaN;
@@ -787,16 +786,16 @@ for ses = 1:size(all_sessions,3)
                             time_table.session_nr(table_idx)       = ses;
                             time_table.session_type(table_idx)     = st;
                             time_table.run_nr(table_idx)           = rr;
-                            time_table.block_nr(table_idx)         = NaN;
+                            time_table.block_nr(table_idx)         = NaN; % insert NaN for block nr
                             time_table.trial_nr(table_idx)         = NaN;
-                            time_table.crossing_nr(table_idx)      = NaN;
+                            time_table.crossing_nr(table_idx)      = NaN; % insert NaN for crossing nr
                             time_table.stim_class(table_idx)       = NaN;
                             time_table.task_class(table_idx)       = NaN;
                             time_table.is_cued(table_idx)          = NaN;
                             time_table.correct_response(table_idx) = NaN;
                             time_table.repeat_nr(table_idx)        = NaN;
                             time_table.global_run_nr(table_idx)    = curr_global_run_nr;
-                            time_table.global_block_nr(table_idx)  = NaN;
+                            time_table.global_block_nr(table_idx)  = NaN; % insert NaN for global block nr
                             time_table.global_trial_nr(table_idx)  = NaN;
                             time_table.is_objectcatch(table_idx)   = NaN;
                             
@@ -837,7 +836,7 @@ for ses = 1:size(all_sessions,3)
                             time_table.run_nr(table_idx)            = rr;
                             time_table.block_nr(table_idx)          = curr_block;
                             time_table.trial_nr(table_idx)          = NaN;
-                            time_table.crossing_nr(table_idx)       = NaN;
+                            time_table.crossing_nr(table_idx)       = NaN; % insert NaN for crossing nr
                             time_table.stim_class(table_idx)        = NaN;
                             time_table.task_class(table_idx)        = NaN;
                             time_table.is_cued(table_idx)           = NaN;
@@ -977,6 +976,9 @@ for ses = 1:size(all_sessions,3)
                     time_table2.is_cued(time_table2.is_cued==0) = NaN;
                     
                     % concatenate time_table2 to run_time_table
+                    if ~exist('run_time_table','var')
+                        run_time_table = time_table2([],:); % create empty table with the same columns
+                    end
                     run_time_table = cat(1, run_time_table, time_table2);
                     
                     clear time_table2
@@ -984,6 +986,9 @@ for ses = 1:size(all_sessions,3)
             end
          
             % concatenate run_time_table to time_table_master
+            if ~exist('time_table_master','var')
+                time_table_master = run_time_table([],:);
+            end
             time_table_master  = cat(1,time_table_master,run_time_table);
             
             if ~verLessThan('matlab', '9.6') % if we have an old MATLAB version, don't even bother making figures (this code is not compatible)
