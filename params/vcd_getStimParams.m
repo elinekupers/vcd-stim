@@ -836,7 +836,7 @@ else
                 p.imagery_sz_deg            = p.img_sz_deg;                                                     % desired diameter (degree) of the second, quiz dots image in an imagery trial to encourage subjects to create a vidid mental image.
                 p.imagery_sz_pix            = p.img_sz_pix;                                                     % diameter of quiz dot image (pixels) (we already ensured even nr of pixels)
                 p.unique_im_nrs_img_test    = [1063:1362];                                                      % Unique image nrs associated with the 15*20=300 IMG NS test dot images
-                p.imagery_quiz_images       = [ones(1,10),2.*ones(1,10)];                                       % Quiz dots overlap (1) or not (2)
+                p.imagery_quiz_images       = [ones(1,10),2.*ones(1,10)];                                       % Quiz dots overlap (1=yes) or not (2=no)
                 
                 % FOR LTM incorrect trials, we have very similar looking images called "lures":
                 p.lure_im                   = {'lure01', 'lure02', 'lure03', 'lure04'};
@@ -861,8 +861,8 @@ else
     stim.all_img_test_im_nrs     = sort(cat(2, stim.gabor.unique_im_nrs_img_test, stim.rdk.unique_im_nrs_img_test, stim.dot.unique_im_nrs_img_test, stim.obj.unique_im_nrs_img_test, stim.ns.unique_im_nrs_img_test));
     stim.all_ltm_lure_im_nrs     = sort(stim.ns.unique_im_nrs_ltm_lures);
     stim.all_objectcatch_im_nrs  = sort(stim.obj.unique_im_nrs_objcatch);
-    stim.all_test_im_nrs         = sort(cat(2, stim.all_wm_test_im_nrs, stim.all_img_test_im_nrs, stim.all_ltm_lure_im_nrs, stim.all_objectcatch_im_nrs));
-    stim.all_im_nrs              = sort(cat(2, stim.all_core_im_nrs, stim.all_test_im_nrs));
+    stim.all_test_im_nrs         = sort(cat(2, stim.all_wm_test_im_nrs, stim.all_img_test_im_nrs, stim.all_ltm_lure_im_nrs));
+    stim.all_im_nrs              = sort(cat(2, stim.all_core_im_nrs, stim.all_test_im_nrs, stim.all_objectcatch_im_nrs));
 
     % Tell the user more info
     if verbose
