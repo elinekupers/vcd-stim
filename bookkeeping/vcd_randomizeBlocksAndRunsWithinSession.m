@@ -8,69 +8,84 @@ function [condition_master_shuffled, fname, condition_master_shuffle_idx, ...
 % that has sorted the new order of run nrs, block_nrs, and trial nrs for 
 % all the sessions in the MRI or BEHAVIORAL experiment.
 %
-%  [condition_master_shuffled, run_matrix,trial_order_local_shuffled, trial_order_global_shuffled] ...
-%    = vcd_randomizeBlocksAndRunsWithinSession(params, condition_master, env_type)
+%  [condition_master_shuffled, fname, condition_master_shuffle_idx, ...
+%  session_crossing_matrix, session_block_matrix] =  ...      
+%   vcd_randomizeBlocksAndRunsWithinSession(params, condition_master, env_type,
+%          ['subj_id', <subj_id>], ['slack',<slack>], ...
+%          ['max_run_deviation',<max_run_deviation>],...
+%          ['max_block_repeats',<max_block_repeats>],...
+%          ['allowed_block_combinations',<allowed_block_combinations>], ...
+%          ['saveDir',<saveDir>])
 %
 % This code will do the following:
 % 1. Grab the crossing numbers for each stimulus block and separate them
 %    into two vectors, according to trial type (1: single-stimulus 
 %    presentation, 2: double-stimulus presentaton).
 % 2. Shuffle the order of single- and double-stim blocks separately.
-% 3. Check if there are any repeats for each shuffle. If there are more
-%    than X blocks (defined by "max_block_repeats") with the same
-%    crossing nr happen back to back (what we call a "block repeat"), which
-%    may happen by chance, we repeat shuffle of blocks for both trial types.
+% 3. Check if there are any blocks repeated back to back for the single- or 
+%    double-stim block list (which may happen by chance). If there are more
+%    than X nr of block repeats (defined by "max_block_repeats", defaul is
+%    10), we repeat shuffle of blocks for both trial types.
 %    Note that block repeats are not necessarily an issue, as the code will
-%    try to mix single- and double-stim blocks when allocating blocks to 
-%    runs. In other words, if we have a repeat of a double-stim block 
-%    (11-11), they may actually get separated by a single-stim block during 
-%    a run (11-31-11).
-% 4. Add blocks to runs within this session:
-%    * We set how many possible block slots each run can have 
-%    (“blocks_per_run”) and how many runs a session can have 
-%    (“runs_to_fill”).
-%    * Randomly pick the number [1] or [2], which determines which list we 
-%    will use first to add block to a run (1 = try single-stim block first,
-%    2 = try double-stim block first).
-%    * Check how many blocks do we have in the run right now? If we already
-%    filled up the run with max blocks, we move the potential blocks to the
-%    next run. If we have block slots left within a run AND adding this
-%    block to the run will not exceed the run's max duration, then we will
-%    the first potential block option (e.g., [2]). If we have block slots 
-%    left, BUT the potential block option makes the run exceed its max 
-%    duration, then we will try adding the other potential block option (in
-%    this example, [1]). If both potential block options make the run too
+%    try to mix single- and double-stim blocks when allocating blocks to
+%    runs. In other words, if we have a repeat of a double-stim block
+%    (11-11), they may actually get separated by a single-stim block during
+%    a run (11-31-11). The chance of two single-stimulus or two
+%    double-stimulus blocks being repeated back to back is fairly low. 
+%    (EK to do: CHECK HOW LOW??)
+% 4. Add blocks to runs within the session. First, we set how many possible
+%    block slots each run can have (“blocks_per_run”) and how many runs a
+%    session can have (“runs_to_fill”). Second, we randomly pick the number
+%    [1] or [2], which determines which list we will use first to add block
+%    for a given a run (1 = try single-stim block first, 2 = try
+%    double-stim block first). Third, we check how many blocks we have in
+%    the run. Scenario 1: If we already filled up the run with max nr of
+%    blocks per run, we move on to the next run. Scenario 2: If we have
+%    block slots left within a run AND adding this block to the run will
+%    NOT exceed the run's max duration, then we will the first potential
+%    block option (e.g., [2]). Scenario 3: If we have block slots left, BUT
+%    the potential block option makes the run exceed its max duration, then
+%    we will try adding the other potential block option (in this example,
+%    [1]). Scenario 4: If both potential block options make the run too
 %    long, we will move to the next run and try adding block option 1.
-%    * Once a block is added, we remove it from its block list.
-%    * Once a list of single-/double-stim blocks is empty, just use the  
+%    - Once a block is added, we remove it from its block list.
+%    - Once a list of single-/double-stim blocks is empty, just use the
 %    other block list to fill the runs, until we run out.
-%    Note: Users can constrain the combinations of single-/double-stim   
+%    NOTE: Users can constrain the combinations of single-/double-stim   
 %    blockswithin a run, using the parameter "allowed_block_combinations". 
 %    For example, if you only want runs with either 7 single-stim and no
 %    double-stim blocks, or 5 double-stim and no single-stim blocks you can
 %    set "allowed_block_combinations" to [7 0; 0 5].
 % 5. Once the blocks are allocated to runs, we will do the following "HARD"
-%    constraints checks: If the allocation of blocks does not adhere to 
+%    constraints checks (by "hard", we mean users cannot change these with
+%    input arguments). If the allocation of blocks does not adhere to
 %    constraints, we start over and reshuffle all blocks within a session.
-%  * Run duration. The total sum of all stimulus blocks + overhead in a run 
-%    (eye tracking block, pre/post rest periods, minimum duration of IBIs)
-%    cannot exceed the number of time frames defined by:
-%       params.exp.run.total_run_dur_[MRI/BEHAVIOR].
-%    Runs cannot be too short in their duration either, here defined as the 
-%    max duration - "max_run_deviation". If runs are shorter than expected, 
-%    we check if adding max allowable IBIs would help reach the threshold 
-%    set by "max_run_deviation".
-%  * Nr of blocks per run. The number of blocks within a run cannot exceed 
-%    the number defined by "blocks_per_run", which is defined by:
-%       params.exp.session.mri.[wide/deep/behavior].nr_blocks_per_run.
-%    and the number cannot be less or equal to ceil(blocks_per_run/2).
-%  % Nr of runs per session. The number of runs within a sessions cannot  
-%    exceed the number defined by: 
-%       params.exp.session.mri.[wide/deep/behavior].n_runs_per_session.
-%  % Block allocation. We must assign all the blocks to the session.
-% If we shuffled all blocks more than 10,000 times, code will throw an error.
+%    - Contraint 1: Run duration. The total sum of all stimulus blocks +
+%    overhead in a run (eye tracking block, pre/post rest periods, minimum
+%    duration of IBIs) cannot exceed the number of time frames defined by:
+%    params.exp.run.total_run_dur_[MRI/BEHAVIOR] or for demo runs:
+%    params.exp.run.demo.total_run_dur_[MRI/BEHAVIOR] Runs cannot be too
+%    short in their duration either, here defined as the max duration minus
+%    "max_run_deviation". If runs are shorter than expected, we check if
+%    adding max allowable IBIs would help reach the threshold (run_dur >
+%    max duration minus "max_run_deviation")
+%    - Contraint 2: Nr of blocks per run. The number of blocks within a run 
+%    cannot exceed the number defined by "blocks_per_run", which is defined 
+%    by: params.exp.session.mri.[wide+deep].nr_blocks_per_run, or
+%    params.exp.session.behavior.nr_blocks_per_run, or
+%    params.exp.session.demo.nr_blocks_per_run. AND the number cannot be 
+%    less or equal to ceil(blocks_per_run/2).
+%    - Contraint 3: Nr of runs per session. The number of runs within a 
+%    sessions cannot exceed the number defined by: 
+%    params.exp.session.mri.[wide+deep].n_runs_per_session, or
+%    params.exp.session.behavior.n_runs_per_session, or
+%    params.exp.session.demo.n_runs_per_session.
+%    - Contraint 4: Block allocation. We must assign all the blocks to the
+%    session.
 %
-% Additional (tweakable) constraints:
+% If we reshuffled blocks more than 10,000 times, code will throw an error.
+%
+% Additional "soft" (tweakable) constraints by the user:
 % User can set some additional constraints when to stop inserting blocks 
 % into a run and/or reshuffle the block order:
 % * "slack" allows user to extend the max run duration threshold before
@@ -197,7 +212,6 @@ unique_sessions  = unique(condition_master.session_nr);
 additional_IBIs = max(IBIs)-min(IBIs);
 
 % Preallocate space
-condition_master_shuffled    = [];
 condition_master_shuffle_idx = cell(length(unique_sessions),find(sum(~isnan(session_types))));
 session_crossing_matrix      = cell(length(unique_sessions),find(sum(~isnan(session_types))));
 session_block_matrix         = cell(length(unique_sessions),find(sum(~isnan(session_types))));
@@ -277,9 +291,9 @@ for ses = 1:length(unique_sessions)
                         crossings_shuffled{ii}       = crossings_unique_blocks(all_blocks{ii}(bb_rnd{ii}));
                         trialtypes_shuffled{ii}      = unique_trialtypes(all_blocks{ii}(bb_rnd{ii}));
                         
-                        % check if we have more than X crossings repeat back to back
-                        % which may happen by chance. If so, we repeat shuffle of
-                        % blocks.
+                        % check if we have more than X crossings repeat 
+                        % back to back (default is 10) which may happen by 
+                        % chance. If so, we reshuffle blocks.
                         repeat_blocks = sum(diff(block_start_idx_shuffled{ii})==0);
                         if repeat_blocks > max_block_repeats
                             reshuffle_me(ii) = true;
@@ -743,6 +757,9 @@ for ses = 1:length(unique_sessions)
 
             % concatenate condition_master, run_matrix, and global trial
             % indices
+            if ~exist('condition_master_shuffled','var')
+                condition_master_shuffled = condition_master0([],:); % create empty table with the same columns
+            end
             condition_master_shuffled            = cat(1, condition_master_shuffled,condition_master0);
             condition_master_shuffle_idx{ses,st} = global_trial_row_idx;
             session_block_matrix{ses,st}         = run_matrix;
