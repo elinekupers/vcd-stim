@@ -51,6 +51,7 @@ for rr = 1:12
         'all_images',all_images,'wantdatabypass',true,'exp_env',4, 'timetable_file',fullfile(tt_file(end).folder, tt_file(end).name));
 end
 
+clear behresults
 for rr = 1:12
     subj_folder = sprintf('vcd_subj%03d_ses%02d',subj_nr,ses_nr);
     mat_file    = sprintf('behavior_*_vcd_subj%03d_ses%02d_A_run%02d.mat',subj_nr,ses_nr,rr);
@@ -60,5 +61,7 @@ for rr = 1:12
 
     writetable(run_frames,sprintf('~/Desktop/run_frames%02d.csv',rr));
     writetable(run_table,sprintf('~/Desktop/run_table%02d.csv',rr));
-    
+    behresults(rr) = performance;
 end
+
+vcd_checkTimeTable(time_table_master,behresults)
