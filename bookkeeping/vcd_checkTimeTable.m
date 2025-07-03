@@ -124,11 +124,11 @@ assert(isequal(results.total_nr_of_sessions,[1:max(results.total_nr_of_sessions)
 
 % if we only have one session nr, tell the user 
 if length(results.total_nr_of_sessions)==1 
-    fprintf('[%s]: Only found 1 session number, assuming this is a behavioral experiment.',mfilename)
+    fprintf('[%s]: Only found 1 session number, assuming this is a behavioral experiment.\n',mfilename)
     assert(isequal(length(results.total_nr_of_sessions), params.exp.session.n_behavioral_sessions));
     env_type = 'BEHAVIORAL';
 elseif length(results.total_nr_of_sessions)>1 
-    fprintf('[%s]: Only found 1 session number, assuming this is the MRI experiment.',mfilename)
+    fprintf('[%s]: Only found 1 session number, assuming this is the MRI experiment.\n',mfilename)
     assert(isequal(length(results.total_nr_of_sessions), params.exp.session.n_mri_sessions));
     env_type = 'MRI';
 else
@@ -655,9 +655,9 @@ fprintf('Total number of block: \t\t\t%03d\n', total_nr_of_blocks);
 fprintf('Total number of trials: \t\t%03d\n', total_nr_of_trials);
 fprintf('Total number of unique conditions: \t%03d\n', total_nr_of_unique_conditions);
 fprintf('Total number of trials for runs 1-%d: \t%s \n', total_nr_of_runs,num2str(trials_per_run))
-
 fprintf('Total number of trials per task class for runs 1-%d: \t%s \n', total_nr_of_runs, num2str(trials_per_taskclass))
-
+fprintf('Total number of conditions across all sessions: \t%d \n', length(results.condition_nrs(:)))
+fprintf('Total number of condition repeats across all sessions: \t%d \n', length(unique(results.condition_nrs(:))))
 
 return
 
