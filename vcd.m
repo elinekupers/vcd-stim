@@ -5,13 +5,38 @@ function outputs = vcd(varargin)
 %
 %   outputs = vcd('varname1',var1,'varname2',var2, ...'varnameN',varN);
 %
+% Input argument names options, corresponding input type, and an example input type:
+%  *  'stimulusclassnames',        [stimclass_number] or []                 -- example: [1]
+%  *  'stimulusclassnumbers',      {'stimclass_name'} or {}                 -- example: {'gabor'}
+%  *  'taskclassnames',            [taskclass_number] or []                 -- example: [4]
+%  *  'taskclassnumbers',          {'taskclass_name'} or {}                 -- example: {'pc'}
+%  *  'crossingnames',             [crossing_number] or []                  -- example: [32]
+%  *  'crossingnumbers',           {'crossing_name'} or {}                  -- example: {'how'}
+%  *  'allstimulusnumbers',        {'stimclass_name'} or {}                 -- example: {'rdk'}
+%  *  'stimulusnumberstonames',    [stim_number]                            -- example: [56]
+%  *  'stimulusnamestonumbers',    {stim_name}                              -- example: {'DOT-0056-L'}
+%  *  'allcore',                   [stim_number], {stim_name}, [], or {}    -- example: [4] or {'obj'}
+%  *  'specialcore',               [stim_number], {stim_name}, [], or {}    -- example: [3] or {'dot'}
+%  *  'stimtostimclassname',       [stim_number]                            -- example: [1400]
+%  *  'stimtostimclassnumber',     [stim_number]                            -- example: [800]
+%  *  'stimtotaskclassname',       [stim_number]                            -- example: [21]
+%  *  'stimtotaskclassnumber',     [stim_number]                            -- example: [480]
+%  *  'fullinfo',                  [stim_number]                            -- example: [3]
+%  *  'conditionnumbertoname',     [stim_number]                            -- example: [340]
+%  *  'conditionnametonumber',     {'condition_name'}                       -- example: {'OBJ-0065-L-UNCUED-WHAT'}
+%  *  'allwmteststimulusnumbers',  [stimclass_number], {'stimclass_name'}, [], or {} -- example: [1] or {'gabor'}
+%  *  'allltmteststimulusnumbers', [stimclass_number], {'stimclass_name'}, [], or {} -- example: [5] or {'ns'}
+%  *  'allimgteststimulusnumbers', [stimclass_number], {'stimclass_name'}, [], or {} -- example: [4] or {'obj'}
+%
+%
 % Note that 'fullinfo', 'stimulusnumberstonames', and
 % 'stimulusnamestonumbers' requires the condition_master table. This
 % variable is stored here: 
 %   vcd_rootPath/workspaces/info/condition_master_<dispname>_YYYYMMDDTHHMMSS.mat.
-% You can re-generate a new condition_master mat file by running (see also
-% s_createDesignMatrix.m.):
-% [~, condition_master] = vcd_createConditions(params);
+%
+% You can generate a new condition_master.mat file by running: 
+%   [~, condition_master] = vcd_createConditions(params);
+% See also s_createDesignMatrix.m
 % 
 % % --- STIMULUS CLASSES ---
 % Abbreviations for stimulus classes are: 
@@ -161,7 +186,11 @@ function outputs = vcd(varargin)
 %                           correspond to the actual stimulus class and/or
 %                           location, the function will throw a warning and
 %                           return NaN. Output will preserve the order
-%                           specified by the user's input(s).
+%                           specified by the user's input(s). Note that
+%                           stimulus names are different from condition
+%                           names, as condition names also include the cued
+%                           state and task-crossing (i.e.:
+%                           <stimclassname>-<stimnumber>-<stimlocation>-<cuestate>-<taskclassname>)
 % 'stimtostimclassname'   : Provide stimulus class name(s) for given
 %                           stimulus number(s). Input stimulus number(s) should be
 %                           be integral and range between 1-1550. Input can
@@ -270,7 +299,7 @@ function outputs = vcd(varargin)
 %                           number between 1-1550.
 %
 %
-% Examples:
+% More examples:
 % vcd('stimulusclassnames',[3 2 2 2 1])  
 % vcd('stimulusclassnames',[])  
 % vcd('taskclassnames',[1 5 3 2 2 2 1]) 
@@ -414,36 +443,39 @@ if isempty(vcd_info) || ~exist('vcd_info','var')
 end
 
 % If we haven't done so already, create a vector of stimulus class numbers or names for each unique image nr
-if ~exist('all_core_im_stimclassnumbers','var') || isempty(all_core_im_stimclassnumbers) %#ok<NODEF>
-    all_core_im_stimclassnumbers       = ...
-        cat(2, ones(1, numel(stim.gabor.unique_im_nrs_core)), 2*ones(1, numel(stim.rdk.unique_im_nrs_core)), ...
-        3*ones(1, numel(stim.dot.unique_im_nrs_core)), 4*ones(1, numel(stim.obj.unique_im_nrs_core)), ...
-        5*ones(1, numel(stim.ns.unique_im_nrs_core)));
-    
-    all_wm_test_im_stimclassnumbers    = ...
-        cat(2, ones(1, numel(stim.gabor.unique_im_nrs_wm_test)), 2*ones(1, numel(stim.rdk.unique_im_nrs_wm_test)), ...
-        3*ones(1, numel(stim.dot.unique_im_nrs_wm_test)), 4*ones(1, numel(stim.obj.unique_im_nrs_wm_test)), ...
-        5*ones(1, numel(stim.ns.unique_im_nrs_wm_test)));
-    
-    all_objectcatch_im_stimclassnumbers = 4*ones(1, numel(stim.obj.unique_im_nrs_objcatch));
-        
-    
-    all_img_test_im_stimclassnumbers   = ...
-        cat(2, ones(1, numel(stim.gabor.unique_im_nrs_img_test)), 2*ones(1, numel(stim.rdk.unique_im_nrs_img_test)), ...
-        3*ones(1, numel(stim.dot.unique_im_nrs_img_test)), 4*ones(1, numel(stim.obj.unique_im_nrs_img_test)), ...
-        5*ones(1, numel(stim.ns.unique_im_nrs_img_test)));
-    
-    all_ltm_lure_im_stimclassnumbers   = 5*ones(1, numel(stim.ns.unique_im_nrs_ltm_lures));
-    
-    all_core_im_stimclassnames         = exp.stimclassnames(all_core_im_stimclassnumbers);
-    all_wm_test_im_stimclassnames      = exp.stimclassnames(all_wm_test_im_stimclassnumbers);
-    all_img_test_im_stimclassnames     = exp.stimclassnames(all_img_test_im_stimclassnumbers);
-    all_ltm_lure_im_stimclassnames     = exp.stimclassnames(all_ltm_lure_im_stimclassnumbers);
-    all_objectcatch_im_stimclassnames  = exp.stimclassnames(all_objectcatch_im_stimclassnumbers);
-    all_im_stimclassnames              = cat(2,all_core_im_stimclassnames,all_wm_test_im_stimclassnames,all_img_test_im_stimclassnames,all_ltm_lure_im_stimclassnames,all_objectcatch_im_stimclassnames);
-    
-    assert(isequal(length(stim.all_im_nrs),length(all_im_stimclassnames)))
-end
+% *** Number of stimuli and their stimulus numbers: 
+% 	 1710 total (001-1710) 
+% 	 110 core (001-110) 
+% 	 312 WM test (111-422) 
+% 	 940 IMG test (423-1362) 
+% 	 60 LTM novel lures (1363-1422) 
+% 	 288 OBJ catch images (1423-1710) 
+% 	 47 special core
+all_core_im_stimclassnumbers       = ...
+    cat(2, ones(1, numel(stim.gabor.unique_im_nrs_core)), 2*ones(1, numel(stim.rdk.unique_im_nrs_core)), ...
+    3*ones(1, numel(stim.dot.unique_im_nrs_core)), 4*ones(1, numel(stim.obj.unique_im_nrs_core)), ...
+    5*ones(1, numel(stim.ns.unique_im_nrs_core)));
+all_wm_test_im_stimclassnumbers    = ...
+    cat(2, ones(1, numel(stim.gabor.unique_im_nrs_wm_test)), 2*ones(1, numel(stim.rdk.unique_im_nrs_wm_test)), ...
+    3*ones(1, numel(stim.dot.unique_im_nrs_wm_test)), 4*ones(1, numel(stim.obj.unique_im_nrs_wm_test)), ...
+    5*ones(1, numel(stim.ns.unique_im_nrs_wm_test)));
+all_img_test_im_stimclassnumbers   = ...
+    cat(2, ones(1, numel(stim.gabor.unique_im_nrs_img_test)), 2*ones(1, numel(stim.rdk.unique_im_nrs_img_test)), ...
+    3*ones(1, numel(stim.dot.unique_im_nrs_img_test)), 4*ones(1, numel(stim.obj.unique_im_nrs_img_test)), ...
+    5*ones(1, numel(stim.ns.unique_im_nrs_img_test)));
+all_ltm_lure_im_stimclassnumbers    = 5*ones(1, numel(stim.ns.unique_im_nrs_ltm_lures));
+all_objectcatch_im_stimclassnumbers = 4*ones(1, numel(stim.obj.unique_im_nrs_objcatch));
+all_im_stimclassnumbers            = cat(2,all_core_im_stimclassnumbers,all_wm_test_im_stimclassnumbers,all_img_test_im_stimclassnumbers,all_ltm_lure_im_stimclassnumbers,all_objectcatch_im_stimclassnumbers);
+
+% Stimulus class names
+all_core_im_stimclassnames         = exp.stimclassnames(all_core_im_stimclassnumbers);
+all_wm_test_im_stimclassnames      = exp.stimclassnames(all_wm_test_im_stimclassnumbers);
+all_img_test_im_stimclassnames     = exp.stimclassnames(all_img_test_im_stimclassnumbers);
+all_ltm_lure_im_stimclassnames     = exp.stimclassnames(all_ltm_lure_im_stimclassnumbers);
+all_objectcatch_im_stimclassnames  = exp.stimclassnames(all_objectcatch_im_stimclassnumbers);
+all_im_stimclassnames              = exp.stimclassnames(all_im_stimclassnumbers);
+ 
+assert(isequal(length(stim.all_im_nrs),length(all_im_stimclassnames)))
 
 % Now check requested_info by user
 for ii = 1:2:length(requested_info)
