@@ -878,6 +878,9 @@ for ses = 1:size(all_sessions,3)
                         post_blank_dur = session_postblankdur + postblank_to_add + round_me_out;
                     elseif total_run_time2 > session_totalrundur
                         if postblank_to_add  == 0
+                            if params.is_demo % if it is a demo, then we don't care and shave off a little bit from the end
+                                total_run_time2 = total_run_time2(1:session_totalrundur);
+                            end
                             error('[%s]: We have too many frames for this run!!')
                         elseif (total_run_frames + session_postblankdur) < session_totalrundur
                             left_over_blank = (session_totalrundur - (total_run_frames + session_postblankdur));
