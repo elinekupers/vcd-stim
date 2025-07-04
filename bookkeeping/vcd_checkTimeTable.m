@@ -1,9 +1,28 @@
-function [] = vcd_checkTimeTable(time_table_master,varargin)
+function results = vcd_checkTimeTable(time_table_master,varargin)
 % VCD bookkeeping function to check columns in the time table for any
 % inconsistencies and deviations from expectations.
 %   
-%    [] = vcd_checkTimeTable(time_table_master,data_results)
+%    results = vcd_checkTimeTable(time_table_master,data_results)
 %
+% INPUTS:
+%
+%  time_table_master    : (table) subject-specific time table master
+%                         (N events x 48 columns) with complete information
+%                         about all the sessions at the granularity of sub
+%                         trial events. Table can be one used for a
+%                         behavioral or MRI version of the VCD experiment.
+%                         Rows represent the individual trial events,
+%                         columns code different aspects of the experiment
+%                         (e.g., condition_nr, block_nr, etc.)
+% [data_results]        : (optional) (struct) outputs of vcdbehavioralanalysis, 
+%                         concatenated at the base, across all runs of a given session.
+%
+% OUTPUTS:
+%  results              : (struct) summary table with a several statistics
+%                         regarding the time_table_master. Note that this
+%                         summary table is only a fraction of the checks we
+%                         perform on the time_table_master.
+% 
 % We want to know checks like:
 % -What is the total number of trials per run?
 % -What is the total number of trials and blocks per stimulus class
@@ -77,23 +96,26 @@ function [] = vcd_checkTimeTable(time_table_master,varargin)
 %     * is_special_core
 %     * is_lure
 %
-% INPUT:
-% * time_table_master    : (table) Table defining trials at the granularity 
-%                         of sub-trial events. Table can be for behavioral 
-%                         or MRI version of the VCD experiment. Rows 
-%                         represent the individual trial events, columns  
-%                         code different aspects of the experiment (e.g., 
-%                         condition_nr, block_nr, etc.)
-% OUTPUT:
-% * None
-%
 % Example:
-% subj_nr = 999; 
-% dataDir = fullfile(vcd_rootPath,'data','BEHAVIOR',sprintf('vcd_subj%03d',subj_nr));
-% d       = dir(fullfile(dataDir,subjID,sprintf('%s_time_table_master_PPROOM_EIZOFLEXSCAN*.mat',subjID)));
-% a1      = load(fullfile(d(end).folder,d(end).name),'time_table_master')
-% vcd_checkTimeTable(a1.time_table_master)
-% 
+% {
+% subj_nr     = 999;
+% ses_nr      = 1;
+% data_dir    = fullfile(vcd_rootPath, 'data','BEHAVIOR',sprintf('vcd_subj%03d',subj_nr));
+% subj_folder = sprintf('vcd_subj%03d_ses%02d',subj_nr,ses_nr);
+% tt_file     = dir(fullfile(data_dir, sprintf('vcd_subj%03d_time_table_master_PPROOM_EIZOFLEXSCAN_*.mat',subj_nr)));
+% all_images  = struct;
+% for rr = 1:12
+%     [data,all_images] = runme_vcdcore(subj_nr, ses_nr, 1, rr, 'PPROOM_EIZOFLEXSCAN', 'wanteyetracking', false, ...
+%         'all_images',all_images,'wantdatabypass',true,'exp_env',4, 'timetable_file',fullfile(tt_file(end).folder, tt_file(end).name));
+%     mat_file    = sprintf('behavior_*_vcd_subj%03d_ses%02d_A_run%02d.mat',subj_nr,ses_nr,rr);
+%     dd = dir(fullfile(vcd_rootPath,'data','BEHAVIOR',subj_folder,mat_file));
+%     load(fullfile(dd(end).folder,dd(end).name));
+%     performance = vcdbehavioralanalysis(fullfile(params.savedatafolder,params.behaviorfile));
+%     behresults(rr) = performance;
+% end
+% load(fullfile(tt_file(end).folder, tt_file(end).name))
+% vcd_checkTimeTable(time_table_master,behresults)
+% }
 %
 % Written by E Kupers @ UMN 2025/06
 
@@ -275,28 +297,38 @@ obj_catch_condition_nrs = (time_table_master.condition_nr(time_table_master.cros
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% More run specific stats
-total_nr_of_unique_conditions = length(unique(time_table_master.condition_nr(~isnan(time_table_master.condition_nr))));
+trials_per_run       = zeros(results.total_nr_of_sessions,max(time_table_master.run_nr));
+trials_per_taskclass = zeros(results.total_nr_of_sessions,max(time_table_master.run_nr));
+nr_of_unique_conditions = zeros(results.total_nr_of_sessions,max(time_table_master.run_nr));
+cues_per_block       = zeros(results.total_nr_of_sessions,max(time_table_master.run_nr), 7, 3); % assume max 7 blocks and 3 cuing options (left/right/neutral)
+for ses = 1:results.total_nr_of_sessions
+    
+    curr_ses_table = time_table_master(time_table_master.session_nr == ses,:);
+    
+    % Stats per run:
+    [~,run_start] = unique(curr_ses_table.run_nr);
+    run_start = cat(1,run_start,size(curr_ses_table,1));
 
-% Stats per run:
-[~,run_start] = unique(time_table_master.global_run_nr);
-run_start = cat(1,run_start,size(time_table_master,1));
+    for rr = 1:length(run_start)-1
+        trials_per_run(ses,rr) = length(curr_ses_table.trial_nr(run_start(rr):(run_start(rr+1)-1)));
+        nr_of_unique_conditions(ses,rr) = length(unique(curr_ses_table.condition_nr(~isnan(curr_ses_table.condition_nr) & curr_ses_table.run_nr==rr)));
 
-trials_per_run = zeros(1,results.total_nr_of_sessions);
-for rr = 1:length(run_start)-1
-    trials_per_run(rr) = length(time_table_master.trial_nr(run_start(rr):(run_start(rr+1)-1)));
+        block_nrs = unique(curr_ses_table.block_nr(curr_ses_table.run_nr==rr & curr_ses_table.event_id==94));
+        
+        for bb = 1:length(block_nrs)
+            n0 = histcounts(curr_ses_table.is_cued(curr_ses_table.run_nr == rr & curr_ses_table.block_nr==bb & curr_ses_table.event_id==94),[1:4]);
+            cues_per_block(ses,rr,bb,1:length(n0)) = n0;
+        end
+    end
+    
+    for rr = 1:length(run_start)-1
+        trials_per_taskclass(ses,rr) = length(unique(curr_ses_table.task_class(run_start(rr):(run_start(rr+1)-1))));
+    end
 end
-
-trials_per_taskclass = zeros(1,results.total_nr_of_sessions);
-for rr = 1:length(run_start)-1
-    trials_per_taskclass(rr) = length(time_table_master.task_class(run_start(rr):(run_start(rr+1)-1)));
-end
-
-results.trials_per_run = trials_per_run;
 results.trials_per_taskclass = trials_per_taskclass;
-
-
-
+results.trials_per_run       = trials_per_run;
+results.cues_per_block       = cues_per_block;
+results.nr_of_unique_conditions = nr_of_unique_conditions;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Condition specific stats
@@ -402,52 +434,62 @@ for side = [1,2]
                 end
                  [~,sccnames] = ismember(tmp_name_cued,params.exp.stimclassnames([1,3,2,4])); % note that button presses for dot and rdk are flipped compared to stim class nr
                 assert(isequal(corr_rsp(~isnan(corr_rsp)), sccnames'));
-                
-                assert(all(abs(diff(histcounts(corr_rsp(~isnan(corr_rsp)),[1:5])))<=2)); % less than 2 counts difference in nr of button presses
+                n0 = histcounts(corr_rsp(~isnan(corr_rsp)),[1:5]);
+                assert( all(n0>=1)); % every stimulus class is pressed at least once
+%                 assert( abs(diff(n0([1,3])))<=2 && abs(diff(n0([2,4])))<=2 ); % less than 2 counts difference in nr of button presses
                 
             case 4 % pc
                 for stim = [1:4]
-                    tmp_ori = time_table_master.orient_dir(time_table_master.task_class==tc & time_table_master.event_id==94 & time_table_master.stim_class==stim,:);
+                    corr_rsp = time_table_master.correct_response(time_table_master.task_class==tc & time_table_master.event_id==94 & time_table_master.stim_class==stim);
+                    tmp_ori  = time_table_master.orient_dir(time_table_master.task_class==tc & time_table_master.event_id==94 & time_table_master.stim_class==stim,:);
                     cued_side = 1+mod(time_table_master.is_cued(time_table_master.task_class==tc & time_table_master.event_id==94 & time_table_master.stim_class==stim)-1,2);
+                    cued_tmp_ori = [];
                     for cc = 1:length(cued_side)
                         cued_tmp_ori(cc) = tmp_ori(cc,cued_side(cc));
                     end
                     cued_tmp_ori=cued_tmp_ori';
                     if stim == 1
-                        assert(isequal(sum(corr_rsp==1),sum(ismember(cued_tmp_ori, params.stim.gabor.ori_deg([3,4,5,6]))))); % more horz
-                        assert(isequal(sum(corr_rsp==2),sum(ismember(cued_tmp_ori, params.stim.gabor.ori_deg([1,2,7,8]))))); % more vert
+                        assert(isequal(sum(corr_rsp(~isnan(corr_rsp))==1),sum(ismember(cued_tmp_ori, params.stim.gabor.ori_deg(params.stim.gabor.ori_deg>45 & params.stim.gabor.ori_deg<135))))); % more horz
+                        assert(isequal(sum(corr_rsp(~isnan(corr_rsp))==2),sum(ismember(cued_tmp_ori, params.stim.gabor.ori_deg(params.stim.gabor.ori_deg<45 | params.stim.gabor.ori_deg>135))))); % more vert
                     elseif stim == 2
-                        assert(isequal(sum(corr_rsp==1),sum(ismember(cued_tmp_ori, params.stim.rdk.dots_direction([3,4,5,6]))))); % more horz
-                        assert(isequal(sum(corr_rsp==2),sum(ismember(cued_tmp_ori, params.stim.rdk.dots_direction([1,2,7,8]))))); % more vert
+                        more_horz = (params.stim.rdk.dots_direction>45 & params.stim.rdk.dots_direction<135) | (params.stim.rdk.dots_direction>225 & params.stim.rdk.dots_direction<315);
+                        more_vert = (params.stim.rdk.dots_direction<45 | (params.stim.rdk.dots_direction>135 & params.stim.rdk.dots_direction<225) | params.stim.rdk.dots_direction>315);
+                        assert(isequal(sum(corr_rsp(~isnan(corr_rsp))==1),sum(ismember(cued_tmp_ori, params.stim.rdk.dots_direction(more_horz))))); % more horz
+                        assert(isequal(sum(corr_rsp(~isnan(corr_rsp))==2),sum(ismember(cued_tmp_ori, params.stim.rdk.dots_direction(more_vert))))); % more vert
                     elseif stim == 3
-                        assert(isequal(sum(corr_rsp==1),sum(ismember(cued_tmp_ori, params.stim.dot.ang_deg([3,4,5,6,11,12,13,14]))))); % more horz
-                        assert(isequal(sum(corr_rsp==2),sum(ismember(cued_tmp_ori, params.stim.dot.ang_deg([1,2,7,8,9,10,15,16]))))); % more vert
-                    elseif stim == 4
-                        assert(isequal(sum(corr_rsp==1),sum(ismember(cued_tmp_ori, params.stim.obj.facing_dir_deg(params.stim.obj.facing_dir_deg < 45 | params.stim.obj.facing_dir_deg > 135))))); % more sideways
-                        assert(isequal(sum(corr_rsp==2),sum(ismember(cued_tmp_ori, params.stim.obj.facing_dir_deg(params.stim.obj.facing_dir_deg > 45 & params.stim.obj.facing_dir_deg < 135))))); % more forward
+                        more_horz = (params.stim.dot.ang_deg>45 & params.stim.dot.ang_deg<135) | (params.stim.dot.ang_deg>225 & params.stim.dot.ang_deg<315);
+                        more_vert = (params.stim.dot.ang_deg<45 | (params.stim.dot.ang_deg>135 & params.stim.dot.ang_deg<225) | params.stim.dot.ang_deg>315);
+                        assert(isequal(sum(corr_rsp(~isnan(corr_rsp))==1),sum(ismember(cued_tmp_ori, params.stim.dot.ang_deg(more_horz))))); % more horz
+                        assert(isequal(sum(corr_rsp(~isnan(corr_rsp))==2),sum(ismember(cued_tmp_ori, params.stim.dot.ang_deg(more_vert))))); % more vert
+                    elseif stim == 4 % note that object catch trial use orientations that are different from core stimuli
+                        assert(isequal(sum(corr_rsp(~isnan(corr_rsp))==1),sum(cued_tmp_ori > 45 & cued_tmp_ori < 135))); % forward
+                        assert(isequal(sum(corr_rsp(~isnan(corr_rsp))==2),sum((cued_tmp_ori < 45 | cued_tmp_ori > 135)))); % sideways
                     end
                 end
                 
                 % NS indoor/outdoor im
-                cued_tmp_ori = time_table_master.basic_cat(time_table_master.task_class==tc & time_table_master.stim_class==5,1);
+                corr_rsp = time_table_master.correct_response(time_table_master.task_class==tc & time_table_master.event_id==94 & time_table_master.stim_class==5);
+                cued_tmp_ori = time_table_master.basic_cat(time_table_master.task_class==tc & time_table_master.event_id==94 & time_table_master.stim_class==5,1);
                 assert(isequal(sum(corr_rsp==1),sum(ismember(cued_tmp_ori, 1)))); % indoor
                 assert(isequal(sum(corr_rsp==2),sum(ismember(cued_tmp_ori, 2)))); % outdoor
                 
-                assert(all(abs(diff(histcounts(corr_rsp(~isnan(corr_rsp),[1:3])))==0))); % equal nr of button presses
+                assert(diff(histcounts(corr_rsp,[1:3]))==0); % equal nr of button presses
                 
             case 5 % wm
                 for stim = [1:4]
-                    cued_side = 1+mod(time_table_master.is_cued(time_table_master.task_class==tc & time_table_master.event_id==94 & time_table_master.stim_class==stim)-1,2);
-                    tmp_ori1      = time_table_master.orient_dir(time_table_master.task_class==tc & time_table_master.event_id==94 & time_table_master.stim_class==stim,:);
-                    tmp_ori2      = time_table_master.stim2_orient_dir(time_table_master.task_class==tc & time_table_master.event_id==94 & time_table_master.stim_class==stim,:);
-                    tmp_delta     = time_table_master.stim2_delta(time_table_master.task_class==tc & time_table_master.event_id==94 & time_table_master.stim_class==stim,:);
-                    
+                    tmp_ori1 = []; tmp_ori2 = [];
+                    corr_rsp = time_table_master.correct_response(time_table_master.task_class==tc & time_table_master.event_id==95 & time_table_master.stim_class==stim);
+                    cued_side = 1+mod(time_table_master.is_cued(time_table_master.task_class==tc & time_table_master.event_id==95 & time_table_master.stim_class==stim)-1,2);
+                    tmp_ori1      = time_table_master.orient_dir(time_table_master.task_class==tc & time_table_master.event_id==95 & time_table_master.stim_class==stim,:);
+                    tmp_ori2      = time_table_master.stim2_orient_dir(time_table_master.task_class==tc & time_table_master.event_id==95 & time_table_master.stim_class==stim,:);
+                    tmp_delta     = time_table_master.stim2_delta(time_table_master.task_class==tc & time_table_master.event_id==95 & time_table_master.stim_class==stim,:);
+                    cued_tmp_ori1 = []; cued_tmp_ori2 = []; cued_tmp_delta = [];
                     for cc = 1:length(cued_side)
                         cued_tmp_ori1(cc) = tmp_ori1(cc,cued_side(cc));
                         cued_tmp_ori2(cc) = tmp_ori2(cc,cued_side(cc));
                         cued_tmp_delta(cc) = tmp_delta(cc,cued_side(cc));
                     end
-                    cued_tmp_ori1=cued_tmp_ori';
+                    cued_tmp_ori1=cued_tmp_ori1';
                     cued_tmp_ori2=cued_tmp_ori2';
                     cued_tmp_delta=cued_tmp_delta';
                     
@@ -470,19 +512,22 @@ for side = [1,2]
                 end
                 
                 % NS change im
-                tmp_delta = time_table_master.stim2_delta(time_table_master.task_class==tc & time_table_master.stim_class==5,1);
+                corr_rsp = time_table_master.correct_response(time_table_master.task_class==tc & time_table_master.event_id==95 & time_table_master.stim_class==5);
+                tmp_delta = time_table_master.stim2_delta(time_table_master.task_class==tc & time_table_master.event_id==95 & time_table_master.stim_class==5,1);
                 assert(isequal(sum(corr_rsp==1),sum(tmp_delta<0))); % remove
                 assert(isequal(sum(corr_rsp==2),sum(tmp_delta>0))); % add
                 
-                assert(all(abs(diff(histcounts(corr_rsp(~isnan(corr_rsp),[1:3])))==0))); % equal nr of button presses
+                assert(diff(histcounts(corr_rsp,[1:3]))==0); % equal nr of button presses
                 
             case 6 % ltm
                 % under construction
             case 7 % img   
                 % under construction
             case 8 % what
-                all_cued_cat =[];
+
                 for stim = [4,5]
+                    cued_tmp_cat = [];
+                    corr_rsp = time_table_master.correct_response(time_table_master.task_class==tc & time_table_master.event_id==94 & time_table_master.stim_class==stim);
                     if stim == 4
                         cued_side = 1+mod(time_table_master.is_cued(time_table_master.task_class==tc & time_table_master.event_id==94 & time_table_master.stim_class==stim)-1,2);
                         tmp_cat = time_table_master.super_cat(time_table_master.task_class==tc & time_table_master.event_id==94 & time_table_master.stim_class==stim,:);
@@ -494,31 +539,36 @@ for side = [1,2]
                     elseif stim == 5
                         cued_tmp_cat = time_table_master.super_cat(time_table_master.task_class==tc & time_table_master.event_id==94 & time_table_master.stim_class==stim,1);
                     end
-                    
+                    % distribution of button presses should match nr of supercategories
                     assert(isequal(sum(corr_rsp==1),sum(ismember(cued_tmp_cat,1)))); % human
                     assert(isequal(sum(corr_rsp==2),sum(ismember(cued_tmp_cat,2)))); % animal
                     assert(isequal(sum(corr_rsp==3),sum(ismember(cued_tmp_cat,[3,4])))); % object, food
                     assert(isequal(sum(corr_rsp==4),sum(ismember(cued_tmp_cat,5)))); % place
-                    
-                    all_cued_cat = cat(1, all_cued_cat, cued_tmp_cat);
                 end
                 
-                assert(isequal(histcounts(all_cued_cat, [1:6]), hiscounts(corr_rsp,[1:6]))); % distribution of button presses should match nr of supercategorie
+                % what task button presses merge objects and food
+                cued_tmp_cat2 = cued_tmp_cat;
+                cued_tmp_cat2(ismember(cued_tmp_cat,[3,4])) = 3;
+                cued_tmp_cat2(ismember(cued_tmp_cat,[5])) = 4;
+                
+                % distribution of button presses should match nr of supercategories
+                assert(isequal(histcounts(cued_tmp_cat2, [1:5]), histcounts(corr_rsp,[1:5]))); % distribution of button presses should match nr of supercategories
                 
             case 9 % where
+                corr_rsp = time_table_master.correct_response(time_table_master.task_class==tc & time_table_master.event_id==94 & time_table_master.stim_class==5);
                 cued_tmp_loc = time_table_master.sub_cat(time_table_master.task_class==tc & time_table_master.event_id==94 & time_table_master.stim_class==5,1);
                 assert(isequal(sum(corr_rsp==1),sum(ismember(cued_tmp_loc,1)))); % left
-                assert(isequal(sum(corr_rsp==3),sum(ismember(cued_tmp_loc,2)))); % center
-                assert(isequal(sum(corr_rsp==4),sum(ismember(cued_tmp_loc,3)))); % right
-                
-                assert(diff(histcounts(corr_rsp,[1:4]))==0); % equal nr of button presses
+                assert(isequal(sum(corr_rsp==2),sum(ismember(cued_tmp_loc,2)))); % center
+                assert(isequal(sum(corr_rsp==3),sum(ismember(cued_tmp_loc,3)))); % right
+                assert(all(abs(diff(histcounts(corr_rsp,[1:4])))<=1)); % equal nr of button presses
                 
             case 10 % how
-                all_cued_aff =[];
                 for stim = [4,5]
+                    cued_tmp_afford = [];
+                    corr_rsp = time_table_master.correct_response(time_table_master.task_class==tc & time_table_master.event_id==94 & time_table_master.stim_class==stim);
                     if stim == 4
                         cued_side = 1+mod(time_table_master.is_cued(time_table_master.task_class==tc & time_table_master.event_id==94 & time_table_master.stim_class==stim)-1,2);
-                        tmp_cat = time_table_master.super_cat(time_table_master.task_class==tc & time_table_master.event_id==94 & time_table_master.stim_class==stim,:);
+                        tmp_cat = time_table_master.affordance_cat(time_table_master.task_class==tc & time_table_master.event_id==94 & time_table_master.stim_class==stim,:);
                         for cc = 1:length(cued_side)
                             cued_tmp_afford(cc) = tmp_cat(cc,cued_side(cc));
                         end
@@ -530,11 +580,8 @@ for side = [1,2]
                     assert(isequal(sum(corr_rsp==2),sum(ismember(cued_tmp_afford,2)))); % grasp
                     assert(isequal(sum(corr_rsp==3),sum(ismember(cued_tmp_afford,3)))); % enter/walk
                     assert(isequal(sum(corr_rsp==4),sum(ismember(cued_tmp_afford,4)))); % observe/do nothing
-                    
-                    all_cued_aff = cat(1, all_cued_aff, cued_tmp_cat);
                 end
-                
-                assert(isequal(histcounts(all_cued_aff, [1:5]), hiscounts(corr_rsp,[1:5]))); % distribution of button presses should match nr of supercategories  
+                assert(isequal(histcounts(cued_tmp_afford, [1:5]), histcounts(corr_rsp,[1:5]))); % distribution of button presses should match nr of supercategories
         end
     end
 end
@@ -557,91 +604,164 @@ assert(isequal(all_cond_names(cd_plus_cond_nr),cd_plus_cond_names))
 % assert(isequal(condition_nan, find(isnan(time_table_master.is_lure(:,side)))));
 
 % cued stats 
-results.cued_count = histcounts(time_table_master.is_cued(time_table_master.event_id==94),[1:4]);
+cue_ID        = time_table_master.is_cued(time_table_master.event_id==94);
+is_NS         = ( time_table_master.stim_class(time_table_master.event_id==94)==5 );
+is_FIX        = ( time_table_master.task_class(time_table_master.event_id==94)==1 );
+is_NS_or_FIX  = ( time_table_master.task_class(time_table_master.event_id==94)==1 | time_table_master.stim_class(time_table_master.event_id==94)==5 );
+is_SCC        = ( time_table_master.stim_class(time_table_master.event_id==94)==99 | time_table_master.task_class(time_table_master.event_id==94)==3 );
+is_LTM        = ( time_table_master.stim_class(time_table_master.event_id==94)==99 | time_table_master.task_class(time_table_master.event_id==94)==6 );
 
-% Middle letter should be L/C for first condition_name sub column
-loc1 = cellfun(@(x) strsplit(x,'-') ,results.condition_names{1,1},'UniformOutput',0);
+c_names       = time_table_master.condition_name(time_table_master.event_id==94,:);
+results.cued_count = histcounts(cue_ID,[1:4]);
+assert(isequal(results.cued_count(1),results.cued_count(2))); % equal nr of left and right cues
+assert(isequal(results.cued_count(3), sum(is_NS_or_FIX))); % equal nr of left and right cues
+
+% Middle letter should be L/C for first condition_name sub column, and cued
+% status should match is_cued column
+loc1 = cellfun(@(x) strsplit(x,'-') ,c_names(:,1),'UniformOutput',0);
 for xx = 1:length(loc1)
-    assert(ismember(loc1{xx}{3},{'L','C'}));
-end
-% Middle letter should be R for second condition_name sub column
-loc2 = cellfun(@(x) strsplit(x,'-') ,results.condition_names{1,2},'UniformOutput',0);
-for xx = 1:length(loc2)
-    assert(ismember(loc2{xx}{3},{'R'}));
+    curr_loc = loc1{xx}{3};
+    curr_cued_status = loc1{xx}{4};
+    assert(ismember(curr_loc,{'L','C'}));
+    if cue_ID(xx) == 1 && strcmp(curr_loc,'L')
+        assert(strcmp(curr_cued_status,'CUED'))
+    elseif cue_ID(xx) == 2 && strcmp(curr_loc,'L')
+        assert(strcmp(curr_cued_status,'UNCUED'))
+    elseif cue_ID(xx) == 3 && is_FIX(xx)==1
+        assert(strcmp(curr_cued_status,'NCUED'));
+    elseif cue_ID(xx) == 3 && is_NS(xx)==1
+        assert(strcmp(curr_cued_status,'NCUED'));
+    elseif cue_ID(xx) == 3 && strcmp(curr_loc,'C')
+        assert(strcmp(curr_cued_status,'NCUED'));
+    else
+        error('[%s]: Condition name doesn''t match cued status of stimulus',mfilename);
+    end
 end
 
+% Middle letter should be R for second condition_name sub column, and cued
+% status should match is_cued column
+loc2 = cellfun(@(x) strsplit(x,'-') ,c_names(~isnan(time_table_master.condition_nr(time_table_master.event_id==94,2)),2),'UniformOutput',0);
+is_FIX  = is_FIX(~isnan(time_table_master.condition_nr(time_table_master.event_id==94,2)));
+cue_ID  = cue_ID(~isnan(time_table_master.condition_nr(time_table_master.event_id==94,2)));
+for xx = 1:length(loc2)
+    curr_loc = loc2{xx}{3};
+    curr_cued_status = loc2{xx}{4};
+    assert(ismember(curr_loc,{'R'}));
+    if cue_ID(xx) == 1 && strcmp(curr_loc,'R')
+        assert(strcmp(curr_cued_status,'UNCUED'))
+    elseif cue_ID(xx) == 2 && strcmp(curr_loc,'R')
+        assert(strcmp(curr_cued_status,'CUED'))
+    elseif cue_ID(xx) == 3 && is_FIX(xx)==1
+        assert(strcmp(curr_cued_status,'NCUED'));
+    else
+        error('[%s]: Condition name doesn''t match cued status of stimulus',mfilename);
+    end
+end
 
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % If we provided behavioral results, see if these results match with time_table_master
 if ~isempty(behresults)
-
+    fix_blocks = find(~cellfun(@isempty, regexp(params.exp.crossingnames,'fix')));
+    
+    sessions_behresults = unique(behresults(rr).trialinfo.session_nr);
     nr_runs_behresults = size(behresults,2);
-    assert(isequal(total_nr_of_runs,nr_runs_behresults));
     
-    all_crossing_nr_beh = [];
-    
-    for rr = 1:nr_runs_behresults
-        cond_nrs_beh = find(behresults(rr).conditioncount>0)';
-        repeats = find(behresults(rr).conditioncount>1);
-        if ~isempty(repeats)
-            for cc = 1:length(repeats)
-                cond_nrs_beh = cat(1,cond_nrs_beh, repelem(repeats(cc), behresults(rr).conditioncount(repeats(cc))-1,1));
+    for ses = 1:length(sessions_behresults)
+        
+        assert(isequal(results.total_nr_of_runs(ses,:),nr_runs_behresults));
+        
+        all_crossing_nr_beh = [];
+        
+        for rr = 1:nr_runs_behresults
+            nr_fix_blocks = behresults(rr).summary.crossing_nr(ismember(behresults(rr).summary.crossing_nr,fix_blocks));
+            fix_stim_task = params.exp.crossingnames(behresults(rr).summary.crossing_nr(ismember(behresults(rr).summary.crossing_nr,nr_fix_blocks)));
+            
+            cond_nrs_beh = find(behresults(rr).conditioncount>0)';
+            repeats = find(behresults(rr).conditioncount>1);
+            if ~isempty(repeats)
+                for cc = 1:length(repeats)
+                    cond_nrs_beh = cat(1,cond_nrs_beh, repelem(repeats(cc), behresults(rr).conditioncount(repeats(cc))-1,1));
+                end
             end
+            cond_names_beh = all_cond_names(cond_nrs_beh)';
+            
+            
+            cond_nrs_tt = time_table_master.condition_nr(time_table_master.event_id==94 & time_table_master.run_nr==rr,:);
+            cond_nrs_tt = cond_nrs_tt(~isnan(cond_nrs_tt));
+            
+            cond_names_tt = time_table_master.condition_name(time_table_master.event_id==94 & time_table_master.run_nr==rr,:);
+            cond_names_tt = cond_names_tt(:);
+            cond_names_tt(cellfun(@(x) isequalwithequalnans(x,NaN), cond_names_tt)) = [];
+            
+            cond_nrs_tt_counts = histcounts(cond_nrs_tt,[1:length(all_cond_names)+1]);
+            
+            % Condition names
+            assert(isequal(sort(cond_names_tt),sort(cond_names_beh)))
+            
+            % Condition nrs should match for every run
+            assert(isequal(sort(cond_nrs_beh),sort(cond_nrs_tt)));
+            
+            % Condition nr tally should match for every run
+            assert(isequal(cond_nrs_tt_counts,behresults(rr).conditioncount));
+            
+            % Check if session nrs match
+            % replace pseudo fixaton trials with NaN
+            session_nr = behresults(rr).trialinfo.session_nr;
+            run_nr = behresults(rr).trialinfo.run_nr;
+            block_nr = behresults(rr).trialinfo.block_nr;
+            crossing_nr = behresults(rr).trialinfo.crossing_nr;
+            trial_nr = behresults(rr).trialinfo.trial_nr;
+            is_catch = behresults(rr).trialinfo.is_catch;
+            stim_cued = behresults(rr).trialinfo.stim_cued;
+            if length(nr_fix_blocks)>0
+                for ff = 1:length(nr_fix_blocks)
+                    fix_stim_class = strsplit(fix_stim_task{ff},'-');
+                    
+                    fix_pseudo_trials = find(ismember(behresults(rr).trialinfo.crossing_nr,nr_fix_blocks(ff)));
+                    session_nr(fix_pseudo_trials(9:end))= NaN;
+                    run_nr(fix_pseudo_trials(9:end))= NaN;
+                    block_nr(fix_pseudo_trials(9:end))= NaN;
+                    crossing_nr(fix_pseudo_trials(9:end))= NaN;
+                    trial_nr(fix_pseudo_trials(1:8)) = [1:8];
+                    trial_nr(fix_pseudo_trials(9:end))= NaN;
+                    is_catch(fix_pseudo_trials(9:end))= NaN;
+                    stim_cued(fix_pseudo_trials(1:8)) = repmat(fix_stim_class(2),8,1);
+                    stim_cued(fix_pseudo_trials(9:end))= {NaN};
+                end
+            end
+                
+            assert(isequal(session_nr(~isnan(session_nr)), time_table_master.session_nr(time_table_master.session_nr==ses & time_table_master.event_id==94 & time_table_master.run_nr==rr,:)));
+            
+            % Check if run nrs match
+            assert(isequal(run_nr(~isnan(run_nr)), time_table_master.run_nr(time_table_master.event_id==94 & time_table_master.run_nr==rr,:)));
+            
+            % Check if block nrs match
+            assert(isequal(block_nr(~isnan(block_nr)), time_table_master.block_nr(time_table_master.event_id==94 & time_table_master.run_nr==rr,:)));
+            
+            % Check if crossing nrs match
+            assert(isequal(crossing_nr(~isnan(crossing_nr)), time_table_master.crossing_nr(time_table_master.event_id==94 & time_table_master.run_nr==rr,:)));
+            
+            % Check if trial nrs match
+            assert(isequal(trial_nr(~isnan(trial_nr)), time_table_master.trial_nr(time_table_master.event_id==94 & time_table_master.run_nr==rr,:)));
+            
+            % Check if catch trial nrs match
+            assert(isequal(is_catch(~isnan(is_catch)), time_table_master.is_catch(time_table_master.event_id==94 & time_table_master.run_nr==rr,:)));
+            
+            % Check if stim cued match
+            stimclass = time_table_master.stim_class_name(time_table_master.event_id==94 & time_table_master.run_nr==rr,:);
+            cued_side = 1+mod(time_table_master.is_cued(time_table_master.event_id==94 & time_table_master.run_nr==rr)-1, 2);
+            stimclass_cued = cell(size(stimclass,1),1);
+            stimclass_cued(cued_side==1) = stimclass(cued_side==1,1);
+            stimclass_cued(cued_side==2) = stimclass(cued_side==2,2);
+            assert(isequal(stim_cued(cellfun(@isempty, cellfun(@(x) find(x==1), cellfun(@isnan, stim_cued,'UniformOutput',0),'UniformOutput',0))) ,stimclass_cued))
+            
+            all_crossing_nr_beh = cat(1,all_crossing_nr_beh, crossing_nr(~isnan(crossing_nr)));
         end
-        cond_names_beh = all_cond_names(cond_nrs_beh)';
-        
-        
-        cond_nrs_tt = time_table_master.condition_nr(time_table_master.event_id==94 & time_table_master.run_nr==rr,:);
-        cond_nrs_tt = cond_nrs_tt(~isnan(cond_nrs_tt));
-
-        cond_names_tt = time_table_master.condition_name(time_table_master.event_id==94 & time_table_master.run_nr==rr,:);
-        cond_names_tt = cond_names_tt(:);
-        cond_names_tt(cellfun(@(x) isequalwithequalnans(x,NaN), cond_names_tt)) = [];
-        
-        cond_nrs_tt_counts = histcounts(cond_nrs_tt,[1:length(all_cond_names)+1]);
-        
-        % Condition names
-        assert(isequal(sort(cond_names_tt),sort(cond_names_beh)))
-        
-        % Condition nrs should match for every run
-        assert(isequal(sort(cond_nrs_beh),sort(cond_nrs_tt)));
-        
-        % Condition nr tally should match for every run
-        assert(isequal(cond_nrs_tt_counts,behresults(rr).conditioncount));
-        
-        % Check if session nrs match
-        assert(isequal(behresults(rr).trialinfo.session_nr, time_table_master.session_nr(time_table_master.event_id==94 & time_table_master.run_nr==rr,:)));
-        
-        % Check if run nrs match
-        assert(isequal(behresults(rr).trialinfo.run_nr, time_table_master.run_nr(time_table_master.event_id==94 & time_table_master.run_nr==rr,:)));
-
-        % Check if block nrs match
-        assert(isequal(behresults(rr).trialinfo.block_nr, time_table_master.block_nr(time_table_master.event_id==94 & time_table_master.run_nr==rr,:)));
-        
-        % Check if crossing nrs match
-        assert(isequal(behresults(rr).trialinfo.crossing_nr, time_table_master.crossing_nr(time_table_master.event_id==94 & time_table_master.run_nr==rr,:)));
-        
-        % Check if trial nrs match
-        assert(isequal(behresults(rr).trialinfo.trial_nr, time_table_master.trial_nr(time_table_master.event_id==94 & time_table_master.run_nr==rr,:)));
-        
-        % Check if catch trial nrs match
-        assert(isequal(behresults(rr).trialinfo.is_catch, time_table_master.is_catch(time_table_master.event_id==94 & time_table_master.run_nr==rr,:)));
-        
-        % Check if stim cued match
-        stimclass = time_table_master.stim_class_name(time_table_master.event_id==94 & time_table_master.run_nr==rr,:);
-        cued_side = 1+mod(time_table_master.is_cued(time_table_master.event_id==94 & time_table_master.run_nr==rr)-1, 2);
-        stimclass_cued = cell(size(stimclass,1),1);
-        stimclass_cued(cued_side==1) = stimclass(cued_side==1,1);
-        stimclass_cued(cued_side==2) = stimclass(cued_side==2,2);
-        assert(isequal(behresults(rr).trialinfo.stim_cued,stimclass_cued))
-        
-        all_crossing_nr_beh = cat(1,all_crossing_nr_beh, behresults(rr).summary.crossing_nr);
+        assert(isequal(expected_crossing_nrs,unique(sort(all_crossing_nr_beh(:)))))
     end
-    assert(isequal(expected_crossing_nrs,sort(all_crossing_nr_beh(:))))
 end
-
 
 
 
@@ -649,15 +769,16 @@ end
 %%% PRINT RESULTS %%%
 
 fprintf('[%s]: Stats of time_table_master:\n',mfilename) 
-fprintf('Total number of sessions: \t\t%03d\n', total_nr_of_sessions);
-fprintf('Total number of runs: \t\t\t%03d\n', total_nr_of_runs);
-fprintf('Total number of block: \t\t\t%03d\n', total_nr_of_blocks);
-fprintf('Total number of trials: \t\t%03d\n', total_nr_of_trials);
-fprintf('Total number of unique conditions: \t%03d\n', total_nr_of_unique_conditions);
-fprintf('Total number of trials for runs 1-%d: \t%s \n', total_nr_of_runs,num2str(trials_per_run))
-fprintf('Total number of trials per task class for runs 1-%d: \t%s \n', total_nr_of_runs, num2str(trials_per_taskclass))
-fprintf('Total number of conditions across all sessions: \t%d \n', length(results.condition_nrs(:)))
-fprintf('Total number of condition repeats across all sessions: \t%d \n', length(unique(results.condition_nrs(:))))
+fprintf('Total number of sessions: \t\t\t\t%d\n', results.total_nr_of_sessions);
+fprintf('Total number of runs: \t\t\t\t\t%d\n', results.total_nr_of_runs);
+fprintf('Total number of block: \t\t\t\t\t%d\n', results.total_nr_of_blocks);
+fprintf('Total number of trials: \t\t\t\t%d\n', results.total_nr_of_trials);
+fprintf('Total number of unique conditions for runs 1-%d: \t%s \n', results.total_nr_of_runs,num2str(results.nr_of_unique_conditions));
+fprintf('Total number of unique conditions across all runs: \t%d \n', sum(results.nr_of_unique_conditions));
+fprintf('Total number of trials for runs 1-%d: \t\t\t%s \n', results.total_nr_of_runs,num2str(trials_per_run))
+fprintf('Total number of trials per task class for runs 1-%d: \t%s \n', results.total_nr_of_runs, num2str(results.trials_per_taskclass))
+fprintf('Total number of conditions across all sessions: \t%d \n', length(results.condition_nrs{:,1})+length(results.condition_nrs{:,2}))
+fprintf('Total number of condition repeats across all sessions: \t%d \n', length(unique(cat(1, results.condition_nrs{:,1},results.condition_nrs{:,2}))))
 
 return
 
