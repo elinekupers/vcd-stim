@@ -735,7 +735,7 @@ for ses = 1:length(unique_sessions)
                     % Add the new run/block/trial order to condition_master
                     condition_master0.run_nr(trial_order)   = run_order(run_idx);
                     condition_master0.block_nr(trial_order) = bb_idx;
-                    condition_master0.trial_nr(trial_order) = local_trial_order;
+                    condition_master0.trial_nr(trial_order) = 1:nr_trials;
                 end
             end
             
@@ -748,6 +748,22 @@ for ses = 1:length(unique_sessions)
             % sort both blocks and runs at once
             condition_master0 = condition_master0(bi(ri),:);
             
+            % sort trial numbers within a block
+            all_sorted = [];
+            bb_start = [0;find(abs(diff(condition_master0.global_block_nr))>0)]+1;
+            for bb = 1:length(bb_start)
+                if bb==length(bb_start)
+                    ti = bb_start(bb):length(condition_master0.global_block_nr);
+                else
+                    ti = bb_start(bb):(bb_start(bb+1)-1);
+                end
+                ti = ti';
+                [~,sort_me] = sort(condition_master0.trial_nr(ti),'ascend');
+                condition_master0(ti,:) = condition_master0(ti(sort_me),:);
+            end
+            
+            
+
             % Update trial repeat nr
             condition_master0 = vcd_getTrialRepeatNr(condition_master0);
             
