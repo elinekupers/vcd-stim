@@ -551,9 +551,17 @@ for ses = 1:size(all_sessions,3)
                         % Reset shuffled ITIs prior to block start to ensure we
                         % get the right block lenght.
                         if curr_trial_type == 1 % single stim presentation block
-                            itis  = shuffle_concat(params.exp.trial.ITI_single_block,1);
+                            if params.is_demo
+                                itis = shuffle_concat(params.exp.trial.demo.ITI_single_block,1);
+                            else
+                                itis = shuffle_concat(params.exp.trial.ITI_single_block,1);
+                            end
                         elseif curr_trial_type == 2  % double stim presentation block
-                            itis   = shuffle_concat(params.exp.trial.ITI_double_block,1);
+                            if params.is_demo
+                                itis = shuffle_concat(params.exp.trial.demo.ITI_double_block,1);
+                            else
+                                itis   = shuffle_concat(params.exp.trial.ITI_double_block,1);
+                            end
                         end
                         
                         time_table.event_start(table_idx)    = total_run_frames;
@@ -920,7 +928,8 @@ for ses = 1:size(all_sessions,3)
                     elseif total_run_time2 > session_totalrundur
                         if postblank_to_add  == 0
                             if params.is_demo % if it is a demo, then we don't care and shave off a little bit from the end
-                                total_run_time2 = total_run_time2(1:session_totalrundur);
+                                session_postblankdur = total_run_time2-session_totalrundur;
+                                total_run_time2 = session_totalrundur;
                             end
                             error('[%s]: We have too many frames for this run!!')
                         elseif (total_run_frames + session_postblankdur) < session_totalrundur
