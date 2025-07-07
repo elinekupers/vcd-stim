@@ -720,7 +720,7 @@ for ses = 1:length(unique_sessions)
 
                         % check order of image nrs, if we have any repeats, we shuffle
                         % the order of stimuli in a block
-                        if all(diff(condition_master0.stim_nr_left(trial_order))~=0) || ...
+                        if all(diff(condition_master0.stim_nr_left(trial_order))~=0) && ...
                                 all(diff(condition_master0.stim_nr_right(trial_order))~=0)
                             trial_order_not_ok = false;
                         end
