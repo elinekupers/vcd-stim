@@ -166,7 +166,7 @@ params.exp    = vcd_getSessionParams('disp_name', params.disp.name, ...
 %                   x width (BOLDscreen: 24 pixels) 
 %                   x 6 dot rims types (same order as above)
 % * info        : (table) 36x4 table with specs about the different types 
-%                   of fixation circles. NOT stored as csv info file.
+%                   of fixation circles. Stored as csv info file.
 %                   Columns include:
 %                     1: luminance  - uint8 luminance values
 %                     2: rim_width  - 'thin' or 'thick'
@@ -222,8 +222,8 @@ params.exp    = vcd_getSessionParams('disp_name', params.disp.name, ...
 %                   4: orient_deg - (double) tilt in degrees (0=12 o'clock).
 %                   5: orient_i   - (double) same as orient_deg but indexed 
 %                                   1: 11.25 deg through 8: 168.75 deg
-%                   6: contrast   - (double) coherence level (fraction of 1),   
-%                   7: contrast_i - (double) same as dot_coh but indexed 1 
+%                   6: contrast   - (double) stimulus contrast level (fraction of 1),   
+%                   7: contrast_i - (double) same as 'contrast' but indexed 1 
 %                                   (0.05), 2 (0.2), or 3 (0.8).
 %                   8: phase_deg  - (double) gabor phase (deg), one of four 
 %                                   quadrature phases (0, 90, 180, 270).
@@ -537,21 +537,24 @@ params.exp    = vcd_getSessionParams('disp_name', params.disp.name, ...
 %                  4: stim_pos  - (double) index of "stim_pos". All scenes 
 %                                 are 3. (machine readable)
 %                  5: super_cat_name - (cell) superordinate semantic 
-%                                 category label: {'human','animal','object','food','place'}
-%                  6: super_cat - (double) same as superordinate, but 
+%                                 category label of the dominant object in the scene:
+%                                 {'human','animal','object','food','place'}
+%                  6: super_cat - (double) same as super_cat_name, but 
 %                                 indexed by nr 1:'human' through 5: 'place'
-%                  7: basic_cat_name - (double) basic semantic category label:
+%                  7: basic_cat_name - (double) basic semantic category label, 
+%                                 whether the scene is indoor or outdoor:
 %                                 {'indoor', 'outdoor'}
-%                  8: basic_cat - (double) same as basic, but indexed by nr
-%                                 1: indoor, 2: outdoor
+%                  8: basic_cat - (double) same as basic_cat_name, but indexed 
+%                                 by nr 1: indoor, 2: outdoor
 %                  9: sub_cat_name - (cell) subordinate semantic category 
-%                                 label, one of three object spatial locations relative
+%                                 label, indicating where the majority of the dominant 
+%                                 object in the scene is spatially located  relative
 %                                 to central fixation circle: {'left','center','right'};
 %                  10: sub_cat - (double) same as subordinate, but indexed 
 %                                 by nr 1:left, 2: center, 3: right.
-%                  11: affordance_name - (cell) object affordance inferred 
+%                  11: affordance_name - (cell) scene affordance inferred 
 %                                 by the experimenter {'greet','grasp','walk','observe'}
-%                  12: affordance_cat - (double) same as obj_act, but indexed 
+%                  12: affordance_cat - (double) same as affordance_name, but indexed 
 %                                 by nr 1:greet, 2: grasp, 3: walk, 4:observe
 %                  13: is_specialcore - (logical) whether the scene is part 
 %                                 of the subselected stimuli used in imagery and
