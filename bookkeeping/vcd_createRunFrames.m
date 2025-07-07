@@ -140,7 +140,27 @@ for ses = 1:length(session_nrs)
                     fix_matrix(fix_matrix(:,4)==0,4) = NaN;
                 end
                 
+                % remove luminance values when the eyetracking block or instruction periods starts, 
+                % we don't have any fixation circle then so we set values to NaN
+                instructions_onset   = this_run.event_start(ismember(this_run.event_id,[90, 990:997]));
+                instructions_dur     = this_run.event_dur(ismember(this_run.event_id,[90, 990:997]));
+                instructions_periods = [];
+                for ii = 1:length(instructions_onset)
+                    instructions_period0 = (instructions_onset(ii) + 1):(instructions_onset(ii)+instructions_dur(ii));
+                    instructions_periods = cat(2,instructions_periods,instructions_period0);
+                end
+                % check that eyetracking block duration + nr blocks x
+                % task instructions durations sums up to the time frames we
+                % will set to NaN.
+                tmp = this_run.event_end(this_run.event_id==990);
+                assert(isequal(sum(ones(1,length(instructions_periods))), (tmp(end) + (sum(this_run.event_id==90)*unique(this_run.event_dur(this_run.event_id==90))))));
+                fix_matrix(instructions_periods,2) = NaN; % insert NaNs for absolute luminance
+                fix_matrix(instructions_periods,3) = NaN; % insert NaNs for relative luminance
+                
                 % add fixation sequence to run_frames table
+                % note that 1st (timing) and 3rd (relative luminance)
+                % column of fix_matrix are obsolete, so we don't record
+                % them..
                 run_frames = table();
                 run_frames.session_nr           = repmat(ses,nr_frames_per_run,1);
                 run_frames.session_type         = repmat(session_types(ses,st),nr_frames_per_run,1);
