@@ -301,7 +301,8 @@ for ses = 1:results.total_nr_of_sessions
     run_start = cat(1,run_start,size(curr_ses_table,1));
 
     for rr = 1:length(run_start)-1
-        trials_per_run(ses,rr) = length(curr_ses_table.trial_nr(run_start(rr):(run_start(rr+1)-1)));
+        tmp = curr_ses_table.trial_nr(run_start(rr):(run_start(rr+1)-1));
+        trials_per_run(ses,rr) = length(tmp(~isnan(tmp)));
         nr_of_unique_conditions(ses,rr) = length(unique(curr_ses_table.condition_nr(~isnan(curr_ses_table.condition_nr) & curr_ses_table.run_nr==rr)));
 
         block_nrs = unique(curr_ses_table.block_nr(curr_ses_table.run_nr==rr & curr_ses_table.event_id==94));
@@ -312,23 +313,32 @@ for ses = 1:results.total_nr_of_sessions
             trial_nrs = curr_ses_table.trial_nr(curr_ses_table.run_nr == rr & curr_ses_table.block_nr==block_nrs(bb) & curr_ses_table.event_id==94);
             trials_per_block(ses,rr,bb) = length(trial_nrs);
             assert(isequal([1:length(trial_nrs)]',trial_nrs)); % increment count
-            assert(any(ismember(length(trial_nrs),[4,8])));
+            assert(any(ismember(length(trial_nrs),[4,8]))); % assert only 4 and 8 trials per block
+            stim_left_nrs = curr_ses_table.stim_nr_left(curr_ses_table.run_nr == rr & curr_ses_table.block_nr==block_nrs(bb) & curr_ses_table.event_id==94);
+            stim_right_nrs = curr_ses_table.stim_nr_right(curr_ses_table.run_nr == rr & curr_ses_table.block_nr==block_nrs(bb) & curr_ses_table.event_id==94);
+            assert(isempty(find(diff(stim_left_nrs)==0))) % no stim nr repeat
+            assert(isempty(find(diff(stim_right_nrs)==0))) % no stim nr repeat
         end
     end
     
     for rr = 1:length(run_start)-1
-        trials_per_taskclass(ses,rr) = length(unique(curr_ses_table.task_class(run_start(rr):(run_start(rr+1)-1))));
+        tmp = curr_ses_table.task_class(run_start(rr):(run_start(rr+1)-1));
+        trials_per_taskclass(ses,rr) = length(tmp(~isnan(tmp)));
     end
 end
 
 assert(isequal(unique(trials_per_block),[0,4,8]')); % we expect either no, 4 or 8 blocks per trial.
+assert(all(mod(trials_per_taskclass(:),2)==0)); % we expect even nr of trials per taskclass
+assert(all(all(mod(trials_per_block,2)==0))); % we expect even nr of trials per block
 
-results.trials_per_taskclass = trials_per_taskclass;
-results.trials_per_run       = trials_per_run;
-results.cues_per_block       = cues_per_block;
-results.nr_of_unique_conditions = nr_of_unique_conditions;
-results.trials_per_block     = trials_per_block;
-results.blocks_per_run       = blocks_per_run;
+results.trials_per_taskclass          = trials_per_taskclass;
+results.trials_per_run                = trials_per_run;
+results.cues_per_block                = cues_per_block;
+results.nr_of_unique_conditions       = nr_of_unique_conditions;
+results.trials_per_block              = trials_per_block;
+results.blocks_per_run                = blocks_per_run;
+results.total_nr_of_unique_conditions = sum(nr_of_unique_conditions);
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Condition specific stats
 
