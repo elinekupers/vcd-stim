@@ -168,7 +168,7 @@ for nn = 1:size(run_frames.frame_event_nr,1)
     case 90 % TASK CUE -- NOTE: no fixation circle!
 %         fix_tex(nn)  = []; % NOTE: if left empty, row nn will shrink fix_tex length by 1. WE DON'T WANT THAT as we want the length to match the run duration (hence it's commented out).
 %         fix_rect(nn) = [];
-        run_frames.fix_abs_lum(nn) = NaN; % remove 128 as absolute luminance because there is no fixation target twinkle
+%         run_frames.fix_abs_lum(nn) = NaN; % remove 128 as absolute luminance because there is no fixation target twinkle
     case {91 93 94 95 96 97 98} % ALL STIMULUS EVENTS + ITI (thick fixation circle rim)
         fix_tex(nn)  = fix_texture.thick_full_white(lum_idx);
         fix_rect(nn) = fix.fix_thick_rect;
@@ -179,7 +179,7 @@ for nn = 1:size(run_frames.frame_event_nr,1)
         if eventID >= 990 % eyetracking targets / pupil black/white displays
 %           fix_tex(nn) = []; % NOTE: if left empty, row nn will shrink fix_tex length by 1. WE DON'T WANT THAT as we want the length to match the run duration (hence it's commented out).
 %           fix_rect(nn) = []; 
-          run_frames.fix_abs_lum(nn) = NaN; % remove 128 as absolute luminance because there is no fixation target twinkle
+%           run_frames.fix_abs_lum(nn) = NaN; % remove 128 as absolute luminance because there is no fixation target twinkle
         elseif eventID == 0 % pre/post blank rest period (thin fixation circle rim)
             fix_tex(nn)  = fix_texture.thin_full(lum_idx);
             fix_rect(nn) = fix.fix_thin_rect;
