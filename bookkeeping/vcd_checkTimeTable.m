@@ -331,13 +331,13 @@ assert(isequal(unique(trials_per_block),[0,4,8]')); % we expect either no, 4 or 
 assert(all(mod(trials_per_taskclass(:),2)==0)); % we expect even nr of trials per taskclass
 assert(all(all(mod(trials_per_block,2)==0))); % we expect even nr of trials per block
 
-results.trials_per_taskclass          = trials_per_taskclass;
-results.trials_per_run                = trials_per_run;
-results.cues_per_block                = cues_per_block;
-results.nr_of_unique_conditions       = nr_of_unique_conditions;
-results.trials_per_block              = trials_per_block;
-results.blocks_per_run                = blocks_per_run;
-results.total_nr_of_unique_conditions = sum(nr_of_unique_conditions);
+results.trials_per_taskclass            = trials_per_taskclass;
+results.trials_per_run                  = trials_per_run;
+results.cues_per_block                  = cues_per_block;
+results.nr_of_unique_conditions_per_run = nr_of_unique_conditions;
+results.trials_per_block                = trials_per_block;
+results.blocks_per_run                  = blocks_per_run;
+results.total_nr_of_unique_conditions   = sum(nr_of_unique_conditions);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Condition specific stats
@@ -594,8 +594,11 @@ for side = [1,2]
         end
     end
 end
+results.total_nr_of_conditions          = sum(length(results.condition_names{1})+length(results.condition_names{2}));
+
 
 % CD onset checks
+total_cd_trials = length(find(time_table_master.task_class(time_table_master.event_id==94)==2));
 cd_cond_names = time_table_master.condition_name(cd_start_not_nan,:);
 cd_cond_nr = time_table_master.condition_nr(cd_start_not_nan,:);
 cd_cond_names_no_nan = cell2mat(cellfun(@(x) isequalwithequalnans(x,NaN), cd_cond_names, 'UniformOutput',0));
@@ -609,6 +612,8 @@ for jj = 1:length(cd_start_not_nan)
 end
 assert(isequal(all_cond_names(cd_plus_cond_nr),cd_plus_cond_names))
 
+results.total_nr_of_CDplus_trials = length(cd_plus_cond_names);
+results.total_nr_of_CD_trials = total_cd_trials;
 % ltm stats
 % assert(isequal(condition_nan, find(isnan(time_table_master.is_lure(:,side)))));
 
@@ -837,18 +842,19 @@ end
 %%% PRINT RESULTS %%%
 
 fprintf('[%s]: Stats of time_table_master:\n',mfilename) 
-fprintf('Total number of sessions: \t\t\t\t%d\n', results.total_nr_of_sessions);
-fprintf('Total number of runs: \t\t\t\t\t%d\n', results.total_nr_of_runs);
-fprintf('Total number of block: \t\t\t\t\t%d\n', results.total_nr_of_blocks);
-fprintf('Total number of trials: \t\t\t\t%d\n', results.total_nr_of_trials);
-fprintf('Total number of cues: \t\t\t\t\tleft: %d, right: %d, both: %d\n', results.cued_count(1),results.cued_count(2),results.cued_count(3));
-fprintf('Total number of unique conditions for runs 1-%d: \t%s \n', results.total_nr_of_runs,num2str(results.nr_of_unique_conditions));
-fprintf('Total number of unique conditions across all runs: \t%d \n', sum(results.nr_of_unique_conditions));
-fprintf('Total number of blocks for runs 1-%d: \t\t\t%s \n', results.total_nr_of_runs,num2str(blocks_per_run))
-fprintf('Total number of trials for runs 1-%d: \t\t\t%s \n', results.total_nr_of_runs,num2str(trials_per_run))
-fprintf('Total number of trials per task class for runs 1-%d: \t%s \n', results.total_nr_of_runs, num2str(results.trials_per_taskclass))
-fprintf('Total number of conditions across all sessions: \t%d \n', length(results.condition_nrs{:,1})+length(results.condition_nrs{:,2}))
-fprintf('Total number of condition repeats across all sessions: \t%d \n', length(unique(cat(1, results.condition_nrs{:,1},results.condition_nrs{:,2}))))
+fprintf('Total number of sessions: \t\t\t\t\t%d\n', results.total_nr_of_sessions);
+fprintf('Total number of runs: \t\t\t\t\t\t%d\n', results.total_nr_of_runs);
+fprintf('Total number of block: \t\t\t\t\t\t%d\n', results.total_nr_of_blocks);
+fprintf('Total number of trials: \t\t\t\t\t%d\n', results.total_nr_of_trials);
+fprintf('Total number of cues: \t\t\t\t\t\tleft: %d, right: %d, both: %d\n', results.cued_count(1),results.cued_count(2),results.cued_count(3));
+fprintf('Total number of conditions (incl. repeats): \t\t\t%d \n', results.total_nr_of_conditions);
+fprintf('Total number of unique condition across all sessions: \t\t%d \n', results.total_nr_of_unique_conditions)
+fprintf('Total number of conditions repeated across all sessions: \t%d \n', results.total_nr_of_conditions-results.total_nr_of_unique_conditions)
+fprintf('Total number of CD+ trials (out of %d CD trials): \t\t%d (%2.1f%%)\n', results.total_nr_of_CD_trials, results.total_nr_of_CDplus_trials, 100*(results.total_nr_of_CDplus_trials/results.total_nr_of_CD_trials))
+fprintf('Total number of unique conditions for runs 1-%d: \t\t%s \n', results.total_nr_of_runs,num2str(results.nr_of_unique_conditions_per_run));
+fprintf('Total number of blocks for runs 1-%d: \t\t\t\t%s \n', results.total_nr_of_runs,num2str(blocks_per_run))
+fprintf('Total number of trials for runs 1-%d: \t\t\t\t%s \n', results.total_nr_of_runs,num2str(trials_per_run))
+fprintf('Total number of trials per task class for runs 1-%d: \t\t%s \n', results.total_nr_of_runs, num2str(results.trials_per_taskclass))
 
 return
 
