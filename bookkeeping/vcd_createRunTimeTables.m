@@ -21,13 +21,55 @@ function [time_table_master, all_run_frames] = vcd_createRunTimeTables(params, v
 %                           empty, subj_id will be set to 'subj000'.
 %
 % OUTPUTS:
-%   time_table_master   :  (struct) updated condition master table with
-%                           single trial events.
-%     {'session_nr'          }
-%     {'run_nr'              }
-%     {'block_nr'            }
-%     {'trial_nr'}
-%     {'condition_name'      }
+%   time_table_master   :  (struct) updated condition master table with single trial events.
+%     {'session_nr'          } : (double) session number, ranging from
+%                                 1-27 for MRI and there is only 1
+%                                 behavioral session. Every row of run_nr
+%                                 is defined and there are no NaNs in this
+%                                 column.
+%     {'session_type'        } : (double) session type, can be either 1 for
+%                                 version "A" or 2 for version "B". Session
+%                                 type is only relevant for the first
+%                                 (wide) and the last (deep) MRI session,
+%                                 where the stimulus blocks are different
+%                                 for the two session versions. All other
+%                                 sessions only have one session_type and
+%                                 are labeled as 1. Every row of run_nr is
+%                                 defined and there are no NaNs in this
+%                                 column.
+%     {'run_nr'              } : (double) local run number within a session
+%                                 (resets every session), ranging from 1-12
+%                                 for behavioral experiment, and 1-10 for
+%                                 MRI experiment. Every row of run_nr is
+%                                 defined and there are no NaNs in this
+%                                 column.
+%     {'block_nr'            } : (double) local block number within a run
+%                                 (resets every run), ranging from 1-7 or
+%                                 999 or NaN, where: - 1-7 is used to
+%                                 indicate a regular stimulus block. - 999
+%                                 is used to indicate an eyetracking block.
+%                                 NaNs are used for events outside
+%                                 eyetracking of stimulus blocks: pre- or
+%                                 post-run blank rest periods and
+%                                 inter-block intervals (IBIs).
+%     {'trial_nr'            } : (double) local trial number within a block
+%                                 (resets every block), ranging from 1-4 or
+%                                 1-8 depending if it is a single- or
+%                                 double-stimulus presentation block. This
+%                                 column contains NaN for events outside
+%                                 VCD trials, including for the eyetracking
+%                                 block, pre- or post-run blank rest
+%                                 periods, inter-block intervals (IBIs),
+%                                 and inter-trial intervals (ITIs).
+%     {'global_run_nr'       } : (double) global run number across all sessions
+%                                 for a subject. Numbers continue counting across sessions.
+%                                 Note that if a session has two session types, we the runs separately
+%                                 for each session type. For example, global run nrs for session 1A 
+%                                 count 1-10 and global run nrs for session 1B count 1-10.
+%     {'global_block_nr'     } : (double) global block number across all sessions for a subject
+%     {'global_trial_nr'     } : (double) global trial number across all sessions for a subject.
+%     {'condition_name'      } : (char) condition name see vcd_getConditionNames.
+%     {'condition_nr'        } : (double) condition number (ranging from 1-1331) associated with condition name
 %     {'stim_class'          } : (double) stimulus class number [1-5]: GBR, RDK, DOT, OBJ, NS
 %     {'task_class'          } : (double) task class number [1-10]: FIX, CD, SCC, PC, WM, LTM, IMG, WHAT, WHERE, HOW
 %     {'stim_nr_left'        } : (double) unique stimulus number for left spatial stimulus location or center location in case of NS
@@ -59,13 +101,12 @@ function [time_table_master, all_run_frames] = vcd_createRunTimeTables(params, v
 %                                 example, for WM it is the difference from reference for gabor degrees tilt, rdk motion direction,
 %                                 dot angle, object facing direction, or
 %                                 type of change in scene.
-%     {'stim2_im_nr'        } : (cell w str or double) outcome of 'stim2_delta'. For
+%     {'stim2_im_nr'         } : (cell w str or double) outcome of 'stim2_delta'. For
 %                                 example, for -8 + 18 = 10 degrees gabor
 %                                 tilt for quiz image after delay.
 %     {'ltm_stim_pair'       } : (double) Long term memory paired stimulus
 %     {'is_lure'             } : (double) if LTM quiz image is lure (1) or not (0)
 %     {'repeat_nr'           } : (double) how often this particular stimulus-task crossing has been repeated across sessions for a subject
-%     {'global_block_nr'     } : (double) block number across all sessions for a subject
 
 %% %%%%%%%%%%%%% PARSE INPUTS %%%%%%%%%%%%%
 p0 = inputParser;
