@@ -307,11 +307,12 @@ for ses = 1:results.total_nr_of_sessions
         block_nrs = unique(curr_ses_table.block_nr(curr_ses_table.run_nr==rr & curr_ses_table.event_id==94));
         blocks_per_run(ses,rr) = length(block_nrs);
         for bb = 1:length(block_nrs)
-            n0 = histcounts(curr_ses_table.is_cued(curr_ses_table.run_nr == rr & curr_ses_table.block_nr==bb & curr_ses_table.event_id==94),[1:4]);
+            n0 = histcounts(curr_ses_table.is_cued(curr_ses_table.run_nr == rr & curr_ses_table.block_nr==block_nrs(bb) & curr_ses_table.event_id==94),[1:4]);
             cues_per_block(ses,rr,bb,1:length(n0)) = n0;
-            trial_nrs = curr_ses_table.trial_nr(curr_ses_table.run_nr == rr & curr_ses_table.block_nr==bb & curr_ses_table.event_id==94);
+            trial_nrs = curr_ses_table.trial_nr(curr_ses_table.run_nr == rr & curr_ses_table.block_nr==block_nrs(bb) & curr_ses_table.event_id==94);
             trials_per_block(ses,rr,bb) = length(trial_nrs);
             assert(isequal([1:length(trial_nrs)]',trial_nrs)); % increment count
+            assert(any(ismember(length(trial_nrs),[4,8])));
         end
     end
     
