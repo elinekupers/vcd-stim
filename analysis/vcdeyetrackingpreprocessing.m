@@ -398,7 +398,7 @@ for spi=1:2
   end
   imagesc(xbins,ybins,n);
   colormap(hot);
-  caxis([0 max(n(:))]);
+  caxis([0 max(n(:))+eps]);
   h = colorbar;
   if spi==2
     set(h,'Ticks',0:max(get(h,'Ticks')));
