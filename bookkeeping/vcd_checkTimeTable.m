@@ -383,33 +383,180 @@ for side = [1,2]
                 gbr_phase_nan  = find(isnan(time_table_master.gbr_phase(strcmp(time_table_master.stim_class_name(:,side),'gabor'),side)));
                 assert(isequal(gbr_phase_nan, find(isnan(time_table_master.condition_nr(strcmp(time_table_master.stim_class_name(:,side),'gabor'),side))))); 
 
+                gbr_ori       = time_table_master.orient_dir(time_table_master.event_id==94 & strcmp(time_table_master.stim_class_name(:,side),'gabor'),side);
+                gbr_phase     = time_table_master.gbr_phase(time_table_master.event_id==94 & strcmp(time_table_master.stim_class_name(:,side),'gabor'),side);
+                gbr_contrast  = time_table_master.contrast(time_table_master.event_id==94 & strcmp(time_table_master.stim_class_name(:,side),'gabor'),side);
+                wm_test_im    = time_table_master.stim2_orient_dir(time_table_master.event_id==95 & strcmp(time_table_master.stim_class_name(:,side),'gabor'),side);
+                ref_im        = time_table_master.orient_dir(time_table_master.event_id==95 & strcmp(time_table_master.stim_class_name(:,side),'gabor'),side);
+                delta_im      = time_table_master.stim2_delta(time_table_master.event_id==95 & strcmp(time_table_master.stim_class_name(:,side),'gabor'),side);
+
+                if side == 1
+                    assert(all(ismember(gbr_ori,params.stim.gabor.ori_deg(1:2:end))))
+                    assert(all(ismember(gbr_phase,params.stim.gabor.ph_deg(1:2:end))))
+                    assert(isequal(unique(gbr_ori)',params.stim.gabor.ori_deg(1:2:end)))
+                    assert(isequal(unique(gbr_phase)',params.stim.gabor.ph_deg(1:2:end)))
+                elseif side == 2
+                    assert(all(ismember(gbr_ori,params.stim.gabor.ori_deg(2:2:end))))
+                    assert(all(ismember(gbr_phase,params.stim.gabor.ph_deg(2:2:end))))
+                    assert(isequal(unique(gbr_ori)',params.stim.gabor.ori_deg(2:2:end)))
+                    assert(isequal(unique(gbr_phase)',params.stim.gabor.ph_deg(2:2:end)))
+                end
+
+                assert(all(ismember(gbr_contrast, params.stim.gabor.contrast)))
+                assert(isequal(unique(gbr_contrast)',params.stim.gabor.contrast))
+                assert(all(ref_im~=wm_test_im))
+                assert(isequal(wm_test_im-ref_im,delta_im))
+                
             case 2 % RDK
                 rdk_coherence_nan   = find(isnan(time_table_master.rdk_coherence(strcmp(time_table_master.stim_class_name(:,side),'rdk'),side)));
                 assert(isequal(rdk_coherence_nan, find(isnan(time_table_master.condition_nr(strcmp(time_table_master.stim_class_name(:,side),'rdk'),side))))); 
 
-            case 3 % dot
-                % no special dot column
+                rdk_motdir  = time_table_master.orient_dir(time_table_master.event_id==94 & strcmp(time_table_master.stim_class_name(:,side),'rdk'),side);
+                rdk_coh     = time_table_master.rdk_coherence(time_table_master.event_id==94 & strcmp(time_table_master.stim_class_name(:,side),'rdk'),side);
                 
-            case {4,5} % obj,ns
-                obj_ns_idx = strcmp(time_table_master.stim_class_name(:,side),'obj') | strcmp(time_table_master.stim_class_name(:,side),'ns');
-                super_cat_nan       = find(isnan(time_table_master.super_cat(obj_ns_idx,side)));
-                basic_cat_nan       = find(isnan(time_table_master.basic_cat(obj_ns_idx,side)));
-                sub_cat_nan         = find(isnan(time_table_master.sub_cat(obj_ns_idx,side)));
-                affordance_cat_nan  = find(isnan(time_table_master.affordance_cat(obj_ns_idx,side)));
+                wm_test_im  = time_table_master.stim2_orient_dir(time_table_master.event_id==95 & strcmp(time_table_master.stim_class_name(:,side),'rdk'),side);
+                ref_im      = time_table_master.orient_dir(time_table_master.event_id==95 & strcmp(time_table_master.stim_class_name(:,side),'rdk'),side);
+                delta_im    = time_table_master.stim2_delta(time_table_master.event_id==95 & strcmp(time_table_master.stim_class_name(:,side),'rdk'),side);
 
-                super_cat_name_nan  = find(cellfun(@(x) isequalwithequalnans(x,NaN), time_table_master.super_cat_name(obj_ns_idx,side)));
-                basic_cat_name_nan  = find(cellfun(@(x) isequalwithequalnans(x,NaN), time_table_master.basic_cat_name(obj_ns_idx,side)));
-                sub_cat_name_nan    = find(cellfun(@(x) isequalwithequalnans(x,NaN), time_table_master.sub_cat_name(obj_ns_idx,side)));
-                affordance_name_nan = find(cellfun(@(x) isequalwithequalnans(x,NaN), time_table_master.affordance_name(obj_ns_idx,side)));
+                if side == 1
+                    assert(all(ismember(rdk_motdir,params.stim.rdk.dots_direction(1:2:end))));
+                    assert(isequal(unique(rdk_motdir)',params.stim.rdk.dots_direction(1:2:end)));
+                elseif side == 2
+                    assert(all(ismember(rdk_motdir,params.stim.rdk.dots_direction(2:2:end))));
+                    assert(isequal(unique(rdk_motdir)',params.stim.rdk.dots_direction(2:2:end)));
+                end
+                assert(all(ismember(rdk_coh,params.stim.rdk.dots_coherence)))
+                assert(isequal(unique(rdk_coh)',params.stim.rdk.dots_coherence))
+                assert(all(ref_im~=wm_test_im))
+                assert(isequal(wm_test_im-ref_im,delta_im))
                 
-                assert(isequal(super_cat_nan,       find(isnan(time_table_master.condition_nr(obj_ns_idx,side)))));
-                assert(isequal(basic_cat_nan,       find(isnan(time_table_master.condition_nr(obj_ns_idx,side)))));
-                assert(isequal(sub_cat_nan,         find(isnan(time_table_master.condition_nr(obj_ns_idx,side)))));
-                assert(isequal(affordance_cat_nan,  find(isnan(time_table_master.condition_nr(obj_ns_idx,side)))));
-                assert(isequal(super_cat_name_nan,  find(isnan(time_table_master.condition_nr(obj_ns_idx,side)))));
-                assert(isequal(basic_cat_name_nan,  find(isnan(time_table_master.condition_nr(obj_ns_idx,side)))));
-                assert(isequal(sub_cat_name_nan,    find(isnan(time_table_master.condition_nr(obj_ns_idx,side)))));
-                assert(isequal(affordance_name_nan, find(isnan(time_table_master.condition_nr(obj_ns_idx,side)))));
+            case 3 % dot
+                % there is no special dot column
+                
+                dot_ang    = time_table_master.orient_dir(time_table_master.event_id==94 & strcmp(time_table_master.stim_class_name(:,side),'dot'),side);
+                wm_test_im = time_table_master.stim2_orient_dir(time_table_master.event_id==95 & strcmp(time_table_master.stim_class_name(:,side),'dot'),side);
+                ref_im     = time_table_master.orient_dir(time_table_master.event_id==95 & strcmp(time_table_master.stim_class_name(:,side),'dot'),side);
+                delta_im   = time_table_master.stim2_delta(time_table_master.event_id==95 & strcmp(time_table_master.stim_class_name(:,side),'dot'),side);
+                
+                if side == 1
+                    assert(all(ismember(dot_ang,params.stim.dot.ang_deg(1:8))))
+                    assert(isequal(sort(unique(dot_ang),'descend')',params.stim.dot.ang_deg(1:8)))
+                    
+                    assert(all(ismember(delta_im,params.stim.dot.delta_from_ref)))
+                    assert(isequal(unique(delta_im)',params.stim.dot.delta_from_ref))
+                elseif side == 2
+                    assert(all(ismember(dot_ang,params.stim.dot.ang_deg(9:16))))
+                    assert(isequal(sort(unique(dot_ang),'descend')',params.stim.dot.ang_deg(9:16)))
+                    
+                    assert(all(ismember(delta_im,params.stim.dot.delta_from_ref)))
+                    assert(isequal(unique(delta_im)',params.stim.dot.delta_from_ref))
+                end
+                assert(all(ref_im~=wm_test_im))
+                assert(isequal(wm_test_im-ref_im,delta_im))
+
+                
+            case 4 % obj
+                super_cat_nan       = find(isnan(time_table_master.super_cat(strcmp(time_table_master.stim_class_name(:,side),'obj'),side)));
+                basic_cat_nan       = find(isnan(time_table_master.basic_cat(strcmp(time_table_master.stim_class_name(:,side),'obj'),side)));
+                sub_cat_nan         = find(isnan(time_table_master.sub_cat(strcmp(time_table_master.stim_class_name(:,side),'obj'),side)));
+                affordance_cat_nan  = find(isnan(time_table_master.affordance_cat(strcmp(time_table_master.stim_class_name(:,side),'obj'),side)));
+                super_cat_name_nan  = find(cellfun(@(x) isequalwithequalnans(x,NaN), time_table_master.super_cat_name(strcmp(time_table_master.stim_class_name(:,side),'obj'),side)));
+                basic_cat_name_nan  = find(cellfun(@(x) isequalwithequalnans(x,NaN), time_table_master.basic_cat_name(strcmp(time_table_master.stim_class_name(:,side),'obj'),side)));
+                sub_cat_name_nan    = find(cellfun(@(x) isequalwithequalnans(x,NaN), time_table_master.sub_cat_name(strcmp(time_table_master.stim_class_name(:,side),'obj'),side)));
+                affordance_name_nan = find(cellfun(@(x) isequalwithequalnans(x,NaN), time_table_master.affordance_name(strcmp(time_table_master.stim_class_name(:,side),'obj'),side)));
+                
+                assert(isequal(super_cat_nan,       find(isnan(time_table_master.condition_nr(strcmp(time_table_master.stim_class_name(:,side),'obj'),side)))));
+                assert(isequal(basic_cat_nan,       find(isnan(time_table_master.condition_nr(strcmp(time_table_master.stim_class_name(:,side),'obj'),side)))));
+                assert(isequal(sub_cat_nan,         find(isnan(time_table_master.condition_nr(strcmp(time_table_master.stim_class_name(:,side),'obj'),side)))));
+                assert(isequal(affordance_cat_nan,  find(isnan(time_table_master.condition_nr(strcmp(time_table_master.stim_class_name(:,side),'obj'),side)))));
+                assert(isequal(super_cat_name_nan,  find(isnan(time_table_master.condition_nr(strcmp(time_table_master.stim_class_name(:,side),'obj'),side)))));
+                assert(isequal(basic_cat_name_nan,  find(isnan(time_table_master.condition_nr(strcmp(time_table_master.stim_class_name(:,side),'obj'),side)))));
+                assert(isequal(sub_cat_name_nan,    find(isnan(time_table_master.condition_nr(strcmp(time_table_master.stim_class_name(:,side),'obj'),side)))));
+                assert(isequal(affordance_name_nan, find(isnan(time_table_master.condition_nr(strcmp(time_table_master.stim_class_name(:,side),'obj'),side)))));
+               
+                obj_ori        = time_table_master.orient_dir(time_table_master.event_id==94 & strcmp(time_table_master.stim_class_name(:,side),'obj'),side);
+                is_objectcatch = time_table_master.is_objectcatch(time_table_master.event_id==94 & strcmp(time_table_master.stim_class_name(:,side),'obj'));
+                is_cued        = time_table_master.is_cued(time_table_master.event_id==94 & strcmp(time_table_master.stim_class_name(:,side),'obj'));
+
+                if side == 1
+                    objc = (is_objectcatch==1 & is_cued==1);
+                    if ~isempty(objc)
+                        catch_ori = params.stim.obj.catch_rotation(1:2:end,:);
+                        assert(all(ismember(obj_ori(objc),catch_ori(:)')));
+                    end
+                    assert(all(ismember(obj_ori(~objc),params.stim.obj.facing_dir_deg(1:2:end))))
+                    assert(isequal(unique(obj_ori(~objc))',sort(params.stim.obj.facing_dir_deg(1:2:end))))
+                elseif side == 2
+                    objc = (is_objectcatch==1 & is_cued==2);
+                    if ~isempty(objc)
+                        catch_ori = params.stim.obj.catch_rotation(2:2:end,:);
+                        assert(all(ismember(obj_ori(objc),catch_ori(:)')));
+                    end
+                    assert(all(ismember(obj_ori(~objc)',sort(params.stim.obj.facing_dir_deg(2:2:end)))))
+                    assert(isequal(unique(obj_ori(~objc))',sort(params.stim.obj.facing_dir_deg(2:2:end))))
+                end
+
+                % check that wm test images have an updated orientation
+                wm_test_im     = time_table_master.stim2_orient_dir(time_table_master.event_id==95 & strcmp(time_table_master.stim_class_name(:,side),'obj'),side);
+                ref_im         = time_table_master.orient_dir(time_table_master.event_id==95 & strcmp(time_table_master.stim_class_name(:,side),'obj'),side);
+                delta_im       = time_table_master.stim2_delta(time_table_master.event_id==95 & strcmp(time_table_master.stim_class_name(:,side),'obj'),side);
+                assert(all(ref_im~=wm_test_im))
+                assert(isequal(wm_test_im-ref_im,delta_im))
+
+                
+            case 5 % ns
+                super_cat_nan       = find(isnan(time_table_master.super_cat(strcmp(time_table_master.stim_class_name(:,side),'ns'),side)));
+                basic_cat_nan       = find(isnan(time_table_master.basic_cat(strcmp(time_table_master.stim_class_name(:,side),'ns'),side)));
+                sub_cat_nan         = find(isnan(time_table_master.sub_cat(strcmp(time_table_master.stim_class_name(:,side),'ns'),side)));
+                affordance_cat_nan  = find(isnan(time_table_master.affordance_cat(strcmp(time_table_master.stim_class_name(:,side),'ns'),side)));
+
+                super_cat_name_nan  = find(cellfun(@(x) isequalwithequalnans(x,NaN), time_table_master.super_cat_name(strcmp(time_table_master.stim_class_name(:,side),'ns'),side)));
+                basic_cat_name_nan  = find(cellfun(@(x) isequalwithequalnans(x,NaN), time_table_master.basic_cat_name(strcmp(time_table_master.stim_class_name(:,side),'ns'),side)));
+                sub_cat_name_nan    = find(cellfun(@(x) isequalwithequalnans(x,NaN), time_table_master.sub_cat_name(strcmp(time_table_master.stim_class_name(:,side),'ns'),side)));
+                affordance_name_nan = find(cellfun(@(x) isequalwithequalnans(x,NaN), time_table_master.affordance_name(strcmp(time_table_master.stim_class_name(:,side),'ns'),side)));
+                
+                assert(isequal(super_cat_nan,       find(isnan(time_table_master.condition_nr(strcmp(time_table_master.stim_class_name(:,side),'ns'),side)))));
+                assert(isequal(basic_cat_nan,       find(isnan(time_table_master.condition_nr(strcmp(time_table_master.stim_class_name(:,side),'ns'),side)))));
+                assert(isequal(sub_cat_nan,         find(isnan(time_table_master.condition_nr(strcmp(time_table_master.stim_class_name(:,side),'ns'),side)))));
+                assert(isequal(affordance_cat_nan,  find(isnan(time_table_master.condition_nr(strcmp(time_table_master.stim_class_name(:,side),'ns'),side)))));
+                assert(isequal(super_cat_name_nan,  find(isnan(time_table_master.condition_nr(strcmp(time_table_master.stim_class_name(:,side),'ns'),side)))));
+                assert(isequal(basic_cat_name_nan,  find(isnan(time_table_master.condition_nr(strcmp(time_table_master.stim_class_name(:,side),'ns'),side)))));
+                assert(isequal(sub_cat_name_nan,    find(isnan(time_table_master.condition_nr(strcmp(time_table_master.stim_class_name(:,side),'ns'),side)))));
+                assert(isequal(affordance_name_nan, find(isnan(time_table_master.condition_nr(strcmp(time_table_master.stim_class_name(:,side),'ns'),side)))));
+                
+                
+                super_cat       = time_table_master.super_cat(time_table_master.event_id==94 & strcmp(time_table_master.stim_class_name(:,side),'ns'),side);
+                basic_cat       = time_table_master.basic_cat(time_table_master.event_id==94 & strcmp(time_table_master.stim_class_name(:,side),'ns'),side);
+                sub_cat         = time_table_master.sub_cat(time_table_master.event_id==94 & strcmp(time_table_master.stim_class_name(:,side),'ns'),side);
+                affordance_cat  = time_table_master.affordance_cat(time_table_master.event_id==94 & strcmp(time_table_master.stim_class_name(:,side),'ns'),side);
+                
+                delta_im      = time_table_master.stim2_delta(time_table_master.event_id==95 & strcmp(time_table_master.stim_class_name(:,side),'ns'),side);
+                wm_test_im      = time_table_master.stim2_orient_dir(time_table_master.event_id==95 & strcmp(time_table_master.stim_class_name(:,side),'ns'),side);
+                assert(all(isnan(wm_test_im)));
+                
+                if side == 1
+                    assert(all(ismember(super_cat,1:length(params.stim.ns.super_cat))))
+                    assert(isequal(unique(super_cat)',1:length(params.stim.ns.super_cat)))
+                    
+                    assert(all(ismember(basic_cat,1:length(params.stim.ns.basic_cat{1}))))
+                    assert(isequal(unique(basic_cat)',1:length(params.stim.ns.basic_cat{1})))
+                    
+                    assert(all(ismember(sub_cat,1:length(params.stim.ns.sub_cat{1}))))
+                    assert(isequal(unique(sub_cat)',1:length(params.stim.ns.sub_cat{1})))
+                    
+                    assert(all(ismember(affordance_cat,1:4)))
+                    assert(isequal(unique(affordance_cat)',1:4))
+                    
+                    assert(all(ismember(delta_im,params.stim.ns.change_im)))
+                    assert(isequal(unique(delta_im)',params.stim.ns.change_im))
+                    
+                elseif side == 2
+                    assert(isequalwithequalnans(super_cat, NaN(length(super_cat),1)))
+                    assert(isequalwithequalnans(basic_cat, NaN(length(basic_cat),1)))
+                    assert(isequalwithequalnans(sub_cat, NaN(length(sub_cat),1)))
+                    assert(isequalwithequalnans(affordance_cat, NaN(length(affordance_cat),1)))
+                    assert(isequalwithequalnans(delta_im, NaN(length(delta_im),1)))
+                end
         end
     end
     
@@ -445,8 +592,34 @@ for side = [1,2]
                 assert(isequal(corr_rsp(~isnan(corr_rsp)), sccnames'));
                 n0 = histcounts(corr_rsp(~isnan(corr_rsp)),[1:5]);
                 assert( all(n0>=1)); % every stimulus class is pressed at least once
-%                 assert( abs(diff(n0([1,3])))<=2 && abs(diff(n0([2,4])))<=2 ); % less than 2 counts difference in nr of button presses
                 
+                % check difference between gabor/rdks and object/dot
+                % stimulus classes
+               count_diff = abs(diff(n0([1,3])))<=1 && abs(diff(n0([2,4])))<=1; % less than 2 counts difference in nr of button presses (1 for gabors/rdks and 1 for object/dot)
+               if strcmp(env_type,'MRI')
+                   assert(count_diff==1)
+               elseif strcmp(env_type,'BEHAVIORAL')
+                   if (count_diff~=1)
+                       warning('[%s]: SCC behavioral button press distribution is off by more than 1 when comparing gabors vs rdks AND objects vs dots',mfilename)
+                   end
+               end
+               % check difference between each individual stimulus class
+               scc_ok = zeros(1,4);
+               for mm = 1:4
+                   if all(abs(n0(mm)-n0(setdiff([1:4],mm)))<=1)
+                       scc_ok(mm) = true;
+                   else
+                       scc_ok(mm) = false;
+                   end
+               end
+               if strcmp(env_type,'MRI')
+                    assert(sum(scc_ok)==length(scc_ok)); 
+               elseif strcmp(env_type,'BEHAVIORAL')
+                   if sum(scc_ok)~=length(scc_ok)
+                       warning('[%s]: SCC behavioral button press distribution is off by more than 1 when comparing all four stimulus classes individually: gabors vs rdks vs objects vs dots!',mfilename)
+                   end
+               end
+                   
             case 4 % pc
                 for stim = [1:4]
                     corr_rsp = time_table_master.correct_response(time_table_master.task_class==tc & time_table_master.event_id==94 & time_table_master.stim_class==stim);
@@ -569,7 +742,19 @@ for side = [1,2]
                 assert(isequal(sum(corr_rsp==1),sum(ismember(cued_tmp_loc,1)))); % left
                 assert(isequal(sum(corr_rsp==2),sum(ismember(cued_tmp_loc,2)))); % center
                 assert(isequal(sum(corr_rsp==3),sum(ismember(cued_tmp_loc,3)))); % right
-                assert(all(abs(diff(histcounts(corr_rsp,[1:4])))<=1)); % equal nr of button presses
+                
+                stim_nrs_where = time_table_master.stim_nr_left(time_table_master.task_class==tc & time_table_master.event_id==94 & time_table_master.stim_class==5);
+                sub_cat_where  = time_table_master.sub_cat(time_table_master.task_class==tc & time_table_master.event_id==94 & time_table_master.stim_class==5);
+                
+                nr_repeats = find(histcounts(stim_nrs_where, [params.stim.ns.unique_im_nrs_core, params.stim.ns.unique_im_nrs_core(end)+1])>1);
+                repeated_im_nrs = params.stim.ns.unique_im_nrs_core(nr_repeats);
+                for mm = 1:length(repeated_im_nrs)
+                    repeated_im_nrs_idx = find(ismember(stim_nrs_where,repeated_im_nrs(mm)));
+                    repeated_im_nrs_resp(mm) = sub_cat_where(repeated_im_nrs_idx(1));
+                end
+                
+                response_distr = histcounts(corr_rsp,[1:4]);
+                assert(all(abs(diff(response_distr-histcounts(repeated_im_nrs_resp,[1:4])))==0)); % equal nr of button presses (sfter account for uneven repeats
                 
             case 10 % how
                 for stim = [4,5]
@@ -595,6 +780,13 @@ for side = [1,2]
     end
 end
 results.total_nr_of_conditions          = sum(length(results.condition_names{1})+length(results.condition_names{2}));
+
+
+correct_response_tally = zeros(length(params.exp.crossingnames),4);
+for cc = 1:length(params.exp.crossingnames)
+    correct_response_tally(cc,:) = histcounts(time_table_master.correct_response(time_table_master.crossing_nr==cc), [1:5]);
+    
+end
 
 
 % CD onset checks
