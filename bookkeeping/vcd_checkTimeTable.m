@@ -58,11 +58,19 @@ function results = vcd_checkTimeTable(time_table_master,varargin)
 % -How many contrast levels, rdk coherence levels, dot angles, object & ns super/basic/sub categories do we sample across a session/run/block?
 % -Do we sample all three coherence levels in an RDK block?
 % -Do we sample all three contrast levels within a GBR block?
-% -Do we sample all at least 4 superordinate categories within an OBJ or NS block?
-% -To what extent are button presses balanced for each crossing?
-% -Does this hold across blocks/runs/the entire session?
+% -Do we sample all superordinate categories across OBJ and/or NS blocks?
+% -Are button presses balanced for each crossing across the session?
+%
+% Is it true that:
+% - we do not repeat any stimuli within a block?
+% - 20% of CD trials are CD+?
+% - 20% of OBJ-PC trials are PC+?
+% - the middle letter in the condition_name matches is_cued?
+% - the number in the condition_name matches stimulus_nr_left/right?
+% - the left column of condition_names only contains 'L' and 'C' (or 'X') stimulus positions?
+% - the right column of condition_names only contains 'R' (or 'X') stimulus positions?
 % 
-% Yoked columns:
+% Does the table show the following yoked columns?
 % * Session_level (No NaN’s)
 %     * session_nr; session_type; run_nr; global_run_nr;
 %     * event_start; event_dur; event_end; event_id; event_name;
@@ -452,7 +460,12 @@ for side = [1,2]
                     assert(isequal(unique(delta_im)',params.stim.dot.delta_from_ref))
                 end
                 assert(all(ref_im~=wm_test_im))
-                assert(isequal(wm_test_im-ref_im,delta_im))
+                diff_delta = wm_test_im-ref_im;
+                if any(abs(diff_delta)> max(params.stim.dot.delta_from_ref))
+                    dd_idx = find(abs(diff_delta)> max(params.stim.dot.delta_from_ref));
+                    diff_delta(dd_idx) = diff_delta(dd_idx)-360;
+                end
+                assert(isequal(diff_delta,delta_im))
 
                 
             case 4 % obj
@@ -477,7 +490,11 @@ for side = [1,2]
                 obj_ori        = time_table_master.orient_dir(time_table_master.event_id==94 & strcmp(time_table_master.stim_class_name(:,side),'obj'),side);
                 is_objectcatch = time_table_master.is_objectcatch(time_table_master.event_id==94 & strcmp(time_table_master.stim_class_name(:,side),'obj'));
                 is_cued        = time_table_master.is_cued(time_table_master.event_id==94 & strcmp(time_table_master.stim_class_name(:,side),'obj'));
+                is_objpc       = time_table_master.is_objectcatch(time_table_master.event_id==94 & strcmp(time_table_master.stim_class_name(:,side),'obj') & time_table_master.task_class==4);
 
+                results.nr_of_objectcatch_trials = sum(is_objectcatch==1);
+                results.nr_of_objpc_trials = length(is_objpc);
+                
                 if side == 1
                     objc = (is_objectcatch==1 & is_cued==1);
                     if ~isempty(objc)
@@ -495,7 +512,6 @@ for side = [1,2]
                     assert(all(ismember(obj_ori(~objc)',sort(params.stim.obj.facing_dir_deg(2:2:end)))))
                     assert(isequal(unique(obj_ori(~objc))',sort(params.stim.obj.facing_dir_deg(2:2:end))))
                 end
-
                 % check that wm test images have an updated orientation
                 wm_test_im     = time_table_master.stim2_orient_dir(time_table_master.event_id==95 & strcmp(time_table_master.stim_class_name(:,side),'obj'),side);
                 ref_im         = time_table_master.orient_dir(time_table_master.event_id==95 & strcmp(time_table_master.stim_class_name(:,side),'obj'),side);
@@ -1043,6 +1059,7 @@ fprintf('Total number of conditions (incl. repeats): \t\t\t%d \n', results.total
 fprintf('Total number of unique condition across all sessions: \t\t%d \n', results.total_nr_of_unique_conditions)
 fprintf('Total number of conditions repeated across all sessions: \t%d \n', results.total_nr_of_conditions-results.total_nr_of_unique_conditions)
 fprintf('Total number of CD+ trials (out of %d CD trials): \t\t%d (%2.1f%%)\n', results.total_nr_of_CD_trials, results.total_nr_of_CDplus_trials, 100*(results.total_nr_of_CDplus_trials/results.total_nr_of_CD_trials))
+fprintf('Total number of OBJ-PC+ trials (out of %d OBJ-PC trials): \t%d (%2.1f%%)\n', results.nr_of_objpc_trials, results.nr_of_objectcatch_trials, 100*(results.nr_of_objectcatch_trials/results.nr_of_objpc_trials))
 fprintf('Total number of unique conditions for runs 1-%d: \t\t%s \n', results.total_nr_of_runs,num2str(results.nr_of_unique_conditions_per_run));
 fprintf('Total number of blocks for runs 1-%d: \t\t\t\t%s \n', results.total_nr_of_runs,num2str(blocks_per_run))
 fprintf('Total number of trials for runs 1-%d: \t\t\t\t%s \n', results.total_nr_of_runs,num2str(trials_per_run))
