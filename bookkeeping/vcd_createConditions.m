@@ -586,22 +586,46 @@ else % Recreate conditions and blocks and trials
     condition_master.correct_response = button_response;
 
     % ---- bookkeeping: See if we can achieve roughly equally sample scc images within a block
-    scc_trials0 = find(condition_master.stim_class==99);
+    scc_trials0 = find(condition_master.stim_class==99 & condition_master.task_class==3);
     cued0 = condition_master.is_cued(scc_trials0);
     scc_trials = scc_trials0; % make a copy
+    
+    % Check how many SCC we will actually allocate across sessions
+    [all_sessions,~] = vcd_getSessionEnvironmentParams(params, env_type);
+    nr_scc_blocks = sum(sum(all_sessions(:,3,:,:),3),4);
+    nr_scc_blocks = nr_scc_blocks(nr_scc_blocks>0);
+    if all(nr_scc_blocks<1)
+        nr_scc_blocks = length(ceil(nr_scc_blocks));
+    else
+        nr_scc_blocks = sum(nr_scc_blocks);
+    end
+    
     if ~isempty(scc_trials)
+        nr_attempts = 0;
         while 1
-            bb_bpress = reshape(condition_master.correct_response(scc_trials),params.exp.block.n_trials_single_epoch,[]);
-            bb_cued   = reshape(cued0,params.exp.block.n_trials_single_epoch,[]);
-            n0 = zeros(size(bb_bpress,2),4);
-            m0 = zeros(size(bb_bpress,2),2);
-            for bb = 1:size(bb_bpress,2)
-                n0(bb,:) = histcounts(bb_bpress(:,bb),[1:5]);
-                m0(bb,:) = histcounts(bb_cued(:,bb));
+            nr_attempts = nr_attempts+1;
+            
+            bb_bpress = reshape(condition_master.correct_response(scc_trials)',nr_scc_blocks,[]); % (nr blocks x trials )
+            bb_cued   = reshape(cued0',nr_scc_blocks, []); % (nr blocks x trials )
+            n0 = zeros(nr_scc_blocks,4); % preallocate space for stim class block checks
+            m0 = zeros(nr_scc_blocks,2); % preallocate space for cued side block checks
+            press_ok = false(1,4);
+            for bb = 1:nr_scc_blocks % loop over scc blocks
+                n0(bb,:) = histcounts(bb_bpress(:,bb),[1:5]);  % 1=gabor, 2=rdk, 3=dot, 4=obj
+                m0(bb,:) = histcounts(bb_cued(:,bb));                
+                for mm = 1:4 % loop over stim class
+                    if all(abs(n0(mm)-n0(setdiff([1:4],mm)))<=1)
+                        press_ok(mm) = true;
+                    else
+                        press_ok(mm) = false;
+                    end
+                end
             end
-            too_few = sum(n0==0,1);
-            cued_ok = sum(m0==0,1);
-            if all(too_few==false(1,4)) && all(cued_ok==false(1,2))
+            
+            too_few = sum(n0==0,1); % we want at least one stimulus class per block
+            cued_ok = sum(m0==0,1); % we want equal left/right cuing per block
+            
+            if all(too_few==zeros(1,4)) && all(cued_ok==zeros(1,2)) && (sum(press_ok)==length(press_ok))
                 break;
             else
                 % shuffle trials while preserving 50:50 cue left/right
@@ -615,6 +639,9 @@ else % Recreate conditions and blocks and trials
                 assert(isequal(cued00,cued0)); % cued status should not change
                 scc_trials(cueleft_idx0)  = scc_trials(cueleft_idx);
                 scc_trials(cueright_idx0) = scc_trials(cueright_idx0);
+            end
+            if nr_attempts > 50000
+                error('\n[%]: More than 50,000 shuffle attempts! Abort to avoid infinite loop. Please try again.\n',mfilename)
             end
         end
         % reshuffle order
