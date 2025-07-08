@@ -357,9 +357,11 @@ switch stimClass
             basic_cat_vec = cat(2, basic_cat_vec, repmat(1:n_basic_cat(ii),1,n_sub_cat(ii,1)));
             sub_cat_vec   = cat(2, sub_cat_vec, repelem(1:n_sub_cat(ii,1), length(n_sub_cat(ii,:))));
             
-            [~,af_idx] = ismember(cat(2,p.stim.ns.affordance{ii,:}),unique_affordances);
+            tmp_af = cat(1,p.stim.ns.affordance{ii,1},p.stim.ns.affordance{ii,2});
+            tmp_af = tmp_af(:)';
+            [~,af_idx] = ismember(tmp_af,unique_affordances);
             affordance_cat  = cat(2, affordance_cat, af_idx);
-            affordance_name = cat(2, affordance_name, cat(2,p.stim.ns.affordance{ii,:}));
+            affordance_name = cat(2, affordance_name, tmp_af);
         end
         stimloc_vec      = repmat(loc_stim, 1, n_unique_cases);
         stimloc_name_vec = repmat({'center'}, 1, n_unique_cases);
@@ -373,9 +375,8 @@ switch stimClass
             basic_cat_name = cat(2, basic_cat_name, p.stim.ns.basic_cat{super_cat_vec(ii)}(basic_cat_vec(ii)));
         end
         
-        sub_cat_name ={};
-        for ii = 1:size(p.stim.ns.sub_cat,1)
-            tmp = reshape(cat(1,p.stim.ns.sub_cat{ii,:}),1,[]);
+        for ii = 1:length(sub_cat_vec)
+            tmp = reshape(cat(1,p.stim.ns.sub_cat{super_cat_vec(ii),basic_cat_vec(ii)}(sub_cat_vec(ii))),1,[]);
             sub_cat_name = cat(2, sub_cat_name, tmp);
         end
         
