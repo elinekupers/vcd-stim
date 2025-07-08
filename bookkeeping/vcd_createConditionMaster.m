@@ -779,6 +779,14 @@ if nr_reps > 0
                         % Ensure that absolute angles of left and right test
                         % stimuli don't overlap (here we use a threshold of
                         % an angle that is more than 20 degrees difference between the two stimuli)
+                        if any(orient_dir2(:) < 0)
+                            for side = [1,2]
+                                negative_ori = find(orient_dir2(:,side)<0);
+                                if ~isempty(negative_ori)
+                                    orient_dir2(negative_ori,side) = mod(orient_dir2(negative_ori,side),360);
+                                end
+                            end
+                        end
                         dot_too_close = abs(diff(orient_dir2,[],2)) < params.stim.dot.min_ang_distance_test_stim;
                         
                         if sum(dot_too_close)==0
