@@ -288,24 +288,24 @@ if all(ismember(cued_stim_loc,[1,2]))
     attempt = 0;
     while 1
         attempt = attempt + 1;
-        % OLD: shuffle order of trials within cued block (only shuffle
-        % order of trials within a block)
-        %         shuffle_vec = shuffle_concat(1:nr_of_trials_per_block,size(combined_trial_shuffleAB2,1)/nr_of_trials_per_block); % N trials (1-8 indices)
-        %         shuffle_vec = reshape(shuffle_vec, nr_of_trials_per_block,[]); % 8 trials x 80 blocks
-        %         shuffle_vec = shuffle_vec + [[0:(size(shuffle_vec,2)-1)].*nr_of_trials_per_block]; % 8 trials x 80 blocks (continuous counting)
-        %         shuffle_vec = shuffle_vec(:);
-        % NEW: shuffle across all trials, where we want 50/50 left/right cued stimuli
-        shuffle_vec = [shuffle_concat(1:size(combined_trial_shuffleAB,1)/2,1); ...
+        % Shuffle across all trials, using the following constraints:
+        % - we want 50/50 left/right cued stimuli
+        % - we want at least one of each stimulus class per block
+        % - we want somewhat equal distribution of button responses.. (we
+        % allow for a discrepancy of 2 or less across stim classes)
+        shuffle_vec = [shuffle_concat(1:size(combined_trial_shuffleAB,1)/2,1); ... [1:(N/2) shuffled; (N/2):end shuffled]
                     (size(combined_trial_shuffleAB,1)/2) + shuffle_concat(1:size(combined_trial_shuffleAB,1)/2,1)]; % N trials (1-8 indices)
         shuffle_vec = shuffle_vec(:);
-        
-        cued_side_shuffled = cued_side(shuffle_vec'); % should be [1,2,1,2,1,2, etc]
+        cued_side_shuffled = cued_side(shuffle_vec'); 
+        assert(isequal(cued_side_shuffled,repmat([1,2],1,length(cued_side_shuffled)/2))) % should be [1,2,1,2,1,2, etc]
         shuffled_responses = correct_response(shuffle_vec);
-        block_ok = []; counter = 1;
-        for cc = 1:(params.exp.block.n_trials_single_epoch):length(shuffled_responses)
-            n1 = histcounts(shuffled_responses(cc:(cc+(params.exp.block.n_trials_single_epoch-1))),[stim_class_nrs, stim_class_nrs(end)+1]); % check stim class
-            
-            if all(abs(abs_stim_class_chance-n1)<=1) %all(n1>=1) % 
+        block_start = 1:(params.exp.block.n_trials_single_epoch):length(shuffled_responses);
+        
+        % reset ocounters
+        block_ok = zeros(1,length(block_start)); counter = 1; scc_ok = false;
+        for cc = block_start
+            n1 = histcounts(shuffled_responses(cc:(cc+(params.exp.block.n_trials_single_epoch-1))),[stim_class_nrs, stim_class_nrs(end)+1]); % check stim class within a block
+            if all(n1>=1) % if we have at least one of each stimulus class per block, we are happy
                 block_ok(counter) = 1;
                 counter = counter + 1;
             elseif any(n1<1) 
@@ -313,18 +313,33 @@ if all(ismember(cued_stim_loc,[1,2]))
                 break;
             end
         end
-        if ~isempty(block_ok) && sum(block_ok)==length(block_ok)
+        
+        if ~isempty(block_ok) && sum(block_ok)==length(block_start)
+            % if within block check completed, check is we have the
+            % expected distribution of stimulus classes across all blocks
+            % (given the unequal distribution of stimulus classes, i.e., we
+            % have more gabors and rdks than dots and objects).
+            n2 = histcounts(shuffled_responses,[stim_class_nrs, stim_class_nrs(end)+1]); % check stim class across all blocks.
+            if isequal(n2,abs_stim_class_chance*(length(block_start)))
+                scc_ok = true;
+            else
+                scc_ok = false;
+            end
+        end
+        
+        if scc_ok
             break;
         end
+        
         if attempt > max_attempts
             error('\n[%s]: Can''t reach a shuffle that works with current constraints!',mfilename)
         end
+        
         if mod(attempt,100)
             fprintf('.');
         end
     end
     fprintf('\n');
-    
     combined_trial_shuffleAB3 = combined_trial_shuffleAB(shuffle_vec,:);
     combined_img_nr_shuffleAB3 = combined_img_nr_shuffleAB(shuffle_vec,:);
 end
@@ -397,6 +412,7 @@ for ii = 1:size(combined_trial_shuffleABC,1)
     % check cuing & stim nr
     assert(isequal(new_trial_l.is_cued, combined_cueloc_shuffleABC(ii)));
     assert(isequal(new_trial_l.stim_nr_left, combined_im_nr_shuffleABC(ii,1)));
+    
     % Get right stimulus of this trial if there is one
     if ~isnan(combined_trial_shuffleABC(ii,2))
         new_trial_r = master_table(combined_trial_shuffleABC(ii,2),:);
