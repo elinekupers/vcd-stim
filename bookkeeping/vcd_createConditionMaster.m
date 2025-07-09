@@ -777,7 +777,7 @@ if nr_reps > 0
                         orient_dir2(noncatch_trials_idx,:)   = conds_single_rep_merged.orient_dir(noncatch_trials_idx,:) + delta_vec0;
                         
                         % apply circular wrap 
-                        orient_dir2 = mod2(orient_dir2,[],360); 
+                        orient_dir2 = mod(orient_dir2, 360*ones(size(orient_dir2)));
 
                         % Ensure that absolute angles of left and right test
                         % stimuli don't overlap (here we use a threshold of
