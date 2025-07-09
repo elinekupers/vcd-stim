@@ -639,7 +639,7 @@ else % Recreate conditions and blocks and trials
                 scc_trials(cueright_idx0) = scc_trials(cueright_idx0);
             end
             if nr_attempts > 50000
-                error('\n[%]: More than 50,000 shuffle attempts! Abort to avoid infinite loop. Please try again.\n',mfilename)
+                error('\n[%s]: More than 50,000 shuffle attempts! Abort to avoid infinite loop. Please try again.\n',mfilename)
             end
         end
         % reshuffle order
