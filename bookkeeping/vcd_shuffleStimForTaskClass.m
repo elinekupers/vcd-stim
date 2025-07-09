@@ -325,6 +325,22 @@ if all(ismember(cued_stim_loc,[1,2]))
             else
                 scc_ok = false;
             end
+            
+            % we also check if any two dot stimuli are considered too close
+            % or not:
+            updated_stim_im_nr = combined_img_nr_shuffleAB(shuffle_vec,:);
+            updated_stim_im_idx = combined_trial_shuffleAB(shuffle_vec,:);
+            left_stimclass_updated_stim_nr = vcd('stimtostimclassnumber',updated_stim_im_nr(:,1));
+            right_stimclass_updated_stim_nr = vcd('stimtostimclassnumber',updated_stim_im_nr(:,2));
+            stimclass_updated_stim_nr = [left_stimclass_updated_stim_nr; right_stimclass_updated_stim_nr]';
+            dot_idx = find(sum(stimclass_updated_stim_nr==3,2)==2);
+            diff_orient = abs(circulardiff(master_table.orient_dir(updated_stim_im_idx(dot_idx,1),1),master_table.orient_dir(updated_stim_im_idx(dot_idx,2),2),360));
+            % if difference between dots is less than we allow, we reset
+            % ssc_ok flag to false. If angles are ok, then we leave the
+            % state of the scc_flag as set above.
+            if any(diff_orient<=params.stim.dot.min_ang_distance_dot)
+                scc_ok = false; 
+            end
         end
         
         if scc_ok
