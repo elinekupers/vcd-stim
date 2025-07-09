@@ -542,6 +542,7 @@ else
                 p.y0_pix        = y0_pix;                                   % y-center loc in pix (translation from center screen 0,0)
                 
                 p.og_res_stim_total_sz     = 1024;                          % original resolution of object stimuli
+                p.cropped_res_stim_total_sz = 512;                          % cropped version of preprocessed object stimuli.
                 p.og_res_stim_target_sz    = parafov_circle_diam_pix;       % object stimuli have a target size of 4 dva = 354 pixels (7TAS_BOLDSCREEN32) or 258 pixels (PP room)
                 p.og_res_stim_deg          = parafov_circle_diam_deg;       % corresponding to 4 deg
 
@@ -850,7 +851,12 @@ else
         end
         if verbose
             % Print out stimulus params
-            fprintf('*** %s:\tstimulus size = %2.2f deg (%3.2f pixels) ***\n', upper(stim_class{ii}), p.img_sz_deg, p.img_sz_pix);
+            if strcmp(stim_class{ii},'obj')
+                stim_sz_px = p.cropped_res_stim_total_sz;
+            else
+                stim_sz_px = p.img_sz_pix;
+            end
+            fprintf('*** %s:\tstimulus size = %2.2f deg (%3.2f pixels) ***\n', upper(stim_class{ii}), p.img_sz_deg, stim_sz_px);
         end
     end
     
