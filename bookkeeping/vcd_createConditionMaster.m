@@ -787,6 +787,14 @@ if nr_reps > 0
                                 end
                             end
                         end
+                        if any(orient_dir2(:) > 360)
+                            for side = [1,2]
+                                positive_ori = find(orient_dir2(:,side)>360);
+                                if ~isempty(positive_ori)
+                                    orient_dir2(positive_ori,side) = mod(orient_dir2(positive_ori,side),360);
+                                end
+                            end
+                        end
                         dot_too_close = abs(diff(orient_dir2,[],2)) < params.stim.dot.min_ang_distance_test_stim;
                         
                         if sum(dot_too_close)==0
