@@ -408,7 +408,7 @@ else % Recreate conditions and blocks and trials
         % Loop over each task crossing for this stim class
         for curr_task = 1:length(task_crossings)
 
-            % Define the unique images for Gabors
+            % Define the unique images for given stimulus class
             [t_cond, n_unique_cases] = vcd_defineUniqueImages(params, stimClass_name);
             
             all_unique_im.(stimClass_name) = t_cond;
@@ -436,10 +436,8 @@ else % Recreate conditions and blocks and trials
 
             %% ---- IMPORTANT FUNCTION: Create condition master table ---- %%
             % Create condition master table, where unique images are
-            % shuffled and distributed across blocks according to the
-            % stimulus feature of interest that receive priority. For
-            % example, we want to make sure we present all 3 gabor
-            % contrasts within a block at least once.
+            % shuffled and distributed across blocks (subject to certain
+            % constraints)
             tbl = vcd_createConditionMaster(params, t_cond, env_type);
             
             if ~any(ismember(tbl.Properties.VariableNames,'unique_trial_nr')) % check for the first column in the table to make sure we actually generated conditions
@@ -662,6 +660,8 @@ else % Recreate conditions and blocks and trials
         for mm = 1:length(curr_tc)
             % check if we have such a crossing
             if sum(ismember(condition_master.task_class,curr_tc(mm)) & ismember(condition_master.stim_class,curr_sc(jj)))>0
+                % if so, then set the number of expected button presses
+                % **** !!! careful this is hardcoded stuff !!! *****
                 if ismember(curr_tc(mm),[2,4,5,6,7]) % cd, pc, wm, ltm, img have 2 response options
                     nr_responses = 2;
                 elseif ismember(curr_tc(mm),[3,8,10]) % scc, what, how have 4 response options
@@ -675,7 +675,7 @@ else % Recreate conditions and blocks and trials
                 n = histcounts(resp,1:(nr_responses+1));
                 % For WHAT/HOW tasks we go by category info, because we combine
                 % object and foods into one button press..
-                if ismember(curr_sc(jj),[4,5]) && ismember(curr_tc(mm),8)
+                if ismember(curr_sc(jj),[4,5]) && ismember(curr_tc(mm),8) % **** !!! careful this is hardcoded stuff !!! *****
                     supercat = condition_master.super_cat(condition_master.stim_class==curr_sc(jj) & condition_master.task_class==curr_tc(mm),:);
                     if curr_sc(jj) == 4 % objects
                         cued0  = condition_master.is_cued(condition_master.stim_class==curr_sc(jj) & condition_master.task_class==curr_tc(mm));
@@ -683,7 +683,7 @@ else % Recreate conditions and blocks and trials
                     elseif curr_sc(jj) == 5 % scenes, no left/right, only center
                         n0     = histcounts(supercat,1:6);
                     end
-                    n1 = [n0([1,2]), n0(3)+n0(4), n0(5)];
+                    n1 = [n0([1,2]), n0(3)+n0(4), n0(5)];  % we combine (3) objects and (4) food into a single button press (the ring finger)
                     assert(all(n==n1))
                 elseif ismember(curr_sc(jj),4) && ismember(curr_tc(mm),4) % PC-OBJ
                     resp2 = resp(condition_master.is_objectcatch( ...
@@ -727,7 +727,7 @@ else % Recreate conditions and blocks and trials
                 elseif all(n==0) && curr_tc(mm)~=2 && ~ismember(curr_tc(mm),[8,9,10])
                     error('[%s]: No correct responses found?!',mfilename);
                 else
-                    assert(all(diff(n)==0))
+                    assert(all(diff(n)==0)); % assert balanced button presses
                 end
             end
         end
@@ -742,6 +742,8 @@ else % Recreate conditions and blocks and trials
     
     
     %% ---- IMPORTANT FUNCTION: Add contrast decrement
+    % !!WARNING!! There is a randomization component involved in
+    % determining the contrast decrement component!!
     condition_master = vcd_determineContrastDecrementChangeTrials(params, condition_master);
     
     %% Store condition_master if requested
@@ -762,7 +764,7 @@ else % Recreate conditions and blocks and trials
     
     % Stim class nr should match with params
     assert(isequal(unique(condition_master.stim_class)',[1:length(params.exp.stimclassnames),99]))
-    % Task class nr should match with params
+    % Task class nr should match with defined stimulus-task crossings in params.exp
     if strcmp(env_type,'MRI')
         assert(isequal(unique(condition_master.task_class)',1:length(params.exp.taskclassnames)));
     elseif strcmp(env_type,'BEHAVIOR')
@@ -787,7 +789,7 @@ else % Recreate conditions and blocks and trials
     for ii = 1:length(params.exp.stimclassnames)
         
         % Check nr of unique stimuli per stimulus class
-        if ii == 5
+        if ii == 5 % NS is dealt with separately because it only has a single central stim per trial
             tmp = condition_master(condition_master.is_catch==0 & isnan(condition_master.is_objectcatch) & strcmp(condition_master.stim_class_name(:,1), params.exp.stimclassnames{ii}),:);
         
             [N, ~] = histcounts(tmp.stim_nr_left(strcmp(tmp.stim_class_name(:,1), params.exp.stimclassnames{ii})));
@@ -813,17 +815,18 @@ else % Recreate conditions and blocks and trials
 
             expected_nr_of_trials = sum(sum(all_sessions(ii,:,:).*params.exp.nr_trials_per_block(ii,:,:)));
             if params.is_demo
-                expected_nr_of_trials = 0.5*expected_nr_of_trials;
+                expected_nr_of_trials = 0.5*expected_nr_of_trials; % demo has only half the nr of trials per block.
             end
             empirical_nr_of_trials = size(tmp,1);
-            assert(isequal(empirical_nr_of_trials, expected_nr_of_trials))
+            assert(isequal(empirical_nr_of_trials, expected_nr_of_trials)) % nr of expected trials should match the empirical nr of trials
             
-        else
-            if ismember(ii,[1:3])
+        else % classic stimuli: GBR/RDK/DOT/OBJ
+            if ismember(ii,[1:3]) % if GBR/RDK/DOT
                 tmp = condition_master(condition_master.is_catch==0 & isnan(condition_master.is_objectcatch) & any(strcmp(condition_master.stim_class_name, params.exp.stimclassnames{ii}),2),:);
-            elseif ii == 4
+            elseif ii == 4 % OBJ
                 tmp = condition_master(condition_master.is_catch==0 & condition_master.is_objectcatch~=1 & any(strcmp(condition_master.stim_class_name, params.exp.stimclassnames{ii}),2),:);
             end
+            % Get counts of stimulus numbers for left and right stimulus position.
             [N, ~] = histcounts(cat(1,tmp.stim_nr_left(strcmp(tmp.stim_class_name(:,1), params.exp.stimclassnames{ii})),....
                                             tmp.stim_nr_right(strcmp(tmp.stim_class_name(:,2), params.exp.stimclassnames{ii}))));
             
@@ -831,22 +834,22 @@ else % Recreate conditions and blocks and trials
             if ~params.is_demo
                 assert(isequal(size(N,2), length(all_unique_im.(params.exp.stimclassnames{ii}).unique_im_nr)))
             end
-            colsL = tmp.stim_nr_left(tmp.task_class ~=3 & strcmp(tmp.stim_class_name(:,1), params.exp.stimclassnames{ii}));
-            colsR = tmp.stim_nr_right(tmp.task_class ~=3 & strcmp(tmp.stim_class_name(:,2), params.exp.stimclassnames{ii}));
-            colsLR = [colsL(:),colsR(:)];
-            unique_im_from_table(ii) = length(unique(colsLR));
-            colsLR_scc = [tmp.stim_nr_left(tmp.task_class ==3 & strcmp(tmp.stim_class_name(:,1), params.exp.stimclassnames{ii})); ...
+            colsL = tmp.stim_nr_left(tmp.task_class ~=3 & strcmp(tmp.stim_class_name(:,1), params.exp.stimclassnames{ii})); % exclude SCC, we deal with those trials separately 
+            colsR = tmp.stim_nr_right(tmp.task_class ~=3 & strcmp(tmp.stim_class_name(:,2), params.exp.stimclassnames{ii})); % exclude SCC, we deal with those trials separately
+            colsLR = [colsL(:),colsR(:)]; % if this fails, then we don't have equal left and right stimulus numbers for classic stimuli
+            unique_im_from_table(ii) = length(unique(colsLR)); % this should be 24 for GBR or RDK, 16 for DOT/OBJ
+            colsLR_scc = [tmp.stim_nr_left(tmp.task_class ==3 & strcmp(tmp.stim_class_name(:,1), params.exp.stimclassnames{ii})); ... % deal with scc trials
                             tmp.stim_nr_right(tmp.task_class ==3 & strcmp(tmp.stim_class_name(:,2), params.exp.stimclassnames{ii}))];
-            
+            % Calculate the expected nr of trials from the params.exp.[behavior/mri].ses_blocks table.
             expected_nr_of_trials = sum(sum(all_sessions(ii,:,:).*params.exp.nr_trials_per_block(ii,:)));
             if params.is_demo
-                expected_nr_of_trials = expected_nr_of_trials*0.5;
+                expected_nr_of_trials = expected_nr_of_trials*0.5; % again: demo has half the trials per block
             end
             
-            if strcmp(params.exp.stimclassnames{ii},'obj')
-                empirical_nr_of_trials = ceil(sum([size(colsLR,1),size(unique(colsLR_scc),1)/2])+sum(condition_master.is_objectcatch==1));
+            if strcmp(params.exp.stimclassnames{ii},'obj') 
+                empirical_nr_of_trials = ceil(sum([size(colsLR,1),size(unique(colsLR_scc),1)/2])+sum(condition_master.is_objectcatch==1)); % for OBJ: sum regular trials, scc trials and objectcatch trials 
             else
-                empirical_nr_of_trials = sum([size(colsLR,1),size(unique(colsLR_scc),1)/2]);
+                empirical_nr_of_trials = sum([size(colsLR,1),size(unique(colsLR_scc),1)/2]);  % for GBR/RDK/DOT: sum regular trials, scc trials 
             end
             assert((abs(floor(empirical_nr_of_trials)-expected_nr_of_trials))<=2); % we allow for 1-2 trials difference per stim class due to imbalanced nr of trials for SCC
         end
@@ -943,8 +946,8 @@ else % Recreate conditions and blocks and trials
                 print(gcf,'-dpng','-r300',fullfile(saveFigsFolder,filename));
             end
         end
-    end
-end % load params
+    end % if verbose
+end % if load params
 
 return
 
