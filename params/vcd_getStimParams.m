@@ -478,10 +478,11 @@ else
                 p.y0_pix        = disp_params.yc + round(y * disp_params.ppd);     % desired y-center loc in pix (translation from upper left corner [0,0])
                 
                 % WORKING MEMORY: dot angle position deltas for test images
-                p.delta_from_ref             = [-12, -6, 6, 12]; %[-16, -8, 8, 16];                   % how much should stim iso-eccen loc deviate from reference (WM: double epochs)
+                p.delta_from_ref             = [-10, -5, 5, 10];                   % how much should stim iso-eccen loc deviate from reference (WM: double epochs)
                                                                                    % the bigger the delta, the easier the trial
                 p.unique_im_nrs_wm_test      = [175:238];                          % Unique image nrs associated with the 64 WM DOT test stimuli
-                p.min_ang_distance_test_stim = 20;                                 % minimum angular distance (deg) between two wm test images; to avoid that test dot stimuli will overlap.
+                p.min_ang_distance_test_stim = 69;                                 % minimum angular distance (deg) between two wm test images; to avoid that test dot stimuli will overlap. (70 deg is ok)
+                p.min_ang_distance_dot       = 67.5;                               % minimum angular distance (deg) between two dot images; we do not allow distances equal to 67.5 or less than 67.5 deg
                 
                 % check if all test images for WM have unique angles
                 tmp          = p.ang_deg+[0, p.delta_from_ref]';
