@@ -463,7 +463,13 @@ for side = [1,2]
                 diff_delta = wm_test_im-ref_im;
                 if any(abs(diff_delta)> max(params.stim.dot.delta_from_ref))
                     dd_idx = find(abs(diff_delta)> max(params.stim.dot.delta_from_ref));
-                    diff_delta(dd_idx) = diff_delta(dd_idx)-360;
+                    for ff = 1:length(dd_idx)
+                        if diff_delta(dd_idx(ff))<0
+                           diff_delta(dd_idx(ff)) = diff_delta(dd_idx(ff))+360;
+                        elseif diff_delta(dd_idx(ff))>0
+                            diff_delta(dd_idx(ff)) = diff_delta(dd_idx(ff))-360;
+                        end
+                    end
                 end
                 assert(isequal(diff_delta,delta_im))
 
@@ -671,8 +677,22 @@ for side = [1,2]
                 assert(isequal(sum(corr_rsp==1),sum(ismember(cued_tmp_ori, 1)))); % indoor
                 assert(isequal(sum(corr_rsp==2),sum(ismember(cued_tmp_ori, 2)))); % outdoor
                 
-                assert(diff(histcounts(corr_rsp,[1:3]))==0); % equal nr of button presses
+                if strcmp(env_type, 'BEHAVIORAL')
+                    stim_nrs_pc = time_table_master.stim_nr_left(time_table_master.task_class==tc & time_table_master.event_id==94 & time_table_master.stim_class==5);
+                    basic_cat_inout  = time_table_master.basic_cat(time_table_master.task_class==tc & time_table_master.event_id==94 & time_table_master.stim_class==5);
+
+                    nr_repeats = find(histcounts(stim_nrs_pc, [params.stim.ns.unique_im_nrs_core, params.stim.ns.unique_im_nrs_core(end)+1])>1);
+                    repeated_im_nrs = params.stim.ns.unique_im_nrs_core(nr_repeats);
+                    for mm = 1:length(repeated_im_nrs)
+                        repeated_im_nrs_idx = find(ismember(stim_nrs_pc,repeated_im_nrs(mm)));
+                        repeated_im_nrs_resp(mm) = basic_cat_inout(repeated_im_nrs_idx(1));
+                    end
                 
+                    response_distr = histcounts(corr_rsp,[1:3]);
+                    assert(all(abs(diff(response_distr-histcounts(repeated_im_nrs_resp,[1:3])))==0)); % equal nr of button presses (after account for uneven repeats
+                elseif strcmp(env_type, 'MRI')   
+                    assert(diff(histcounts(corr_rsp,[1:3]))==0); % equal nr of button presses
+                end
             case 5 % wm
                 for stim = [1:4]
                     tmp_ori1 = []; tmp_ori2 = [];
@@ -692,6 +712,16 @@ for side = [1,2]
                     cued_tmp_delta=cued_tmp_delta';
                     
                     diff_ori = cued_tmp_ori2-cued_tmp_ori1;
+                    if any(abs(diff_ori)>max(abs(tmp_delta(:))))
+                        diff_ori_wrapped = find(abs(diff_ori)>max(abs(tmp_delta(:))));
+                        for ff = 1:length(diff_ori_wrapped)
+                            if diff_ori(diff_ori_wrapped(ff))<0
+                                diff_ori(diff_ori_wrapped(ff)) = diff_ori(diff_ori_wrapped(ff))+360;
+                            elseif diff_ori(diff_ori_wrapped(ff))>0
+                                diff_ori(diff_ori_wrapped(ff)) = diff_ori(diff_ori_wrapped(ff))-360;
+                            end
+                        end
+                    end
                     assert(isequal(cued_tmp_delta,diff_ori));
                     
                     if stim == 1
@@ -715,7 +745,23 @@ for side = [1,2]
                 assert(isequal(sum(corr_rsp==1),sum(tmp_delta<0))); % remove
                 assert(isequal(sum(corr_rsp==2),sum(tmp_delta>0))); % add
                 
-                assert(diff(histcounts(corr_rsp,[1:3]))==0); % equal nr of button presses
+                if strcmp(env_type, 'BEHAVIORAL')
+                    stim_nrs_wm = time_table_master.stim_nr_left(time_table_master.task_class==tc & time_table_master.event_id==94 & time_table_master.stim_class==5);
+                    change_cat_wm  = time_table_master.stim2_delta(time_table_master.task_class==tc & time_table_master.event_id==94 & time_table_master.stim_class==5);
+                    
+                    nr_repeats = find(histcounts(stim_nrs_wm, [params.stim.ns.unique_im_nrs_core, params.stim.ns.unique_im_nrs_core(end)+1])>1);
+                    repeated_im_nrs = params.stim.ns.unique_im_nrs_core(nr_repeats);
+                    for mm = 1:length(repeated_im_nrs)
+                        repeated_im_nrs_idx = find(ismember(stim_nrs_pc,repeated_im_nrs(mm)));
+                        repeated_im_nrs_resp(mm) = change_cat_wm(repeated_im_nrs_idx(1));
+                    end
+                    response_distr = histcounts(corr_rsp,[1:3]);
+                    if ~(diff(histcounts(response_distr,[1:3]))==0) % equal nr of button presses 
+                        assert(all(abs(diff(response_distr-histcounts(repeated_im_nrs_resp,[1:3])))==0)); % equal nr of button presses (after account for uneven repeats
+                    end
+                elseif strcmp(env_type, 'MRI')
+                    assert(diff(histcounts(corr_rsp,[1:3]))==0); % equal nr of button presses
+                end
                 
             case 6 % ltm
                 % under construction
@@ -759,19 +805,22 @@ for side = [1,2]
                 assert(isequal(sum(corr_rsp==2),sum(ismember(cued_tmp_loc,2)))); % center
                 assert(isequal(sum(corr_rsp==3),sum(ismember(cued_tmp_loc,3)))); % right
                 
-                stim_nrs_where = time_table_master.stim_nr_left(time_table_master.task_class==tc & time_table_master.event_id==94 & time_table_master.stim_class==5);
-                sub_cat_where  = time_table_master.sub_cat(time_table_master.task_class==tc & time_table_master.event_id==94 & time_table_master.stim_class==5);
+                if strcmp(env_type, 'BEHAVIORAL')
+                    stim_nrs_where = time_table_master.stim_nr_left(time_table_master.task_class==tc & time_table_master.event_id==94 & time_table_master.stim_class==5);
+                    sub_cat_where  = time_table_master.sub_cat(time_table_master.task_class==tc & time_table_master.event_id==94 & time_table_master.stim_class==5);
+
+                    nr_repeats = find(histcounts(stim_nrs_where, [params.stim.ns.unique_im_nrs_core, params.stim.ns.unique_im_nrs_core(end)+1])>1);
+                    repeated_im_nrs = params.stim.ns.unique_im_nrs_core(nr_repeats);
+                    for mm = 1:length(repeated_im_nrs)
+                        repeated_im_nrs_idx = find(ismember(stim_nrs_where,repeated_im_nrs(mm)));
+                        repeated_im_nrs_resp(mm) = sub_cat_where(repeated_im_nrs_idx(1));
+                    end
                 
-                nr_repeats = find(histcounts(stim_nrs_where, [params.stim.ns.unique_im_nrs_core, params.stim.ns.unique_im_nrs_core(end)+1])>1);
-                repeated_im_nrs = params.stim.ns.unique_im_nrs_core(nr_repeats);
-                for mm = 1:length(repeated_im_nrs)
-                    repeated_im_nrs_idx = find(ismember(stim_nrs_where,repeated_im_nrs(mm)));
-                    repeated_im_nrs_resp(mm) = sub_cat_where(repeated_im_nrs_idx(1));
+                    response_distr = histcounts(corr_rsp,[1:4]);
+                    assert(all(abs(diff(response_distr-histcounts(repeated_im_nrs_resp,[1:4])))==0)); % equal nr of button presses (sfter account for uneven repeats
+                elseif sctrmp(env_type, 'MRI')
+                    assert(diff(histcounts(corr_rsp,[1:4]))==0); % equal nr of button presses
                 end
-                
-                response_distr = histcounts(corr_rsp,[1:4]);
-                assert(all(abs(diff(response_distr-histcounts(repeated_im_nrs_resp,[1:4])))==0)); % equal nr of button presses (sfter account for uneven repeats
-                
             case 10 % how
                 for stim = [4,5]
                     cued_tmp_afford = [];
