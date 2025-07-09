@@ -1,8 +1,8 @@
-function conds_master_reordered_merged = vcd_mergeUniqueImageIntoTrials(conds_master)
+function conds_master_reordered_merged = vcd_mergeUniqueImageIntoTrials(params, conds_master)
 % VCD function to merge unique images into stimulus trials where there is a
 % left and right parafoveal stimulus or single central stimulus.
 %
-%   conds_master_reordered = vcd_mergeUniqueImageIntoTrials(conds_master,fix_task_flag)
+%   conds_master_reordered = vcd_mergeUniqueImageIntoTrials(params, conds_master)
 %
 % This function does the following:
 % Step 1: match left/right stimuli based on condition
@@ -11,10 +11,10 @@ function conds_master_reordered_merged = vcd_mergeUniqueImageIntoTrials(conds_ma
 % each row is now a single trial.
 %
 % INPUTS:
+% params        :       (struct) general stimulus and experimental params.
+%                        Needed to get params.stim.dot.min_ang_distance_dot
 % conds_master  :       (table) with columns for stim-trial properties and
 %                       rows with n trials.
-% fix_task_flag :       logical flag to deal with FIX condition (thickening
-%                       on both sides)
 %
 % OUTPUTS:
 % conds_master_reordered :   n/2 trials x 9 matrix with the following columns
@@ -41,129 +41,196 @@ assert(length(left_stim)==length(right_stim))
 trial_vec_i = NaN(size(conds_master,1)/2,2);
 
 % Add the condition master to struct
-trial_vec = repelem(1:size(trial_vec_i,1),2); 
+trial_vec = repelem(1:size(trial_vec_i,1),2);
 
 nr_cueing_conds = 4; %left/right x cued/uncued
 
 % %%%% STEP 1 & 2 %%%%
 % Define thickening of central cue
-if ~strcmp(unique(conds_master.task_class_name),{'fix'})
+dot_ang_not_ok = true;
+while dot_ang_not_ok
     
-    thickening_dir = zeros(length(trial_vec),1);
-    th_count = 1;
-    
-    left_cued    = find((conds_master.is_cued == 1) & (conds_master.stimloc == 1));
-    left_uncued  = find((conds_master.is_cued == 0) & (conds_master.stimloc == 1));
-    right_cued   = find((conds_master.is_cued == 1) & (conds_master.stimloc == 2));
-    right_uncued = find((conds_master.is_cued == 0) & (conds_master.stimloc == 2));
-    
-    assert(isequal(length(left_cued),length(right_uncued)))
-    assert(isequal(length(left_uncued),length(right_cued)))
-    
-    if ismember(unique(conds_master.task_class_name),{'img','ltm'})  
-
-        % double the nr of trials for imagery, but not catch trials, given that we only selected a subset
-        non_catch_left_cued    = left_cued(ismember(left_cued,find(conds_master.is_special_core==1 & conds_master.is_catch==0)));
-        non_catch_left_uncued  = left_uncued(ismember(left_uncued,find(conds_master.is_special_core==1 & conds_master.is_catch==0)));
-        non_catch_right_cued   = right_cued(ismember(right_cued,find(conds_master.is_special_core==1 & conds_master.is_catch==0)));
-        non_catch_right_uncued = right_uncued(ismember(right_uncued,find(conds_master.is_special_core==1 & conds_master.is_catch==0)));
-        
-        left_cued    = [shuffle_concat(non_catch_left_cued', 2)';    left_cued(ismember(left_cued,find(conds_master.is_catch==1)))];
-        left_uncued  = [shuffle_concat(non_catch_left_uncued', 2)';  left_uncued(ismember(left_uncued,find(conds_master.is_catch==1)))];
-        right_cued   = [shuffle_concat(non_catch_right_cued', 2)';   right_cued(ismember(right_cued,find(conds_master.is_catch==1)))];
-        right_uncued = [shuffle_concat(non_catch_right_uncued', 2)'; right_uncued(ismember(right_uncued,find(conds_master.is_catch==1)))];
-
-        % update trial vec and trial vec idx 
-        trial_vec_i = NaN(length(left_cued)*2,2);
-        trial_vec   = repelem(1:size(trial_vec_i,1),2); 
-
+    % if it is not a dot stimulus, then we will break out of the while loop
+    if ~ismember(unique(conds_master.stim_class_name),'dot')
+        dot_ang_not_ok = false;
     end
     
-    cuing_conditions = [ones(1,length(left_cued)),  2.*ones(1,length(left_uncued)), ...
-                     3.*ones(1,length(right_cued)), 4.*ones(1,length(right_uncued))];
-    cond_idx         = shuffle_concat([1:nr_cueing_conds],size(trial_vec_i,1)/nr_cueing_conds);
-    
-    if length(cond_idx) < length(cuing_conditions)
-        cond_idx = cat(2,cond_idx, shuffle_concat(1:diff([length(cond_idx),size(trial_vec_i,1)]),1));
-    end
-    
-    for ii = 1:size(trial_vec_i,1)
+    if ~strcmp(unique(conds_master.task_class_name),{'fix'})
         
+        thickening_dir = zeros(length(trial_vec),1);
+        th_count = 1;
         
-        if cond_idx(ii) == 1 % left cued;
-            leading_cue_status  = 1;
-            leading_stim_loc    = 1;
-        elseif cond_idx(ii) == 2 % left uncued;
-            leading_cue_status  = 0;
-            leading_stim_loc    = 1;
-        elseif cond_idx(ii) == 3 % right cued;
-            leading_cue_status  = 1;
-            leading_stim_loc    = 2;
-        elseif cond_idx(ii) == 4 % right uncued;
-            leading_cue_status  = 0;
-            leading_stim_loc    = 2;
+        left_cued    = find((conds_master.is_cued == 1) & (conds_master.stimloc == 1));
+        left_uncued  = find((conds_master.is_cued == 0) & (conds_master.stimloc == 1));
+        right_cued   = find((conds_master.is_cued == 1) & (conds_master.stimloc == 2));
+        right_uncued = find((conds_master.is_cued == 0) & (conds_master.stimloc == 2));
+        
+        assert(isequal(length(left_cued),length(right_uncued)))
+        assert(isequal(length(left_uncued),length(right_cued)))
+        
+        % shuffle order of trials within left cued/uncued, right cued/uncued
+        left_cued    = left_cued(randperm(length(left_cued),length(left_cued)));
+        left_uncued  = left_uncued(randperm(length(left_uncued),length(left_uncued)));
+        right_cued   = right_cued(randperm(length(right_cued),length(right_cued)));
+        right_uncued = right_uncued(randperm(length(right_uncued),length(right_uncued)));
+        
+        if ismember(unique(conds_master.task_class_name),{'img','ltm'})
+            
+            % double the nr of trials for imagery, but not catch trials, given that we only selected a subset
+            non_catch_left_cued    = left_cued(ismember(left_cued,find(conds_master.is_special_core==1 & conds_master.is_catch==0)));
+            non_catch_left_uncued  = left_uncued(ismember(left_uncued,find(conds_master.is_special_core==1 & conds_master.is_catch==0)));
+            non_catch_right_cued   = right_cued(ismember(right_cued,find(conds_master.is_special_core==1 & conds_master.is_catch==0)));
+            non_catch_right_uncued = right_uncued(ismember(right_uncued,find(conds_master.is_special_core==1 & conds_master.is_catch==0)));
+            
+            left_cued    = [shuffle_concat(non_catch_left_cued', 2)';    left_cued(ismember(left_cued,find(conds_master.is_catch==1)))];
+            left_uncued  = [shuffle_concat(non_catch_left_uncued', 2)';  left_uncued(ismember(left_uncued,find(conds_master.is_catch==1)))];
+            right_cued   = [shuffle_concat(non_catch_right_cued', 2)';   right_cued(ismember(right_cued,find(conds_master.is_catch==1)))];
+            right_uncued = [shuffle_concat(non_catch_right_uncued', 2)'; right_uncued(ismember(right_uncued,find(conds_master.is_catch==1)))];
+            
+            % update trial vec and trial vec idx
+            trial_vec_i = NaN(length(left_cued)*2,2);
+            trial_vec   = repelem(1:size(trial_vec_i,1),2);
+            
         end
         
-        if leading_cue_status == 1 && leading_stim_loc == 1 % left cued
-            thickening_dir(th_count)   = 1; % left thickening
-            thickening_dir(th_count+1) = 1; % left thickening
-            
-            trial_vec_i(ii,1) = left_cued(1);
-            left_cued(1) = [];
-            trial_vec_i(ii,2) = right_uncued(1);
-            right_uncued(1) = [];
-            
-        elseif leading_cue_status == 1 && leading_stim_loc == 2 % right cued
-            thickening_dir(th_count) = 2; % right thickening
-            thickening_dir(th_count+1) = 2; % right thickening
-            
-            trial_vec_i(ii,1) = left_uncued(1);
-            left_uncued(1) = [];
-            trial_vec_i(ii,2) = right_cued(1);
-            right_cued(1) = [];
-            
-        elseif leading_cue_status == 0 && leading_stim_loc == 1 % left uncued
-            thickening_dir(th_count) = 2; % right thickening
-            thickening_dir(th_count+1) = 2; % right thickening
-            
-            trial_vec_i(ii,1) = left_uncued(1);
-            left_uncued(1) = [];
-            trial_vec_i(ii,2) = right_cued(1);
-            right_cued(1) = [];
-            
-        elseif leading_cue_status == 0 && leading_stim_loc == 2 % right uncued
-            thickening_dir(th_count) = 1; % left thickening
-            thickening_dir(th_count+1) = 1; % left thickening
-            
-            trial_vec_i(ii,1) = left_cued(1);
-            left_cued(1) = [];
-            trial_vec_i(ii,2) = right_uncued(1);
-            right_uncued(1) = [];
-            
-        elseif leading_cue_status == 0 || isnan(leading_cue_status)
-            thickening_dir(th_count)   = 3;  % both sides thickening
-            thickening_dir(th_count+1) = 3;  % both sides thickening
+        cuing_conditions = [ones(1,length(left_cued)),  2.*ones(1,length(left_uncued)), ...
+            3.*ones(1,length(right_cued)), 4.*ones(1,length(right_uncued))];
+        
+        cond_idx         = shuffle_concat([1:nr_cueing_conds],size(trial_vec_i,1)/nr_cueing_conds);
+        
+        if length(cond_idx) < length(cuing_conditions)
+            cond_idx = cat(2,cond_idx, shuffle_concat(1:diff([length(cond_idx),size(trial_vec_i,1)]),1));
         end
-        th_count = th_count +2;
+        
+        for ii = 1:size(trial_vec_i,1)
+            
+            
+            if cond_idx(ii) == 1 % left cued;
+                leading_cue_status  = 1;
+                leading_stim_loc    = 1;
+            elseif cond_idx(ii) == 2 % left uncued;
+                leading_cue_status  = 0;
+                leading_stim_loc    = 1;
+            elseif cond_idx(ii) == 3 % right cued;
+                leading_cue_status  = 1;
+                leading_stim_loc    = 2;
+            elseif cond_idx(ii) == 4 % right uncued;
+                leading_cue_status  = 0;
+                leading_stim_loc    = 2;
+            end
+            
+            if leading_cue_status == 1 && leading_stim_loc == 1 % left cued
+                thickening_dir(th_count)   = 1; % left thickening
+                thickening_dir(th_count+1) = 1; % left thickening
+                
+                trial_vec_i(ii,1) = left_cued(1);
+                left_cued(1) = [];
+                trial_vec_i(ii,2) = right_uncued(1);
+                right_uncued(1) = [];
+                
+            elseif leading_cue_status == 1 && leading_stim_loc == 2 % right cued
+                thickening_dir(th_count) = 2; % right thickening
+                thickening_dir(th_count+1) = 2; % right thickening
+                
+                trial_vec_i(ii,1) = left_uncued(1);
+                left_uncued(1) = [];
+                trial_vec_i(ii,2) = right_cued(1);
+                right_cued(1) = [];
+                
+            elseif leading_cue_status == 0 && leading_stim_loc == 1 % left uncued
+                thickening_dir(th_count) = 2; % right thickening
+                thickening_dir(th_count+1) = 2; % right thickening
+                
+                trial_vec_i(ii,1) = left_uncued(1);
+                left_uncued(1) = [];
+                trial_vec_i(ii,2) = right_cued(1);
+                right_cued(1) = [];
+                
+            elseif leading_cue_status == 0 && leading_stim_loc == 2 % right uncued
+                thickening_dir(th_count) = 1; % left thickening
+                thickening_dir(th_count+1) = 1; % left thickening
+                
+                trial_vec_i(ii,1) = left_cued(1);
+                left_cued(1) = [];
+                trial_vec_i(ii,2) = right_uncued(1);
+                right_uncued(1) = [];
+                
+            elseif leading_cue_status == 0 || isnan(leading_cue_status)
+                thickening_dir(th_count)   = 3;  % both sides thickening
+                thickening_dir(th_count+1) = 3;  % both sides thickening
+            end
+
+            % if this is a dot stimulus class: check if the angles of the chosen dot stimuli are not too close
+            if ismember(unique(conds_master.stim_class_name),'dot')
+                stim_angle = [conds_master.orient_dir(trial_vec_i(ii,1)),conds_master.orient_dir(trial_vec_i(ii,2))];
+                dot_diff_ang(ii) = abs(circulardiff(stim_angle(1),stim_angle(2),360));
+                if ii < size(trial_vec_i,1)
+                    if dot_diff_ang(ii) <= params.stim.dot.min_ang_distance_dot % if less or equal than minimum permittable distance, reset shuffle
+                        % reshuffle
+                        reset_early    = true;
+                        
+                        % reset matrices
+                        trial_vec_i = NaN(size(conds_master,1)/2,2);
+                        thickening_dir = zeros(length(trial_vec),1);
+                        dot_diff_ang = [];
+                    else
+                        reset_early = false;
+                    end
+                elseif ii == size(trial_vec_i,1)
+                    if all(dot_diff_ang > params.stim.dot.min_ang_distance_dot)
+                        dot_ang_not_ok = false;
+                    end
+                end
+            else
+                reset_early = false;
+            end
+            
+            if reset_early
+                break;
+            else
+                % update thickening counter
+                th_count = th_count +2;
+            end
+        end
+        
+        
+    elseif strcmp(unique(conds_master.task_class_name),{'fix'})
+        
+        thickening_dir = 3.*ones(size(trial_vec))'; % we thicken at both sides
+        
+        shuffle_idx = shuffle_concat(1:length(conds_master.stimloc),1);
+        
+        for ii = 1:length(conds_master.stimloc)
+            stim_loc = conds_master.stimloc(shuffle_idx(ii));
+            stim_to_allocate = find(isnan(trial_vec_i(:,stim_loc)));
+            trial_vec_i(stim_to_allocate(1), stim_loc) = shuffle_idx(ii);
+        end
+        
+        % if this is a dot stimulus class: check if the angles of the chosen dot stimuli are not too close
+        if ismember(unique(conds_master.stim_class_name),'dot')
+            stim_angle   = conds_master.orient_dir(trial_vec_i);
+            dot_diff_ang = abs(circulardiff(stim_angle(:,1),stim_angle(:,2),360));
+            if any(dot_diff_ang <= params.stim.dot.min_ang_distance_dot) % if less or equal than minimum permittable distance, reset shuffle
+                % reshuffle
+                dot_ang_not_ok = true;
+                
+                % reset matrices
+                trial_vec_i = NaN(size(conds_master,1)/2,2); % reset trial_vec_i
+                thickening_dir = zeros(length(trial_vec),1);
+                
+            elseif all(dot_diff_ang > params.stim.dot.min_ang_distance_dot)
+                dot_ang_not_ok = false;
+                
+            end
+        end
+        
+
     end
-    
-    trial_vec_i = trial_vec_i';
-    trial_vec_i = trial_vec_i(:);
-    
-elseif strcmp(unique(conds_master.task_class_name),{'fix'})
-    
-    thickening_dir = 3.*ones(size(trial_vec))'; % we thicken at both sides
-    
-    for ii = 1:length(conds_master.stimloc)
-        stim_loc = conds_master.stimloc(ii);
-        stim_to_allocate = find(isnan(trial_vec_i(:,stim_loc)));
-        trial_vec_i(stim_to_allocate(1), stim_loc) = ii;
-    end
-    
-    trial_vec_i = trial_vec_i';
-    trial_vec_i = trial_vec_i(:);
-    
 end
+
+% straighten trial_vec_i
+trial_vec_i = trial_vec_i';
+trial_vec_i = trial_vec_i(:);
 
 if isfield(conds_master, 'unique_trial_nr')
     trial_vec = trial_vec' + max(conds_master.trial_vec);
@@ -298,6 +365,14 @@ for vt = 1:sz(2)
 end
 
 
+% do some checks for dot stimuli
+if ismember(unique(conds_master.stim_class_name),'dot')
+    % left and right dots are at least 67.5 degrees away from one another
+    assert(all(abs(circulardiff(conds_master_reordered_merged.orient_dir(:,1),conds_master_reordered_merged.orient_dir(:,2),360)) > params.stim.dot.min_ang_distance_dot))
+    % left dots are between 180-360 deg and right dots are between 0-180 deg
+    assert(all(conds_master_reordered_merged.orient_dir(:,1)>=180 & conds_master_reordered_merged.orient_dir(:,1)<=360))
+    assert(all(conds_master_reordered_merged.orient_dir(:,2)>=0 & conds_master_reordered_merged.orient_dir(:,2)<=180))
+end
 
 
 % Randomize catch trial loc
