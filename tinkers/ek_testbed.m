@@ -1,6 +1,6 @@
 % EK testbed
 
-%% dry run demo exp
+%% DRY-RUN 3 SESSIONS OF DEMO (BEHAVIORAL) EXPERIMENT
 subj_nr = 998;
 data_dir = fullfile(vcd_rootPath, 'data','BEHAVIOR',sprintf('vcd_subj%03d',subj_nr));
 
@@ -31,7 +31,7 @@ end
 
 
 
-%% dry run behavioral exp
+%% DRY-RUN 12 RUNS OF BEHAVIORAL EXPERIMENT
 subj_nr = 999;
 ses_nr = 1;
 data_dir = fullfile(vcd_rootPath, 'data','BEHAVIOR',sprintf('vcd_subj%03d',subj_nr));
@@ -64,4 +64,26 @@ for rr = 1:12
     behresults(rr) = performance;
 end
 
+vcd_checkTimeTable(time_table_master,behresults)
+
+%% STANDALONE BEHAVIORAL RESULTS CHECK
+subj_nr = 999;
+ses_nr  = 1;
+
+clear behresults
+for rr = 1:12
+    subj_folder = sprintf('vcd_subj%03d_ses%02d',subj_nr,ses_nr);
+    mat_file    = sprintf('behavior_*_vcd_subj%03d_ses%02d_A_run%02d.mat',subj_nr,ses_nr,rr);
+    dd = dir(fullfile(vcd_rootPath,'data','BEHAVIOR',subj_folder,mat_file));
+    load(fullfile(dd(end).folder,dd(end).name));
+    performance = vcdbehavioralanalysis(fullfile(dd(end).folder,dd(end).name));
+
+    writetable(run_frames,sprintf('~/Desktop/run_frames%02d.csv',rr));
+    writetable(run_table,sprintf('~/Desktop/run_table%02d.csv',rr));
+    behresults(rr) = performance;
+end
+
+tt_file    = dir(fullfile(vcd_rootPath,'data','BEHAVIOR',sprintf('vcd_subj%03d',subj_nr), ...
+    sprintf('vcd_subj%03d_time_table_master_PPROOM_EIZOFLEXSCAN_*.mat',subj_nr)));
+load(fullfile(tt_file(end).folder, tt_file(end).name));
 vcd_checkTimeTable(time_table_master,behresults)
