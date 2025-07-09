@@ -360,6 +360,17 @@ else
     if isequal(checkcalib,'1')
         fprintf('Please perform calibration. When done, press the output/record button.\n');
         EyelinkDoTrackerSetup(el);
+    elseif isequal(checkcalib,'0')
+        fprintf('Will SKIP calibration.\n');
+    else
+        fprintf('Did you press the wrong button?? Let''s try again.\n');
+        checkcalib = input('Do you want to do a calibration (0=no, 1=yes)? ','s');
+        if isequal(checkcalib,'1')
+            fprintf('Please perform calibration. When done, press the output/record button.\n');
+            EyelinkDoTrackerSetup(el);
+        elseif isequal(checkcalib,'0')
+            fprintf('Will SKIP calibration.\n');
+        end
     end
     
     % Start recording
