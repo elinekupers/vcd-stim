@@ -460,7 +460,7 @@ for side = [1,2]
                     assert(isequal(unique(delta_im)',params.stim.dot.delta_from_ref))
                 end
                 assert(all(ref_im~=wm_test_im))
-                diff_delta = abs(circulardiff(wm_test_im,ref_im,360));
+                diff_delta = circulardiff(wm_test_im,ref_im,360);
                 assert(isequal(diff_delta,delta_im))
 
                 
@@ -701,7 +701,7 @@ for side = [1,2]
                     cued_tmp_ori2=cued_tmp_ori2';
                     cued_tmp_delta=cued_tmp_delta';
                     
-                    diff_ori = abs(circulardiff(cued_tmp_ori2,cued_tmp_ori1,360));
+                    diff_ori = circulardiff(cued_tmp_ori2,cued_tmp_ori1,360);
 %                     if any(abs(diff_ori)>max(abs(tmp_delta(:))))
 %                         diff_ori_wrapped = find(abs(diff_ori)>max(abs(tmp_delta(:))));
 %                         for ff = 1:length(diff_ori_wrapped)
