@@ -460,17 +460,7 @@ for side = [1,2]
                     assert(isequal(unique(delta_im)',params.stim.dot.delta_from_ref))
                 end
                 assert(all(ref_im~=wm_test_im))
-                diff_delta = wm_test_im-ref_im;
-                if any(abs(diff_delta)> max(params.stim.dot.delta_from_ref))
-                    dd_idx = find(abs(diff_delta)> max(params.stim.dot.delta_from_ref));
-                    for ff = 1:length(dd_idx)
-                        if diff_delta(dd_idx(ff))<0
-                           diff_delta(dd_idx(ff)) = diff_delta(dd_idx(ff))+360;
-                        elseif diff_delta(dd_idx(ff))>0
-                            diff_delta(dd_idx(ff)) = diff_delta(dd_idx(ff))-360;
-                        end
-                    end
-                end
+                diff_delta = abs(circulardiff(wm_test_im,ref_im,360));
                 assert(isequal(diff_delta,delta_im))
 
                 
@@ -711,17 +701,17 @@ for side = [1,2]
                     cued_tmp_ori2=cued_tmp_ori2';
                     cued_tmp_delta=cued_tmp_delta';
                     
-                    diff_ori = cued_tmp_ori2-cued_tmp_ori1;
-                    if any(abs(diff_ori)>max(abs(tmp_delta(:))))
-                        diff_ori_wrapped = find(abs(diff_ori)>max(abs(tmp_delta(:))));
-                        for ff = 1:length(diff_ori_wrapped)
-                            if diff_ori(diff_ori_wrapped(ff))<0
-                                diff_ori(diff_ori_wrapped(ff)) = diff_ori(diff_ori_wrapped(ff))+360;
-                            elseif diff_ori(diff_ori_wrapped(ff))>0
-                                diff_ori(diff_ori_wrapped(ff)) = diff_ori(diff_ori_wrapped(ff))-360;
-                            end
-                        end
-                    end
+                    diff_ori = abs(circulardiff(cued_tmp_ori2,cued_tmp_ori1,360));
+%                     if any(abs(diff_ori)>max(abs(tmp_delta(:))))
+%                         diff_ori_wrapped = find(abs(diff_ori)>max(abs(tmp_delta(:))));
+%                         for ff = 1:length(diff_ori_wrapped)
+%                             if diff_ori(diff_ori_wrapped(ff))<0
+%                                 diff_ori(diff_ori_wrapped(ff)) = diff_ori(diff_ori_wrapped(ff))+360;
+%                             elseif diff_ori(diff_ori_wrapped(ff))>0
+%                                 diff_ori(diff_ori_wrapped(ff)) = diff_ori(diff_ori_wrapped(ff))-360;
+%                             end
+%                         end
+%                     end
                     assert(isequal(cued_tmp_delta,diff_ori));
                     
                     if stim == 1
