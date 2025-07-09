@@ -242,7 +242,7 @@ if nr_reps > 0
                 end
 
                 % Merge trials and add fix cue thickening direction
-                conds_single_rep_merged = vcd_mergeUniqueImageIntoTrials(conds_single_rep);
+                conds_single_rep_merged = vcd_mergeUniqueImageIntoTrials(params, conds_single_rep);
 
                 clear conds_master_single_rep
 
@@ -503,7 +503,7 @@ if nr_reps > 0
                 end
 
                 % Merge unique im into trials and add fix cue thickening direction.
-                conds_single_rep_merged = vcd_mergeUniqueImageIntoTrials(conds_master_single_rep);
+                conds_single_rep_merged = vcd_mergeUniqueImageIntoTrials(params, conds_master_single_rep);
                 clear conds_master_single_rep
 
                 % Add WM change.
@@ -758,7 +758,7 @@ if nr_reps > 0
                 end
 
                 % Merge trials and add fix cue thickening direction
-                conds_single_rep_merged = vcd_mergeUniqueImageIntoTrials(conds_master_single_rep);
+                conds_single_rep_merged = vcd_mergeUniqueImageIntoTrials(params, conds_master_single_rep);
                 clear conds_master_single_rep
 
                 % Add WM change.
@@ -780,10 +780,10 @@ if nr_reps > 0
                         % apply circular wrap 
                         orient_dir2 = mod(orient_dir2, 360*ones(size(orient_dir2)));
 
-                        % Ensure that absolute angles of left and right test
-                        % stimuli don't overlap (here we use a threshold of
-                        % an angle that is more than 20 degrees difference between the two stimuli)
-                        dot_too_close = abs(circulardiff(orient_dir2(:,1),orient_dir2(:,2),360)) < params.stim.dot.min_ang_distance_test_stim;
+                        % Ensure that absolute angles of left and right test stimuli don't overlap. 
+                        % Any combination of two dot test stimuli that are
+                        % less than 70 degrees apart are considered too close.
+                        dot_too_close = abs(circulardiff(orient_dir2(:,1),orient_dir2(:,2),360)) <= params.stim.dot.min_ang_distance_test_stim;
                         
                         if sum(dot_too_close)==0
                             break;
@@ -1075,7 +1075,7 @@ if nr_reps > 0
                 end
 
                 % Merge trials and add fix cue thickening direction
-                conds_single_rep_merged = vcd_mergeUniqueImageIntoTrials(conds_master_single_rep);
+                conds_single_rep_merged = vcd_mergeUniqueImageIntoTrials(params, conds_master_single_rep);
                 clear conds_master_single_rep;
 
                 % Add WM change.
