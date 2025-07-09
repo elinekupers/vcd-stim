@@ -6,16 +6,15 @@ function cond_master = vcd_createConditionMaster(params, cond_table, env_type)
 % Purpose:
 % This function creates a table with N rows (trials) by M columns (stimulus
 % class conditions) for the requested stimulus class. The trials are
-% shuffled pseudorandomly, such that the subject sees all K unique
-% number of cases occur every K trials, and where prioritized stimulus
-% features of interest (e.g., 3 gabor contrast levels) are presented within
-% a block.
+% shuffled per set of unique stimuli x cuing options, such that the subject 
+% sees all K unique conditions every K trials. 
 %
 %
 % INPUTS:
 %  params               : (struct) stimulus and experimental session parameters
 %  cond_table           : (table) table with core stimuli information for a
-%                          particular stimulus class
+%                          particular stimulus class. Created by
+%                          vcd_defineUniqueImages.m.
 %  n_trials_per_block   : (int) number of trials per block (4 or 8)
 %  env_type             : (char) character string defining if this is for 
 %                          the "MRI" or "BEHAVIORAL" version of the 
@@ -108,11 +107,13 @@ if (nargin < 4 && ~exist('env_type','var')) || isempty(env_type)
     end
 end
     
-
+% which stimulus and task classes are we dealing with (cond_table is
+% created by "vcd_defineUniqueImages.m"
 stimClass = unique(cond_table.stim_class_name);
 taskClass = unique(cond_table.task_class_name);
 n_unique_cases = length(unique(cond_table.unique_im_nr));
 
+% Check if there is only one stimulus class in provided 
 assert(length(stimClass)==1)
 assert(length(taskClass)==1)
 
