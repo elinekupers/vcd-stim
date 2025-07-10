@@ -1,19 +1,19 @@
-function [img, mask] = vcd_create_gabor(img_sz_pix,gauss_std_pix,sf,ori_deg, ph_deg, contrast, grayval)
+function img = vcd_create_gabor(img_sz_pix,gauss_std_pix,sf,ori_deg, ph_deg, contrast, grayval)
 % 
 %  img = vcd_create_gabor(img_sz_pix,gauss_std_pix,sf,ori_deg, ph_deg, contrast)
 %
 % INPUTS:
-%   img_sz_pix      : (int) width (or height) of square support (pixels)
-%   gauss_std_pix   : (int) std of gaussian window (pixels)
-%   sf              : (int) sf of grating (cycles per pixels)
-%   ori_deg         : (int) orientation of grating, 0 = east (degrees)
-%   ph_deg          : (int) phase of grating (degrees)
-%   contrast        : (int) Michelson contrast of gabor (fraction 0-1)
-%   grayval         : (int) background gray value (128)
+%   img_sz_pix      : (double) width (or height) of square support (pixels)
+%   gauss_std_pix   : (double) std of gaussian window (pixels)
+%   sf              : (double) sf of grating (cycles per pixels)
+%   ori_deg         : (double) orientation of grating, 0 degrees = north
+%   ph_deg          : (double) phase of grating (degrees)
+%   contrast        : (double) Michelson contrast of gabor (fraction 0-1)
+%   grayval         : (double) background gray value (128)
 %
 % OUTPUT:
-%   img             : (matrix) [x,y] gabor image
-%   alpha_mask      : (matrix) [x,y] gabor circular mask at 7 std gauss win
+%   img             : (matrix) [x,y] gabor image uint8 pixels with
+%                     luminance values (range = [1 255])
 %
 % Written by Eline Kupers @ UMN 2025/02/04
 
@@ -56,13 +56,13 @@ H = cos(2 * pi * sf * ...
 % Create Gabor image
 img0 = G .* H; % Gabor image = Gaussian .* harmonic
 
-% Contrast normalization
-maxval = abs(max(img0(:)));
-minval = abs(min(img0(:)));
-img1 = img0./max(maxval,minval); % VCD uses 128 as mid-grey level
-img2 = contrast * img1;
+% % Contrast normalization
+% maxval = abs(max(img0(:)));
+% minval = abs(min(img0(:)));
+% img1 = img0./max(maxval,minval); % VCD uses 128 as mid-grey level
+% img2 = contrast * img1;
 
 % Convert to image range [1 255]
-img = (img2*127)+double(grayval);
+img = (contrast*(img0*127))+double(grayval);
 
 end
