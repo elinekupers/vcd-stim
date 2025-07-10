@@ -54,4 +54,4 @@ unique_im,is_specialcore,stim_pos,dot_motdir_deg,dot_motdir_deg_i,dot_coh,dot_co
 171,0,left,328.75,8,1,3,-20,1,NaN,
 172,0,left,338.75,8,1,3,-10,2,NaN,
 173,0,left,358.75,8,1,3,10,3,NaN,
-174,0,right,368.75,8,1,3,20,4,NaN,
+174,0,right,8.75,8,1,3,20,4,NaN,
