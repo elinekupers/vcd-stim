@@ -710,8 +710,10 @@ for ses = 1:length(unique_sessions)
                         end
                     end
                     
+                    attempt = 0;
                     trial_order_not_ok = true;
                     while trial_order_not_ok
+                        attempt = attempt +1;
                         % Shuffle local trial order (e.g.: [1,2,3,4] --> [2,4,1,3])
                         local_trial_order = shuffle_concat(1:nr_trials,1);
                         % get trial order within the run
@@ -723,6 +725,13 @@ for ses = 1:length(unique_sessions)
                         if all(diff(condition_master0.stim_nr_left(trial_order))~=0) && ...
                                 all(diff(condition_master0.stim_nr_right(trial_order))~=0)
                             trial_order_not_ok = false;
+                        end
+                        if attempt > 50000
+                            if params.is_demo
+                                break;
+                            else
+                                error('\n[%s]: Can''t reach a trial order without repeats!',mfilename);
+                            end
                         end
                     end
                     
