@@ -301,7 +301,7 @@ if all(ismember(cued_stim_loc,[1,2]))
         shuffled_responses = correct_response(shuffle_vec);
         block_start = 1:(params.exp.block.n_trials_single_epoch):length(shuffled_responses);
         
-        % reset ocounters
+        % reset counters
         block_ok = zeros(1,length(block_start)); counter = 1; scc_ok = false;
         for cc = block_start
             n1 = histcounts(shuffled_responses(cc:(cc+(params.exp.block.n_trials_single_epoch-1))),[stim_class_nrs, stim_class_nrs(end)+1]); % check stim class within a block
@@ -351,7 +351,7 @@ if all(ismember(cued_stim_loc,[1,2]))
             error('\n[%s]: Can''t reach a shuffle that works with current constraints!',mfilename)
         end
         
-        if mod(attempt,100)
+        if mod(attempt,10000)
             fprintf('.');
         end
     end
