@@ -487,7 +487,8 @@ else % Recreate conditions and blocks and trials
 
         % Select object catch trials randomly from the total list (without
         % replacement). Ensure we distribute object catch trials across
-        % left/right cued locations and unique objects (as much as possible)
+        % left/right cued locations and unique objects (as much as
+        % possible), as well as equal distribution of button presses.
         while 1
             objcatch_ok = false(1,3);
 
