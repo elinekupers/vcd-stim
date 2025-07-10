@@ -25,14 +25,14 @@ function stim = vcd_getStimParams(varargin)
 % OUTPUT:
 %  stim           : struct with stimulus params, including:
 %                   * fix (fixation dot)
-%                   * bckground (pink noise background).
+%                   * bckground (mean luminance value of background).
 %                   * cd (contrast decrement)
 %                   * el (eyelink)
-%                   * gabor
-%                   * rdk (random dot motion kinetograms)
-%                   * dot (single, simple dot)
-%                   * obj (complex objects)
-%                   % ns (natural scenes)
+%                   * gabor (grating windowed by gaussian)
+%                   * rdk (random dot motion kinematograms)
+%                   * dot (single, simple white dot)
+%                   * obj (grayscale 3D objects)
+%                   % ns (natural scenes, subset of the Natural Scenes Dataset)
 %
 % Written by Eline Kupers November 2024 (kupers [at] umn [dot] edu)
 
@@ -128,18 +128,7 @@ else
     ctr_square_deg           = 8.4;                                         % desired center square side length in degrees. 
     ctr_square_pix           = round((ctr_square_deg*disp_params.ppd)/2)*2; % desired center square side length in pixels
     
-    
-    %% NOISE BACKGROUND Puzzle piece (OBSOLETE)
-    % GENERAL
-%     stim.bckground.stimfile         = fullfile(vcd_rootPath,'workspaces','stimuli',disp_params.name,sprintf('bckgrnd_%s',disp_params.name)); % mat file
-%     stim.bckground.infofile         = fullfile(vcd_rootPath,'workspaces','info',sprintf('bckgrnd_info_%s',disp_params.name)); % csv file
-    
-    % SPATIAL
-%     stim.bckground.alpha            = 1;                                    % exponent to apply to the amplitude spectrum (i.e. 1/f^alpha).  default: 1.
-%     stim.bckground.num              = 1;                                    % number of unique background images desired.  default: 1.
-%     stim.bckground.mode             = 0;                                    % mode of pinknoise function, 0 means fixed amplitude spectrum + random phase
-%     stim.bckground.std_clip_range   = 3.5;                                  % when converting pixel values to 1-255 range, how many std's of image values do we allow before clipping the range
-    
+
     if verbose
         fprintf('*** %s SCREEN SIZE (height x width): FoV: [%2.2f,%2.2f] degrees visual angle. Resolution = [%02d,%02d] pixels.***\n', disp_params.name, disp_params.h_deg,disp_params.w_deg ,disp_params.h_pix,disp_params.w_pix);
     end
@@ -362,7 +351,7 @@ else
                 % SPATIAL -- RDK specific
                 p.dots_size_deg   = 0.068/2;                                      % single dot radius in deg (we go by radius because that is what "drawcircle" expects
                 p.dots_size_pix   = round(p.dots_size_deg*disp_params.ppd);       % single dot radius in pixels
-                p.dots_color      = [255 255 255; 1 1 1];                    % 50:50 white:black, color in RGB and converted to [0-1] as expected by stimulus creation function
+                p.dots_color      = [255 255 255; 1 1 1];                         % 50:50 white:black, color in RGB and converted to [0-1] as expected by stimulus creation function
                 p.dots_density    = 15.9;                                         % density of dots within circular aperture (dots/deg^2)
                 p.max_dots_per_frame = round(p.dots_density*(pi*(p.img_sz_deg/2)^2)); % how many individual dots within a square support. Density is 15.9 dots / deg^2   (Number is similar to Kiani lab, rokers lab aims for 150) and roughly matches to nr of pixels in aperture
                 p.dots_contrast   = 1;                                            % Michelson [0-1] (fraction)
@@ -413,9 +402,9 @@ else
                 % Where to store stimulus images?
                 p.stimfile  = fullfile(vcd_rootPath,'workspaces','stimuli',disp_params.name,sprintf('dot_%s',disp_params.name)); % mat file
                 p.infofile  = fullfile(vcd_rootPath,'workspaces','info',sprintf('dot_info_%s',disp_params.name)); % csv file
-                p.iscolor   = false;                                        % Use color or not? 
+                p.iscolor   = false;                                                % Use color or not? 
                 if p.iscolor
-                    p.square_pix_val     = true;                            % [IF YES: MAKE SURE TO SQUARE IMAGE VALS FOR CLUT]
+                    p.square_pix_val     = true;                                    % [IF YES: MAKE SURE TO SQUARE IMAGE VALS FOR CLUT]
                 else
                     p.square_pix_val     = false;
                 end
@@ -465,8 +454,8 @@ else
                 % 281.25, 258.75, 236.25, 213.75, 191.25, 168.75, 146.25,
                 % 123.75, 101.25, 78.75, 56.25, 33.75, 11.25] deg
                 
-                p.iso_eccen = 4.0;                                         % desired iso-eccentric dot location (for all angles)
-                p.eccen_deg = repmat(p.iso_eccen,1,length(p.ang_deg));     % desired eccen of center dot loc in deg (translation from center screen 0,0)
+                p.iso_eccen = 4.0;                                                 % desired iso-eccentric dot location (for all angles)
+                p.eccen_deg = repmat(p.iso_eccen,1,length(p.ang_deg));             % desired eccen of center dot loc in deg (translation from center screen 0,0)
                 
                 % ensure equal distance from cardinal meridians
                 assert(isequal(abs(180-p.ang_deg(1:(p.num_loc/2))), abs(0-p.ang_deg(((p.num_loc/2)+1):p.num_loc))));
@@ -525,27 +514,27 @@ else
 
                 % GENERAL
                 p.unique_im_nrs_core     = [65:80];                             %#ok<*NBRAK> % Unique image nrs associated with the 16 single dot stimuli
-                p.iscolor = false;                                          % Use color or not? 
+                p.iscolor = false;                                              % Use color or not? 
                 if p.iscolor
-                    p.square_pix_val     = true;                             % [IF YES: MAKE SURE TO SQUARE IMAGE VALS FOR CLUT]
+                    p.square_pix_val     = true;                                % [IF YES: MAKE SURE TO SQUARE IMAGE VALS FOR CLUT]
                 else
                     p.square_pix_val     = false;
                 end
                 
                 % TEMPORAL
-                p.duration       = stim.stimdur_frames;                          % frames (nr of monitor refreshes)
+                p.duration       = stim.stimdur_frames;                         % frames (nr of monitor refreshes)
                 
                 % SPATIAL
-                p.contrast      = 1;                                        % Michelson [0-1] (fraction) 
-                p.x0_deg        = x0_deg;                                   % desired x-center loc in deg (translation from center screen 0,0)
-                p.y0_deg        = y0_deg;                                   % desired y-center loc in deg (translation from center screen 0,0)
-                p.x0_pix        = x0_pix;                                   % x-center loc in pix (translation from center screen 0,0)
-                p.y0_pix        = y0_pix;                                   % y-center loc in pix (translation from center screen 0,0)
+                p.contrast      = 1;                                            % Michelson [0-1] (fraction) 
+                p.x0_deg        = x0_deg;                                       % desired x-center loc in deg (translation from center screen 0,0)
+                p.y0_deg        = y0_deg;                                       % desired y-center loc in deg (translation from center screen 0,0)
+                p.x0_pix        = x0_pix;                                       % x-center loc in pix (translation from center screen 0,0)
+                p.y0_pix        = y0_pix;                                       % y-center loc in pix (translation from center screen 0,0)
                 
-                p.og_res_stim_total_sz     = 1024;                          % original resolution of object stimuli
-                p.cropped_res_stim_total_sz = 512;                          % cropped version of preprocessed object stimuli.
-                p.og_res_stim_target_sz    = parafov_circle_diam_pix;       % object stimuli have a target size of 4 dva = 354 pixels (7TAS_BOLDSCREEN32) or 258 pixels (PP room)
-                p.og_res_stim_deg          = parafov_circle_diam_deg;       % corresponding to 4 deg
+                p.og_res_stim_total_sz     = 1024;                              % original resolution of object stimuli
+                p.cropped_res_stim_total_sz = 512;                              % cropped version of preprocessed object stimuli.
+                p.og_res_stim_target_sz    = parafov_circle_diam_pix;           % object stimuli have a target size of 4 dva = 354 pixels (7TAS_BOLDSCREEN32) or 258 pixels (PP room)
+                p.og_res_stim_deg          = parafov_circle_diam_deg;           % corresponding to 4 deg
 
                 % we calculate the img size and scale factor relative to 1024x1024 original image size, 
                 % as the object preprocessing script has already scaled the raw image to get desired object size. 
@@ -557,7 +546,7 @@ else
 
                 
                 % OBJECT FACING ROTATION ANGLES
-                p.num_unique_objects       = 16;                            % nr of rotations (deg), 0 = rightward facing, 180 = leftward facing, 90 = forward facing
+                p.num_unique_objects       = 16;                                % nr of rotations (deg), 0 = rightward facing, 180 = leftward facing, 90 = forward facing
                 % Constraints: 
                 % * Do not include 0-25 deg and 155-180 deg to avoid edge cases in WM
                 % * Have equal nr of "sideways" and "forward" facing objects.
@@ -623,10 +612,10 @@ else
                 % direction than the core rotation.
                 nr_objcatch_rotations = 90/5; % 18 possible catch rotations for each of the 16 individual objects
                 p.catch_rotation      = zeros(p.num_unique_objects,nr_objcatch_rotations);  
-                forward_facing_rotations(1,:)  = 0:2:44;    % degrees (note: we exclude 45 degrees)
-                forward_facing_rotations(2,:)  = 136:2:180; % degrees (note: we exclude 135 degrees)
-                sideways_facing_rotations(1,:) = 46:2:88;   % degrees (note: we exclude 45 and 90 degrees)
-                sideways_facing_rotations(2,:) = 92:2:134;  % degrees (note: we exclude 90 and 135 degrees)
+                forward_facing_rotations(1,:)  = 0:2:44;                        % degrees (note: we exclude 45 degrees)
+                forward_facing_rotations(2,:)  = 136:2:180;                     % degrees (note: we exclude 135 degrees)
+                sideways_facing_rotations(1,:) = 46:2:88;                       % degrees (note: we exclude 45 and 90 degrees)
+                sideways_facing_rotations(2,:) = 92:2:134;                      % degrees (note: we exclude 90 and 135 degrees)
                 
                 % how many forward/sideways catch rotations do we sample?
                 p.distribution_objcatch = round(nr_objcatch_rotations.*[1/3, 2/3]); % 1/3 from same facing direction, and 2/3 from other facing direction
@@ -761,14 +750,14 @@ else
                 p.stimfile = fullfile(vcd_rootPath,'workspaces','stimuli',disp_params.name,sprintf('scene_%s',disp_params.name)); % prefix to mat file of preprocessed stimulus images
                 p.infofile = fullfile(vcd_rootPath,'workspaces','info',sprintf('scene_info_%s',disp_params.name));                % csv-file with stimulus info
                 
-                p.unique_im_nrs_core      = [81:110];                                                         % Unique image nrs associated with the 30 core scene stimuli
+                p.unique_im_nrs_core      = [81:110];                                                        % Unique image nrs associated with the 30 core scene stimuli
 
-                p.iscolor = true;                                                                             % Use color or not? 
-                if p.iscolor, p.square_pix_val = true;                                                        % [IF YES: MAKE SURE TO SQUARE IMAGE VALS FOR CLUT]                                                                
+                p.iscolor = true;                                                                            % Use color or not? 
+                if p.iscolor, p.square_pix_val = true;                                                       % [IF YES: MAKE SURE TO SQUARE IMAGE VALS FOR CLUT]                                                                
                 else, p.square_pix_val = false; end
 
                 % TEMPORAL
-                p.duration       = stim.stimdur_frames;                                                            % frames (nr of monitor refreshes)
+                p.duration       = stim.stimdur_frames;                                                      % frames (nr of monitor refreshes)
                 
                 % SPATIAL
                 % For reference: we resize scenes to 8.4 x 8.4 degrees (as this is what has been used in NSD) 
