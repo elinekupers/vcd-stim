@@ -413,7 +413,7 @@ for side = [1,2]
                 assert(all(ismember(gbr_contrast, params.stim.gabor.contrast)))
                 assert(isequal(unique(gbr_contrast)',params.stim.gabor.contrast))
                 assert(all(ref_im~=wm_test_im))
-                assert(isequal(wm_test_im-ref_im,delta_im))
+                assert(isequal(circulardiff(wm_test_im,ref_im, 360),delta_im))
                 
             case 2 % RDK
                 rdk_coherence_nan   = find(isnan(time_table_master.rdk_coherence(strcmp(time_table_master.stim_class_name(:,side),'rdk'),side)));
@@ -436,7 +436,7 @@ for side = [1,2]
                 assert(all(ismember(rdk_coh,params.stim.rdk.dots_coherence)))
                 assert(isequal(unique(rdk_coh)',params.stim.rdk.dots_coherence))
                 assert(all(ref_im~=wm_test_im))
-                assert(isequal(wm_test_im-ref_im,delta_im))
+                assert(isequal(circulardiff(wm_test_im,ref_im, 360),delta_im))
                 
             case 3 % dot
                 % there is no special dot column
