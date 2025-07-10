@@ -244,6 +244,9 @@ for cc = 1:length(params.stim.rdk.dots_coherence)
                 % TRICKY STUFF: Subtract 90 deg to ensure 0 deg desired motion direction is 12 o'clock in x,y-pixel space
                 curr_motdir_deg = curr_motdir_deg-90;
                 
+                % add circular wrap
+                curr_motdir_deg = mod(curr_motdir_deg,360);
+                
                 % Initialize and reset rng for each RDK video (will apply to
                 % rand, randn, and randi)
                 RandStream.setGlobalStream(RandStream('mt19937ar','seed',prod(rseed)));
@@ -420,7 +423,7 @@ for cc = 1:length(params.stim.rdk.dots_coherence)
                 dotlocs{bb,cc,dd+1} = stored_coh_dot_pos;
                 
                 % Log info
-                info.dot_motdir_deg(counter) = curr_motdir_deg + 90; % shift 90 deg back
+                info.dot_motdir_deg(counter) = mod(curr_motdir_deg + 90,360); % shift 90 deg back, and apply circular wrap.
                 info.dot_coh(counter) = params.stim.rdk.dots_coherence(cc);
                 info.dot_motdir_deg_i(counter) = bb;
                 info.dot_coh_i(counter) = cc;
