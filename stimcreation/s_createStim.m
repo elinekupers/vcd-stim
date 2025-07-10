@@ -34,8 +34,8 @@
 % in "stim_<dispname>_YYYYMMDDTHHMMSS.mat" in fullfile(vcd_rootPath,'workspaces','info').
 verbose      = true;  % visualize stimuli (true) or not (false)
 store_imgs   = true;  % store visualization figures (true) or not (false)
-load_params  = true; % if true, we load from file. if false, define params.
-store_params = true;  % if false, we don't store params. if true, we store mat file in fullfile(vcd_rootPath,'workspaces','info')
+load_params  = false; % if true, we load from file. if false, define params.
+store_params = false; % if false, we don't store params. if true, we store mat file in fullfile(vcd_rootPath,'workspaces','info')
 
 % Create params struct
 params = struct();
@@ -350,10 +350,10 @@ params.exp    = vcd_getSessionParams('disp_name', params.disp.name, ...
 %                 6: eccen_deg  - (double) eccentricity of dot (deg) 
 %                 7: angle_rad  - (double) dot angle in radians.
 %                 8: delta_deg  - (double) dot angle relative from core dot 
-%                                  angle: 0, -12, -6, +6, +12 (deg)
+%                                  angle: 0, -10, -5, +5, +10 (deg)
 %                 9: delta_deg_i - (double) same as delta_deg but indexed 
-%                                  0 (0 deg), 1 (-12 deg), 2 (-6 deg), 
-%                                  3 (+6 deg), 4 (+12 deg).            
+%                                  0 (0 deg), 1 (-10 deg), 2 (-5 deg), 
+%                                  3 (+5 deg), 4 (+10 deg).            
 %                 10: dot_xpos_pix - (double) x-position of dot angle in 
 %                                  full screen image space (pixels),
 %                                  where [0,0] is the upper left pixel
