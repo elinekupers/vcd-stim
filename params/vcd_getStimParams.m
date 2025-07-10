@@ -109,36 +109,36 @@ else
 
     % **** SPATIAL ****
     % EMPIRICAL parafoveal stimulus locations:
-    %  * BOLDscreen: 352 pixels (4.0059 deg). 
-    %  * PProom EIZOFLEX: 258 pixels (4.0082 deg). 
+    %  * BOLDscreen: 352 pixels (3.9914 deg). 
+    %  * PProom EIZOFLEX: 256 pixels (4.0061 deg). 
     x0_deg                   = [-4 4];                                     % Desired x-center location for left right stim apertures (degrees)
     y0_deg                   = [0 0];                                      % Desired y-center location for left right stim apertures (degrees)
     x0_pix                   = round((x0_deg.*disp_params.ppd)/2)*2;       % Desired x-center location for left & right stim apertures (pixels). 
     y0_pix                   = round((y0_deg.*disp_params.ppd)/2)*2;       % Desired y-center location for left & right stim apertures (pixels).
     
     % EMPIRICAL parafoveal circular aperture for gabors, rdks, and objects:
-    %  * BOLDscreen: 354 pixels (4.0059 deg). 
-    %  * PProom EIZOFLEX: 258 pixels (4.0082 deg).
+    %  * BOLDscreen: 352 pixels (3.9914 deg). 
+    %  * PProom EIZOFLEX: 256 pixels (4.0061 deg).
     parafov_circle_diam_deg  = 4;                                          % Desired  parafoveal circular diameter aperture (degrees).
     parafov_circle_diam_pix  = round((parafov_circle_diam_deg*disp_params.ppd)/2)*2;  % Desired parafoveal circular diameter aperture (pixels).
     
     % EMPIRICAL center square image for scenes:
-    %  * BOLDscreen: 742 pixels (8.3965 degrees). NB: slightly fewer pixels than original NSD stim size = 744 pixels with BOLDscreen Nova1x32
-    %  * PProom EIZOFLEX: 541 pixels (8.3965 degrees).
+    %  * BOLDscreen: 741 pixels (8.4024 degrees). NB: slightly fewer pixels than original NSD stim size = 744 pixels with BOLDscreen Nova1x32
+    %  * PProom EIZOFLEX: 537 pixels (8.4034 degrees).
     ctr_square_deg           = 8.4;                                         % desired center square side length in degrees. 
     ctr_square_pix           = round((ctr_square_deg*disp_params.ppd)/2)*2; % desired center square side length in pixels
     
     
-    %% NOISE BACKGROUND Puzzle piece
+    %% NOISE BACKGROUND Puzzle piece (OBSOLETE)
     % GENERAL
-    stim.bckground.stimfile         = fullfile(vcd_rootPath,'workspaces','stimuli',disp_params.name,sprintf('bckgrnd_%s',disp_params.name)); % mat file
-    stim.bckground.infofile         = fullfile(vcd_rootPath,'workspaces','info',sprintf('bckgrnd_info_%s',disp_params.name)); % csv file
+%     stim.bckground.stimfile         = fullfile(vcd_rootPath,'workspaces','stimuli',disp_params.name,sprintf('bckgrnd_%s',disp_params.name)); % mat file
+%     stim.bckground.infofile         = fullfile(vcd_rootPath,'workspaces','info',sprintf('bckgrnd_info_%s',disp_params.name)); % csv file
     
     % SPATIAL
-    stim.bckground.alpha            = 1;                                    % exponent to apply to the amplitude spectrum (i.e. 1/f^alpha).  default: 1.
-    stim.bckground.num              = 1;                                    % number of unique background images desired.  default: 1.
-    stim.bckground.mode             = 0;                                    % mode of pinknoise function, 0 means fixed amplitude spectrum + random phase
-    stim.bckground.std_clip_range   = 3.5;                                  % when converting pixel values to 1-255 range, how many std's of image values do we allow before clipping the range
+%     stim.bckground.alpha            = 1;                                    % exponent to apply to the amplitude spectrum (i.e. 1/f^alpha).  default: 1.
+%     stim.bckground.num              = 1;                                    % number of unique background images desired.  default: 1.
+%     stim.bckground.mode             = 0;                                    % mode of pinknoise function, 0 means fixed amplitude spectrum + random phase
+%     stim.bckground.std_clip_range   = 3.5;                                  % when converting pixel values to 1-255 range, how many std's of image values do we allow before clipping the range
     
     if verbose
         fprintf('*** %s SCREEN SIZE (height x width): FoV: [%2.2f,%2.2f] degrees visual angle. Resolution = [%02d,%02d] pixels.***\n', disp_params.name, disp_params.h_deg,disp_params.w_deg ,disp_params.h_pix,disp_params.w_pix);
@@ -188,7 +188,7 @@ else
     
     %% CONTRAST DECREMENT -- TEMPORAL MODULATION FUNCTION
     % For the CD task crossings, we make the stimulus dip in its contrast 
-    % using sharp step function from mean contrast 100% --> 70%.
+    % using sharp step function from mean contrast 100% --> 80%.
     %
     % * UNITS: the temporal function is in units of time frames, where each
     % time point has a duration of time frames (see presentationrate_hz).
@@ -198,7 +198,7 @@ else
     % 
     % * DURATION: For the contrast decrement, we implement an temporal
     % contrast modulation function in the shape of step function. The
-    % support of the modulation function is 6 frames [1 1 1 0.7 0.7 0.7].
+    % support of the modulation function is 6 frames [1 1 1 0.8 0.8 0.8].
     % The contrast modulation function is a "one-directional" step
     % function: once the contrast is changed, it will stay decremented
     % until the end of the stimulus duration. The onset time of contrast
@@ -209,7 +209,7 @@ else
     % The latest onset time is the start of the 48th time frame after
     % stimulus onset (or 800 ms, assuming a 60 Hz presentation rate).
     % The output of feval(cdsoafun) refers to the onset of the time frame 
-    % when the contrast is changed from baseline (1) to mn_cd (0.7). In the 
+    % when the contrast is changed from baseline (1) to mn_cd (0.8). In the 
     % case of our step function, the onset time refers to the third frame 
     % of the contrast modulation function (t_cmodfun). This means the
     % stimulus presentation code will ignore the support values = 1;
@@ -221,7 +221,7 @@ else
     stim.cd.t_support_N            = 6;                                     % support of temporal modulatin function in number of time frames (one time frame = 16.67 ms)
     stim.cd.meanchange             = round(stim.presentationrate_hz * 0.5); % mean onset of temporal modulation function in time frames (500 ms = 30 time frames)  
     stim.cd.changeplusminus        = round(stim.presentationrate_hz * 0.3); % range of onsets: 500 ± 300 ms (so min = 200 ms, max = 800 ms)  
-    stim.cd.min_cd                 = 0.2;                                   % stimulus contrast is reduced by 20% of mean luminance at lowest point of temporal gaussian window (note: this corresponds to subtracting a contrast fraction of 10.^(log10(c)-0.1))
+    stim.cd.min_cd                 = 0.2;                                   % stimulus contrast is reduced by 20% of mean luminance
     stim.cd.cdsoafun               = @() round(stim.cd.meanchange + stim.cd.changeplusminus*(2*(rand-.5))); % onset of temporal contrast modulation function 
     
     % Create 1D step function downward
@@ -236,20 +236,20 @@ else
     % flashing a white screen for 1 second.
     % 
     % The distance between the center and 4 left/right/up/down
-    % points are set as [xc,yc] ± 265 pixels (BOLDscreen) 
-    % or ± 194 pixels (EIZOFLEXSCAN). This results in dots at the following
+    % points are set as +/-4 deg: [xc,yc] +/- 352 pixels (BOLDscreen) 
+    % or +/- 256 pixels (EIZOFLEXSCAN). This results in dots at the following
     % BOLDscreen coordinates in pixels:
-    %                  [x3,y3]=[0,375]
-    % [x1,y1]=[695,0]  [x0,y0]=[960,640]   [x2,y2]=[1225,0]
-    %                  [x4,y4]=[0,905] 
+    %                    [x3,y3]=[960,288]
+    % [x1,y1]=[608,640]  [x0,y0]=[960,640]   [x2,y2]=[1312,640]
+    %                    [x4,y4]=[960,992] 
     %
     % EIZOFLEXSCAN coordinates in pixels:
-    %                  [x3,y3]=[0,406]
-    % [x1,y1]=[766,0]  [x0,y0]=[960,600]   [x2,y2]=[1154,0]
-    %                  [x4,y4]=[0,794] 
+    %                    [x3,y3]=[960,344]
+    % [x1,y1]=[704,600]  [x0,y0]=[960,600]   [x2,y2]=[1216,600]
+    %                    [x4,y4]=[960,856] 
     % EMPIRICAL target distance:
-    % * BOLDscreen: XXX pixels, which corresponds to [4] degrees.
-    % * PP room EIZOFLEX: XXX pixels, which corresponds to [4] degrees.
+    % * BOLDscreen: 352 pixels, which corresponds to 3.9914 degrees.
+    % * PP room EIZOFLEX: 256 pixels, which corresponds to 4.0061 degrees.
     % See vcd_setEyelinkParams.m for other parameters regarding Eyelink.
     stim.el.stimfile = fullfile(vcd_rootPath,'workspaces','stimuli',disp_params.name,sprintf('eye_%s',disp_params.name)); % mat file
     stim.el.point2point_distance_deg = 4.0;                                % desired target distance (in deg) from fixation 
@@ -428,8 +428,8 @@ else
                 
                 % SPATIAL
                 % Empirical single dot radius is:
-                % * BOLDscreen:   44 pixels (0.4979 deg)
-                % * EIZOFLEXSCAN: 32 pixels (0.4971 deg)
+                % * BOLDscreen:   44 pixels (0.4989 deg)
+                % * EIZOFLEXSCAN: 32 pixels (0.5008 deg)
                 p.img_sz_deg      = 1.0;                                     	 % desired spatial support of dot image in deg.
                 p.img_sz_pix      = round((p.img_sz_deg * disp_params.ppd)/2)*2; % spatial support of dot image in pixels (BOLDscreen: 88 pixels. EIZOFLEXSCAN: 64 pixels)
                 p.og_res_stim     = p.img_sz_pix;                                % resolution of stored dot stimuli (in pixels)
@@ -561,7 +561,7 @@ else
                 % Constraints: 
                 % * Do not include 0-25 deg and 155-180 deg to avoid edge cases in WM
                 % * Have equal nr of "sideways" and "forward" facing objects.
-                % * Rotations need to be at least ±5 degrees away from decision bounds (45 and 135 degrees, as well as 90 degrees)
+                % * Rotations need to be at least ±24 degrees away from decision bounds (45 and 135 degrees, as well as 90 degrees)
                 % * if possible, object rotations have equal distance from rotation category border (45 and 135 degrees).
                 % * NOT POSSIBLE: equal distance between object rotations.
                 % * We only pick even numbers because that's the granularity
@@ -571,7 +571,7 @@ else
                                                     [50, 54, 70, 84], ...    4 forward between 50-84 degrees.
                                                     [96, 110, 126, 130], ... 4 forward between 96-130 degrees 
                                                     [140, 144, 148, 154]); % 4 sideways between 140-154 degrees.
-                facing_dir_deg             = ceil(facing_dir_deg/2)*2; % force integrals of 2 as original images come in steps of 2 degrees
+                facing_dir_deg             = round(facing_dir_deg/2)*2; % force integrals of 2 as original images come in steps of 2 degrees
 
                 % ensure equal distance from cardinal meridians
                 assert(isequal(abs(facing_dir_deg(1:(p.num_unique_objects/2))-90), fliplr(abs(90-facing_dir_deg(((p.num_unique_objects/2)+1):p.num_unique_objects)))));
@@ -775,7 +775,7 @@ else
                 % NSD scene resolution with the old 7T screen setup resulted in 714 x 714 pixels
                 % For VCD, 8.4 x 8.4 degrees  results in: 
                 % PP room Eizoflexscan: 537 x 537 pixels, or 8.4034 x 8.4034 degrees.
-                % 7TAS BOLDSCREEN: XX x XX pixels, or XX x XX degrees.
+                % 7TAS BOLDSCREEN: 741 x 741 pixels, or 8.4024 x 8.4024 degrees.
                 p.og_res_stim    = 425;                                                                       % Original stimulus reslution is 425 x 425 (pixels)
                 p.img_sz_deg     = ctr_square_deg;                                                            % desired height (or width) of square stimulus support (deg)
                 p.img_sz_pix     = round(p.img_sz_deg.*disp_params.ppd);                                      % height (and width) of square stimulus support (pixels). 
