@@ -206,9 +206,8 @@ for bb = 1:length(orient_idx)
     %     curr_angle_deg = curr_angle_deg-90;
     
     % Wrap around 360
-    if final_angle_deg < 0
-        final_angle_deg = 360+final_angle_deg;
-    end
+    final_angle_deg = mod(final_angle_deg,360);
+
     
     % Create gabor!
     img_c = vcd_create_gabor(...
