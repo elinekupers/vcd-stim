@@ -486,7 +486,7 @@ end
 
 %% Store images if requested
 if store_imgs
-    fprintf('[%]: Storing images',mfilename);
+    fprintf('[%s]: Storing images',mfilename);
     saveDir = fileparts(fullfile(params.stim.ns.stimfile));
     if ~exist(saveDir,'dir'), mkdir(saveDir); end
     save(fullfile(sprintf('%s_%s.mat',params.stim.ns.stimfile,datestr(now,30))),'scenes','ltm_lures','wm_im','info','-v7.3');
