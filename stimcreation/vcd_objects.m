@@ -307,38 +307,27 @@ for rr = 1:length(info.rel_rot)
         alpha1 = double(alpha0);
         im0    = uint8(placematrix(crop_im, im1, []));    % empty third input argument means enter original stimuli with respect to cropping image.
         alpha0 = uint8(placematrix(crop_im, alpha1, [])); % empty third input argument means enter original stimuli with respect to cropping image.
+        clear im1 alpha1
     end
     
     % If we need to rescale images:
     % convert to double, [0-1] lum range (assume range is 1-255),
     % and square as images were made with gamma = 2.
     if ~isequal(params.stim.obj.dres,1) && ~isempty(params.stim.obj.dres)
-        fprintf('[%s]: Resampling the stimuli..',mfilename);
-        
-        im0     = (double(im0-1)./254).^2; % convert to [0-1] and square
-        alpha0  = (double(alpha0./255)).^2; % convert to [0-1] and square
-        
-        im1     = imresize(im0, params.stim.obj.dres); % scale if needed
-        alpha1  = imresize(alpha0,params.stim.obj.dres); % scale if needed
-        
-        im       = uint8(1+(sqrt(im1)*254));
-        alpha_im = uint8((sqrt(alpha1)*255));
-    else
-        im = im0;
-        alpha_im = alpha0;
+        error('[%s]: wtf. we don''t resize object images anymore. Please check params.stim.obj.dres value',mfilename)
     end
-    clear im0 alpha0 im1 alpha1
-    
+   
     % in case we want to debug:
     % figure(99); clf; imagesc(im,'AlphaData',alpha_im); colormap gray; colorbar; axis image
     if info.is_objectcatch(rr)
-        objects_catch(:,:,:,sub,objcatch_sub(rr)) = repmat(im, [1 1 3]);
-        masks_catch(:,:,sub,objcatch_sub(rr))     = alpha_im;
+        objects_catch(:,:,:,sub,objcatch_sub(rr)) = repmat(im0, [1 1 3]);
+        masks_catch(:,:,sub,objcatch_sub(rr))     = alpha0;
     else
-        objects(:,:,:,sub,info.rel_rot(rr) == delta_rotations) = repmat(im, [1 1 3]);
-        masks(:,:,sub,info.rel_rot(rr) == delta_rotations)     = alpha_im;
+        objects(:,:,:,sub,info.rel_rot(rr) == delta_rotations) = repmat(im0, [1 1 3]);
+        masks(:,:,sub,info.rel_rot(rr) == delta_rotations)     = alpha0;
     end
     
+    clear im0 alpha0 
     
     % check facing direction, when the offset may technically result in
     % a flipping of the facing direction, go by original core facing
