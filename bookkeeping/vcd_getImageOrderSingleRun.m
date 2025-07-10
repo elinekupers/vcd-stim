@@ -385,7 +385,7 @@ for ii = 1:length(stim_row)
 %                         corresponding_unique_im_idx = find(rdk_info.unique_im==corresponding_unique_im);
                         updated_ori = run_table.stim2_orient_dir(stim_row(ii),side);
                         delta_test = run_table.stim2_delta(stim_row(ii),side);
-                        og_ori     = updated_ori-delta_test;
+                        og_ori     = mod(updated_ori-delta_test,360);
 
                         % RDKs: 130 mat files: 8 directions x 3 coherence levels x 5 deltas (0 + 4 deltas)
                         stimDir = dir(fullfile(sprintf('%s*',params.stim.rdk.stimfile)));
@@ -534,7 +534,8 @@ for ii = 1:length(stim_row)
                             idx = find( (all_images.info.obj.super_cat == run_table.super_cat(stim_row(ii),side)) & ...
                                 (all_images.info.obj.basic_cat == run_table.basic_cat(stim_row(ii),side)) & ...
                                 (all_images.info.obj.sub_cat == run_table.sub_cat(stim_row(ii),side)) & ...
-                                (all_images.info.obj.abs_rot == run_table.orient_dir(stim_row(ii),side)));
+                                (all_images.info.obj.abs_rot == run_table.orient_dir(stim_row(ii),side)) & ...
+                                (all_images.info.obj.rel_rot == 0));
 
                             obj_super = all_images.info.obj.super_cat_name(idx);
                             obj_basic = all_images.info.obj.basic_cat_name(idx);
