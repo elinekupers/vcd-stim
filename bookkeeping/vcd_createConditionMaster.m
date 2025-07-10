@@ -285,7 +285,7 @@ if nr_reps > 0
                      % add to table
                      conds_single_rep_merged.stim2_delta       = delta_vec;
                      conds_single_rep_merged.stim2_im_nr       = stim2_im_nr;
-                     conds_single_rep_merged.stim2_orient_dir  = orient_dir2;
+                     conds_single_rep_merged.stim2_orient_dir  = mod(orient_dir2,360);
                      conds_single_rep_merged.is_lure           = NaN(size(conds_single_rep_merged,1),2);  
                 
                 elseif strcmp(taskClass{:},'img')
@@ -542,7 +542,7 @@ if nr_reps > 0
                     % add to table
                     conds_single_rep_merged.stim2_delta       = delta_vec; 
                     conds_single_rep_merged.stim2_im_nr       = stim2_im_nr;
-                    conds_single_rep_merged.stim2_orient_dir  = orient_dir2;
+                    conds_single_rep_merged.stim2_orient_dir  = mod(orient_dir2,360); % apply circular wrap
                     conds_single_rep_merged.is_lure           = NaN(size(conds_single_rep_merged,1),2);
 
 
