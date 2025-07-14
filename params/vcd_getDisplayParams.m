@@ -138,7 +138,7 @@ disp.ppd_eccen_range_deg = ppd_eccen_range_deg;  % degrees
 % Switch parameters according to input display name
 switch dispname
     case '7TAS_BOLDSCREEN32'                    
-        % 21-inch iMac MATLAB version 2016b and R2017b, psychtoolbox version 3.0.14 December 30th 2016
+        % 21-inch iMac MATLAB version 2016b and R2017b, psychtoolbox version 3.0.14 -- Flavor: Beta. SVN Revision 8301. December 30th 2016
         disp.w_cm        = 69.84;               % cm wide; note: beyond what subject can actaully see.
         disp.h_cm        = 39.29;               % cm high;
         disp.dist_cm     = 176+2+5.5;           % total of 183.5 cm: 176 cm from the mirror to glass of BOLDScreen +
