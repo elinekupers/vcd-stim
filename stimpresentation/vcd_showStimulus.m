@@ -700,6 +700,9 @@ data.timing.frameduration   = frameduration;
 %%%%%%%%%%%%%%%%%%%%%%%%%%% STORING DATA    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+% Close remaining textures
+Screen('Close');
+
 % clear memory from stuff we don't need
 clear fix_tex fix_rect fix_texture alltasktex allimtex ...
       task_tex task_rect stim_textures nn lum_idx ll kn ...
