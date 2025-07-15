@@ -438,7 +438,7 @@ if ~exist('scan','var') || ~isfield(scan, 'rects') || isempty(scan.rects)
                         
                     % If it is a natural scene..
                     elseif ismember(run_frames.frame_im_nr(nn,side), ...
-                            [params.stim.ns.unique_im_nrs_core,params.stim.ns.unique_im_nrs_wm_test,params.stim.ns.unique_im_nrs_wm_test,params.stim.ns.unique_im_nrs_ltm_lures])
+                            [params.stim.ns.unique_im_nrs_core,params.stim.ns.unique_im_nrs_wm_test,params.stim.ns.unique_im_nrs_ltm_lures])
                         centers{nn,side} = [params.stim.ns.x0_pix + params.stim.xc, params.stim.ns.y0_pix + params.stim.yc];
                         
                     % If it is a catch trial
@@ -570,7 +570,7 @@ introscript.rect = CenterRect([0 0 size(introscript.im,1) size(introscript.im,2)
 % Find the crossing_nrs for each stimulus block
 taskIDs   = unique(run_table.crossing_nr);
 taskIDs   = taskIDs(~isnan(taskIDs));
-taskIDs   = taskIDs(taskIDs~=0); % black periods
+taskIDs   = taskIDs(taskIDs~=0); % blank periods
 taskIDs   = taskIDs(taskIDs~=999); % eyetracking block events
 taskNames = params.exp.crossingnames(taskIDs);
 
