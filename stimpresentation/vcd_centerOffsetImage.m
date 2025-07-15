@@ -6,7 +6,7 @@ function [offset] = vcd_centerOffsetImage(filename, displayname)
 % INPUTS: 
 % * filename    : png image to load. If left empty, we will use VCD
 %                 default: fullfile(vcd_rootPath, 'workspaces', 'stimuli'
-%                 <dispname>,'calibrate','cropped_white_square_matches_ring.png').
+%                 <dispname>,'calibrate','7TAS_BOLDSCREEN_pixelprecise_layout_cropped_white_square_matches_ring.png').
 %                 On the 7TAS we rsynced three calibration images 
 %                 to the vcd-stim code repo: 
 %                 1) cropped_color.png - the union of the classic stimuli (in white) +
@@ -58,7 +58,7 @@ function [offset] = vcd_centerOffsetImage(filename, displayname)
 
 % Check inputs
 if ~exist('filename','var') || isempty(filename)
-    filename = fullfile(vcd_rootPath, 'workspaces','stimuli',displayname,'calibrate','cropped_white_square_matches_ring.png');
+    filename = fullfile(vcd_rootPath, 'workspaces','stimuli',displayname,'calibrate','7TAS_BOLDSCREEN_pixelprecise_layout_cropped_white_square_matches_ring.png');
 end
 
 if ~exist('displayname','var') || isempty(displayname)
