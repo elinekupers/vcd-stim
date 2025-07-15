@@ -439,6 +439,9 @@ feval(tfunEYE);
 timekeys = [timekeys; {GetSecs 'trigger'}];
 fprintf('EXP START.\n'); 
 
+% we use a try.. catch statement to ensure we save any data when matlab runs into an error
+try
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%% DRAW THE TEXTURES %%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
 framecnt = 0;
 prevlinecnt = NaN;
@@ -634,31 +637,74 @@ end
 
 fprintf('RUN ENDED.\n');
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%% SAVE EYELINK DATA %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-if params.wanteyetracking
-    if ~isempty(eyetempfile)
-        % Close eyelink and record end
-        Eyelink('StopRecording');
-        Eyelink('message', sprintf('EXP END %d',GetSecs));
-        Eyelink('CloseFile');
-        status = Eyelink('ReceiveFile',eyetempfile, params.savedatafolder, 1);
-        fprintf('ReceiveFile status %d\n', status);
-        
-        % Rename temporary EDF file to final file name
-        mycmd=['mv ' params.savedatafolder '/' eyetempfile ' ' params.savedatafolder '/' params.eyelinkfile];
-        system(mycmd);
-        if status <= 0, fprintf('\n\nProblem receiving edf file\n\n');
-        else
-            fprintf('Data file ''%s'' can be found in ''%s''\n', params.eyelinkfile, pwd);
-        end
-        Eyelink('ShutDown'); % Here "ShutDown" means close the TCP/IP link, not actually shutting down the OS of the eyelink host machine
-        
+catch ME
+    % tell the user about the crash
+    warning('************** MATLAB CRASHED!!!!!!!!!!!!!!!!!!!!!! ***************');
+    disp(ME)
+    
+    % record run end time
+    end_time = GetSecs;
+    
+    %%%%%%%%%%%% save behavioral data %%%%%%%%%%%%%%%
+    
+    % adjust the times in timeframes and timekeys to be relative to the first time recorded.
+    % thus, time==0 corresponds to the showing of the first frame.
+    starttime = timeframes(1);
+    timeframes = timeframes - starttime;
+    if size(timekeys,1) > 0
+        timekeys(:,1) = cellfun(@(x) x - starttime,timekeys(:,1),'UniformOutput',0);
     end
-end
-
+    timekeys = [{absnowtime 'absolutetimefor0'}; timekeys];
+    
+    % Add button presses and monitor timing to data struct
+    data = struct();
+    data.wantframefiles         = wantframefiles;
+    data.detectinput            = detectinput;
+    data.forceglitch            = forceglitch;
+    data.timeKeys               = timekeys;
+    data.timing.mfi             = mfi;
+    data.timing.glitchcnt       = glitchcnt;
+    data.timing.timeframes      = timeframes;
+    data.timing.starttime       = starttime;
+    data.timing.frameduration   = frameduration;
+    
+    % figure out names of all variables except uint8 images
+    vars = whos;
+    vars = {vars.name};
+    vars = vars(cellfun(@(x) ~ismember(x,{'fix', ...
+        'stim', 'all_images', ...
+        'wantframefiles' 'detectinput' 'forceglitch' 'timekeys' 'mfi' 'glitchcnt' ...
+        'timeframes' 'starttime' 'dur' 'frameduration'}),vars));
+    
+    % Save data (button presses, params, etc)
+    save(fullfile(params.savedatafolder,params.behaviorfile),vars{:});
+    
+    %%%%%%%%%%%% save eye tracking data %%%%%%%%%%%%
+    % Close eyelink and record end
+    Eyelink('StopRecording');
+    Eyelink('message', sprintf('EXP END %d',end_time));
+    Eyelink('CloseFile');
+    status = Eyelink('ReceiveFile',eyetempfile, params.savedatafolder, 1);
+    fprintf('ReceiveFile status %d\n', status);
+    
+    % Rename temporary EDF file to final file name
+    mycmd=['mv ' params.savedatafolder '/' eyetempfile ' ' params.savedatafolder '/' params.eyelinkfile];
+    system(mycmd);
+    if status <= 0, fprintf('\n\nProblem receiving edf file\n\n');
+    else
+        fprintf('Data file ''%s'' can be found in ''%s''\n', params.eyelinkfile, pwd);
+    end
+    Eyelink('ShutDown'); % Here "ShutDown" means close the TCP/IP link, not actually shutting down the OS of the eyelink host machine
+    
+    % Give experimenter their keyboard and cursor back
+    ListenChar(0);
+    ShowCursor;
+    
+end % end of try statement
+ 
+ 
+% if we ended a run successfully or left a run gracefully, we proceed as
+% usual by storing data and calculating performance:
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%% BUTTON LOGGING  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -673,15 +719,6 @@ if size(timekeys,1) > 0
 end
 timekeys = [{absnowtime 'absolutetimefor0'}; timekeys];
 
-% NOT NECESSARY BECAUSE vcdbehavioralanalysis.m deals with this kind of stuff.
-% % report basic timing information to stdout
-% fprintf('we had %d glitches!\n',glitchcnt);
-% fprintf('we had %d dropped frames!\n',sum(isnan(timeframes)));
-% dur = (timeframes(end)-timeframes(1)) * (length(timeframes)/(length(timeframes)-1));
-% fprintf('projected total run duration: %.10f\n',dur);
-% fprintf('frames per second: %.10f\n',length(timeframes)/dur);
-
-
 % Add button presses and monitor timing to data struct
 data = struct();
 data.wantframefiles         = wantframefiles;
@@ -692,16 +729,11 @@ data.timing.mfi             = mfi;
 data.timing.glitchcnt       = glitchcnt;
 data.timing.timeframes      = timeframes;
 data.timing.starttime       = starttime;
-%data.timing.endtime         = dur;
-%data.timing.empiricalfps    = length(timeframes)/dur;
 data.timing.frameduration   = frameduration;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%% STORING DATA    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-% Close remaining textures
-Screen('Close');
 
 % clear memory from stuff we don't need
 clear fix_tex fix_rect fix_texture alltasktex allimtex ...
@@ -722,6 +754,34 @@ vars = vars(cellfun(@(x) ~ismember(x,{'fix', ...
 
 % Save data (button presses, params, etc)
 save(fullfile(params.savedatafolder,params.behaviorfile),vars{:});  % '-v7.3'
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%% SAVE EYELINK DATA %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+if params.wanteyetracking
+    if isempty(eyetempfile)
+        eyetempfile = sprintf('%s.edf', datestr(now, 'HHMMSS')); %less than 8 digits!
+    end
+    
+    % Close eyelink and record end
+    Eyelink('StopRecording');
+    Eyelink('message', sprintf('EXP END %d',GetSecs));
+    Eyelink('CloseFile');
+    status = Eyelink('ReceiveFile',eyetempfile, params.savedatafolder, 1);
+    fprintf('ReceiveFile status %d\n', status);
+    
+    % Rename temporary EDF file to final file name
+    mycmd=['mv ' params.savedatafolder '/' eyetempfile ' ' params.savedatafolder '/' params.eyelinkfile];
+    system(mycmd);
+    if status <= 0, fprintf('\n\nProblem receiving edf file\n\n');
+    else
+        fprintf('Data file ''%s'' can be found in ''%s''\n', params.eyelinkfile, pwd);
+    end
+    Eyelink('ShutDown'); % Here "ShutDown" means close the TCP/IP link, not actually shutting down the OS of the eyelink host machine
+    
+end
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -764,6 +824,9 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%% PT CLEANUP STUFF %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% Close remaining textures
+Screen('Close');
 
 % Restore priority and cursor
 ListenChar(0);
