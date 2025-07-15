@@ -538,14 +538,13 @@ stim.apsize       = apsize;  clear apsize;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 stim.rects = cell(size(stim.centers));
-nSides = unique(run_frames.is_cued(~isnan(run_frames.is_cued)));
-if length(nSides)==1 && nSides==3
-    nSides = 1; % if we happen to only have NS blocks..
-elseif length(nSides)>1 && any(nSides==3)
-    nSides = [1,2];
-else
-    nSides = nSides';
+% We assume there will be at least one stimulus in the run, and check:
+if all(run_table.stim_class(~isnan(run_table.stim_class)) == 5)
+    nSides = 1; % if we happen to only have NS blocks.. then only left columns of stim.centers and stim.size will contain info
+else % assume both sides exist (classic stim classes are [1,2,3,4,99])
+    nSides = [1,2]; % if we happen to have classic stimulus blocks.. then both columns of stim.centers and stim.size will contain info
 end
+
 for side = nSides
     % Find the non-empty center and size cells for each stimulus side
     nonemptycenters   = ~cellfun(@isempty, stim.centers(:,side));
