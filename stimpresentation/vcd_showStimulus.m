@@ -635,7 +635,12 @@ while 1
 
 end
 
-fprintf('RUN ENDED.\n');
+% record run end time
+end_time = GetSecs;
+
+% Tell the experiment we are done
+fprintf('RUN ENDED.\n'); 
+
 
 catch ME
     % tell the user about the crash
@@ -767,7 +772,7 @@ if params.wanteyetracking
     
     % Close eyelink and record end
     Eyelink('StopRecording');
-    Eyelink('message', sprintf('EXP END %d',GetSecs));
+    Eyelink('message', sprintf('EXP END %d',end_time));
     Eyelink('CloseFile');
     status = Eyelink('ReceiveFile',eyetempfile, params.savedatafolder, 1);
     fprintf('ReceiveFile status %d\n', status);
