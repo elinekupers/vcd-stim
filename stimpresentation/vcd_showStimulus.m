@@ -38,6 +38,7 @@ allowforceglitch  = false;  % 0 means do nothing special. [1 D] means allow keyb
 forceglitch       = false;  % useful for testing timing
 wantframefiles    = false;  % do we want to print every single frame flipped on the screen (to create a video of the experiment).
 detectinput       = true;   % do we want detect the button presses prior to the experiment starts (to test if button box is working)
+crashflag         = false;  % did matlab crash during the stimulus presentation?!
 
 % Preallocate space for key presses and timestamps
 timekeys          = {};
@@ -641,66 +642,15 @@ end_time = GetSecs;
 % Tell the experiment we are done
 fprintf('RUN ENDED.\n'); 
 
-
 catch ME
     % tell the user about the crash
     warning('************** MATLAB CRASHED!!!!!!!!!!!!!!!!!!!!!! ***************');
     disp(ME)
     
-    % record run end time
-    end_time = GetSecs;
-    
-    %%%%%%%%%%%% save behavioral data %%%%%%%%%%%%%%%
-    
-    % adjust the times in timeframes and timekeys to be relative to the first time recorded.
-    % thus, time==0 corresponds to the showing of the first frame.
-    starttime = timeframes(1);
-    timeframes = timeframes - starttime;
-    if size(timekeys,1) > 0
-        timekeys(:,1) = cellfun(@(x) x - starttime,timekeys(:,1),'UniformOutput',0);
-    end
-    timekeys = [{absnowtime 'absolutetimefor0'}; timekeys];
-    
-    % Add button presses and monitor timing to data struct
-    data = struct();
-    data.wantframefiles         = wantframefiles;
-    data.detectinput            = detectinput;
-    data.forceglitch            = forceglitch;
-    data.timeKeys               = timekeys;
-    data.timing.mfi             = mfi;
-    data.timing.glitchcnt       = glitchcnt;
-    data.timing.timeframes      = timeframes;
-    data.timing.starttime       = starttime;
-    data.timing.frameduration   = frameduration;
-    
-    % figure out names of all variables except uint8 images
-    vars = whos;
-    vars = {vars.name};
-    vars = vars(cellfun(@(x) ~ismember(x,{'fix', ...
-        'stim', 'all_images', ...
-        'wantframefiles' 'detectinput' 'forceglitch' 'timekeys' 'mfi' 'glitchcnt' ...
-        'timeframes' 'starttime' 'dur' 'frameduration'}),vars));
-    
-    % Save data (button presses, params, etc)
-    save(fullfile(params.savedatafolder,params.behaviorfile),vars{:});
-    
-    %%%%%%%%%%%% save eye tracking data %%%%%%%%%%%%
-    % Close eyelink and record end
-    Eyelink('StopRecording');
-    Eyelink('message', sprintf('EXP END %d',end_time));
-    Eyelink('CloseFile');
-    status = Eyelink('ReceiveFile',eyetempfile, params.savedatafolder, 1);
-    fprintf('ReceiveFile status %d\n', status);
-    
-    % Rename temporary EDF file to final file name
-    mycmd=['mv ' params.savedatafolder '/' eyetempfile ' ' params.savedatafolder '/' params.eyelinkfile];
-    system(mycmd);
-    if status <= 0, fprintf('\n\nProblem receiving edf file\n\n');
-    else
-        fprintf('Data file ''%s'' can be found in ''%s''\n', params.eyelinkfile, pwd);
-    end
-    Eyelink('ShutDown'); % Here "ShutDown" means close the TCP/IP link, not actually shutting down the OS of the eyelink host machine
-    
+    % record crash, as well as run end time of crashed run
+    crashflag = true;
+    end_time  = GetSecs;
+
     % Give experimenter their keyboard and cursor back
     ListenChar(0);
     ShowCursor;
@@ -708,8 +658,8 @@ catch ME
 end % end of try statement
  
  
-% if we ended a run successfully or left a run gracefully, we proceed as
-% usual by storing data and calculating performance:
+% if we ended a run (either successfully or early but gracefully), 
+% we proceed as usual by storing data and calculating performance:
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%% BUTTON LOGGING  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -800,10 +750,12 @@ performance = vcdbehavioralanalysis(fullfile(params.savedatafolder,params.behavi
 % Get feedback display text
 [fb_txt, fbtext_rect] = vcd_getFeedbackDisplay(params, rect, performance);
 
-% Show performance to subject (draw text on gray background)
-Screen('FillRect', win, params.stim.bckgrnd_grayval, rect);
-DrawFormattedText(win, fb_txt, (fbtext_rect(3)/2)-350, (fbtext_rect(4)/2)-100,0,150,[],[],[],[],fbtext_rect); % inputs are winptr, tstring, sx, sy, color, wrapat, flipHorizontal, flipVertical, vSpacing, righttoleft, winRect)
-Screen('Flip',win,0);
+if ~crashflag
+    % Show performance to subject (draw text on gray background)
+    Screen('FillRect', win, params.stim.bckgrnd_grayval, rect);
+    DrawFormattedText(win, fb_txt, (fbtext_rect(3)/2)-350, (fbtext_rect(4)/2)-100,0,150,[],[],[],[],fbtext_rect); % inputs are winptr, tstring, sx, sy, color, wrapat, flipHorizontal, flipVertical, vSpacing, righttoleft, winRect)
+    Screen('Flip',win,0);
+end
 
 % Check monitor timing
 ptviewmoviecheck(data.timing.timeframes,data.timeKeys,[],{'5' 't'});
@@ -833,11 +785,23 @@ end
 % Close remaining textures
 Screen('Close');
 
+% Close window pointer and restore gamma table
+if ~crashflag
+    ptoff(oldCLUT);
+end
+
 % Restore priority and cursor
 ListenChar(0);
 ShowCursor;
-ptoff(oldCLUT);
 Priority(oldPriority);
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%   NOTIFY USER ABOUT ANY CRASHES   %%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+if crashflag
+    warning('************** MATLAB CRASHED!!!!!!!!!!!!!!!!!!!!!! ***************');
+    disp(ME)
+end
 
 return
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
