@@ -539,19 +539,8 @@ stim.apsize       = apsize;  clear apsize;
 
 stim.rects = cell(size(stim.centers));
 nSides = unique(run_frames.is_cued(~isnan(run_frames.is_cued)));
-is_fix          = any(run_table.task_class==1);
-is_classic_stim = any(run_table.stim_class<5);
-
 if length(nSides)==1 && nSides==3
-    if is_fix && is_classic_stim
-        nSides = [1,2]; % if we happen to have NS blocks AND fixation blocks with classic stimuli..
-    elseif is_fix && ~is_classic_stim
-       nSides = 1; % if we happen to only have NS blocks (fix and other tasks)..
-    elseif ~is_fix && is_classic_stim
-       nSides = [1,2]; % if we happen to have classic stimuli.. (this shouldn't occur, but just in case).
-    elseif ~is_fix && ~is_classic_stim
-       nSides = 1; % if we happen to only have NS blocks and no fixation blocks
-    end
+    nSides = 1; % if we happen to only have NS blocks..
 elseif length(nSides)>1 && any(nSides==3)
     nSides = [1,2];
 else
