@@ -69,13 +69,6 @@ stim_params   = vcd_getStimParams('disp_name', dispname, ...
                                   'load_params', load_stim_params,...
                                    'store_params', store_stim_params); 
 
-% define folders and params
-% dir0 = '/var/fairstate-ext2/GoogleDrive/VCD/experimental_design/stimuli/workspaces/complex_objects/images_to_process';
-dir0         = fullfile(vcd_rootPath,'workspaces','stimuli','RAW','vcd_objects','all_to_process'); % where 'raw' images live
-% figuredir  = '/var/fairstate-ext2/GoogleDrive/VCD/experimental_design/stimuli/workspaces/complex_objects/tryD_targetsdlum_0pt03';  % where diagnostic figures are written
-figuredir    = fullfile(vcd_rootPath,'workspaces','stimuli',dispname, 'objects_preproc_lummn0pt5_sd0pt15_sz99pct');
-outputdir    = fullfile(vcd_rootPath,'workspaces','stimuli',dispname, 'vcd_objects_2degstep_lumcorrected');  % where final images are written to (this directory is REMOVED if it exists)
-
 % Parameters (CHANGE ONLY THESE SETTINGS)
 numrot       = 91;      	% number of image viewpoints
 numobj       = 16;          % number of objects
@@ -85,6 +78,32 @@ targetmnlum  = 0.5;         % desired mn-luminance for grand average of one obje
 targetsdlum  = 0.015;       % desired sd-luminance for grand average of one object's viewpoints
 squaresizes  = 2:2:1000;    % square sizes (in pixels for one side) to evaluate
 squarethresh = 0.99;        % previously 0.9; square size is chosen that includes at least 90% of the mass (of the mean mask)
+
+% define folders and params
+dir0         = fullfile(vcd_rootPath,'workspaces','stimuli','RAW','vcd_objects','all_to_process'); % where 'raw' images live
+outputdir    = fullfile(vcd_rootPath,'workspaces','stimuli',dispname, 'vcd_objects_2degstep_lumcorrected');  % where final images are written to (this directory is REMOVED if it exists)
+figuredir    = fullfile(vcd_rootPath,'workspaces','stimuli',dispname, ...
+                sprintf('objects_preproc_lummn%s_sd%s_sz%dpct',strrep(num2str(targetmnlum),'.','pt'),strrep(num2str(targetsdlum),'.','pt'),squarethresh*100));
+
+% pproom stimuli have wider histogram and smaller object size on 1024x1024.
+% this is boldscreen uses more pixels than pproom (on the 1024x1024).
+% to match contrast from boldscreen to pproom, let's use the strategy of
+% embedding the final boldscreen image in a larger spatial extent when
+% calculating contrast.
+if strcmp(dispname,'PPROOM_EIZOFLEXSCAN')
+    monitorfactor = 1;  % for PPROOM case
+elseif strcmp(dispname,'7TAS_BOLDSCREEN32')
+    % for BOLDscreen case (i.e. boldscreen ppd / pproom ppd)
+    dp1 = vcd_getDisplayParams('7TAS_BOLDSCREEN32');
+    dp2 = vcd_getDisplayParams('PPROOM_EIZOFLEXSCAN');
+    monitorfactor = dp1.ppd/dp2.ppd; % monitorfactor = 88.189484478585300/63.902348145300280;  
+    clear dp1 dp2
+else
+    error('[%s]: Welp, we don''t know what monitorfactor to use for this display setup!',mfilename)
+end
+
+assert(monitorfactor >= 1);  % we DO NOT want to reduce as we might risk truncation!!!!
+fudgesize = round(ogsize * monitorfactor);
 
 %% LOAD IMAGES
 
@@ -200,9 +219,9 @@ for zz=1:numobj
     
     % make composite image
     comp0 = newim0 .* als(:,:,yy) + targetmnlum * (1-als(:,:,yy));
-    
+
     % record
-    sds(yy) = std(comp0(:));
+    sds(yy) = std(flatten(placematrix(targetmnlum*ones(fudgesize,fudgesize),comp0,[])));
 
   end
 
@@ -242,7 +261,7 @@ for zz=1:numobj
     imtemp = allimages2(:,:,(zz-1)*numrot + (1:numrot));
     altemp = allalphas2(:,:,(zz-1)*numrot + (1:numrot));
     temp = ((double(imtemp)-1)/254) .* double(altemp)/255 + targetmnlum * (1-double(altemp)/255);  % NOTE that uint8 is already luminance (no squaring necessary)!
-    estds = std(squish(temp,2),[],1);
+    estds = std(squish(placematrix(targetmnlum*ones(fudgesize,fudgesize,numrot),temp,[]),2),[],1);
     
     % if mean is within 1% of targetsdlum, we are done
     if abs(mean(estds)-targetsdlum) / targetsdlum < .01
@@ -285,6 +304,7 @@ figurewrite('validpct',[],[],figuredir);
 
 % visualize
 temp = ((double(allimages2)-1)/254) .* double(allalphas2)/255 + targetmnlum * (1-double(allalphas2)/255);  % NOTE that uint8 is already luminance (no squaring necessary)!
+temp = placematrix(targetmnlum*ones(fudgesize,fudgesize,size(allimages2,3)),temp,[]);
 emeans = mean(squish(temp,2),1);
 estds = std(squish(temp,2),[],1);
 figureprep([100 100 800 400]);
