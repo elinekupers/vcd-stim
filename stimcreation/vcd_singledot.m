@@ -131,8 +131,8 @@ smooth_dot2(idx) = params.stim.dot.color(1); % grayval is double
 dot = repmat(smooth_dot2, [1 1 3]);
 
 % Create alpha mask (same for all dots)
-mask  = uint8(zeros(size(dot,1),size(dot,2)));
-mask0 = (Y - centerY).^2 + (X - centerX).^2 <= (params.stim.dot.alpha_mask_diam_pix).^2;
+mask        = uint8(zeros(size(dot,1),size(dot,2)));
+mask0       = (Y - centerY).^2 + (X - centerX).^2 <= (params.stim.dot.alpha_mask_diam_pix).^2;
 mask(mask0) = 255;
 mask        = uint8(mask);
 
