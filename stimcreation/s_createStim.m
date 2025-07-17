@@ -371,10 +371,11 @@ params.exp    = vcd_getSessionParams('disp_name', params.disp.name, ...
 % - 64 working memory test images.
 % - 288 catch object images.
 %
-% Note that while BOLDscreen and PProom stimuli have the same number of
-% pixels for width and height, the object stimuli themselves are scaled to
-% different sizes within this 512x512 pixel support to accomplish 4 deg
-% diameter stimuli.
+% Note that the preprocessing script scales BOLDscreen and Eizoflexscan  
+% object stimuli within the original 1024x1024 resolution to accomplish 4 
+% deg diameter stimuli, prior to being cropped to their final image size 
+% (518x518 pixels for the BOLDscreen or 512x512 pixels for Eizoflexscan) .
+%
 % If params.verbose = true, this function will make a PNG for each object 
 % (core and WM test) and figures with axes/titles to check image nrs,
 % rotation.
@@ -388,27 +389,27 @@ params.exp    = vcd_getSessionParams('disp_name', params.disp.name, ...
 %
 % OUTPUTS:
 % * objects       : (uint8) is a 5D array:
-%                   height (BOLDscreen: 512 pixels; PProom: 512 pixels) 
-%                   x width (BOLDscreen: 512 pixels; PProom: 512 pixels) 
+%                   height (BOLDscreen: 518 pixels; PProom: 512 pixels) 
+%                   x width (BOLDscreen: 518 pixels; PProom: 512 pixels) 
 %                   x 3 (rgb) 
 %                   x 16 object categories (subordinate level) 
 %                   x 5 rotation offsets (0, -24, -12, +12, +24 deg). 
 % * masks         : (uint8) is a 4D array containing alpha transparency mask: 
-%                   height (BOLDscreen: 512 pixels; PProom: 512 pixels) 
-%                   x width (BOLDscreen: 512 pixels; PProom: 512 pixels) 
+%                   height (BOLDscreen: 518 pixels; PProom: 512 pixels) 
+%                   x width (BOLDscreen: 518 pixels; PProom: 512 pixels) 
 %                   x 16 object categories (subordinate level) 
 %                   x 5 rotation offsets (0, -24, -12, +12, +24 deg). 
 % * objects_catch : (uint8) is a 5D array:
-%                   height (BOLDscreen: 512 pixels; PProom: 512 pixels) 
-%                   x width (BOLDscreen: 512 pixels; PProom: 512 pixels) 
+%                   height (BOLDscreen: 518 pixels; PProom: 512 pixels) 
+%                   x width (BOLDscreen: 518 pixels; PProom: 512 pixels) 
 %                   x 3 (rgb) 
 %                   x 16 object categories (subordinate level) 
 %                   x 18 catch rotations sampled from all rotation objects
 %                   (0-180 degrees), except the core rotation of the
 %                   object.
 % * masks_catch   : (uint8) is a 4D array containing alpha transparency mask:
-%                   height (BOLDscreen: 512 pixels; PProom: 512 pixels) 
-%                   x width (BOLDscreen: 512 pixels; PProom: 512 pixels) 
+%                   height (BOLDscreen: 518 pixels; PProom: 512 pixels) 
+%                   x width (BOLDscreen: 518 pixels; PProom: 512 pixels) 
 %                   x 16 object categories (subordinate level) 
 %                   x 18 catch rotations sampled from all rotation objects
 %                   (0-180 degrees), except the core rotation of the
