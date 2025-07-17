@@ -67,22 +67,22 @@ function [objects, masks, objects_catch, masks_catch, info] = vcd_objects(params
 % OUTPUTS:
 %  objects      :   uint8 5D array with images of individual object stimuli
 %                   dimensions are:
-%                   width (BOLDscreen: 512 pixels; PProom: 512 pixels) 
-%                   x height (BOLDscreen: 512 pixels; PProom: 512 pixels) 
+%                   width (BOLDscreen: 518 pixels; PProom: 512 pixels) 
+%                   x height (BOLDscreen: 518 pixels; PProom: 512 pixels) 
 %                   x 3 (rgb)
 %                   x 16 object's subordinate categories (e.g., damon, lisa, etc.)
 %                   x 5 rotations (0, -24, -12, +12, +24 degrees).
 %  masks        :   uint8 4D array with alpha transparency masks for
 %                   Psychtoolbox to remove the object from the background.
 %                   Dimensions are:
-%                   width (BOLDscreen: 512 pixels; PProom: 512 pixels) 
-%                   x height (BOLDscreen: 512 pixels; PProom: 512 pixels)
+%                   width (BOLDscreen: 518 pixels; PProom: 512 pixels) 
+%                   x height (BOLDscreen: 518 pixels; PProom: 512 pixels)
 %                   x 16 object's subordinate categories (e.g., damon, lisa, etc.)
 %                   x 5 rotations (0, -24, -12, +12, +24 degrees).
 % objects_catch :   uint8 5D array with object catch images for each
 %                   individual object, dimension are:
-%                   height (BOLDscreen: 512 pixels; PProom: 512 pixels) 
-%                   x width (BOLDscreen: 512 pixels; PProom: 512 pixels) 
+%                   height (BOLDscreen: 518 pixels; PProom: 512 pixels) 
+%                   x width (BOLDscreen: 518 pixels; PProom: 512 pixels) 
 %                   x 3 (rgb)
 %                   x 16 object subordinate categories (e.g., damon, lisa, etc.)
 %                   x 18 catch rotations sampled from all rotation objects
@@ -91,8 +91,8 @@ function [objects, masks, objects_catch, masks_catch, info] = vcd_objects(params
 % masks_catch :   uint8 4D array with alpha transparency masks for
 %                   Psychtoolbox to remove the object from the background.
 %                   Dimensions are:
-%                   width (BOLDscreen: 512 pixels; PProom: 512 pixels) 
-%                   x height (BOLDscreen: 512 pixels; PProom: 512 pixels) 
+%                   width (BOLDscreen: 518 pixels; PProom: 512 pixels) 
+%                   x height (BOLDscreen: 518 pixels; PProom: 512 pixels) 
 %                   x 16 object's subordinate categories (e.g., damon, lisa, etc.)
 %                   x 18 catch rotations sampled from all rotation objects
 %                   (0-180 degrees), except the core rotation of that
@@ -263,7 +263,7 @@ info.abs_rot    = cat(1, params.stim.obj.facing_dir_deg', rot_abs_wm(:), catch_r
 info.rel_rot    = cat(1, repmat(delta_rotations(1),n_obj,1),repmat(delta_rotations(2:end)',n_obj,1), repmat(delta_rotations(1),n_obj*n_catch_images,1));
 
 % Get cropped rescaled image to reduce glitches when drawing stimuli on the screen
-crop_im = zeros(params.stim.obj.crop_img_sz_pix, params.stim.obj.crop_img_sz_pix); % 512 pixels x 512 pixels
+crop_im = zeros(params.stim.obj.crop_img_sz_pix, params.stim.obj.crop_img_sz_pix); % BOLDSCREEN: 518 pixels x 518 pixels   PPROOM: 512 pixels x 512 pixels
 
 % Preallocate space
 extent        = params.stim.obj.crop_img_sz_pix.*params.stim.obj.dres;

@@ -218,6 +218,23 @@ else
     t_step(round(stim.cd.t_support_N/2):end) = 1-stim.cd.min_cd;            % set second half of step function to stim.cd.min_cd
     stim.cd.t_cmodfun              = t_step; 
 
+    %% IMAGERY QUIZ DOT (SAME FOR ALL STIMULUS CLASSES)
+    % The general trial structure for imagery is: spatial cue, small text
+    % phrase at center of display (stim1) [allow eye movements], 8-s delay,
+    % two-dot test image in both left and right hemifields for classic
+    % stimuli (stim2). The goal of the subject is to say how the quiz dots
+    % relate to the mental image, according to the text prompt. For
+    % example, do the quiz dots overlap the giraffe in the imagined giraffe
+    % scene? Yes/No. Every imagined special core stimulus has 10 "yes" test
+    % images and 10 "no" test images. The imagery quiz dot are 0.5 degree
+    % in
+    % diameter and white (uint 255). Imagery task is crossed with all
+    % stimulus classes, using a small, specific subset of core stimuli
+    % (which we refer to as "special core" stimuli).
+    stim.img.quiz_dot_diam_deg  = 0.5;  % diameter of an individual quiz dot in degrees
+    stim.img.quiz_dot_diam_pix  = round(stim.img.quiz_dot_diam_deg * disp_params.ppd);   % diameter of an individual quiz dot in pixels (rounded to the nearest integer)
+    stim.img.img_sz_pix         = round((stim.img.quiz_dot_diam_pix + 6)/2)*2;           % spatial support for the quiz dot in pixels (diameter + 6 pixels) (ensure even nr of pixels)
+    
     %% EYETRACKING BLOCK PARAMS
     % Each run starts with an eyetracking "block", which mimics the 
     % eyelink calibration/validation points on the display, and evokes a 
@@ -310,15 +327,21 @@ else
                 assert(isequal(length(unique(tmp(:))), length(tmp(:))));
                 clear tmp
 
+                % LTM/IMG
+                p.unique_im_nrs_specialcore   = p.unique_im_nrs_core(17:end);               % SELECTED UNIQUE IMAGES (SUBSET of all 24) (only high contrast)
+
                 % LTM
                 p.ltm_pairs = [];
                 
                 % IMAGERY
-                p.unique_im_nrs_specialcore   = p.unique_im_nrs_core(17:end);               % SELECTED UNIQUE IMAGES (SUBSET of all 24) (only high contrast)
-                p.imagery_sz_deg              = 5.658;                                      % QUIZ DOT PARAMS (STIM 2) desired diameter (deg) of the quiz dots image in an imagery trial to encourage subjects to create a vidid mental image.
-                p.imagery_sz_pix              = (round(p.img_sz_deg* disp_params.ppd)/2)*2; % QUIZ DOT PARAMS (STIM 2) diameter of quiz dot image in pixels (ensure even nr of pixels)                
-                p.unique_im_nrs_img_test      = [423:582];                                  % Unique image nrs associated with the 8*20=160 IMG gabor test dot images
-                p.imagery_quiz_images         = [ones(1,10),2.*ones(1,10)];                 % quiz dots overlap (1) or not (2)
+                % QUIZ DOT PARAMS (STIM 2) to encourage subjects to create a vidid mental image.
+                p.imagery_dot_radius_deg       = 0.5;                                        % desired diameter (deg) of a single quiz dot in an imagery trial 
+                p.imagery_sz_pix               = (round(p.img_sz_deg* disp_params.ppd)/2)*2; % diameter of quiz dot image in pixels (ensure even nr of pixels)
+                p.imagery_min_dot_dist_deg     = [p.imagery_dot_radius_deg*2 + 0.25];        % minimum distance between two quiz dots.
+                p.imagery_aperture_buffer_deg  = 0.5;                                        % minimum distance (deg) of the test dot location center from the edge of the 4-degree circular stimulus aperture.
+                p.imagery_minmax_anglemismatch = [10, 90];                                   % for "no" dots, how much (in degrees) do we allow the line that the two quiz dots make be mismatched from the core gabor tilt.
+                p.unique_im_nrs_img_test       = [423:582];                                  % Unique image nrs associated with the 8*20=160 IMG gabor test dot images
+                p.imagery_quiz_images          = [ones(1,10),2.*ones(1,10)];                 % quiz dots overlap (1) or not (2)
 
                 % Add params to struct
                 stim.gabor = p;
@@ -532,7 +555,14 @@ else
                 p.y0_pix        = y0_pix;                                       % y-center loc in pix (translation from center screen 0,0)
                 
                 p.og_res_stim_total_sz     = 1024;                              % original resolution of object stimuli
-                p.cropped_res_stim_total_sz = 512;                              % cropped version of preprocessed object stimuli.
+                if strcmp(disp_name,'7TAS_BOLDSCREEN32')
+                    % BOLDscreen supports needs to be slightly larger
+                    % because the extend of object stimuli within the 
+                    % preprocessed 1024x1024 is larger than for PP room. 
+                    p.crop_img_sz_pix      = 518;                               % height (and width) of cropped square stimulus support (after preprocessing) (518 x 518 pixels). 
+                else
+                    p.crop_img_sz_pix      = 512;                               % height (and width) of cropped square stimulus support (after preprocessing) (512 x 512 pixels).
+                end
                 p.og_res_stim_target_sz    = parafov_circle_diam_pix;           % object stimuli have a target size of 4 dva = 354 pixels (7TAS_BOLDSCREEN32) or 258 pixels (PP room)
                 p.og_res_stim_deg          = parafov_circle_diam_deg;           % corresponding to 4 deg
 
@@ -542,7 +572,6 @@ else
                 p.img_sz_deg               = parafov_circle_diam_deg;            % height (or width) of square stimulus support (deg)
                 p.dres                     = p.img_sz_pix / p.og_res_stim_total_sz; % height (or width) of square stimulus support (pix)
 
-                p.crop_img_sz_pix          = p.og_res_stim_total_sz/2; % height (and width) of cropped square stimulus support (512 x 512 pixels).
 
                 
                 % OBJECT FACING ROTATION ANGLES
@@ -842,7 +871,7 @@ else
         if verbose
             % Print out stimulus params
             if strcmp(stim_class{ii},'obj')
-                stim_sz_px = p.cropped_res_stim_total_sz;
+                stim_sz_px = p.crop_img_sz_pix;
             else
                 stim_sz_px = p.img_sz_pix;
             end
