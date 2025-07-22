@@ -51,7 +51,7 @@ function results = vcdbehavioralanalysis(filename);
 %   session_type - as usual
 %   run_nr - as usual
 %   block_nr - only positive integer cases
-%   crossing_nr - only positive integer cases
+%   crossing_nr - only positive integer cases (and not eyetracking 999)
 %   trial_nr - for tasks other than FIX, this is just the usual trial_nr.
 %              for the FIX task, this is set to NaN for each dot change event.
 %   is_catch - as usual. for the special FIX dot change events, this is set to 0.
@@ -66,6 +66,10 @@ function results = vcdbehavioralanalysis(filename);
 %                 stim1 or stim2 where appropriate, and for the special FIX dot change
 %                 events, stimulus onset refers to the change in the dot luminance.)
 %   onset_abstime - stimulus onset time as a MATLAB serial date number (units are days).
+%   cdonset - in the case of CD task and an actual contrast decrement that is present,
+%             this is the number of milliseconds between stimulus onset and the contrast
+%             decrement. in all other cases, this is NaN. the rationale for this output
+%             is that more appropriate reaction times can be calculated given this output.
 %   correct_response - 1 through 4 indicating the correct response
 %   change_mind - 0/1 indicating whether the subject pressed more than one unique button.
 %                 in the case of FIX dot change events, subjects are not allowed to change
@@ -82,12 +86,13 @@ function results = vcdbehavioralanalysis(filename);
 %     following are set to NaN:
 %       change_mind, button_pressed, rt
 %
-%   * If partial data, onset_abstime will be NaN for trials not conducted. In addition,
-%     these trials not conducted will be scored as if subjects did not press a button.
+%   * If partial data, onset_abstime and cdonset will be NaN if those events were not actually
+%     shown on the screen. In addition, trials not conducted will be scored as if subjects 
+%     did not press a button.
 %
 % <results.summary> is a table with B rows, where B is the number of blocks in the run.
 %   block_nr - only positive integer cases
-%   crossing_nr - only positive integer cases
+%   crossing_nr - only positive integer cases (and not eyetracking 999)
 %   response_rate - out of non-catch trials, percentage with at least one button press
 %   pct_correct - out of non-catch trials, percentage for which the correct answer was given
 %   median_rt - median reaction time in milliseconds (ignoring catch trials and cases where
@@ -108,6 +113,9 @@ function results = vcdbehavioralanalysis(filename);
 % - We process the first button pressed within the response window.
 % - We do not allow the subject to change their mind.
 % - The initial dot color is not treated as a change event.
+%
+% History:
+% - 2025/07/21 - add cdonset to trialinfo
 
 %% Internal constants
 
@@ -499,6 +507,12 @@ while 1
     results.trialinfo.is_catch(rii)         = a1.run_table.is_catch(ii);
     results.trialinfo.onset_start(rii)      = a1.run_table.event_start(ii);
     results.trialinfo.onset_abstime(rii)    = matlabnowtime + stimonset/60/60/24;  % convert from seconds to days and then add in
+    temp = a1.run_table.cd_start(ii);
+    if isnan(temp)
+      results.trialinfo.cdonset(rii)        = NaN;
+    else
+      results.trialinfo.cdonset(rii)        = 1000*(timeframes(temp+1) - stimonset);  % milliseconds from stim onset to cd onset
+    end
     results.trialinfo.correct_response(rii) = a1.run_table.correct_response(ii);  % NOTE: catch trials should be NaN
 
     % if this is a catch trial
@@ -623,8 +637,9 @@ while 1
       % record
       results.trialinfo.onset_start(rii)      = fixstart-1+seq(p);
       results.trialinfo.onset_abstime(rii)    = matlabnowtime + stimonset/60/60/24;  % convert from seconds to days and then add in
+      results.trialinfo.cdonset(rii)          = NaN;  % FIX task has no contrast decrement
       results.trialinfo.correct_response(rii) = mod(sign(df(seq(p)-1)),3);  % 1 means positive luminance change, 2 means negative luminance change
-      results.trialinfo.change_mind(rii)       = NaN;  % for FIX, no changing mind
+      results.trialinfo.change_mind(rii)      = NaN;  % for FIX, no changing mind
 
       % find buttons within response window. we only want buttons that are one of the choice buttons.
       okok = find( buttontimes > windowstart & ...
