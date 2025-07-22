@@ -7,7 +7,6 @@ function results = vcdeyetrackingpreprocessing(filename,behfilename,behresults,w
 % <behresults> is the results of calling vcdbehavioralanalysis.m on <behfilename>
 % <wantfigures> (optional) is
 %   1 means to create figure windows
-%   0 means do not create any figures
 %   X means write out figures with X as the directory+filename prefix
 %   Default: 1.
 % <blinkpad> (optional) is [A B] with the number of milliseconds before and 
@@ -49,6 +48,11 @@ function results = vcdeyetrackingpreprocessing(filename,behfilename,behresults,w
 %               NaNs will exist in x, y, and pupilsize for time periods 
 %               corresponding to removal of blinks.
 %   <maxpolydeg> is the maximum polynomial degree used for detrending.
+%   <targeterrs> is 1 x 5 (in the order of the event_id (991-995)) with the
+%                   mean Euclidean distance from the target
+%   <fixationradius> is the 75th percentile of Euclidean distances from the origin.
+%                    A circle centered on the origin with radius <fixationradius>
+%                    should encompass 75% of the data.
 %
 % We also generate several figures:
 % 'timeseries' - This shows (1) raw data, (2) data after dva conversion, 
@@ -63,11 +67,17 @@ function results = vcdeyetrackingpreprocessing(filename,behfilename,behresults,w
 %                 eyetracking run (after synchronization and time-cropping). 
 %                 We use 0.25-deg bins. Various display elements of the VCD experiment
 %                 are illustrated. We show the histogram with linear and log counts.
+%                 The circle associated with <fixationradius> is plotted in cyan.
 % 'locked' - We show pupil size and gaze position time-locked to stimuli and task cues.
 %            Pupil size traces are extracted from 1000 ms before and 5000 ms after
 %            onset of stimuli and task cues. Each trace is de-meaned, and the mean and
 %            SE across traces are shown. Gaze positions are visualized using 2D 
 %            histograms (0.25-deg bins).
+%
+% History:
+% - 2025/07/21 - add results.fixationradius
+% - 2025/07/21 - add results.targeterrs
+% - 2025/07/21 - wantfigures==0 is no longer supported
 
 %% Internal constants
 
@@ -239,15 +249,21 @@ assert(all(isfinite(flatten(results.eyedata(2:4,~baddata)))));
 
 % detrend x and y by fitting low-order polynomials and subtracting
 origeyedata2 = results.eyedata;  % MARK: prior to detrending
-polymatrix = constructpolynomialmatrix(size(results.eyedata,2),0:maxpolydeg);  % samples x polys
+%polymatrix = constructpolynomialmatrix(size(results.eyedata,2),0:maxpolydeg);  % samples x polys
+temp = linspace(0,1,size(results.eyedata,2));
+polymatrix = [];
+for p=0:maxpolydeg
+  polymatrix(:,p+1) = temp .^ p;
+end
 X = polymatrix(~baddata,:);  % samples x polys
 h = olsmatrix(X)*results.eyedata(2:3,~baddata)';  % weights x different-timeseries
 % h = [];
 % h(:,1) = fitl1line(X,results.eyedata(2,~baddata)')';
 % h(:,2) = fitl1line(X,results.eyedata(3,~baddata)')';
-results.eyedata(2:3,:) = results.eyedata(2:3,:) - (polymatrix*h)';
+thefit = polymatrix*h;  % samples x different-timeseries
+results.eyedata(2:3,:) = results.eyedata(2:3,:) - thefit';
 
-% median-center
+% median-center (after this, the medoid is the origin)
 results.eyedata(2:3,:) = results.eyedata(2:3,:) - nanmedian(results.eyedata(2:3,:),2);
 
 % record
@@ -255,9 +271,13 @@ results.maxpolydeg = maxpolydeg;
 
 %% Prep for visualizations
 
-% if the user doesn't want figures, we are done
+% NO LONGER SUPPORTED:
+% % if the user doesn't want figures, we are done
+% if isequal(wantfigures,0)
+%   return;
+% end
 if isequal(wantfigures,0)
-  return;
+  error('wantfigures==0 no longer supported');
 end
 
 % calc
@@ -353,9 +373,11 @@ end
 
 figureprep([100 100 500 500],wantfigwin); hold on;
 ii = find(ismember(a1.run_table.event_id,991:995));  % et_sac (the targets)
+assert(length(ii)==5);
 targetxxs = [0 -etloc etloc 0 0];  % central, left, right, up, down.
 targetyys = [0  0 0 etloc -etloc];
 colors0 = cool(5);
+results.targeterrs = [];
 for p=1:length(ii)  % for each target, in the order they appear
   ix = a1.run_table.event_id(ii(p)) - 990;  % 1-5 indicating which target number
   
@@ -368,6 +390,9 @@ for p=1:length(ii)  % for each target, in the order they appear
   set(h,'CData',colors0(ix,:));
 
   scatter(targetxxs(ix),targetyys(ix),'ko','filled');
+  
+  % calculate error as mean Euclidean distance from target (mean over time samples)
+  results.targeterrs(ix) = nanmean(sqrt(sum((results.eyedata(2:3,tt) - [targetxxs(ix); targetyys(ix)]).^2,1)));  % NOTE: nanmean
 end
 axis(2*[-etloc etloc -etloc etloc]);
 axis square;
@@ -385,6 +410,11 @@ end
 
 %% Visualization of total 2D histogram
 
+% quantify fixation extent
+dists = sqrt(sum(results.eyedata(2:3,:).^2,1));    % 1 x samples with Euclidean distance from origin
+results.fixationradius = prctile(dists,75);        % 75% of the time, the distances are this value or less
+
+% proceed to figure
 figureprep([100 100 900 900],wantfigwin);
 for spi=1:2
   subplot(2,1,spi); hold on;
@@ -399,6 +429,8 @@ for spi=1:2
   imagesc(xbins,ybins,n);
   colormap(hot);
   caxis([0 max(n(:))+eps]);
+  drawellipse(0,0,0,results.fixationradius,results.fixationradius,[],[],'c-');
+  %%%% BUT, LET'S TRY QUICK REGRESS PUPIL? SEE HOW WELL.
   h = colorbar;
   if spi==2
     set(h,'Ticks',0:max(get(h,'Ticks')));
