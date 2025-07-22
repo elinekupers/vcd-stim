@@ -67,7 +67,7 @@ function results = vcdeyetrackingpreprocessing(filename,behfilename,behresults,w
 %                 eyetracking run (after synchronization and time-cropping). 
 %                 We use 0.25-deg bins. Various display elements of the VCD experiment
 %                 are illustrated. We show the histogram with linear and log counts.
-%                 The circle associated with <fixationradius> is plotted in cyan.
+%                 The circle associated with <fixationradius> is plotted in yellow.
 % 'locked' - We show pupil size and gaze position time-locked to stimuli and task cues.
 %            Pupil size traces are extracted from 1000 ms before and 5000 ms after
 %            onset of stimuli and task cues. Each trace is de-meaned, and the mean and
@@ -120,6 +120,8 @@ unix_wrapper(sprintf('edf2asc -y -p "%s" -miss NaN "%s"',t0,filename),0,0);  % -
 tempascfile = fullfile(t0,[tmpfile '.asc']);
 b1 = read_eyelink_asc_v3(tempascfile);
 rmdirquiet(t0);
+
+% NOTE: the edf2asc and read_eyelink_asc_v3 steps are slow. It could be cached/saved.
 
 % extract some critical messages
 %     {'MSG'}    {'3681821'}    {'!CAL CALIBRATION HV5 L LEFT GOOD  '                                                       }
@@ -429,7 +431,7 @@ for spi=1:2
   imagesc(xbins,ybins,n);
   colormap(hot);
   caxis([0 max(n(:))+eps]);
-  drawellipse(0,0,0,results.fixationradius,results.fixationradius,[],[],'c-');
+  drawellipse(0,0,0,results.fixationradius,results.fixationradius,[],[],'y-');
   %%%% BUT, LET'S TRY QUICK REGRESS PUPIL? SEE HOW WELL.
   h = colorbar;
   if spi==2
@@ -448,7 +450,7 @@ for spi=1:2
   for p=1:length(targetxxs)
     scatter(targetxxs(p),targetyys(p),'co');
   end
-  title('display=red, 4degecc=blue, 4degstimaperture=green, targets=cyan, nssquare=white');
+  title('display=red, 4degecc=blue, 4degstimaperture=green, targets=cyan, nssquare=white, fixextent=yellow');
 end
 subplotresize(2,1,.9,.85);
 if ~wantfigwin
