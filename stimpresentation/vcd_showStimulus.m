@@ -27,6 +27,14 @@ function [data,getoutearly,run_frames,run_table] = vcd_showStimulus(...
 
 % internal constants
 fliplead = 10/1000;  % min amount of time to allocate prior to flip
+ptime = 10/1000;     % time in seconds that we estimate that we need to prepare for the next frame.
+                     % if this number is on the large side, this makes us conservative and makes us
+                     % very happy to drop frames in order to have a chance of getting back on track.
+                     % if this number is on the small side, this makes us aggressive and makes us 
+                     % relatively unwilling to drop frames. This has the risk that we will never
+                     % get back on track, and hence the risk that we will accumulate lag.
+                     % clearly, ptime should be no more than mfi * frameduration (since if we really
+                     % required that much time, the presentation could never adequately keep up).
 
 % Set counters
 glitchcnt         = 0;
@@ -614,12 +622,12 @@ while 1
          whendesired = whendesired + mfi * frameduration;
          when = whendesired - fliplead0; %#ok<*NASGU>  
 
-         % if the current time is already past whendesired, we are doomed,
-         % and so we have to drop a frame. here, we do it repeatedly until
+         % if the current time is already past whendesired-ptime, we declare
+         % that we are doomed, and so we drop a frame. we do it repeatedly until
          % we are in the clear. this gives us at least a chance of getting
          % back on track, but it is NOT guaranteed. ultimately, the user needs
          % do some checking of NaNs in timeframes to check for dropped frames.
-         while GetSecs >= whendesired - fliplead0
+         while GetSecs >= whendesired - ptime
            framecnt = framecnt + 1;
            whendesired = whendesired + mfi * frameduration;
            when = whendesired - fliplead0;
