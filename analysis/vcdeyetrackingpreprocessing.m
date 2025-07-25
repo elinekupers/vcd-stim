@@ -10,7 +10,7 @@ function results = vcdeyetrackingpreprocessing(filename,behfilename,behresults,w
 %   X means write out figures with X as the directory+filename prefix
 %   Default: 1.
 % <blinkpad> (optional) is [A B] with the number of milliseconds before and 
-%   after each blink event to excise. Default: [200 200].
+%   after each blink to excise. Default: [100 100].
 % <maxpolydeg> (optional) is the maximum polynomial degree to use for detrending.
 %   Should be a non-negative integer. Default: round(L/2) where L is 
 %   behresults.totaldur/60 (i.e. the total duration in minutes).
@@ -21,7 +21,20 @@ function results = vcdeyetrackingpreprocessing(filename,behfilename,behresults,w
 % of visual angle, (5) remove blinks, and (6) detrend and median-center both
 % the x- and y-coordinates. We also include a number of sanity checks and asserts.
 %
-% Blinks are removed according to Eyelink's detected eblinks.
+% Blinks are removed according to Eyelink's detected eblinks. We remove 
+% a little bit before and a little bit after each blink event, according
+% to <blinkpad>. In addition, we attempt to detect "half blinks" by looking 
+% for time points for which the x- or y-position deviates by more than 3 deg 
+% within +/- 75 ms from a given time point in such a way that the restored 
+% position is within 1 degree. For example, if the y-position at -75, 0, 
+% and 75 ms is 0.4, 5.1, 0.9, respectively, this is deemed to be a half blink 
+% and removed, according to <blinkpad>.
+%
+% Detrending involves using linear regression with predictors consisting
+% of polynomials as well as the pupil size time-series data. The rationale
+% for using pupil size is to compensate for the artifact that sometimes
+% occurs whereby pupil size changes show up as artifactual changes in
+% x- or y-position.
 %
 % We return <results> as a struct with:
 %   <messages> - 1 x 4 cell vector with several specific messages from the .edf file.
@@ -75,6 +88,8 @@ function results = vcdeyetrackingpreprocessing(filename,behfilename,behresults,w
 %            histograms (0.25-deg bins).
 %
 % History:
+% - 2025/07/24 - change default blinkpad to [100 100]; implement half-blink removal;
+%                regress pupil-size-data at the same time as the polynomials
 % - 2025/07/21 - add results.fixationradius
 % - 2025/07/21 - add results.targeterrs
 % - 2025/07/21 - wantfigures==0 is no longer supported
@@ -85,6 +100,11 @@ targetwindow = [500 2000];    % number of milliseconds after target onset to ext
 onsetwindow = [-1000 5000];   % number of milliseconds for window around stim/taskcue
 etloc = 4;                    % number of dva where eye tracking targets are placed (away from center)
 
+% related to half-blink removal
+hbdelta = 75;                 % number of milliseconds before and after a time point to check for half-blink
+absdeflect = 3;               % look for a deflection greater than this number of degrees
+restorelevel = 1;             % should be within this number of degrees for restoration
+
 %% Setup
 
 % inputs
@@ -92,7 +112,7 @@ if ~exist('wantfigures','var') || isempty(wantfigures)
   wantfigures = 1;
 end
 if ~exist('blinkpad','var') || isempty(blinkpad)
-  blinkpad = [200 200];
+  blinkpad = [100 100];
 end
 if ~exist('maxpolydeg','var') || isempty(maxpolydeg)
   maxpolydeg = [];
@@ -224,6 +244,30 @@ end
 ii = ismember(results.eyedata(1,:),badix);
 results.eyedata(2:4,ii) = NaN;
 
+% detect and deal with half-blinks by setting data to NaN
+marks = [];
+for tt0=1:size(results.eyedata,2)
+  if (abs(diff(results.eyedata(2,[max(1,tt0-hbdelta) tt0]))) > absdeflect && ...
+      abs(diff(results.eyedata(2,[max(1,tt0-hbdelta) min(size(results.eyedata,2),tt0+hbdelta)]))) <= restorelevel) || ...
+     (abs(diff(results.eyedata(3,[max(1,tt0-hbdelta) tt0]))) > absdeflect && ...
+      abs(diff(results.eyedata(3,[max(1,tt0-hbdelta) min(size(results.eyedata,2),tt0+hbdelta)]))) <= restorelevel)
+    marks = [marks min(size(results.eyedata,2),max(1,tt0-blinkpad(1):tt0+blinkpad(2)))];
+  end
+end
+results.eyedata(2:4,unique(marks)) = NaN;
+    % isextreme = find(abs(results.eyedata(3,:)) > 5);
+    % marks = [];
+    % for p=1:length(isextreme)
+    %   tt0 = isextreme(p);
+    %   if abs(diff(results.eyedata(3,[max(1,tt0-75) min(size(results.eyedata,2),tt0+75)]))) <= 1
+    %     marks = [marks tt0-blinkpad(1):tt0+blinkpad(2)];
+    %   end
+    % end
+    %
+    % figure; hold on;
+    % plot(results.eyedata(3,:),'k-');
+    % plot(marks,results.eyedata(3,marks),'r.');
+
 % convert time in eyedata to the stimulus computer's time.
 % after this step, 0 corresponds to the time of the first stimulus frame,
 % and we are in units of seconds. note that we are making the strong
@@ -249,7 +293,7 @@ assert(abs(((results.eyedata(1,end) - results.eyedata(1,1)) + 1/1000) - behresul
 baddata = isnan(results.eyedata(4,:));
 assert(all(isfinite(flatten(results.eyedata(2:4,~baddata)))));
 
-% detrend x and y by fitting low-order polynomials and subtracting
+% detrend x and y by fitting low-order polynomials and pupil size and subtracting
 origeyedata2 = results.eyedata;  % MARK: prior to detrending
 %polymatrix = constructpolynomialmatrix(size(results.eyedata,2),0:maxpolydeg);  % samples x polys
 temp = linspace(0,1,size(results.eyedata,2));
@@ -257,6 +301,7 @@ polymatrix = [];
 for p=0:maxpolydeg
   polymatrix(:,p+1) = temp .^ p;
 end
+polymatrix = [polymatrix results.eyedata(4,:)'];  % add pupil size data
 X = polymatrix(~baddata,:);  % samples x polys
 h = olsmatrix(X)*results.eyedata(2:3,~baddata)';  % weights x different-timeseries
 % h = [];
