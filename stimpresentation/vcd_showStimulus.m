@@ -366,6 +366,7 @@ else
     
     % Do calibration & validation!
     checkcalib = input('Do you want to do a calibration (0=no, 1=yes)? ','s');
+    commandwindow;
     if isequal(checkcalib,'1')
         fprintf('Please perform calibration. When done, press the output/record button.\n');
         EyelinkDoTrackerSetup(el);
@@ -374,6 +375,7 @@ else
     else
         fprintf('Did you press the wrong button?? Let''s try again.\n');
         checkcalib = input('Do you want to do a calibration (0=no, 1=yes)? ','s');
+        commandwindow;
         if isequal(checkcalib,'1')
             fprintf('Please perform calibration. When done, press the output/record button.\n');
             EyelinkDoTrackerSetup(el);
