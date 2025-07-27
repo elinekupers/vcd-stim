@@ -311,7 +311,7 @@ thefit = polymatrix*h;  % samples x different-timeseries
 results.eyedata(2:3,:) = results.eyedata(2:3,:) - thefit';
 
 % median-center (after this, the medoid is the origin)
-results.eyedata(2:3,:) = results.eyedata(2:3,:) - nanmedian(results.eyedata(2:3,:),2);
+results.eyedata(2:3,:) = results.eyedata(2:3,:) - prctile(results.eyedata(2:3,:),50,2);
 
 % record
 results.maxpolydeg = maxpolydeg;
@@ -439,7 +439,7 @@ for p=1:length(ii)  % for each target, in the order they appear
   scatter(targetxxs(ix),targetyys(ix),'ko','filled');
   
   % calculate error as mean Euclidean distance from target (mean over time samples)
-  results.targeterrs(ix) = nanmean(sqrt(sum((results.eyedata(2:3,tt) - [targetxxs(ix); targetyys(ix)]).^2,1)));  % NOTE: nanmean
+  results.targeterrs(ix) = mean(sqrt(sum((results.eyedata(2:3,tt) - [targetxxs(ix); targetyys(ix)]).^2,1)),'omitnan');  % NOTE: omitnan
 end
 axis(2*[-etloc etloc -etloc etloc]);
 axis square;
@@ -550,8 +550,8 @@ for spi=1:10
   case 1
     if ~isempty(ally)
       plot(finaltime0,ally,'-');
-      errorbar3(finaltime0,nanmean(ally,1),nanstd(ally,[],1)./sqrt(sum(~isnan(ally),1)),'v',[1 .7 .7]);
-      plot(finaltime0,nanmean(ally,1),'r-','LineWidth',2);
+      errorbar3(finaltime0,mean(ally,1,'omitnan'),nanstd(ally,[],1)./sqrt(sum(~isnan(ally),1)),'v',[1 .7 .7]);
+      plot(finaltime0,mean(ally,1,'omitnan'),'r-','LineWidth',2);
     end
   case 2
     xbins = [fliplr(-.25:-.25:-3) 0:.25:3];

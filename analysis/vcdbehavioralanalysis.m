@@ -707,8 +707,8 @@ for p=1:max(results.trialinfo.block_nr)
   results.summary.block_nr(p)        = p;
   results.summary.crossing_nr(p)     = results.trialinfo.crossing_nr(ii(1));
   results.summary.response_rate(p)   = sum(~isnan(results.trialinfo.button_pressed(ii))) / sum(results.trialinfo.is_catch(ii)==0) * 100;  % how many buttons are not NaN / how many non-catch trials
-  results.summary.pct_correct(p)     = nanmean(results.trialinfo.is_correct(ii))*100;
-  results.summary.median_rt(p)       = nanmedian(results.trialinfo.rt(ii));
+  results.summary.pct_correct(p)     = mean(results.trialinfo.is_correct(ii),'omitnan')*100;
+  results.summary.median_rt(p)       = prctile(results.trialinfo.rt(ii),50);
   fprintf('Block % 4d, Crossing % 4d (%-9s), Response Rate % 4d%%, Percent Correct % 4d%%, Median RT % 7d ms\n', ...
           results.summary.block_nr(p), ...
           results.summary.crossing_nr(p), ...
