@@ -422,7 +422,7 @@ if store_imgs
     for objectNr = 1:size(objects_catch,4)
         for rot = 1:size(objects_catch,5)
             
-            idx   = catch_images(((objectNr-1)*n_catch_images) + rot);
+            idx   = catch_images(((objectNr-1)*size(params.stim.obj.catch_rotation,2)) + rot);
             im_nr = info.unique_im(idx);
 
             im_w_alpha = uint8( (double(objects_catch(:,:,:,objectNr,rot)) .* double(masks_catch(:,:,objectNr,rot))/255)  +  (128 .* (1 - double(masks_catch(:,:,objectNr,rot))/255)) );
