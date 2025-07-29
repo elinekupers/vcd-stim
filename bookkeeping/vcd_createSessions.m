@@ -60,15 +60,21 @@ if ~isempty(randomization_file_pth)
     % find subject-specific condition_master file (assume it lives in the
     % same folder as subject-specific time table master file.
     if ~isfield(params,'is_demo'), params.is_demo = false; end
+    if ~isfield(params,'is_wide'), params.is_wide = false; end
+    
     subj_data_folder = fileparts(randomization_file_pth);
-    a1 = load(fullfile(subj_data_folder,sprintf('%s_condition_master_%s%s_%s_*.mat',subj_id,choose(params.is_demo,'demo_',''), params.disp.name)),'condition_master_shuffled');
+    fname = sprintf('%s_condition_master_wide_%s%s%s_%s_*.mat',subj_id,choose(params.is_wide,'wide_',''), choose(params.is_demo,'demo_',''), params.disp.name);
+    a1 = load(fullfile(subj_data_folder,fname),'condition_master_shuffled');
     condition_master_shuffled   = a1.condition_master_shuffled;
 else
     
     if load_params % load condition_master and params if requested
         if ~isfield(params,'is_demo'), params.is_demo = false; end
+        if ~isfield(params,'is_wide'), params.is_wide = false; end
         % load condition master
-        d = dir(fullfile(vcd_rootPath,'workspaces','info',sprintf('condition_master_%s%s*.mat',choose(params.is_demo,'demo_',''),params.disp.name)));
+        fname = sprintf('condition_master_%s%s%s*.mat',choose(params.is_wide,'wide_',''),choose(params.is_demo,'demo_',''),params.disp.name);
+            
+        d = dir(fullfile(vcd_rootPath,'workspaces','info',fname));
         if isempty(d)
             error('[%s]: Can''t find condition master .mat files! Please check or run vcd_createConditions.m\n', mfilename);
         elseif ~isempty(d(end).name)
