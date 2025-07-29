@@ -144,7 +144,9 @@ end
 %% Load params if requested and we can find the file
 if load_params
     if ~isfield(params,'is_demo'), params.is_demo = false; end
-    d = dir(fullfile(vcd_rootPath,'data', env_type, subj_id, sprintf('%s_time_table_master_%s%s*.mat',subj_id,choose(params.is_demo,'demo_',''),params.disp.name)));
+    if ~isfield(params,'is_wide'), params.is_wide = false; end
+    fname = sprintf('%s_time_table_master_%s%s%s*.mat',subj_id,choose(params.is_wide,'wide_',''),choose(params.is_demo,'demo_',''),params.disp.name);
+    d = dir(fullfile(vcd_rootPath,'data', env_type, subj_id, fname));
     if isempty(d)
         error('[%s]: Can''t find time table file with subj_id: %s!\n', mfilename, subj_id)
     elseif ~isempty(d(end).name)
@@ -157,12 +159,14 @@ if load_params
 else
     % Create subject sessions
     if ~isfield(params,'is_demo'), params.is_demo = false; end
+    if ~isfield(params,'is_wide'), params.is_wide = false; end
     
     % check if trial struct is already defined and load it if needed
     if ~exist('condition_master','var') || isempty(condition_master)
+        fname = sprintf('%s_condition_master_%s%s*%s*.mat',subj_id, choose(params.is_wide,'wide_',''), choose(params.is_demo,'demo_',''),params.disp.name);
         
         % load trial info
-        d = dir(fullfile(vcd_rootPath,'workspaces','data',env_type, subj_id, sprintf('%s_condition_master_%s*%s*.mat',subj_id, choose(params.is_demo,'demo_',''),params.disp.name)));
+        d = dir(fullfile(vcd_rootPath,'workspaces','data',env_type, subj_id, fname));
         
         if ~isempty(d(end).name)
             if length(d) > 1
@@ -216,6 +220,9 @@ end
 %% Copy condition master input
 condition_master0 = condition_master;
 
+if ~isfield(params,'is_demo'), params.is_demo = false; end
+if ~isfield(params,'is_wide'), params.is_wide = false; end
+
 % check inputs
 if (nargin ==2 && ~exist(env_type,'var')) || isempty(env_type)
     env_type = 'MRI';
@@ -225,7 +232,6 @@ else
           session_preblankdur, session_postblankdur,~,~,~,block_durs] = ...
             vcd_getSessionEnvironmentParams(params, env_type);
 end
-if ~isfield(params,'is_demo'), params.is_demo = false; end
 
 % Define event ID within trial for single and double epoch trial types
 trial_ID_single_epoch = [params.exp.block.spatial_cue_ID, ...
@@ -1080,7 +1086,8 @@ if store_params
         saveDir = fullfile(vcd_rootPath,'data',env_type, subj_id);
     end
     if ~exist(saveDir,'dir'), mkdir(saveDir); end
-    fname = sprintf('%stime_table_master_%s%s_%s.mat', [subj_id '_'], choose(params.is_demo,'demo_',''),params.disp.name, datestr(now,30));
+    fname = sprintf('%stime_table_master_%s%s%s_%s.mat', [subj_id '_'], choose(params.is_wide,'wide_',''), choose(params.is_demo,'demo_',''),params.disp.name, datestr(now,30));
+    
     fprintf('[%s]: Storing time table master for subject in:\n',mfilename)
     fprintf('\t%s\n',fullfile(saveDir,fname))
     save(fullfile(saveDir, fname), 'time_table_master','all_run_frames')
