@@ -200,6 +200,7 @@ clear rename_me ff p0
 
 %% Infer other inputs
 if ~isfield(params,'is_demo'), params.is_demo = false; end
+if ~isfield(params,'is_wide'), params.is_wide = false; end
 unique_sessions  = unique(condition_master.session_nr);
 
 % Get session parameters depending on whether this is the Behavioral
@@ -212,9 +213,9 @@ unique_sessions  = unique(condition_master.session_nr);
 additional_IBIs = max(IBIs)-min(IBIs);
 
 % Preallocate space
-condition_master_shuffle_idx = cell(length(unique_sessions),find(sum(~isnan(session_types))));
-session_crossing_matrix      = cell(length(unique_sessions),find(sum(~isnan(session_types))));
-session_block_matrix         = cell(length(unique_sessions),find(sum(~isnan(session_types))));
+condition_master_shuffle_idx = cell(length(unique_sessions),length(find(sum(~isnan(session_types)))));
+session_crossing_matrix      = cell(length(unique_sessions),length(find(sum(~isnan(session_types)))));
+session_block_matrix         = cell(length(unique_sessions),length(find(sum(~isnan(session_types)))));
 
 tic;
 
@@ -811,8 +812,7 @@ if store_params
         saveDir = fullfile(vcd_rootPath,'data',env_type,subj_id);
     end
     if ~exist(saveDir,'dir'), mkdir(saveDir); end    
-    
-    fname = sprintf('%scondition_master_%s%s_%s.mat',[subj_id '_'],choose(params.is_demo,'demo_',''),params.disp.name, datestr(now,30));
+    fname = sprintf('%scondition_master_%s%s%s_%s.mat',[subj_id '_'],choose(params.is_wide,'wide_',''),choose(params.is_demo,'demo_',''),params.disp.name, datestr(now,30));
     fprintf('\n[%s]: Storing shuffled condition master and randomization file here:\n',mfilename)
     fprintf('\t%s', fullfile(saveDir,fname))
     save(fullfile(saveDir,fname),'condition_master_shuffled','condition_master_shuffle_idx','session_block_matrix','session_crossing_matrix','randomization_params');
