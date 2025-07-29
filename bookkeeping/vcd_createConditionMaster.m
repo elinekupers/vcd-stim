@@ -1249,26 +1249,20 @@ if nr_reps > 0
 
 
             n_basic_cat = []; n_sub_cat = []; super_cat_vec = []; sub_cat_vec = [];
+            for ni = 1:n_super_cat
+                n_basic_cat(ni) = length(params.stim.ns.basic_cat{ni});
+                for nj = 1:n_basic_cat(ni)
+                    n_sub_cat(ni,nj) = length(params.stim.ns.sub_cat{ni,nj});
+                    super_cat_vec = cat(2, super_cat_vec, repelem(ni,n_sub_cat(ni,nj)));
+                end
+                sub_cat_vec = cat(2, sub_cat_vec, repelem(1:n_sub_cat(ni,nj),n_basic_cat(ni)));
+            end
             if ismember(taskClass{:},{'ltm','img'})
-                for ni = 1:n_super_cat
-                    n_basic_cat(ni) = length(params.stim.ns.basic_cat{ni});
-                    n_sub_cat(ni) = length(cond_table.basic_cat_name(cond_table.super_cat==ni));
-                    super_cat_vec = cat(2, super_cat_vec, repelem(ni,n_sub_cat(ni)));
-                    sub_cat_vec =  cat(2, sub_cat_vec,[1:n_sub_cat(ni)]);
-                end
-                assert(isequal(cond_table.sub_cat,sub_cat_vec'));
-            else
-                for ni = 1:n_super_cat
-                    n_basic_cat(ni) = length(params.stim.ns.basic_cat{ni});
-                    for nj = 1:n_basic_cat(ni)
-                        n_sub_cat(ni,nj) = length(params.stim.ns.sub_cat{ni,nj});
-                        super_cat_vec = cat(2, super_cat_vec, repelem(ni,n_sub_cat(ni,nj)));
-                        sub_cat_vec   = cat(2, sub_cat_vec, [1:n_sub_cat(ni,nj)]);
-                    end
-                end
+                super_cat_vec = super_cat_vec(ismember(params.stim.ns.unique_im_nrs_core,params.stim.ns.unique_im_nrs_specialcore));
+                sub_cat_vec = sub_cat_vec(ismember(params.stim.ns.unique_im_nrs_core,params.stim.ns.unique_im_nrs_specialcore));
             end
             assert(isequal(cond_table.super_cat,super_cat_vec')); 
-
+            assert(isequal(cond_table.sub_cat,sub_cat_vec'));
             for rep = 1:nr_reps
 
                 conds_master_single_rep = [];
