@@ -13,7 +13,7 @@ shared0474_nsd35987.png,91,center,3,animal,2,indoor,1,right,3,greet,1,1,0
 shared0042_nsd05107.png,92,center,3,animal,2,outdoor,2,right,3,observe,4,0,0
 shared0692_nsd50654.png,93,center,3,object,3,indoor,1,left,1,grasp,2,1,0
 shared0194_nsd16345.png,94,center,3,object,3,outdoor,2,left,1,walk,3,0,0
-shared0045_nsd05302.png,95,center,3,object,3,indoor,1,center,2,grasp,2,1,0
+shared0045_nsd05302.png,95,center,3,object,3,indoor,1,center,2,grasp,2,0,0
 shared0988_nsd71754.png,96,center,3,object,3,outdoor,2,center,2,observe,4,0,0
 shared0377_nsd28342.png,97,center,3,object,3,indoor,1,right,3,grasp,2,0,0
 shared0937_nsd68024.png,98,center,3,object,3,outdoor,2,right,3,walk,3,1,0
@@ -177,10 +177,6 @@ shared0194_nsd16345/nsd48489_lure01.png,1387,center,3,object,3,NaN,NaN,NaN,NaN,N
 shared0194_nsd16345/nsd8140_lure02.png,1388,center,3,object,3,NaN,NaN,NaN,NaN,NaN,NaN,0,1
 shared0194_nsd16345/nsd16105_lure03.png,1389,center,3,object,3,NaN,NaN,NaN,NaN,NaN,NaN,0,1
 shared0194_nsd16345/nsd858_lure04.png,1390,center,3,object,3,NaN,NaN,NaN,NaN,NaN,NaN,0,1
-shared0045_nsd05302/nsd58751_lure01.png,1391,center,3,object,3,NaN,NaN,NaN,NaN,NaN,NaN,0,1
-shared0045_nsd05302/nsd55469_lure02.png,1392,center,3,object,3,NaN,NaN,NaN,NaN,NaN,NaN,0,1
-shared0045_nsd05302/nsd28008_lure03.png,1393,center,3,object,3,NaN,NaN,NaN,NaN,NaN,NaN,0,1
-shared0045_nsd05302/nsd7598_lure04.png,1394,center,3,object,3,NaN,NaN,NaN,NaN,NaN,NaN,0,1
 shared0377_nsd28342/nsd59111_lure01.png,1395,center,3,object,3,NaN,NaN,NaN,NaN,NaN,NaN,0,1
 shared0377_nsd28342/nsd36342_lure02.png,1396,center,3,object,3,NaN,NaN,NaN,NaN,NaN,NaN,0,1
 shared0377_nsd28342/nsd64126_lure03.png,1397,center,3,object,3,NaN,NaN,NaN,NaN,NaN,NaN,0,1
