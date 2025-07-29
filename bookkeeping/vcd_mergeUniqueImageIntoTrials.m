@@ -37,6 +37,16 @@ right_stim = find(conds_master.stimloc==2);
 % Ensure we have equal left and right stim
 assert(length(left_stim)==length(right_stim))
 
+% make a copy of conds_master 
+conds_master0 = conds_master;
+
+% find and remove catch trials from conds_master
+catch_idx     = find(conds_master.is_catch==1);
+if ~isempty(catch_idx)
+    catch_table  = conds_master(catch_idx,:);
+    conds_master = conds_master(conds_master.is_catch==0,:);
+end
+
 % Preallocate space: Pair left / right stimuli for each trial
 trial_vec_i = NaN(size(conds_master,1)/2,2);
 
@@ -232,8 +242,8 @@ end
 trial_vec_i = trial_vec_i';
 trial_vec_i = trial_vec_i(:);
 
-if isfield(conds_master, 'unique_trial_nr')
-    trial_vec = trial_vec' + max(conds_master.trial_vec);
+if isfield(conds_master0, 'unique_trial_nr')
+    trial_vec = trial_vec' + max(conds_master0.trial_vec);
 else
     trial_vec = trial_vec';
 end
@@ -241,6 +251,30 @@ end
 conds_master_reordered = conds_master(trial_vec_i,:);
 conds_master_reordered.unique_trial_nr = trial_vec(1:size(conds_master_reordered,1));
 conds_master_reordered.thickening_dir  = thickening_dir(1:size(conds_master_reordered,1));
+
+if ~isempty(catch_idx)
+    % add catch trials back
+    catch_table.unique_trial_nr = repelem(max(conds_master_reordered.unique_trial_nr)+[1:(length(catch_idx)/2)],2)';
+    % check if thickening direction is defined or not
+    if all(isnan(catch_table.is_cued)) && unique(conds_master_reordered.thickening_dir)==3 
+        catch_table.thickening_dir = repelem(3,length(catch_idx))';
+    elseif all(~isnan(catch_table.is_cued))
+        for cc = 1:size(catch_table,1)
+            if (catch_table.stimloc(cc)==1 && catch_table.is_cued(cc)==1)
+                catch_table.thickening_dir(cc) = 1;
+            elseif (catch_table.stimloc(cc)==2 && catch_table.is_cued(cc)==1)
+                catch_table.thickening_dir(cc) = 2;
+            elseif (catch_table.stimloc(cc)==1 && catch_table.is_cued(cc)==0)
+                catch_table.thickening_dir(cc) = 2;
+            elseif (catch_table.stimloc(cc)==2 && catch_table.is_cued(cc)==0)
+                catch_table.thickening_dir(cc) = 1;
+            end
+        end
+    elseif all(isnan(catch_table.is_cued)) && unique(conds_master_reordered.thickening_dir)==[1,2]
+        catch_table.thickening_dir = repelem([1;2],length(catch_idx)/2);
+    end
+    conds_master_reordered      = cat(1, conds_master_reordered,catch_table);
+end
 
 % check that stim loc is left/right/left/right,etc
 assert(isequal(conds_master_reordered.stimloc,repmat([1;2],size(conds_master_reordered.stimloc,1)/2,1)))
@@ -333,7 +367,11 @@ for vt = 1:sz(2)
                     assert(isequal(conds_master_reordered.stimloc(trial_nr+1),2));
                     conds_master_reordered_merged.stim_nr_right(tt) = conds_master_reordered.unique_im_nr(trial_nr+1);
                     
-                    assert(isequal(conds_master_reordered.thickening_dir(trial_nr),conds_master_reordered.thickening_dir(trial_nr+1)))
+                    if isnan(conds_master_reordered.thickening_dir(trial_nr))
+                        assert(isequalwithequalnans(conds_master_reordered.thickening_dir(trial_nr),conds_master_reordered.thickening_dir(trial_nr+1)))
+                    else
+                        assert(isequal(conds_master_reordered.thickening_dir(trial_nr),conds_master_reordered.thickening_dir(trial_nr+1)))
+                    end
                     conds_master_reordered_merged.is_cued(tt) = conds_master_reordered.thickening_dir(trial_nr);
                 else
                     if size(conds_master_reordered_merged.(colName2),2)==2 % double width columns
@@ -366,12 +404,15 @@ end
 
 
 % do some checks for dot stimuli
-if ismember(unique(conds_master.stim_class_name),'dot')
+if ismember(unique(conds_master_reordered_merged.stim_class_name),'dot')
     % left and right dots are at least 67.5 degrees away from one another
-    assert(all(abs(circulardiff(conds_master_reordered_merged.orient_dir(:,1),conds_master_reordered_merged.orient_dir(:,2),360)) > params.stim.dot.min_ang_distance_dot))
+    assert(all(abs(circulardiff(conds_master_reordered_merged.orient_dir(~isnan(conds_master_reordered_merged.orient_dir(:,1)),1), ...
+        conds_master_reordered_merged.orient_dir(~isnan(conds_master_reordered_merged.orient_dir(:,2)),2),360)) > params.stim.dot.min_ang_distance_dot))
     % left dots are between 180-360 deg and right dots are between 0-180 deg
-    assert(all(conds_master_reordered_merged.orient_dir(:,1)>=180 & conds_master_reordered_merged.orient_dir(:,1)<=360))
-    assert(all(conds_master_reordered_merged.orient_dir(:,2)>=0 & conds_master_reordered_merged.orient_dir(:,2)<=180))
+    assert(all(conds_master_reordered_merged.orient_dir(~isnan(conds_master_reordered_merged.orient_dir(:,1)),1)>=180 & ...
+        conds_master_reordered_merged.orient_dir(~isnan(conds_master_reordered_merged.orient_dir(:,1)),1)<=360))
+    assert(all(conds_master_reordered_merged.orient_dir(~isnan(conds_master_reordered_merged.orient_dir(:,2)),2)>=0 & ...
+        conds_master_reordered_merged.orient_dir(~isnan(conds_master_reordered_merged.orient_dir(:,2)),2)<=180))
 end
 
 
