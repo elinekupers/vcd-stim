@@ -307,7 +307,9 @@ end
 % Load params if requested and we can find the file
 if load_params
     if ~isfield(params,'is_demo'), params.is_demo = false; end
-    d = dir(fullfile(vcd_rootPath,'workspaces','info',sprintf('condition_master_%s%s_%s*.mat',choose(params.is_demo,'demo_',''), params.disp.name,env_type)));
+    if ~isfield(params,'is_wide'), params.is_wide = false; end
+    fname = sprintf('condition_master_%s%s%s_%s*.mat', choose(params.is_wide,'wide_',''), choose(params.is_demo,'demo_',''), params.disp.name,env_type);
+    d = dir(fullfile(vcd_rootPath,'workspaces','info',fname));
     fprintf('\n[%s]: Found %d condition_master .mat file(s)\n',mfilename,length(d));
     if ~isempty(d)
         if length(d) > 1
@@ -379,7 +381,7 @@ else % Recreate conditions and blocks and trials
     
     % assume we don't run a demo run if parameter isn't specified;
     if ~isfield(params,'is_demo'), params.is_demo = false; end
-    
+    if ~isfield(params,'is_wide'), params.is_wide = false; end
     all_unique_im     = struct();  % details about unique core images present in VCD-core experiment. This information is also present in condition_master.
     all_cond          = struct();  % details about unique conditions (unique images x cueing condition) present in VCD-core experiment. This information is also present in condition_master.
     
@@ -396,7 +398,11 @@ else % Recreate conditions and blocks and trials
         bsc_idx = cell2mat(cellfun(@(x) strcmp(params.exp.stimclassnames,x), {stimClass_name}, 'UniformOutput', false));
         
         if strcmp(env_type,'MRI')
-            task_crossings = find( params.exp.crossings(bsc_idx,:));
+            if params.is_wide
+               task_crossings = find( params.exp.n_unique_trial_repeats_wide(bsc_idx,:)>0); 
+            else
+               task_crossings = find( params.exp.n_unique_trial_repeats_mri(bsc_idx,:)>0);
+            end
         elseif strcmp(env_type,'BEHAVIOR')
             if params.is_demo
                 task_crossings = find(params.exp.n_unique_trial_repeats_demo(bsc_idx,:)>0);
@@ -569,7 +575,7 @@ else % Recreate conditions and blocks and trials
     
     % ---- IMPORTANT STEP: Shuffle stimuli for SCC and LTM task ----
     condition_master = vcd_shuffleStimForTaskClass(params,  'scc', condition_master, params.exp.block.n_trials_single_epoch,env_type);
-    if strcmp(env_type,'MRI')
+    if strcmp(env_type,'MRI') && ~params.is_wide
         condition_master = vcd_shuffleStimForTaskClass(params,  'ltm', condition_master, params.exp.block.n_trials_double_epoch,env_type);
     end
     
@@ -585,12 +591,14 @@ else % Recreate conditions and blocks and trials
     condition_master.correct_response = button_response;
 
     % ---- bookkeeping: See if we can achieve roughly equally sample scc images within a block
+    
+    % Check how many SCC we will actually allocate across sessions
+    [all_sessions,session_types] = vcd_getSessionEnvironmentParams(params, env_type);
+    
     scc_trials0 = find(condition_master.stim_class==99 & condition_master.task_class==3);
     cued0 = condition_master.is_cued(scc_trials0);
     scc_trials = scc_trials0; % make a copy
     
-    % Check how many SCC we will actually allocate across sessions
-    [all_sessions,~] = vcd_getSessionEnvironmentParams(params, env_type);
     nr_scc_blocks = sum(sum(all_sessions(:,3,:,:),3),4);
     nr_scc_blocks = nr_scc_blocks(nr_scc_blocks>0);
     if all(nr_scc_blocks<1)
@@ -599,51 +607,68 @@ else % Recreate conditions and blocks and trials
         nr_scc_blocks = sum(nr_scc_blocks);
     end
     
+    
+    max_attempts = 100000;
     if ~isempty(scc_trials)
         nr_attempts = 0;
         while 1
             nr_attempts = nr_attempts+1;
-            
-            bb_bpress = reshape(condition_master.correct_response(scc_trials)',nr_scc_blocks,[]); % (nr blocks x trials )
-            bb_cued   = reshape(cued0',nr_scc_blocks, []); % (nr blocks x trials )
+            if strcmp(env_type,'BEHAVIOR')
+                bb_bpress = reshape(condition_master.correct_response(scc_trials)',nr_scc_blocks,[]); % (nr blocks x trials )
+            elseif strcmp(env_type,'MRI')
+                bb_bpress     = reshape(condition_master.correct_response(scc_trials)',[],params.exp.block.n_trials_single_epoch); % (nr blocks x trials )
+                nr_scc_blocks = size(bb_bpress,1);
+            end
+            if size(bb_bpress,1)>size(bb_bpress,2)
+                bb_bpress = bb_bpress';
+            end
+            bb_cued   = reshape(cued0', [],nr_scc_blocks); % (trials x nr blocks)
             n0 = zeros(nr_scc_blocks,4); % preallocate space for stim class block checks
             m0 = zeros(nr_scc_blocks,2); % preallocate space for cued side block checks
-            press_ok = false(1,4);
+            nr_catch_trials = zeros(nr_scc_blocks,1); % preallocate space for catch trial count 
+            catch_cue_dir   = zeros(nr_scc_blocks,2); % preallocate space for catch trial cuing direction count 
+            press_ok        = false(nr_scc_blocks,4);  % preallocate space for catch trial button press distribution
             for bb = 1:nr_scc_blocks % loop over scc blocks
-                n0(bb,:) = histcounts(bb_bpress(:,bb),[1:5]);  % 1=gabor, 2=rdk, 3=dot, 4=obj
-                m0(bb,:) = histcounts(bb_cued(:,bb));                
+                nr_catch_trials(bb) = sum(isnan(bb_bpress(:,bb)));
+                catch_cue_dir(bb,:) = histcounts(bb_cued(isnan(bb_bpress(:,bb)),bb),[1:3]);
+                n0(bb,:) = histcounts(bb_bpress(~isnan(bb_bpress(:,bb)),bb),[1:5]);  % 1=gabor, 2=rdk, 3=dot, 4=obj
+                m0(bb,:) = histcounts(bb_cued(:,bb),[1:3]);
                 for mm = 1:4 % loop over stim class
-                    if all(abs(n0(mm)-n0(setdiff([1:4],mm)))<=1)
-                        press_ok(mm) = true;
+                    if all(abs(n0(bb,mm)-n0(bb,setdiff([1:4],mm)))<=1)
+                        press_ok(bb,mm) = true;
                     else
-                        press_ok(mm) = false;
+                        press_ok(bb,mm) = false;
                     end
+                end
+                
+                if any(n0(bb,:)==0) || any(m0(bb,:)~=[4,4]) || any(press_ok(bb,:)==0)
+                    break;
                 end
             end
             
-            too_few = sum(n0==0,1); % we want at least one stimulus class per block
-            cued_ok = sum(m0==0,1); % we want equal left/right cuing per block
-            
-            if all(too_few==zeros(1,4)) && all(cued_ok==zeros(1,2)) && (sum(press_ok)==length(press_ok))
+            too_few  = sum(n0==0,1); % we want at least one stimulus class per block
+            cued_ok  = sum(abs(diff(m0,[],2)))==0; % we want equal left/right cuing per block (ignoring catch trials)
+            press_ok = sum(press_ok,1)==(nr_scc_blocks*ones(1,4)); % we want equal button responses across the session
+            if all(too_few==zeros(1,4)) && all(cued_ok==zeros(1,2)) && all(press_ok)==ones(1,4)
                 break;
             else
                 % shuffle trials while preserving 50:50 cue left/right
-                cued00 = cued0;
-                cueleft_idx0         = find(cued0==1);
-                cueright_idx0        = find(cued0==2);
-                cueleft_idx          = cueleft_idx0(randperm(length(cueleft_idx0),length(cueleft_idx0)));
-                cueright_idx         = cueright_idx0(randperm(length(cueright_idx0),length(cueright_idx0)));
-                cued0(cueleft_idx0)  = cued0(cueleft_idx); 
-                cued0(cueright_idx0) = cued0(cueright_idx);
-                assert(isequal(cued00,cued0)); % cued status should not change
-                scc_trials(cueleft_idx0)  = scc_trials(cueleft_idx);
-                scc_trials(cueright_idx0) = scc_trials(cueright_idx0);
+                cued00         = cued0; % make a copy
+                cueleft_idx0   = find(cued00==1);
+                cueright_idx0  = find(cued00==2);
+                vec            = [cueleft_idx0 cueright_idx0]';
+                vec            = [vec(1,randperm(length(vec(1,:)),length(vec(1,:)))); vec(2,randperm(length(vec(2,:)),length(vec(2,:))))]; 
+                vec            = vec(:);
+                cued0          = cued00(vec);
+                assert(isequal(histcounts(cued00,[1:3]),histcounts(cued0,[1:3]))); % cued status should not change
+                assert(isequal(cued0',repmat([1,2],1,length(cued0)/2))) % should be [1,2,1,2,1,2, etc]
+                scc_trials     = scc_trials(vec);
             end
-            if nr_attempts > 50000
+            if nr_attempts > max_attempts
                 if params.is_demo
                     break;
                 else
-                    error('\n[%s]: More than 50,000 shuffle attempts! Abort to avoid infinite loop. Please try again.\n',mfilename)
+                    error('\n[%s]: More than 100,000 shuffle attempts! Abort to avoid infinite loop. Please try again.\n',mfilename)
                 end
             end
         end
@@ -655,7 +680,7 @@ else % Recreate conditions and blocks and trials
         condition_master.trial_nr(scc_trials) = repmat([1:params.exp.block.n_trials_single_epoch]',length(condition_master.unique_trial_nr(scc_trials))/params.exp.block.n_trials_single_epoch,1);
         condition_master.stim_class_unique_block_nr(scc_trials) = repelem([1:length(condition_master.unique_trial_nr(scc_trials))/params.exp.block.n_trials_single_epoch],params.exp.block.n_trials_single_epoch)';
     end
-    
+
     
     % ---- bookkeeping: Check if button presses are balanced to the extent possible
     curr_sc = unique(condition_master.stim_class);
@@ -756,11 +781,7 @@ else % Recreate conditions and blocks and trials
         fprintf('[%s]: Storing condition_master..\n',mfilename)
         saveDir = fullfile(vcd_rootPath,'workspaces','info');
         if ~exist(saveDir,'dir'), mkdir(saveDir); end
-        if params.is_demo
-            fname = sprintf('condition_master_demo_%s_%s.mat',params.disp.name,datestr(now,30));
-        else
-            fname = sprintf('condition_master_%s_%s.mat',params.disp.name,datestr(now,30));
-        end
+        fname = sprintf('condition_master_%s%s_%s.mat',choose(params.is_wide,'wide_',''), choose(params.is_demo,'demo_',''),params.disp.name,datestr(now,30));
         save(fullfile(saveDir,fname),'condition_master','all_unique_im','all_cond')
     end
     
@@ -807,8 +828,12 @@ else % Recreate conditions and blocks and trials
 
         
 %             if strcmp(env_type,'MRI')
-%                 % lower IMG/LTM block contribution (we have less unique images)
-%                 unique_trial_repeats = params.exp.n_unique_trial_repeats_mri;
+%				  if params.is_wide
+%				  	unique_trial_repeats = params.exp.n_unique_trial_repeats_wide;
+%				  else
+%                 	% lower IMG/LTM block contribution (we have less unique images)
+%                 	unique_trial_repeats = params.exp.n_unique_trial_repeats_mri;
+%					end
 %             elseif strcmp(env_type,'BEHAVIOR') % NO LTM/IMG
 %                 adjusted_crossings(ii,6) = 0;
 %                 adjusted_crossings(ii,7) = 0;
