@@ -9,10 +9,45 @@ function master_table_out = vcd_shuffleStimForTaskClass(params, task_class_name_
 % Given that the master table is currently sorted per stimulus class, we
 % need to reorganize the stimuli in scc/ltm blocks to have a (balanced)
 % mixture of images from different classes. This function will do so, while
-% making sure that we comply to even/uneven left/right trial order, as well
-% as showing each stimulus class at least once per block.
-% NOTE: fully-crossed and balanced stimulus classes is not possible,
-% because we have different number of unique images per stimulus class.
+% taking into account stimulus locations (left/right/central), cueing status
+% (left/right cued, neutral cued).
+% 
+% The function shuffles twice:
+% FIRST, the function shuffles 4 vectors (left cued, left uncued, right 
+% cued, right uncued) separately based un their stimulus class (Gabor, RDK,
+% Dot). This shuffle is subject to the following constraints:
+% For the current shuffled order—-when we are dealing with classic stimuli:
+% * every set of 8 trials has least all four classic stimulus (regardless 
+%   whether they are cued or uncued),
+% * There is max 1 trial with the same stimclass for left and right stim 
+%   position within a trial. The last constraint significantly speeds up
+%   the second shuffle (across trial shuffle).
+% If we have NS stimuli, we will shuffle them separately to keep the 
+% process the same for classic vs NS stimuli. Although note that there is 
+% only one cueing condition (neutral cued) and one stimulus location
+% (center) for NS stimuli.
+% 
+% SECOND, after combining left/right cued/uncued stimuli into trials, the
+% function shuffles trials subject to the following constraints:
+% (one SCC block has a set of 8 trials and one LTM block has a set of 4
+%   trials).
+% * Within a classic-stim SCC block, we sample all 4 stimulus classes at 
+%   least once.
+% * Within a classic-stim LTM block, we sample at least one of the 4 
+%   classic stimulus classes.
+% * Within each classic-stim SCC or LTM block, we have 50% left cued and 
+%   50% right cued trials.
+% * Within each block, we want a balanced number of correct button presses. 
+%   For SCC, we allow button press distributions for buttons [1-4] to be 
+%   either [2,2,2,2], or a shuffled version of [1,2,2,3] or [1 1 3 3].
+%   For LTM, tbd.
+% * If we have trials with two single dots (one left, one right)
+%   then the dots need to have an angular distance of at least 67.5 degrees.
+%
+% NOTE 1: fully-crossed and balanced stimulus classes is not possible,
+%   because we have different number of unique images per stimulus class.
+% NOTE 2: We don't enforce the buttonpress constraint for the behavioral
+%   session.
 %
 % INPUTS:
 % * params                      : (struct) stimulus and experimental design
@@ -49,7 +84,7 @@ if isempty(cued_stim_loc)
     master_table_out = master_table;
 elseif ~isempty(cued_stim_loc)
     fprintf('[%s]: Shuffle trials and try to get equally distributed nr of stimulus classes across trials\n',mfilename);
-
+    
     % Get all the rows with corresponsing stim class name
     all_task_rows = strcmp(master_table.task_class_name,{task_class_name_to_shuffle});
     
@@ -76,6 +111,8 @@ elseif ~isempty(cued_stim_loc)
                 tmp_img_nr_center_rz  = reshape(m0_center_img_nr,[],nr_of_trials_per_block);
                 tmp_sub_rz            = reshape(m0_sub,[],nr_of_trials_per_block);
             end
+            
+            %%%%%%%%% FIRST SHUFFLE CLASSIC STIM (mix stimulus class separately for each cueing condition) %%%%%% 
             % shuffle the order across columns such that gabors, rdks, dots, obj's get mixed
             shuffled_ind_center  = nr_of_trials_per_block*[0:(size(tmp_img_nr_center_rz,1)-1)]' ...
                 + reshape(shuffle_concat([1:nr_of_trials_per_block],size(tmp_img_nr_center_rz,1)),nr_of_trials_per_block,[])';
@@ -131,7 +168,7 @@ elseif ~isempty(cued_stim_loc)
                 leftovers_sub_r       = m0_sub(end-(n_leftovers_r-1));
                 tmp_img_nr_left_rz    = reshape(m0_left_img_nr(1:(size(m0_left_img_nr,1)-n_leftovers_l)),[],nr_of_trials_per_block);
                 tmp_img_nr_right_rz   = reshape(m0_right_img_nr(1:(size(m0_right_img_nr,1)-n_leftovers_r)),[],nr_of_trials_per_block);
-
+                
                 tmp_sub_rz            = reshape(m0_sub(1:(length(m0_sub)-n_leftovers_l-1)),[],nr_of_trials_per_block);
             else
                 tmp_img_nr_left_rz    = reshape(m0_left_img_nr,[],nr_of_trials_per_block);
@@ -140,7 +177,7 @@ elseif ~isempty(cued_stim_loc)
                 % keep track of row nr
                 tmp_sub_rz            = reshape(m0_sub,[],nr_of_trials_per_block);
             end
-
+            
             % set a limit to the number of trial shuffles to avoid infinite loop
             attempts = 0;
             
@@ -150,6 +187,8 @@ elseif ~isempty(cued_stim_loc)
                 if attempts > 10000
                     error('[%s]: Can''t find a solution even though we tried more than 10,000 times! Aborting!', mfilename)
                 end
+                
+                %%%%%%%%% FIRST SHUFFLE NS (mix stimulus class separately for each cueing condition) %%%%%% 
                 % shuffle the order across columns such that gabors, rdks, dots, obj's get mixed
                 shuffled_ind_left  = nr_of_trials_per_block*[0:(size(tmp_img_nr_left_rz,1)-1)]' ...
                     + reshape(shuffle_concat([1:nr_of_trials_per_block],size(tmp_img_nr_left_rz,1)),nr_of_trials_per_block,[])';
@@ -189,7 +228,7 @@ elseif ~isempty(cued_stim_loc)
                 % check if stimclasses are balanced
                 [~,stimclss_idx] = ismember(master_table.stim_class_name(trial_order),params.exp.stimclassnames);
                 chance_of_stimclass = histcounts(stimclss_idx)./sum(histcounts(stimclss_idx));
-                dt = nr_of_trials_per_block; % or be more stringent? ceil(max(1./chance_of_stimclass)); % 
+                dt = nr_of_trials_per_block; % or be more stringent? ceil(max(1./chance_of_stimclass)); %
                 n_start = 1:dt:size(trial_order,1);
                 sample_ok = [];
                 for nn = 1:length(n_start)
@@ -200,7 +239,11 @@ elseif ~isempty(cued_stim_loc)
                     end
                     unique_stimclass = unique(curr_sample(:));
                     if length(unique_stimclass)==length(unique(stimclss_idx(:)))
-                        sample_ok(nn) = true;
+                        if sum(curr_sample(:,1)==curr_sample(:,2)) < 2 % try to minimize same stimclass for left and right stim position within a trial
+                            sample_ok(nn) = true;
+                        else
+                            sample_ok(nn) = false;
+                        end
                     else
                         sample_ok(nn) = false;
                         break;
@@ -241,7 +284,7 @@ elseif ~isempty(cued_stim_loc)
         end
     end
     
-    
+    %%%%%%%%% COMBINE LOCATION (LEFT/RIGHT/CENTER) AND CUEING CONDITION (LEFT/RIGHT/NEUTRAL) ********
     % GOAL:
     % Versions A and B represent left cued/right uncued and right cued/left
     % uncued. We combine these conditions first, then ensure left and right cued
@@ -309,7 +352,9 @@ elseif ~isempty(cued_stim_loc)
         % What stimulus class numbers and distribution do we expect?
         stim_class_nrs        = unique(correct_response);
         abs_stim_class_chance = chance_of_stimclass*params.exp.block.n_trials_single_epoch;
-
+        
+        %%%%%%%%% SECOND SHUFFLE (mix trials) %%%%%% 
+        
         % preallocate space, reset counters, define nr of shuffle attempts
         stored_shuffled_cued_side = []; stored_master_trial = []; stored_master_im_nr = [];
         no_progress_attempts = 0;
@@ -334,7 +379,7 @@ elseif ~isempty(cued_stim_loc)
             
             % get correct response for shuffled trial order
             shuffled_responses = correct_response(shuffle_vec);
-
+            
             % Get cued side of each trial
             stim_both_sides_shuffled  = stimclass_both(shuffle_vec,:);
             stim_orient_shuffled      = stim_orient(shuffle_vec,:);
@@ -344,7 +389,7 @@ elseif ~isempty(cued_stim_loc)
             master_im_nr_shuffled     = master_im_nr(shuffle_vec,:);
             
             % reset counters
-            block_ok                  = zeros(1,length(block_start)); 
+            block_ok                  = zeros(1,length(block_start));
             ok_shuffled_cued          = [];
             not_ok_shuffled_cued      = [];
             ok_master_trial_list      = [];
@@ -366,17 +411,25 @@ elseif ~isempty(cued_stim_loc)
                 curr_master_trial_idx   = master_trial_shuffled(curr_indices,:);
                 curr_master_im_nr       = master_im_nr_shuffled(curr_indices,:);
                 
-                % Get distribution of button responses
+                % Get distribution of button responses, we want to equalize
+                % button responses as much as possible ([2 2 2 2]) or
+                % difference between button presses is minimized to +/- 1
+                % count difference (e.g., [1 2 3 2])
                 n1 = histcounts(curr_responses,[stim_class_nrs, stim_class_nrs(end)+1]); % check stim class within a block
-
-                if all(n1>=1)
+                if isequal(n1,[2 2 2 2]) || isequal(sort(n1),[1 2 2 3]) || isequal(sort(n1),[1 1 3 3])
+                    press_ok = true;
+                else
+                    press_ok = false;
+                end
+                
+                if all(n1>=1) && press_ok
                     % Check if trials have two single dots
                     dot_idx     = find(sum(curr_stimclass==3,2)==2);
                     % Check if the dot location angles match with stimulus params
                     if ~isempty(dot_idx), assert(all(reshape(ismember(curr_orient(dot_idx,:),params.stim.dot.ang_deg),[],1))); end
                     % Caclulate the difference in angle between to dots
                     diff_orient = abs(circulardiff(curr_orient(dot_idx,1),curr_orient(dot_idx,2),360));
-
+                    
                     if ~isempty(dot_idx) && any(diff_orient<=params.stim.dot.min_ang_distance_dot)
                         % if we have more than two double dot trials, see if we
                         % can swap them
@@ -432,11 +485,13 @@ elseif ~isempty(cued_stim_loc)
                     else
                         error('wtf')
                     end
+                else
+                    dot_ok = false;
                 end
                 
-                % if we have at least one of each stimulus class per block 
+                % if we have at least one of each stimulus class per block
                 % (cued or uncued) and dots aren't too close, we are happy
-                if all(n1>=1) && dot_ok 
+                if all(n1>=1) && dot_ok
                     block_ok(counter)     = 1;
                     ok_shuffled_cued      = cat(1,ok_shuffled_cued,     curr_cues');
                     ok_master_trial_list  = cat(1,ok_master_trial_list, curr_master_trial_idx);
@@ -452,7 +507,7 @@ elseif ~isempty(cued_stim_loc)
                 % update block counter
                 counter = counter + 1;
             end
-
+            
             % accumulate indices that are ok
             stored_shuffled_cued_side = cat(1,stored_shuffled_cued_side, ok_shuffled_cued);
             stored_master_trial        = cat(1,stored_master_trial, ok_master_trial_list);
@@ -470,7 +525,10 @@ elseif ~isempty(cued_stim_loc)
                     % otherwise we start over
                     no_progress_attempts = no_progress_attempts + 1;
                     
-                    if no_progress_attempts == 25 || length(block_ok)==1 || length(unique(correct_response))<length(stim_class_nrs)
+                    if no_progress_attempts == 25 || ...
+                            length(unique(shuffled_responses(not_ok_indices)))<length(stim_class_nrs) || ...
+                            any(histcounts(shuffled_responses(not_ok_indices),[1:4]) < length(block_ok))
+                            
                         % if we can't further optimize then we restart shuffling
                         correct_response = [stimclass_left_cued,stimclass_right_cued];
                         cued_side        = [ones(size(stimclass_left_cued)),2*ones(size(stimclass_right_cued))];
