@@ -39,8 +39,8 @@ function stim = vcd_getStimParams(varargin)
 %% %%%%%%%%%%%%% PARSE INPUTS %%%%%%%%%%%%%
 p0 = inputParser;
 p0.addParameter('disp_name'    , '7TAS_BOLDSCREEN32', @(x) any(strcmp(x,{'7TAS_BOLDSCREEN32', 'KKOFFICE_AOCQ3277', 'PPROOM_EIZOFLEXSCAN', 'EKHOME_ASUSVE247','CCNYU_VIEWPIXX3D'})));                   
-p0.addParameter('load_params'  , true, @islogical);                    
-p0.addParameter('store_params' , true, @islogical); 
+p0.addParameter('load_params'  , false, @islogical);                    
+p0.addParameter('store_params' , false, @islogical); 
 p0.addParameter('save_info_dir', fullfile(vcd_rootPath,'workspaces','info'), @ischar);
 p0.addParameter('verbose'      , true, @islogical); 
 
@@ -339,9 +339,10 @@ else
                 p.imagery_sz_pix               = (round(p.img_sz_deg* disp_params.ppd)/2)*2; % diameter of quiz dot image in pixels (ensure even nr of pixels)
                 p.imagery_min_dot_dist_deg     = [p.imagery_dot_radius_deg*2 + 0.25];        % minimum distance between two quiz dots.
                 p.imagery_aperture_buffer_deg  = 0.5;                                        % minimum distance (deg) of the test dot location center from the edge of the 4-degree circular stimulus aperture.
-                p.imagery_minmax_anglemismatch = [10, 90];                                   % for "no" dots, how much (in degrees) do we allow the line that the two quiz dots make be mismatched from the core gabor tilt.
+                p.imagery_minmax_anglemismatch = [20, 90];                                   % for "no" dots, how much (in degrees) do we allow the line that the two quiz dots make be mismatched from the core gabor tilt.
                 p.unique_im_nrs_img_test       = [423:582];                                  % Unique image nrs associated with the 8*20=160 IMG gabor test dot images
                 p.imagery_quiz_images          = [ones(1,10),2.*ones(1,10)];                 % quiz dots overlap (1) or not (2)
+                p.imagery_text_prompt_file     = fullfile(vcd_rootPath,'workspaces','instructions','img_text_prompts',sprintf('*_vcd_gabor*.txt')); % txt file
 
                 % Add params to struct
                 stim.gabor = p;
@@ -412,12 +413,17 @@ else
                 p.ltm_pairs = [];
                 
                 % IMAGERY: 
-                p.unique_im_nrs_specialcore    = p.unique_im_nrs_core(17:end);       % SELECTED UNIQUE IMAGES (SUBSET of all 24) (only high coherence) 
-                p.imagery_sz_deg               = 5.658;                              % desired diameter (degree) of the second, quiz dots image in an imagery trial to encourage subjects to create a vidid mental image.
-                p.imagery_sz_pix               = (round(p.img_sz_deg* disp_params.ppd)/2)*2; % diameter of quiz dot image (pixels) (ensure even nr of pixels)
-                p.unique_im_nrs_img_test  	   = [583:742];                          % Unique image nrs associated with the 8*20=160 IMG RDK test dot images
-                p.imagery_quiz_images          = [ones(1,10),2.*ones(1,10)];         % quiz dots overlap (1) or not (2)
-                
+                p.unique_im_nrs_specialcore    = p.unique_im_nrs_core(17:end);               % SELECTED UNIQUE IMAGES (SUBSET of all 24) (only high coherence) 
+                p.imagery_dot_radius_deg       = 0.5;                                        % desired diameter (deg) of a single quiz dot in an imagery trial
+                p.imagery_sz_deg               = p.img_sz_deg;                               % desired diameter (degree) of the spatial support (where quiz dots will be shown)
+                p.imagery_sz_pix               = (round(p.img_sz_deg* disp_params.ppd)/2)*2; % diameter of quiz dot image support (pixels) (ensure even nr of pixels)
+                p.imagery_min_dot_dist_deg     = [p.imagery_dot_radius_deg*2 + 0.25];        % minimum distance between two quiz dots.
+                p.imagery_aperture_buffer_deg  = 0.5;                                        % minimum distance (deg) of the test dot location center from the edge of the 4-degree circular stimulus aperture.
+                p.imagery_minmax_anglemismatch = [20, 180];                                  % for "no" dots, how much (in degrees) do we allow the line that the two quiz dots make be mismatched from the core rdk motion direction.
+                p.unique_im_nrs_img_test  	   = [583:742];                                  % Unique image nrs associated with the 8*20=160 IMG RDK test dot images
+                p.imagery_quiz_images          = [ones(1,10),2.*ones(1,10)];                 % quiz dots overlap (1) or not (2)
+                p.imagery_text_prompt_file     = fullfile(vcd_rootPath,'workspaces','instructions','img_text_prompts',sprintf('*_vcd_rdk*.txt')); % txt file
+
                 % Add params to struct
                 stim.rdk = p;
                 
@@ -517,13 +523,17 @@ else
                 p.ltm_pairs          = [];                                       %%
 
                 % IMAGERY: 
-                p.unique_im_nrs_specialcore    = p.unique_im_nrs_core(1:2:p.num_loc);             % SELECTED UNIQUE IMAGES (SUBSET of all 16 dots)
+                p.unique_im_nrs_specialcore    = p.unique_im_nrs_core(1:2:p.num_loc);        % SELECTED UNIQUE IMAGES (SUBSET of all 16 dots)
                 
                 % IMAGERY: QUIZ DOT PARAMS
-                p.imagery_sz_deg   = [disp_params.w_deg/2, disp_params.h_deg];   % desired diameter (deg) of the second, quiz dots image in an imagery trial to encourage subjects to create a vidid mental image.
-                p.imagery_sz_pix   = [disp_params.xc,disp_params.h_pix];         % diameter of quiz dot image (pixels) (we already ensured even nr of pixels in display params function)
-                p.unique_im_nrs_img_test = [743:902];                            % Unique image nrs associated with the 8*20=160 IMG DOT test dot images
-                p.imagery_quiz_images    = [ones(1,10),2.*ones(1,10)];           % quiz dots overlap (1) or not (2)
+                % two dots (on the 4 deg iso-ecc circle) straddling the imagined dot or not
+                p.unique_im_nrs_img_test       = [743:902];                                  % Unique image nrs associated with the 8*20=160 IMG DOT test dot images
+                p.imagery_sz_deg               = p.iso_eccen;                                % desired diameter (degree) of ring where quiz dots images live on
+                p.imagery_dot_radius_deg       = 0.5;                                        % desired diameter (degree) of single quiz dot
+                p.imagery_min_dot_dist_deg     = [p.imagery_dot_radius_deg*2 + 0.25];        % minimum distance between two quiz dots.
+                p.imagery_minmax_anglemismatch = [5, 20];                                    % for "yes" dots, what distance (in degrees) do we allow quiz dots to be near special core dot
+                p.imagery_quiz_images          = [ones(1,10),2.*ones(1,10)];                 % quiz dots overlap (1) or not (2)
+                p.imagery_text_prompt_file     = fullfile(vcd_rootPath,'workspaces','instructions','img_text_prompts',sprintf('*_vcd_dot_delta00.txt')); % txt file
                 
                 % Add params to struct
                 stim.dot = p;
@@ -757,11 +767,13 @@ else
                 p.unique_im_nrs_specialcore = p.unique_im_nrs_core([1,3,5,7,8,10,12,14]);   % 8 SELECTED IMAGES USED (SUBSET of 16 IMAGES)--these are hand picked! damon, sophia, cat, giraffe, drill, bus, pizza, church
                 
                 % IMAGERY QUIZ DOT PARAMS
-                p.imagery_sz_deg         = 5.658;                              % desired diameter (degree) of the second, quiz dots image in an imagery trial to encourage subjects to create a vidid mental image.
-                p.imagery_sz_pix         = (round(p.img_sz_deg* disp_params.ppd)/2)*2; % pixel diameter of quiz dot image (ensure even nr of pixels)
-                p.unique_im_nrs_img_test = [903:1062];                         % Unique image nrs associated with the 8*20=160 IMG OBJ test dot images
-                p.imagery_quiz_images    = [ones(1,10),2.*ones(1,10)];         % quiz dots overlap (1) or not (2)
-                
+                p.imagery_sz_deg           = 5;                                  % desired diameter (degree) of the second, quiz dots image in an imagery trial to encourage subjects to create a vidid mental image.
+                p.imagery_sz_pix           = (round(p.img_sz_deg* disp_params.ppd)/2)*2; % pixel diameter of quiz dot image (ensure even nr of pixels)
+                p.unique_im_nrs_img_test   = [903:1062];                         % Unique image nrs associated with the 8*20=160 IMG OBJ test dot images
+                p.imagery_quiz_images      = [ones(1,10),2.*ones(1,10)];         % quiz dots overlap (1) or not (2)
+                p.imagery_text_prompt_file = fullfile(vcd_rootPath,'workspaces','instructions','img_text_prompts',sprintf('*_vcd_object*.txt')); % txt file
+                p.imagery_raw_dot_file     = fullfile(vcd_rootPath,'workspaces','stimuli','RAW','IMG_dots','obj',sprintf('*_vcd_object*')); % raw quiz dot png folder
+
                 % LTM PAIR
                 p.ltm_pairs          = [];                                     %% TODO: list of core stim numbers of same/other stim classes in the order of obj core images
                 
@@ -852,15 +864,17 @@ else
                 p.unique_im_nrs_wm_test     = [303:422];                               % Unique image nrs associated with the 120 WM NS changed stimuli
                 
                 % IMAGERY 
-                p.unique_im_nrs_specialcore = p.unique_im_nrs_core([2,4,5,8,10,11,13,15,18,20,21,23,26,27,30]); % Half of the images will be used for  IMG/LTM pairing (these are carefully handpicked! see scene_info csv file)
+                p.unique_im_nrs_specialcore = p.unique_im_nrs_core([2,4,5,8,10,11,13,18,20,21,23,26,27,30]); % 14 scenes will be used for  IMG/LTM pairing (these are carefully handpicked! see scene_info csv file)
                 p.imagery_sz_deg            = p.img_sz_deg;                                                     % desired diameter (degree) of the second, quiz dots image in an imagery trial to encourage subjects to create a vidid mental image.
                 p.imagery_sz_pix            = p.img_sz_pix;                                                     % diameter of quiz dot image (pixels) (we already ensured even nr of pixels)
-                p.unique_im_nrs_img_test    = [1063:1362];                                                      % Unique image nrs associated with the 15*20=300 IMG NS test dot images
+                p.unique_im_nrs_img_test    = [1063:1342];                                                      % Unique image nrs associated with the 14*20=280 IMG NS test dot images
                 p.imagery_quiz_images       = [ones(1,10),2.*ones(1,10)];                                       % Quiz dots overlap (1=yes) or not (2=no)
-                
+                p.imagery_text_prompt_file  = fullfile(vcd_rootPath,'workspaces','instructions','img_text_prompts',sprintf('*_vcd_ns*.txt')); % txt file
+                p.imagery_raw_dot_file      = fullfile(vcd_rootPath,'workspaces','stimuli','RAW','IMG_dots','ns',sprintf('*_vcd_ns*')); % raw quiz dot png folder
+
                 % FOR LTM incorrect trials, we have very similar looking images called "lures":
                 p.lure_im                   = {'lure01', 'lure02', 'lure03', 'lure04'};
-                p.unique_im_nrs_ltm_lures   = [1363:1422];                                                      % Unique image nrs associated with the 15*4=60 WM NS lure images
+                p.unique_im_nrs_ltm_lures   = [1343:1398];                                                      % Unique image nrs associated with the 14*4=56 WM NS lure images
                 
                 % LTM PAIRED ASSOCIATES
                 p.ltm_pairs                 = [];
