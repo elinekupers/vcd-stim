@@ -309,7 +309,7 @@ for ses = 1:size(all_sessions,3)
                     % remove frames such that duration in seconds is an integer (we will add those later)
                     rounded_session_totalrundur = (floor(session_totalrundur/params.stim.presentationrate_hz)*params.stim.presentationrate_hz);
                     total_ses_dur = rounded_session_totalrundur - params.exp.block.total_eyetracking_block_dur - session_postblankdur - session_preblankdur;
-                    assert(isequal(actual_task_run_dur,total_ses_dur));
+                    assert(isequal(actual_task_run_dur - rem(session_totalrundur/params.stim.presentationrate_hz,1)*params.stim.presentationrate_hz,total_ses_dur));
                     
                     % predefine IBIs, make sure we don't go over the total
                     % run duration we want
