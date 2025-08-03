@@ -358,7 +358,7 @@ elseif ~isempty(cued_stim_loc)
         % preallocate space, reset counters, define nr of shuffle attempts
         stored_shuffled_cued_side = []; stored_master_trial = []; stored_master_im_nr = [];
         no_progress_attempts = 0;
-        max_attempts = 500000;
+        max_attempts = 100000;
         attempt = 0;
         while 1
             % Shuffle across all trials, using the following constraints:
