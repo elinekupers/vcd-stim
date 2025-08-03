@@ -202,7 +202,7 @@ clear rename_me ff p0
 if ~isfield(params,'is_demo'), params.is_demo = false; end
 if ~isfield(params,'is_wide'), params.is_wide = false; end
 unique_sessions  = unique(condition_master.session_nr);
-
+max_attempts     = 2000;
 % Get session parameters depending on whether this is the Behavioral
 % experiment or MRI experiment.
 [~,session_types,runs_per_session,run_dur_min, ...
@@ -641,7 +641,7 @@ for ses = 1:length(unique_sessions)
                 end
                 
                 % If we shuffled all blocks more than 10,000 times, we will throw an error.
-                if attempts>10000
+                if attempts>max_attempts
                     error('[%s]: Can''t seem to find a solution after 10000 attempts! Try running the same code again!\n',mfilename)
                 end
                 
