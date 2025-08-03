@@ -144,15 +144,15 @@ else
     exp.session.mri.wide.n_runs_per_session             = [10,10];          
 
     % MRI DEEP: Includes DEEP001 to DEEP025, DEEP26A and DEEP26B
-    % there are 10x 6.05 min runs for DEEP sessions 1-25, 26A and 26B have 4 runs each
-    exp.session.mri.deep.session_nrs                    = [1:26];           %#ok<*NBRAK> % Session nr, deep subject sampling
-    exp.session.mri.deep.session_types                  = NaN(26,2);        % [Session nr,session type] 
+    % there are 10x 6.05 min runs for DEEP sessions 1-30, session 30 has versions A and B
+    exp.session.mri.deep.session_nrs                    = [1:31];           %#ok<*NBRAK> % Session nr, deep subject sampling
+    exp.session.mri.deep.session_types                  = NaN(31,2);        % [Session nr,session type] 
     exp.session.mri.deep.session_types(:,1)             = 1;                % insert session type = 1 for column one
     exp.session.mri.deep.session_types(end,2)           = 2;                % insert session type = 2 for column two (only last session).
     
-    exp.session.mri.deep.n_runs_per_session             = NaN(26,2);       
-    exp.session.mri.deep.n_runs_per_session(1:end-1,1)  = 10; 
-    exp.session.mri.deep.n_runs_per_session(end,:)      = [5,5];
+    exp.session.mri.deep.n_runs_per_session             = NaN(31,2);       
+    exp.session.mri.deep.n_runs_per_session(:,1)        = 10; 
+    exp.session.mri.deep.n_runs_per_session(end,2)      = 10; 
     exp.session.mri.deep.baseline_sessions              = 1:4;              % Deep sessions dedicated to establish baseline, prior to introducing LTM/IMG
 
     % MORE GENERAL PARAMS
@@ -176,13 +176,13 @@ else
     % timing MRI
     exp.run.pre_blank_dur_MRI          = presentationrate_hz * 4.0;         % pre-run blank period: 4 seconds in number of presentation frames
     exp.run.post_blank_dur_MRI         = presentationrate_hz * 12;          % 12 seconds in number of presentation frames
-    exp.run.total_run_dur_MRI          = presentationrate_hz * 376;         % TOTAL RUN DUR = 376 s or 235 EPI volumes (1.6 s TR) or 22,560 time frames
+    exp.run.total_run_dur_MRI          = presentationrate_hz * 379.2;       % TOTAL RUN DUR = 379.2 s or 237 EPI volumes (1.6 s TR) or 22,710 time frames
     assert(isintnearzero(exp.run.total_run_dur_MRI/exp.TR));                % ensure MRI run duration results in an integer nr of TRs
     
     % timing BEHAVIOR
     exp.run.pre_blank_dur_BEHAVIOR     = presentationrate_hz * 4.0;         % pre-run blank period: 4 seconds in number of presentation frames
     exp.run.post_blank_dur_BEHAVIOR    = presentationrate_hz * 12.0;        % post-blank period: 4 seconds in number of presentation frames
-    exp.run.total_run_dur_BEHAVIOR     = presentationrate_hz * 376;         % TOTAL RUN DUR = 376 s or 22,560 time frames
+    exp.run.total_run_dur_BEHAVIOR     = presentationrate_hz * 376;       % TOTAL RUN DUR = 376 s or 22560 time frames
 
    % timing DEMO
     exp.run.pre_blank_dur_DEMO     = presentationrate_hz * 4.0;             % pre-run blank period: 4 seconds in number of presentation frames
@@ -391,9 +391,9 @@ else
     exp.session.demo.nr_blocks_per_run               = repmat([7,NaN],3,1);  % 7 blocks/run, three sessions, one session types
     exp.session.mri.wide.nr_blocks_per_run           = [7,7];                % 7 blocks/run, two session types
     
-    exp.session.mri.deep.nr_blocks_per_run           = NaN(26,2);            % allocate space for 26 sessions
-    exp.session.mri.deep.nr_blocks_per_run(1:25,:)   = repmat([7,NaN],25,1); % 7 blocks/run, one session types
-    exp.session.mri.deep.nr_blocks_per_run(26,:)     = [7,7];                % 7 blocks/run, two session types
+    exp.session.mri.deep.nr_blocks_per_run           = NaN(31,2);            % allocate space for 26 sessions
+    exp.session.mri.deep.nr_blocks_per_run(1:30,:)   = repmat([7,NaN],30,1); % 7 blocks/run, one session types
+    exp.session.mri.deep.nr_blocks_per_run(31,:)     = [7,7];                % 7 blocks/run, two session types
     
     %% SPECIFIC CROSSINGS SHOWN PER SESSION
     % The goal is to achieve least 10 repetitions for each unique
@@ -440,220 +440,232 @@ else
                                                 1	0  0	0    1	 0	 0	 0	 0	  1]; % FIX-NS, WM-NS, HOW-NS
 
     % %%%% MRI SESSIONS %%%%
-    % sessions WIDE 1A                    fix cd scc  pc  wm ltm img what where  how  
-    exp.session.mri.wide.ses_blocks(:,:,1,1) = [2	2	2	2	4	0	0	0	0	0; % gabor
-                                                2	2	2	2	4	0	0	0	0	0;
-                                                1	1	1	2	2	0	0	0	0	0;
-                                                1	1	2	2	2	0	0	2	0	2;
-                                                2	3	0	2	4	0	0	3	2	3]; % NS
-
-    % sessions WIDE 1B                    fix cd scc  pc  wm ltm img what where  how  
-    exp.session.mri.wide.ses_blocks(:,:,1,2) = [2	2	2	2	4	0	0	0	0	0; % gabor
-                                                2	2	2	2	4	0	0	0	0	0;
-                                                1	1	1	2	2	0	0	0	0	0;
-                                                1	1	2	2	2	0	0	2	0	2;
-                                                3	2	0	3	4	0	0	2	3	2];% NS
-
-    % Deep sessions 1-4 have no LTM/IMG   fix   cd   scc pc  wm  ltm img what where  how                 
-    exp.session.mri.deep.ses_blocks(:,:,1,1) = [1	2	2	3	4	0	0	0	0	0; % gabor
-                                                1	2	2	3	3	0	0	0	0	0;
-                                                1	1	1	2	2	0	0	0	0	0;
-                                                1	1	1	2	3	0	0	2	0	1;
-                                                2	3	0	3	4	0	0	3	3	3];% NS
-
-    %                                    fix   cd   scc pc  wm  ltm img what where  how                      
-    exp.session.mri.deep.ses_blocks(:,:,2,1) = [1	2	2	2	4	0	0	0	0	0; % gabor
-                                                1	2	2	1	4	0	0	0	0	0;
-                                                1	1	1	1	4	0	0	0	0	0;
-                                                1	2	2	1	3	0	0	1	0	1;
-                                                3	3	0	2	5	0	0	3	2	2];% NS
-
-    %                                   fix   cd   scc pc  wm  ltm img what where  how          
-    exp.session.mri.deep.ses_blocks(:,:,3,1) = [1	2	2	2	4	0	0	0	0	0;
-                                                1	2	2	2	4	0	0	0	0	0;
-                                                1	2	2	1	2	0	0	0	0	0;
-                                                1	2	2	1	3	0	0	1	0	1;
-                                                3	2	0	3	5	0	0	2	2	3];% NS
-
-    %                                   fix   cd   scc pc  wm  ltm img what where  how          
-    exp.session.mri.deep.ses_blocks(:,:,4,1) = [1	2	2	1	4	0	0	0	0	0;
-                                                1	2	2	2	4	0	0	0	0	0;
-                                                1	2	2	1	3	0	0	0	0	0;
-                                                1	1	1	1	3	0	0	1	0	2;
-                                                2	2	0	3	6	0	0	2	3	2];% NS
-
-                                                             
+    % sessions WIDE 1A                              fix cd scc  pc  wm ltm img what where  how  
+    exp.session.mri.wide.ses_blocks(:,:,1,1) = [	1	2	1	3	4	0	0	0	0	0	; ...
+                                                    1	2	1	3	4	0	0	0	0	0	; ...
+                                                    1	2	1	2	3	0	0	0	0	0	; ...
+                                                    1	2	1	2	3	0	0	2	0	2	; ...
+                                                    3	2	0	2	4	0	0	2	2	2	];
+    % sessions WIDE 1B                              fix cd scc pc wm ltm img what where how
+    exp.session.mri.wide.ses_blocks(:,:,1,2) = [	1	2	2	3	4	0	0	0	0	0	; ...
+                                                    1	2	2	3	4	0	0	0	0	0	; ...
+                                                    1	1	2	1	3	0	0	0	0	0	; ...
+                                                    1	1	2	1	3	0	0	2	0	2	; ...
+                                                    3	2	0	2	4	0	0	2	2	2	];
+    % Deep sessions 1-4 have no LTM/IMG             fix  cd  scc pc wm ltm img what where how
+    exp.session.mri.deep.ses_blocks(:,:,1,1) = [	1	2	2	2	4	0	0	0	0	0	; ...
+                                                    1	2	2	2	4	0	0	0	0	0	; ...
+                                                    1	1	1	2	3	0	0	0	0	0	; ...
+                                                    0	1	1	2	3	0	0	2	0	1	; ...
+                                                    2	3	0	3	5	0	0	3	3	3	];
+    
+    exp.session.mri.deep.ses_blocks(:,:,2,1) = [	1	2	2	2	4	0	0	0	0	0	; ...
+                                                    1	2	2	2	4	0	0	0	0	0	; ...
+                                                    1	1	1	1	3	0	0	0	0	0	; ...
+                                                    1	2	2	1	3	0	0	1	0	2	; ...
+                                                    3	3	0	2	5	0	0	3	2	2	];
+    
+    exp.session.mri.deep.ses_blocks(:,:,3,1) = [	1	2	2	2	4	0	0	0	0	0	; ...
+                                                    1	2	2	2	4	0	0	0	0	0	; ...
+                                                    1	2	2	1	3	0	0	0	0	0	; ...
+                                                    1	1	2	2	3	0	0	2	0	1	; ...
+                                                    2	2	0	2	5	0	0	2	2	3	];
+    
+    exp.session.mri.deep.ses_blocks(:,:,4,1) = [	1	2	2	2	4	0	0	0	0	0	; ...
+                                                    1	2	2	2	4	0	0	0	0	0	; ...
+                                                    0	2	2	1	3	0	0	0	0	0	; ...
+                                                    1	2	1	1	3	0	0	1	0	2	; ...
+                                                    2	3	0	3	5	0	0	2	3	2	];
     % Deep sessions 5-end have all stim-task crossings
-    %                                    fix   cd   scc pc  wm  ltm img what where  how          
-    exp.session.mri.deep.ses_blocks(:,:,5,1) = [1	1	1	1	2	2	3	0	0	0;
-                                                1	1	1	1	2	2	3	0	0	0;
-                                                1	1	0	0	1	2	2	0	0	0;
-                                                1	0	1	1	1	2	2	1	0	1;
-                                                1	1	0	1	3	4	4	1	1	1];% NS
+    exp.session.mri.deep.ses_blocks(:,:,5,1) = [	0	0	0	0	2	4	4	0	0	0	; ...
+                                                    0	0	0	0	2	3	4	0	0	0	; ...
+                                                    1	0	0	0	1	3	4	0	0	0	; ...
+                                                    0	0	0	0	1	3	4	1	0	0	; ...
+                                                    0	1	0	1	3	3	3	1	1	1	];
+    
+    exp.session.mri.deep.ses_blocks(:,:,6,1) = [	0	0	0	1	2	3	3	0	0	0	; ...
+                                                    0	0	0	0	2	4	3	0	0	0	; ...
+                                                    0	0	0	1	1	4	3	0	0	0	; ...
+                                                    1	0	0	1	2	4	3	0	0	1	; ...
+                                                    0	1	0	1	2	3	3	1	1	1	];
+    
+    exp.session.mri.deep.ses_blocks(:,:,7,1) = [	0	0	0	1	1	4	4	0	0	0	; ...
+                                                    0	1	0	1	2	3	4	0	0	0	; ...
+                                                    0	0	0	0	1	3	3	0	0	0	; ...
+                                                    0	0	0	1	1	3	4	1	0	0	; ...
+                                                    1	0	0	1	3	3	3	1	1	1	];
+    
+    exp.session.mri.deep.ses_blocks(:,:,8,1) = [	1	0	0	1	2	3	3	0	0	0	; ...
+                                                    0	0	0	1	2	4	3	0	0	0	; ...
+                                                    0	0	0	1	1	4	3	0	0	0	; ...
+                                                    0	1	0	0	1	3	3	1	0	1	; ...
+                                                    0	0	0	1	3	3	3	1	1	1	];
+    
+    exp.session.mri.deep.ses_blocks(:,:,9,1) = [	0	1	0	1	1	3	4	0	0	0	; ...
+                                                    1	0	0	1	2	3	4	0	0	0	; ...
+                                                    0	0	0	0	1	3	4	0	0	0	; ...
+                                                    0	0	0	1	1	3	4	0	0	1	; ...
+                                                    0	0	0	1	2	3	3	2	1	1	];
+    
+    exp.session.mri.deep.ses_blocks(:,:,10,1) =[	0	0	0	1	2	4	3	0	0	0	; ...
+                                                    0	1	0	1	2	3	3	0	0	0	; ...
+                                                    0	0	0	1	1	4	3	0	0	0	; ...
+                                                    0	0	0	0	2	4	3	1	0	0	; ...
+                                                    1	0	0	1	2	3	3	1	1	1	];
+    
+    exp.session.mri.deep.ses_blocks(:,:,11,1) =[	1	0	0	1	1	4	4	0	0	0	; ...
+                                                    1	0	0	1	2	3	4	0	0	0	; ...
+                                                    0	1	0	0	1	4	3	0	0	0	; ...
+                                                    0	0	0	1	1	3	3	0	0	1	; ...
+                                                    0	0	0	1	2	3	3	1	1	1	];
+    
+    exp.session.mri.deep.ses_blocks(:,:,12,1) =[	0	1	1	1	2	3	3	0	0	0	; ...
+                                                    0	0	1	1	2	4	3	0	0	0	; ...
+                                                    1	0	0	0	1	4	3	0	0	0	; ...
+                                                    0	0	0	0	1	4	3	1	0	0	; ...
+                                                    0	0	0	1	2	3	3	1	1	1	];
+    
+    exp.session.mri.deep.ses_blocks(:,:,13,1) =[	0	0	0	1	2	4	4	0	0	0	; ...
+                                                    0	1	0	1	2	3	3	0	0	0	; ...
+                                                    0	1	0	0	1	4	3	0	0	0	; ...
+                                                    0	0	0	1	1	3	3	0	0	1	; ...
+                                                    1	0	0	1	2	3	3	1	1	1	];
+    
+    exp.session.mri.deep.ses_blocks(:,:,14,1) =[	0	0	1	1	2	3	3	0	0	0	; ...
+                                                    1	1	1	1	2	3	3	0	0	0	; ...
+                                                    0	0	1	1	2	4	3	0	0	0	; ...
+                                                    0	0	0	0	1	3	3	1	0	0	; ...
+                                                    0	0	0	1	2	3	3	1	1	1	];
+    
+    exp.session.mri.deep.ses_blocks(:,:,15,1) =[	0	0	0	1	2	3	4	0	0	0	; ...
+                                                    0	0	0	1	2	3	4	0	0	0	; ...
+                                                    0	0	0	0	2	3	4	0	0	0	; ...
+                                                    1	1	0	1	1	3	3	0	0	1	; ...
+                                                    1	0	0	1	2	2	3	1	1	1	];
+    
+    exp.session.mri.deep.ses_blocks(:,:,16,1) =[	0	0	1	1	2	3	3	0	0	0	; ...
+                                                    0	1	1	1	2	4	3	0	0	0	; ...
+                                                    0	0	0	1	1	3	3	0	0	0	; ...
+                                                    0	0	1	0	1	4	3	1	0	0	; ...
+                                                    0	0	0	1	2	3	3	1	1	1	];
+    
+    exp.session.mri.deep.ses_blocks(:,:,17,1) =[	0	1	0	1	2	3	4	0	0	0	; ...
+                                                    0	0	0	1	2	4	4	0	0	0	; ...
+                                                    0	0	0	0	1	3	4	0	0	0	; ...
+                                                    0	0	0	1	1	3	4	0	0	1	; ...
+                                                    0	0	0	1	2	3	3	1	1	1	];
+    
+    exp.session.mri.deep.ses_blocks(:,:,18,1) =[	0	0	1	1	1	3	3	0	0	0	; ...
+                                                    0	0	1	1	2	4	3	0	0	0	; ...
+                                                    0	1	1	1	1	4	3	0	0	0	; ...
+                                                    0	0	0	0	1	4	3	1	0	0	; ...
+                                                    1	0	0	1	2	2	2	1	2	2	];
+    
+    exp.session.mri.deep.ses_blocks(:,:,19,1) =[	1	0	0	1	2	3	3	0	0	0	; ...
+                                                    0	1	0	1	2	3	4	0	0	0	; ...
+                                                    1	0	0	0	1	3	4	0	0	0	; ...
+                                                    0	0	0	1	1	3	4	0	0	1	; ...
+                                                    0	0	0	1	2	3	3	1	1	1	];
 
-    %                                      fix cd  scc pc  wm ltm img what where how           
-    exp.session.mri.deep.ses_blocks(:,:,6,1) = [1	1	1	1	2	3	2	0	0	0;
-                                                1	1	1	1	2	3	2	0	0	0;
-                                                1	1	1	0	1	2	2	0	0	0;
-                                                1	1	0	1	1	2	2	1	0	1;
-                                                1	1	0	1	3	4	4	1	0	1];% NS
-
-    %                                      fix cd  scc pc  wm ltm img what where how     
-    exp.session.mri.deep.ses_blocks(:,:,7,1) = [1	1	1	1	3	2	3	0	0	0;
-                                                1	1	0	1	2	2	2	0	0	0;
-                                                1	1	1	0	1	2	2	0	0	0;
-                                                1	1	0	1	1	2	2	1	0	1;
-                                                1	1	0	1	3	4	4	1	1	1];% NS                     
-                                        
-    %                                      fix cd  scc pc  wm ltm img what where how
-    exp.session.mri.deep.ses_blocks(:,:,8,1) = [1	1	1	1	2	3	2	0	0	0;
-                                                1	1	1	1	2	2	2	0	0	0;
-                                                1	1	0	1	1	3	2	0	0	0;
-                                                1	0	1	1	1	2	3	1	0	1;
-                                                1	1	0	1	2	4	4	1	1	0];% NS
-
-    %                                      fix cd  scc pc  wm ltm img what where how
-    exp.session.mri.deep.ses_blocks(:,:,9,1) = [1	1	1	1	2	2	3	0	0	0;
-                                                1	1	1	1	2	2	2	0	0	0;
-                                                1	1	0	1	2	2	2	0	0	0;
-                                                1	0	1	1	1	2	2	1	0	0;
-                                                1	1	0	1	3	4	4	1	1	1];% NS
-
-    %                                      fix cd  scc pc  wm ltm img what where how
-    exp.session.mri.deep.ses_blocks(:,:,10,1) =[1	1	1	1	2	2	2	0	0	0;
-                                                1	1	0	1	2	2	2	0	0	0;
-                                                1	1	0	1	2	2	2	0	0	0;
-                                                1	1	0	1	2	2	2	1	0	1;
-                                                1	1	0	1	3	4	4	1	1	1];% NS
-
-    %                                      fix cd  scc pc  wm ltm img what where how
-    exp.session.mri.deep.ses_blocks(:,:,11,1) =[1	1	1	1	2	2	3	0	0	0;
-                                                1	1	1	1	2	2	2	0	0	0;
-                                                1	0	1	1	1	3	2	0	0	0;
-                                                1	1	0	1	1	2	2	1	0	0;
-                                                1	1	0	1	3	4	4	1	1	1];% NS
-
-    %                                      fix cd  scc pc  wm ltm img what where how
-    exp.session.mri.deep.ses_blocks(:,:,12,1) =[1	1	1	1	2	3	2	0	0	0;
-                                                1	1	1	1	2	2	2	0	0	0;
-                                                1	1	0	1	1	2	2	0	0	0;
-                                                1	0	0	1	2	2	2	1	0	1;
-                                                1	1	0	1	3	4	4	1	1	1];
-
-    %                                      fix cd  scc pc  wm ltm img what where how
-    exp.session.mri.deep.ses_blocks(:,:,13,1) =[1	1	1	1	2	2	2	0	0	0;
-                                                1	1	1	1	2	2	2	0	0	0;
-                                                1	0	0	1	2	2	2	0	0	0;
-                                                1	1	0	1	2	2	2	1	0	0;
-                                                1	1	0	1	3	4	4	2	1	1];% NS
-
-    %                                      fix cd  scc pc  wm ltm img what where how
-    exp.session.mri.deep.ses_blocks(:,:,14,1) =[1	1	1	1	2	2	2	0	0	0;
-                                                1	1	0	1	2	2	2	0	0	0;
-                                                1	0	0	1	2	2	2	0	0	0;
-                                                1	1	1	0	2	2	2	1	0	1;
-                                                1	1	0	1	3	4	4	1	2	1];% NS
-
-    %                                      fix cd  scc pc  wm ltm img what where how
-    exp.session.mri.deep.ses_blocks(:,:,15,1) =[1	1	1	1	2	2	2	0	0	0;
-                                                1	1	1	1	2	2	2	0	0	0;
-                                                1	0	1	0	2	2	2	0	0	0;
-                                                1	1	1	0	2	2	2	1	0	1;
-                                                1	1	0	1	3	4	4	1	1	1];
-
-   %                                      fix cd  scc pc  wm ltm img what where how
-    exp.session.mri.deep.ses_blocks(:,:,16,1) =[1	1	1	1	2	2	2	0	0	0;
-                                                1	1	1	1	2	2	2	0	0	0;
-                                                1	1	1	1	2	2	2	0	0	0;
-                                                1	0	1	0	2	2	2	0	0	1;
-                                                1	1	0	1	3	4	4	1	1	1];
-
-   %                                      fix cd  scc pc  wm ltm img what where how
-    exp.session.mri.deep.ses_blocks(:,:,17,1) =[1	1	1	1	3	2	2	0	0	0;
-                                                1	1	1	1	2	2	2	0	0	0;
-                                                1	0	1	0	1	2	2	0	0	0;
-                                                1	1	1	1	2	2	2	0	0	1;
-                                                1	1	0	1	3	4	4	1	1	1];
-
-    %                                      fix cd  scc pc  wm ltm img what where how
-    exp.session.mri.deep.ses_blocks(:,:,18,1) =[1	1	1	1	2	2	2	0	0	0;
-                                                1	1	1	1	2	3	2	0	0	0;
-                                                1	1	1	1	2	2	2	0	0	0;
-                                                1	0	1	1	2	2	2	0	0	0;
-                                                1	1	0	1	2	4	4	1	1	1];
-
-    %                                      fix cd  scc pc  wm ltm img what where how       
-    exp.session.mri.deep.ses_blocks(:,:,19,1) =[1	1	1	1	2	2	2	0	0	0;
-                                                1	1	1	1	2	3	3	0	0	0
-                                                1	0	1	0	1	2	3	0	0	0
-                                                1	1	1	0	1	2	2	1	0	1
-                                                1	1	0	1	2	4	4	1	1	1];
-
-    %                                      fix cd  scc pc  wm ltm img what where how          
-    exp.session.mri.deep.ses_blocks(:,:,20,1) =[1	1	1	1	2	2	2	0	0	0;
-                                                1	1	1	1	3	2	2	0	0	0;
-                                                1	1	1	1	2	2	3	0	0	0;
-                                                1	1	1	0	2	2	2	0	0	0;
-                                                1	1	0	1	3	3	3	1	1	1];
-
-    %                                      fix cd  scc pc  wm ltm img what where how  
-    exp.session.mri.deep.ses_blocks(:,:,21,1) =[1	1	1	1	2	2	2	0	0	0;
-                                                1	1	1	1	2	2	2	0	0	0;
-                                                1	1	1	1	1	2	2	0	0	0;
-                                                1	1	1	1	1	2	2	1	0	1;
-                                                2	2	0	2	2	3	3	1	2	1];
-
-    %                                      fix cd  scc pc  wm ltm img what where how    
-    exp.session.mri.deep.ses_blocks(:,:,22,1) =[1	1	1	1	2	2	2	0	0	0;
-                                                1	1	1	1	2	2	2	0	0	0;
-                                                1	1	1	1	1	2	2	0	0	0;
-                                                1	1	1	1	1	2	2	1	0	1;
-                                                2	2	0	2	2	3	3	1	2	1];
-
-    %                                      fix cd  scc pc  wm ltm img what where how          
-    exp.session.mri.deep.ses_blocks(:,:,23,1) =[1	1	1	1	2	2	2	0	0	0;
-                                                1	1	2	1	2	2	2	0	0	0;
-                                                1	1	1	1	2	2	2	0	0	0;
-                                                1	1	1	1	1	2	2	1	0	1;
-                                                2	2	0	1	1	3	3	1	1	2];
-
-    %                                     % fix cd  scc  pc  wm ltm img what where how 
-    exp.session.mri.deep.ses_blocks(:,:,24,1) =[1	1	1	1	2	1	1	0	0	0;
-                                                1	1	2	1	3	1	2	0	0	0;
-                                                1	1	2	1	2	1	1	0	0	0;
-                                                1	1	1	1	2	3	2	0	0	1;
-                                                2	1	0	1	2	4	3	2	1	2];
-
-    %                                     % fix cd  scc  pc  wm ltm img what where how       
-    exp.session.mri.deep.ses_blocks(:,:,25,1) =[1	2	2	2	2	1	0	0	0	0;
-                                                1	2	3	2	3	1	1	0	0	0;
-                                                1	1	1	1	1	2	2	0	0	0;
-                                                1	1	0	0	0	2	2	0	0	0;
-                                                2	2	0	2	1	4	3	2	3	3];
-
-        %                                     % fix cd  scc  pc  wm ltm img what where how           
-    exp.session.mri.deep.ses_blocks(:,:,26,1) =[0	0	0	0	0	1	1	0	0	0;
-                                                0	0	0	0	0	1	1	0	0	0;
-                                                0	0	0	0	0	1	1	0	0	0;
-                                                0	0	0	0	0	1	1	0	0	0;
-                                                2	2	0	3	3	0	2	3	3	3];
-                                        
-                                             % fix cd  scc  pc  wm ltm img what where how         
-    exp.session.mri.deep.ses_blocks(:,:,26,2) =[0	0	0	0	0	1	1	0	0	0;
-                                                0	0	0	0	0	1	1	0	0	0;
-                                                0	0	0	0	0	1	1	0	0	0;
-                                                0	0	0	0	0	1	1	0	0	0;
-                                                1	3	0	2	3	0	2	4	2	4];
+    exp.session.mri.deep.ses_blocks(:,:,20,1) =[	0	1	1	0	2	3	3	0	0	0	; ...
+                                                    0	0	1	1	2	3	3	0	0	0	; ...
+                                                    0	0	0	1	1	3	3	0	0	0	; ...
+                                                    1	0	1	0	1	3	3	1	0	0	; ...
+                                                    1	1	0	1	3	3	3	1	1	1	];
+    
+    exp.session.mri.deep.ses_blocks(:,:,21,1) =[	0	0	0	1	2	3	3	0	0	0	; ...
+                                                    0	0	0	1	2	3	4	0	0	0	; ...
+                                                    0	0	0	1	1	3	4	0	0	0	; ...
+                                                    0	0	0	1	1	3	4	0	0	1	; ...
+                                                    0	1	0	1	3	3	3	1	1	1	];
+    
+    exp.session.mri.deep.ses_blocks(:,:,22,1) =[	0	1	1	1	2	4	3	0	0	0	; ...
+                                                    0	0	1	1	1	4	3	0	0	0	; ...
+                                                    0	0	1	1	1	3	3	0	0	0	; ...
+                                                    0	0	0	1	1	3	3	1	0	0	; ...
+                                                    1	0	0	1	2	3	3	1	1	1	];
+    
+    exp.session.mri.deep.ses_blocks(:,:,23,1) =[	0	1	0	1	2	3	3	0	0	0	; ...
+                                                    0	0	0	1	1	3	3	0	0	0	; ...
+                                                    0	1	0	0	2	3	4	0	0	0	; ...
+                                                    0	0	0	1	1	3	4	0	0	1	; ...
+                                                    0	0	0	2	3	3	3	1	1	2	];
+    
+    exp.session.mri.deep.ses_blocks(:,:,24,1) =[	0	0	0	1	1	4	3	0	0	0	; ...
+                                                    1	0	0	1	1	4	3	0	0	0	; ...
+                                                    0	0	0	1	1	3	3	0	0	0	; ...
+                                                    0	0	1	1	1	4	3	1	0	0	; ...
+                                                    1	1	0	1	3	3	3	1	1	1	];
+    
+    exp.session.mri.deep.ses_blocks(:,:,25,1) =[	1	1	0	1	2	3	3	0	0	0	; ...
+                                                    0	1	0	0	1	3	3	0	0	0	; ...
+                                                    0	0	0	1	1	2	4	0	0	0	; ...
+                                                    0	1	0	0	1	3	4	0	0	1	; ...
+                                                    0	1	0	2	2	3	3	2	2	2	];
+    
+    exp.session.mri.deep.ses_blocks(:,:,26,1) =[	1	0	0	0	2	4	3	0	0	0	; ...
+                                                    1	0	0	1	1	3	3	0	0	0	; ...
+                                                    0	0	0	1	1	3	3	0	0	0	; ...
+                                                    0	0	0	1	2	3	3	1	0	0	; ...
+                                                    1	1	0	1	3	3	3	1	1	1	];
+    
+    exp.session.mri.deep.ses_blocks(:,:,27,1) =[	0	0	0	1	2	3	3	0	0	0	; ...
+                                                    0	0	0	0	2	4	3	0	0	0	; ...
+                                                    0	0	0	1	1	4	3	0	0	0	; ...
+                                                    0	0	0	0	1	4	4	0	0	0	; ...
+                                                    1	1	0	2	2	3	3	1	1	2	];
+    
+    exp.session.mri.deep.ses_blocks(:,:,28,1) =[	0	0	0	1	2	4	3	0	0	0	; ...
+                                                    0	0	0	1	2	3	3	0	0	0	; ...
+                                                    0	0	0	1	1	3	3	0	0	0	; ...
+                                                    0	0	0	1	1	4	3	1	0	1	; ...
+                                                    1	1	0	1	2	3	3	1	1	1	];
+    
+    exp.session.mri.deep.ses_blocks(:,:,29,1) =[	0	0	0	1	2	3	3	0	0	0	; ...
+                                                    1	1	0	1	2	3	2	0	0	0	; ...
+                                                    0	0	0	1	1	4	3	0	0	0	; ...
+                                                    0	0	0	0	1	4	3	0	0	1	; ...
+                                                    1	1	0	2	2	3	2	2	2	1	];
+    
+    exp.session.mri.deep.ses_blocks(:,:,30,1) =[	1	1	2	0	1	4	3	0	0	0	; ...
+                                                    0	0	2	1	1	4	3	0	0	0	; ...
+                                                    0	0	2	0	1	4	2	0	0	0	; ...
+                                                    0	1	2	0	1	4	1	1	0	1	; ...
+                                                    0	1	0	1	2	4	2	2	2	1	];
+    
+    exp.session.mri.deep.ses_blocks(:,:,30,2) =[	1	1	1	0	1	4	3	0	0	0	; ...
+                                                    0	0	1	1	1	4	3	0	0	0	; ...
+                                                    0	1	1	1	1	4	2	0	0	0	; ...
+                                                    0	2	1	1	1	4	1	1	0	1	; ...
+                                                    0	1	0	1	2	4	2	2	2	1	];
 
     % Get a summary of how many trials we expect/allocate across sessions.
-    exp.nr_unique_trials_per_crossing          = exp.crossings.* [24,24,16,16,30]'; % 24 trials per stim class, etc 
-    exp.nr_unique_trials_per_crossing(1:4,1)   = exp.nr_unique_trials_per_crossing(1:4,1)*0.5; % fixation crossings have half the nr of unique trials.
-    exp.nr_unique_trials_per_crossing(:,[6:7]) = (exp.nr_unique_trials_per_crossing(:,[6:7]).* [1/3, 1/3, 1/2, 1/2, 1/2]'); % ltm/img crossings have special core images only (1/3 or 1/2 nr of core), but x2.
-    exp.nr_trials_per_block = exp.crossings.* cat(2,repmat(exp.block.n_trials_single_epoch,1,4),repmat(exp.block.n_trials_double_epoch,1,3),repmat(exp.block.n_trials_single_epoch,1,3));
+    exp.nr_unique_trials_per_crossing        = exp.crossings.* [24,24,16,16,30]'; % 24 trials per stim class, etc 
     
-    ses_type_1_trials = ((sum(exp.session.mri.deep.ses_blocks(:,:,:,1),3) + sum(exp.session.mri.wide.ses_blocks(:,:,:,1),3)) .* (exp.nr_trials_per_block));
-    ses_type_2_trials = ((sum(exp.session.mri.deep.ses_blocks(:,:,:,2),3) + sum(exp.session.mri.wide.ses_blocks(:,:,:,2),3)) .* (exp.nr_trials_per_block));
-    exp.n_unique_trial_repeats_mri = ceil((ses_type_1_trials + ses_type_2_trials) .*  exp.nr_trials_per_block) ./  exp.nr_unique_trials_per_crossing;
+    % ltm/img crossings have special core images only (1/3 or 1/2 nr of core), but x2.
+    % note that LTM has also 2N pairs but this is implemented as A->B and B->A
+    exp.nr_repeats                        = [0.5    1   1   1   1    4/3    2/3   1   1   1; ...
+                                             0.5    1   1   1   1    4/3    2/3   1   1   1; ...
+                                             0.5    1   1   1   1    4/2    2/2   1   1   1;...
+                                             0.5    1   1   1   1    4/2    2/2   1   1   1;...
+                                               1    1   0   1   1   28/30  14/30  1   1   1]; 
+    % Only for DEEP
+    exp.nr_unique_catch_trial_per_repeats = [ 1   2   2   2   2   1   1   0   0   0; ...
+                                              1   2   2   2   2   1   1   0   0   0; ...
+                                              1   2   2   2   2   1   1   0   0   0; ...
+                                              1   2   2   2   2   1   1   2   0   2; ...
+                                              1   1   0   1   0   1   1   1   1   1];
+    exp.nr_unique_trials_per_crossing    = exp.nr_unique_trials_per_crossing.*exp.nr_repeats;
+    exp.nr_catch_trial_per_block         = (exp.nr_unique_catch_trial_per_repeats.*exp.nr_repeats) ./exp.nr_unique_trials_per_crossing;
+    exp.nr_catch_trial_all_deep          = exp.nr_catch_trial_per_block .* sum(sum(exp.session.mri.deep.ses_blocks,3),4);
+    exp.nr_trials_per_block              = exp.crossings.* cat(2,repmat(exp.block.n_trials_single_epoch,1,4),repmat(exp.block.n_trials_double_epoch,1,3),repmat(exp.block.n_trials_single_epoch,1,3));
+    
+    ses_type_1_trials = ((sum(exp.session.mri.deep.ses_blocks(:,:,:,1),3) + sum(exp.session.mri.wide.ses_blocks(:,:,:,1),3)));
+    ses_type_2_trials = ((sum(exp.session.mri.deep.ses_blocks(:,:,:,2),3) + sum(exp.session.mri.wide.ses_blocks(:,:,:,2),3)));
+    
+    exp.n_unique_trial_repeats_wide = ceil( (sum(sum(exp.session.mri.wide.ses_blocks(:,:,1,:),3),4) .*  exp.nr_trials_per_block) ./  exp.nr_unique_trials_per_crossing);
+    exp.n_unique_trial_repeats_deep = ceil( (exp.nr_catch_trial_all_deep + sum(sum(exp.session.mri.deep.ses_blocks(:,:,:,:),3),4)) .*  exp.nr_trials_per_block  ./  exp.nr_unique_trials_per_crossing);
+    exp.n_unique_trial_repeats_mri  = ceil(((ses_type_1_trials + ses_type_2_trials) .*  exp.nr_trials_per_block) ./  exp.nr_unique_trials_per_crossing);
    
     exp.n_unique_trial_repeats_behavior = ceil((exp.session.behavior.ses_blocks .*  exp.nr_trials_per_block)  ./  exp.nr_unique_trials_per_crossing);                                 
     exp.n_unique_trial_repeats_demo     = ceil((sum(sum(exp.session.demo.ses_blocks,3),4) .*  exp.nr_trials_per_block)  ./  exp.nr_unique_trials_per_crossing);
