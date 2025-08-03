@@ -243,10 +243,10 @@ if strcmp(params.env_type,'BEHAVIOR')
     
 elseif strcmp(params.env_type,'MRI')
     assert(params.ses_nr>=1 && params.ses_nr<=27);
-    if ismember(params.ses_nr, [1,27]), assert(ismember(params.ses_type, [1,2]));
+    if params.ses_nr == 1, params.is_wide = true; end
+    if ismember(params.ses_nr, [1,30]), assert(ismember(params.ses_type, [1,2]));
     else, assert(isequal(params.ses_type,1)); end
-    if params.ses_nr == 27, assert(params.run_nr>=1 && params.run_nr<=5);
-    else, assert(params.run_nr>=1 && params.run_nr<=10); end
+    assert(params.run_nr>=1 && params.run_nr<=10);
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -269,7 +269,7 @@ if isempty(params.timetable_file)
        if strcmp(params.dispName,'CCNYU_VIEWPIXX3D')
            tempfiles = matchfiles(fullfile(tmp_timetable_dir,sprintf('vcd_subj%03d_time_table_master_%s%s*.mat',params.subj_nr, choose(params.is_demo,'demo_',''),'PPROOM_EIZOFLEXSCAN')));
        else
-           tempfiles = matchfiles(fullfile(tmp_timetable_dir,sprintf('vcd_subj%03d_time_table_master_%s%s*.mat',params.subj_nr, choose(params.is_demo,'demo_',''),params.dispName)));
+           tempfiles = matchfiles(fullfile(tmp_timetable_dir,sprintf('vcd_subj%03d_time_table_master_%s%s%s*.mat',params.subj_nr, choose(params.is_wide,'wide_',''), choose(params.is_demo,'demo_',''),params.dispName)));
        end
        % If user doesn't want to generate a time table and we can't find any, end the run gracefully
        if isempty(tempfiles)
