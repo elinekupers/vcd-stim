@@ -398,18 +398,20 @@ if isempty(vcd_info) || ~exist('vcd_info','var')
     
     d = dir(fullfile(vcd_rootPath,'workspaces','info',sprintf('condition_master_*.mat')));
     dcell = struct2cell(d); filenames = dcell(1,:); clear dcell
-    is_MRI_file  = find(~cellfun(@isempty, (cellfun(@(x) regexp(x,'\w*7TAS\w*','ONCE'), filenames, 'UniformOutput', false))));
-    is_BEH_file  = find(~cellfun(@isempty, (cellfun(@(x) regexp(x,'\w*PPROOM\w*','ONCE'), filenames, 'UniformOutput', false))));    
-    is_DEMO_file = find(~cellfun(@isempty, (cellfun(@(x) regexp(x,'\w*demo\w*','ONCE'), filenames, 'UniformOutput', false))));    
+    is_DEEP_MRI_file  = find(~cellfun(@isempty, (cellfun(@(x) regexp(x,'condition_master_deep_7TAS\w*','ONCE'), filenames, 'UniformOutput', false))));
+    is_WIDE_MRI_file = find(~cellfun(@isempty, (cellfun(@(x) regexp(x,'condition_master_wide_7TAS\w*','ONCE'), filenames, 'UniformOutput', false))));
+    is_BEH_file  = find(~cellfun(@isempty, (cellfun(@(x) regexp(x,'condition_master_PPROOM\w*','ONCE'), filenames, 'UniformOutput', false))));    
+    is_DEMO_file = find(~cellfun(@isempty, (cellfun(@(x) regexp(x,'condition_master_demo\w*','ONCE'), filenames, 'UniformOutput', false))));    
     
     % remove demo file from list of condition_master files; we don't want to use that for vcd.m
-    if ~isempty(is_DEMO_file), filenames(is_DEMO_file) = []; end
+    if ~isempty(is_DEMO_file), filenames(is_DEMO_file) = {NaN}; end
+    if ~isempty(is_WIDE_MRI_file), filenames(is_WIDE_MRI_file) = {NaN}; end
     % if we have a PPROOM and/or MRI condition_master files; pick MRI file
-    if ~isempty(is_MRI_file) && ~isempty(is_BEH_file), filenames(is_BEH_file) = []; end
+    if ~isempty(is_DEEP_MRI_file) && ~isempty(is_BEH_file), filenames(is_BEH_file) = {NaN}; end
 
     % Check if we have a condition_master filename to load
-    if isempty(filenames{1})
-        error('[%s]: Can''t find vcd_info! Looking for a file called: "vcd_rootPath/workspaces/info/condition_master*.mat"',mfilename)
+    if isempty(filenames{1}) || all(cell2mat(cellfun(@(x) isequalwithequalnans(x,NaN), filenames, 'UniformOutput', false)))
+        error('[%s]: Can''t find vcd_info! Looking for a file called: "../workspaces/info/condition_master*.mat"',mfilename)
     else
         % if we have multiple condition_master files, take the most recent one.
         if length(filenames) > 1
@@ -418,15 +420,15 @@ if isempty(vcd_info) || ~exist('vcd_info','var')
                 fprintf('[%s]: Found %d vcd info files with the same name! Will pick the most recent one. (We ignore demo files.) \n', mfilename,length(filenames));
             end
             
-            if ~isempty(is_MRI_file) && isempty(is_BEH_file)
+            if ~isempty(is_DEEP_MRI_file) && isempty(is_BEH_file)
                 d = dir(fullfile(vcd_rootPath,'workspaces','info',sprintf('condition_master_7TAS*.mat')));
-            elseif isempty(is_MRI_file) && ~isempty(is_BEH_file)
+            elseif isempty(is_DEEP_MRI_file) && ~isempty(is_BEH_file)
                 d = dir(fullfile(vcd_rootPath,'workspaces','info',sprintf('condition_master_PPROOM*.mat')));
             end
             % pick the most recent one
             filenames0 = d(end).name;
             % Check if the most recent filename is one we are considering
-            assert(ismember(filenames0,filenames))
+            assert(isequal(filenames0,filenames{1}))
             % replace filenames variable
             filenames = {filenames0};
         end
