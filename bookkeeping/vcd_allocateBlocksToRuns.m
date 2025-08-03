@@ -116,7 +116,7 @@ for ses = 1:size(all_sessions,3)
                 
                 % check how many half blocks we have for this stim class?
                 half_block_count = sum(mod(block_distr(sc,:),1)<1 & mod(block_distr(sc,:),1)>0);
-                full_block_count = sum(mod(block_distr(sc,:),1)==1);
+                full_block_count = sum(mod(block_distr(sc,:),1)==0);
                 
                 for tc = 1:length(params.exp.taskclassnames)
                     
