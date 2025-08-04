@@ -114,7 +114,7 @@ end
 
 % Infer env_type from display name if empty
 if isempty(params.env_type) 
-    if strcmp(params.disp.name,{'CCNYU_VIEWPIXX3D','PPROOM_EIZOFLEXSCAN','KKOFFICE_AOCQ3277','EKHOME_ASUSVE247'})
+    if ismember(params.disp.name,{'CCNYU_VIEWPIXX3D','PPROOM_EIZOFLEXSCAN','KKOFFICE_AOCQ3277','EKHOME_ASUSVE247'})
         params.env_type = 'BEHAVIOR';  
     elseif strcmp(params.disp.name,'7TAS_BOLDSCREEN32')
         params.env_type = 'MRI';
