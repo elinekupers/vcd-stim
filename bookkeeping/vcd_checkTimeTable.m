@@ -751,8 +751,8 @@ for ses = 1:results.total_nr_of_sessions
                                 assert(isequal(sum(corr_rsp==1),sum(diff_ori<0))); %  ccw
                                 assert(isequal(sum(corr_rsp==2),sum(diff_ori>0))); %  cw
                             elseif stim == 4
-                                assert(isequal(sum(corr_rsp==1),sum(diff_ori<0))); %  left
-                                assert(isequal(sum(corr_rsp==2),sum(diff_ori>0))); %  right
+                                assert(isequal(sum(corr_rsp==1),sum(diff_ori>0))); %  left
+                                assert(isequal(sum(corr_rsp==2),sum(diff_ori<0))); %  right
                             end
                         end
                         
@@ -844,7 +844,7 @@ for ses = 1:results.total_nr_of_sessions
                             all_repeated_im_nrs_ns{st,tc} = repeated_im_nrs;
                             response_distr = histcounts(corr_rsp,[1:4]);
                             assert(all(abs(diff(response_distr-histcounts(repeated_im_nrs_resp,[1:4])))==0)); % equal nr of button presses (sfter account for uneven repeats
-                        elseif sctrmp(env_type, 'MRI')
+                        elseif strcmp(env_type, 'MRI')
                             assert(diff(histcounts(corr_rsp,[1:4]))==0); % equal nr of button presses
                         end
                     case 10 % how
