@@ -184,8 +184,8 @@ elseif ~isempty(cued_stim_loc)
             while 1
                 attempts = attempts+1;
                 
-                if attempts > 10000
-                    error('[%s]: Can''t find a solution even though we tried more than 10,000 times! Aborting!', mfilename)
+                if attempts > 20000
+                    error('[%s]: Can''t find a solution even though we tried more than 20,000 times! Aborting!', mfilename)
                 end
                 
                 %%%%%%%%% FIRST SHUFFLE NS (mix stimulus class separately for each cueing condition) %%%%%% 
@@ -239,7 +239,7 @@ elseif ~isempty(cued_stim_loc)
                     end
                     unique_stimclass = unique(curr_sample(:));
                     if length(unique_stimclass)==length(unique(stimclss_idx(:)))
-                        if sum(curr_sample(:,1)==curr_sample(:,2)) < 2 % try to minimize same stimclass for left and right stim position within a trial
+                        if sum(curr_sample(:,1)==curr_sample(:,2)) <= 2 % try to minimize same stimclass for left and right stim position within a trial
                             sample_ok(nn) = true;
                         else
                             sample_ok(nn) = false;
@@ -587,7 +587,7 @@ elseif ~isempty(cued_stim_loc)
                 fprintf('.');
             end
         end
-        
+        fprintf('Done!\n');
         
         % if block checks are completed, check is we have the
         % expected distribution of stimulus classes across all blocks
@@ -606,7 +606,6 @@ elseif ~isempty(cued_stim_loc)
         assert(isequal(stored_shuffled_cued_side, repmat([1;2],size(stored_shuffled_cued_side,1)/2,1)))
         assert(isequal(sort(stimclass_from_stim_nr(:))', sort(vcd('stimtostimclassnumber',combined_img_nr_shuffleAB(:)))))
         
-        fprintf('\n');
         combined_trial_shuffleAB3  = stored_master_trial;
         combined_img_nr_shuffleAB3 = stored_master_im_nr;
     end
