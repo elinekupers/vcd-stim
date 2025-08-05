@@ -649,7 +649,7 @@ else
                                              0.5    1   1   1   1    4/2    2/2   1   1   1;...
                                              0.5    1   1   1   1    4/2    2/2   1   1   1;...
                                                1    1   0   1   1   28/30  14/30  1   1   1]; 
-    % Only for DEEP
+    % Only for MRI
     exp.nr_unique_catch_trial_per_repeats = [ 1   2   2   2   2   1   1   0   0   0; ...
                                               1   2   2   2   2   1   1   0   0   0; ...
                                               1   2   2   2   2   1   1   0   0   0; ...
@@ -657,15 +657,21 @@ else
                                               1   1   0   1   0   1   1   1   1   1];
     exp.nr_unique_trials_per_crossing    = exp.nr_unique_trials_per_crossing.*exp.nr_repeats;
     exp.nr_catch_trial_per_block         = (exp.nr_unique_catch_trial_per_repeats.*exp.nr_repeats) ./exp.nr_unique_trials_per_crossing;
+    exp.nr_catch_trial_all_wide          = 0.5 .* exp.nr_catch_trial_per_block .* sum(sum(exp.session.mri.wide.ses_blocks,3),4);
     exp.nr_catch_trial_all_deep          = exp.nr_catch_trial_per_block .* sum(sum(exp.session.mri.deep.ses_blocks,3),4);
     exp.nr_trials_per_block              = exp.crossings.* cat(2,repmat(exp.block.n_trials_single_epoch,1,4),repmat(exp.block.n_trials_double_epoch,1,3),repmat(exp.block.n_trials_single_epoch,1,3));
     
     ses_type_1_trials = ((sum(exp.session.mri.deep.ses_blocks(:,:,:,1),3) + sum(exp.session.mri.wide.ses_blocks(:,:,:,1),3)));
     ses_type_2_trials = ((sum(exp.session.mri.deep.ses_blocks(:,:,:,2),3) + sum(exp.session.mri.wide.ses_blocks(:,:,:,2),3)));
     
-    exp.n_unique_trial_repeats_wide = ceil( (sum(sum(exp.session.mri.wide.ses_blocks(:,:,1,:),3),4) .*  exp.nr_trials_per_block) ./  exp.nr_unique_trials_per_crossing);
-    exp.n_unique_trial_repeats_deep = ceil( (exp.nr_catch_trial_all_deep + sum(sum(exp.session.mri.deep.ses_blocks(:,:,:,:),3),4)) .*  exp.nr_trials_per_block  ./  exp.nr_unique_trials_per_crossing);
-    exp.n_unique_trial_repeats_mri  = ceil(((ses_type_1_trials + ses_type_2_trials) .*  exp.nr_trials_per_block) ./  exp.nr_unique_trials_per_crossing);
+    exp.nr_catch_trials_wide            = exp.nr_unique_catch_trial_per_repeats;
+    exp.nr_catch_trials_deep            = exp.nr_unique_catch_trial_per_repeats.*[0.5 0.5 0.5 1 1 1 1 1 1 1] * 10;
+    exp.nr_trials_wide                  = (exp.nr_catch_trials_wide + sum(sum(exp.session.mri.wide.ses_blocks,3),4)) .* exp.nr_trials_per_block;
+    exp.nr_trials_deep                  = (exp.nr_catch_trials_deep + sum(sum(exp.session.mri.deep.ses_blocks,3),4)) .* exp.nr_trials_per_block;
+    
+    exp.n_unique_trial_repeats_wide     = ceil( exp.nr_trials_wide ./  exp.nr_unique_trials_per_crossing);
+    exp.n_unique_trial_repeats_deep     = ceil( exp.nr_trials_deep ./  exp.nr_unique_trials_per_crossing);
+    exp.n_unique_trial_repeats_mri      = ceil( (exp.nr_trials_wide+exp.nr_trials_deep) ./  exp.nr_unique_trials_per_crossing);
    
     exp.n_unique_trial_repeats_behavior = ceil((exp.session.behavior.ses_blocks .*  exp.nr_trials_per_block)  ./  exp.nr_unique_trials_per_crossing);                                 
     exp.n_unique_trial_repeats_demo     = ceil((sum(sum(exp.session.demo.ses_blocks,3),4) .*  exp.nr_trials_per_block)  ./  exp.nr_unique_trials_per_crossing);
