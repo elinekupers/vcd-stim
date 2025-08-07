@@ -493,13 +493,47 @@ condition_master(isnan(condition_master.session_nr),:) = [];
 condition_master.stim_class_unique_block_nr = [];
 condition_master.unique_trial_nr = [];
 
-% Reorder runs
-[~,run_idx] = sort(condition_master.run_nr);
+% Reorder runs, blocks, trials
+ses_nrs = unique(condition_master.session_nr);
+st_nrs  = unique(condition_master.session_type);
+condition_master0 = condition_master([],:);
+for ses = 1:length(ses_nrs)
+    for st = 1:length(st_nrs)
+        % grab relevant trials
+        st_idx =  (condition_master.session_nr==ses_nrs(ses) & condition_master.session_type==st_nrs(st));
+       
+        curr_table = condition_master(st_idx,:);
 
-% We keep and reorder block nr for now (we will shuffle blocks later for each subject's session)
-[~,block_idx] = sort(condition_master.block_nr(run_idx));
+        % Reorder runs per session type and session nr
+        [~,run_idx] = sort(curr_table.run_nr);
 
-condition_master = condition_master(run_idx(block_idx),:);
+        % We keep and reorder block nr for now (we will shuffle blocks later for each subject's session)
+        [~,block_idx] = sort(curr_table.block_nr(run_idx));
+        
+        % apply new trial order
+        curr_table = curr_table(run_idx(block_idx),:);
+        
+        % block numbers are still continuous, counting across runs..
+        block_nrs = unique(curr_table.block_nr);
+        
+        % get trial order within each block, and sort trials (ascending)
+        for bb = 1:length(block_nrs)
+            t_idx = (curr_table.block_nr == block_nrs(bb));
+            assert(ismember(sum(t_idx),[4,8]))
+            [~,trial_idx] = sort(curr_table.trial_nr(t_idx));
+            t_sub = find(t_idx);
+            curr_table(t_sub,:) = curr_table(t_sub(trial_idx),:);
+        end
+        % concatenate sorted table chunk
+        condition_master0 = cat(1, condition_master0,curr_table);
+        
+        % clear some memory
+        clear curr_table
+    end
+end
+% overwrite condition master 
+condition_master = condition_master0;
+clear condition_master0 
     
 % Define column order by their names (yes, this is tricky//not ideal)
 newOrderNames = {'session_nr','session_type','run_nr','block_nr','trial_nr',...
