@@ -623,8 +623,11 @@ else % Recreate conditions and blocks and trials
     
     % Check unique trial nr
     assert(isequal(condition_master.unique_trial_nr(scc_trials),[1:length(condition_master.unique_trial_nr(scc_trials))]'));
-    condition_master.trial_nr(scc_trials) = repmat([1:params.exp.block.n_trials_single_epoch]',length(condition_master.unique_trial_nr(scc_trials))/params.exp.block.n_trials_single_epoch,1);
-    condition_master.stim_class_unique_block_nr(scc_trials) = repelem([1:length(condition_master.unique_trial_nr(scc_trials))/params.exp.block.n_trials_single_epoch],params.exp.block.n_trials_single_epoch)';
+    
+    new_trial_nr = repmat([1:params.exp.block.n_trials_single_epoch]',ceil(length(condition_master.unique_trial_nr(scc_trials))/params.exp.block.n_trials_single_epoch),1);
+    new_trial_nr = new_trial_nr(1:length(scc_trials));
+    condition_master.trial_nr(scc_trials) = new_trial_nr;
+    condition_master.stim_class_unique_block_nr(scc_trials) = new_trial_nr;
     
     
     
