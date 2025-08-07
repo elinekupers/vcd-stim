@@ -27,24 +27,24 @@ function [all_sessions,session_types,n_runs_per_session,min_run_dur, ...
 if ~isfield(params,'is_demo'), params.is_demo = false; end
 if ~isfield(params,'is_wide'), params.is_wide = false; end
 
-% Get params for session environment (MRI or Behavior)
+% Get params for session environment (wide MRI, wide+deep MRI or Behavior)
 if strcmp(env_type,'MRI')
     
-    % Concatenate wide and deep sessions
+    % Check if this is a wide or deep experiment
     if params.is_wide
-        all_sessions       = params.exp.session.mri.wide.ses_blocks;
-        session_types      = params.exp.session.mri.wide.session_types;
-        n_runs_per_session = params.exp.session.mri.wide.n_runs_per_session;
+        all_sessions         = params.exp.session.mri.wide.ses_blocks;
+        session_types        = params.exp.session.mri.wide.session_types;
+        n_runs_per_session   = params.exp.session.mri.wide.n_runs_per_session;
         nr_blocks_per_run    = params.exp.session.mri.wide.nr_blocks_per_run;
         unique_trial_repeats = params.exp.n_unique_trial_repeats_wide;
-        catch_trial_flag     = false;
-    else
+        catch_trial_flag     = params.exp.session.mri.wide.add_catch_trials;
+    else % wide+deep session
         all_sessions         = cat(3, params.exp.session.mri.wide.ses_blocks, params.exp.session.mri.deep.ses_blocks);
         session_types        = cat(1, params.exp.session.mri.wide.session_types, params.exp.session.mri.deep.session_types);
         n_runs_per_session   = cat(1, params.exp.session.mri.wide.n_runs_per_session, params.exp.session.mri.deep.n_runs_per_session);
         nr_blocks_per_run    = cat(1, params.exp.session.mri.wide.nr_blocks_per_run, params.exp.session.mri.deep.nr_blocks_per_run);
         unique_trial_repeats = params.exp.n_unique_trial_repeats_mri;
-        catch_trial_flag     = true;
+        catch_trial_flag     = params.exp.session.mri.deep.add_catch_trials;
     end
     nr_session_types     = 2;
     min_run_dur          = params.exp.run.min_run_dur_MRI;
