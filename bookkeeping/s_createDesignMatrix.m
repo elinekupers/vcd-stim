@@ -65,7 +65,7 @@ params.saveFigsFolder = fullfile(vcd_rootPath,'figs'); % where to store visualiz
 
 % Get display params
 % Choose from: '7TAS_BOLDSCREEN32','KKOFFICE_AOCQ3277','EKHOME_ASUSVE247','PPROOM_EIZOFLEXSCAN','CCNYU_VIEWPIXX3D'
-dispname    = 'PPROOM_EIZOFLEXSCAN'; 
+dispname    = '7TAS_BOLDSCREEN32'; 
 params.disp = vcd_getDisplayParams(dispname);
 
 % Infer environment type
@@ -77,6 +77,9 @@ end
 
 % Flag if this is a demo run (true) or not (false)..
 params.is_demo = false;
+
+% Flag if this is a wide MRI run (true) or not (false)..
+params.is_wide = true;
 
 % SETUP RNG
 params.rng.rand_seed = sum(100*clock);
@@ -111,6 +114,7 @@ params.exp    = vcd_getSessionParams('disp_name', params.disp.name, ...
 % * vcd_defineUniqueImages
 % * vcd_createConditionMaster
 % * vcd_shuffleStimForTaskClass
+% * vcd_getCorrectButtonResponse
 
 [params, condition_master, all_unique_im, all_cond] = ...
             vcd_createConditions(params,  'load_params',  load_params, ...
