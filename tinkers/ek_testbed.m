@@ -113,6 +113,7 @@ for st = ses_type
     end
 end
 
+is_wide = true;
 for st = ses_type
     clear behresults
     for rr = 1:10
@@ -127,5 +128,6 @@ for st = ses_type
         behresults(rr) = performance;
     end
     
-    vcd_checkTimeTable(time_table_master,behresults)
+    
+    vcd_checkTimeTable(time_table_master,'behresults',behresults,'is_wide',is_wide)
 end
