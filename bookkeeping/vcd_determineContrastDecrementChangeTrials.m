@@ -36,11 +36,6 @@ for st = unique(condition_master.session_type)'
     % What side is cued for each CD trial?
     cd_blocks_cued_side = cd_trials.is_cued;
     
-    % what is the stimclass?
-    tmp_cued_side = cd_blocks_cued_side;
-    tmp_cued_side(tmp_cued_side==3) = 1;
-    cd_blocks_stimclass = cd_trials.stim_class;
-    
     % There should be no nans for "cd_blocks_cued_side" (we let this constraint
     % loose for demo sessions)
     if ~params.is_demo
@@ -53,14 +48,15 @@ for st = unique(condition_master.session_type)'
     % How often do we expect a trial with a CD change?
     expected_nr_cd_trials = round((nr_cued_cd_trials*params.exp.trial.cd.prob_change)/2)*2;
     expected_nr_cd_trials_per_cue = round(histcounts(cd_blocks_cued_side)*params.exp.trial.cd.prob_change);
+    
     % If the rounding of separate left/right/neutral cued trials results
     % in 1 less CD+ trial than the overal expected nr of CD+ trials across
     % all cueing conditions, then we remove one trial from the overall
     % expected nr of CD+ trials
     if sum(expected_nr_cd_trials_per_cue) < expected_nr_cd_trials
-       if isequal(sum(expected_nr_cd_trials_per_cue)+1, expected_nr_cd_trials)
-           expected_nr_cd_trials = expected_nr_cd_trials-1;
-       end
+        if isequal(sum(expected_nr_cd_trials_per_cue)+1, expected_nr_cd_trials)
+            expected_nr_cd_trials = expected_nr_cd_trials-1;
+        end
     elseif sum(expected_nr_cd_trials_per_cue) > expected_nr_cd_trials
         if isequal(sum(expected_nr_cd_trials_per_cue)-1, expected_nr_cd_trials)
             expected_nr_cd_trials = expected_nr_cd_trials+1;
@@ -68,15 +64,36 @@ for st = unique(condition_master.session_type)'
     end
     assert(isequal(sum(expected_nr_cd_trials_per_cue),expected_nr_cd_trials));
     
-    %%% CHECK STIM CLASS
+    % How many CD+ trials per stimulus class?
     min_nr_cd_trials_per_stimclass = zeros(1,5);
-    min_nr_cd_trials_per_stimclass(unique(cd_trials.stim_class)') = floor(expected_nr_cd_trials/length(unique(cd_trials.stim_class)));
+    unique_stim_class = unique(cd_trials.stim_class)';
+    min_nr_cd_trials_per_stimclass(ismember(unique_stim_class,5)) = floor(sum(expected_nr_cd_trials_per_cue(3))/sum(ismember(unique_stim_class,5)));
+    cd_l_r = sum(expected_nr_cd_trials_per_cue(1:2));
+    if mod(cd_l_r/sum(ismember(unique_stim_class,[1:4])),1)~=0
+        % if we deal with uneven nr of trials, we distribute the left over trials across
+        % the stimulus classes
+        min_nr_cd_trials_per_stimclass(ismember(unique_stim_class,[1:4])) = floor(cd_l_r/sum(ismember(unique_stim_class,[1:4])));
+        remainder = rem(cd_l_r,sum(ismember(unique_stim_class,[1:4])));
+        bonus_idx = randsample(unique_stim_class(ismember(unique_stim_class,[1:4])),remainder);
+        min_nr_cd_trials_per_stimclass(bonus_idx)=min_nr_cd_trials_per_stimclass(bonus_idx)+1;
+    else
+        min_nr_cd_trials_per_stimclass(ismember(unique_stim_class,[1:4])) = cd_l_r/sum(ismember(unique_stim_class,[1:4]));
+    end
+    assert(isequal(sum(min_nr_cd_trials_per_stimclass),sum(expected_nr_cd_trials_per_cue)))
+    assert(isequal(sum(expected_nr_cd_trials_per_cue),expected_nr_cd_trials));
     
     % Check how many conditions we have that we want to check for balancing:
     % 5 stim classes, 3 cue types, 3 contrast levels, 3 coherence levels, 5 super ordinate categories
     nConditions = length(params.exp.stimclassnames)+length(unique(cd_trials.is_cued))+ ...
         length(params.stim.gabor.contrast)+length(params.stim.rdk.dots_coherence)+length(params.stim.obj.super_cat);
     
+    % Now we will create a NxM design matrix, where N are the rows (nr of
+    % CD+ trials), and M are the columns, which represent spatial cueing
+    % direction (1=left, 2=right, 3=neutral), stimulus class (4=GBR, 5=RDK,
+    % 6=DOT, 7=OBJ, 8=NS), Gabor contrast levels (9=low, 10=medium,
+    % 11=high), RDK motion direction (12=low, 13=medium, 14=high), OBJ and
+    % NS superordinate semantic category (15=human, 16=animal, 17=object,
+    % 18=food, 19=place).
     cue_idx = 1:length(unique(cd_trials.is_cued));
     sc_idx  =  (max(cue_idx)+1):(max(cue_idx)+length(params.exp.stimclassnames));
     con_idx = (max(sc_idx)+1):(max(sc_idx)+length(params.stim.gabor.contrast));
@@ -112,181 +129,223 @@ for st = unique(condition_master.session_type)'
     % spatial cueing conditions, stim feature levels..
     % basically we resample trials until we find the sample we like
     
-    fprintf('[%s]: Sample cd trials',mfilename)
+    fprintf('[%s]: Sample cd trials for session type %d.',mfilename,st)
     max_attempts = 200000;
     nr_attempts = 0;
-    
-    selected_cd_trials = [];
-    
-    %%%%% select cd trials %%%%%
-    for ct = unique(cd_trials.is_cued)'
+    max_ct2_attempts = 20;
+
+    % We will shuffle trial order based on stimulus class and randomly select CD+ trials.
+    sample_not_ok = true;
+    while sample_not_ok
         
-        % Get trials with the given spatial cue
-        curr_cued_trials = cond_mat(:,ct)==1;
-        
-        % Reset flags
+        % Reset flags and selected trials
+        selected_cd_trials = [];
         reshuffle_trials = zeros(1,length(min_nr_cd_trials_per_stimclass));
         
-        if ismember(ct,[1,2])
-            sampled_stimclass = shuffle_concat([1:sum(unique(cd_trials.stim_class)<5)], ceil(expected_nr_cd_trials_per_cue(ct)/sum(unique(cd_trials.stim_class)<5)));
-            sampled_stimclass = sampled_stimclass(1:expected_nr_cd_trials_per_cue(ct));
+        %%%%% select cd trials %%%%%
+        for ct = unique(cd_trials.is_cued)'
             
-            if ct == 2
-                curr_stimclass_distribution = histcounts(cd_trials.stim_class(selected_cd_trials),[1:5]);
-                sampled_distribution        = histcounts(sampled_stimclass,[1:5]);
-                sample_not_ok = any((sampled_distribution + curr_stimclass_distribution) < min_nr_cd_trials_per_stimclass([1:sum(unique(cd_trials.stim_class)<5)]));
-                while sample_not_ok
+            switch ct
+                
+                case {1,2} % GBR-CD, RDK-CD, DOT-CD, OBJ-CD
+                    
+                    % Get trials with the given spatial cue
+                    curr_cued_trials = cond_mat(:,ct)==1;
+                    
+                    if ct == 1
+                        % Reset flags for classic stim, which have left/right spatial cues
+                        reshuffle_trials(1:4) = 0;
+                        sample_not_ok = false;
+                    end
+                    
+                    % Sample trials, get their stimulus class
                     sampled_stimclass = shuffle_concat([1:sum(unique(cd_trials.stim_class)<5)], ceil(expected_nr_cd_trials_per_cue(ct)/sum(unique(cd_trials.stim_class)<5)));
                     sampled_stimclass = sampled_stimclass(1:expected_nr_cd_trials_per_cue(ct));
-                    sampled_distribution        = histcounts(sampled_stimclass,[1:5]);
-                    sample_not_ok = any((sampled_distribution + curr_stimclass_distribution) < min_nr_cd_trials_per_stimclass([1:sum(unique(cd_trials.stim_class)<5)]));
-                end
-            end
-            
-            for sc = 1:sum(unique(cd_trials.stim_class)<5)
-                
-                while 1
-                    nr_attempts = nr_attempts+1;
                     
-                    % Sample cued trials for given stimclass
-                    sampled_trials = datasample(find(curr_cued_trials & cd_trials.stim_class==sc), sum(sampled_stimclass==sc), 'Replace',false); % sample without replacement
-                    
-                    stimclass_trials = cond_mat(sampled_trials,sc_idx(sc));
-                    
-                    % Check constraints for each stimulus class
-                    if sc == 1 % Gabors
-                        % check contrast levels if we have gabor trials
-                        nr_trials = sum(cond_mat(sampled_trials, con_idx),1);
-                        % if we sampled fewer trials than nr of contrast levels
-                        if length(sampled_trials) < length(params.stim.gabor.contrast)
-                            % then make sure we sample as many different
-                            % contrast levels as we have trials
-                            constraint = zeros(1,length(params.stim.gabor.contrast));
-                            constraint(1:length(sampled_trials)) = ones(1,length(sampled_trials));
-                            if  any(sort(nr_trials) < sort(constraint))
-                                reshuffle_trials(sc) = true;
-                            else
-                                reshuffle_trials(sc) = false;
-                            end
-                        else % otherwise we will check against the expected number of contrast levels
-                            constraint = repmat(floor(min_nr_cd_trials_per_stimclass(sc)/length(params.stim.gabor.contrast)),1,length(params.stim.gabor.contrast));
-                            if  any(nr_trials < constraint)
-                                reshuffle_trials(sc) = true;
-                            else
-                                reshuffle_trials(sc) = false;
+                    % After selecting left cued trials, we will select right
+                    % cued trials and make sure that the combined set of trials
+                    % have a distribution that is equally distributed across
+                    % the 4 classic stimulus classes
+                    if ct == 2
+                        % try finding a shuffle that works with the sample for
+                        % left cued stimuli..
+                        ct2_shuffle_attempts = 0;
+                        while 1
+                            ct2_shuffle_attempts = ct2_shuffle_attempts+1;
+                            
+                            curr_stimclass_distribution = histcounts(cd_trials.stim_class(selected_cd_trials),[1:5]);
+                            sampled_stimclass     = shuffle_concat([1:sum(unique(cd_trials.stim_class)<5)], ceil(expected_nr_cd_trials_per_cue(ct)/sum(unique(cd_trials.stim_class)<5)));
+                            sampled_stimclass     = sampled_stimclass(1:expected_nr_cd_trials_per_cue(ct));
+                            sampled_distribution  = histcounts(sampled_stimclass,[1:5]);
+                            sample_not_ok         = any((sampled_distribution + curr_stimclass_distribution) < min_nr_cd_trials_per_stimclass([1:sum(unique(cd_trials.stim_class)<5)]));
+                            
+                            if ~sample_not_ok || ct2_shuffle_attempts > max_ct2_attempts
+                                break;
                             end
                         end
+                    end
+                    
+                    if ~sample_not_ok % if sampled trials are ok, we continue with our checks
                         
-                    elseif sc == 2 % RDKs
-                        % check coherence levels if we have rdk trials
-                        nr_trials = sum(cond_mat(sampled_trials(stimclass_trials==1), coh_idx),1);
-                        % if we sampled fewer trials than nr of coherence levels
-                        if length(sampled_trials) < length(params.stim.rdk.dots_coherence)
-                            % then make sure we sample as many different
-                            % coherence levels as we have trials
-                            constraint = zeros(1,length(params.stim.rdk.dots_coherence));
-                            constraint(1:length(sampled_trials)) = ones(1,length(sampled_trials));
-                            if  any(sort(nr_trials) < sort(constraint))
-                                reshuffle_trials(sc) = true;
-                            else
-                                reshuffle_trials(sc) = false;
-                            end
-                        else % otherwise we will check against the expected number of coherence levels
-                            constraint = repmat(floor(min_nr_cd_trials_per_stimclass(sc)/length(params.stim.rdk.dots_coherence)),1,length(params.stim.rdk.dots_coherence));
-                            if any(nr_trials < constraint)
-                                reshuffle_trials(sc) = true;
-                            else
-                                reshuffle_trials(sc) = false;
+                        for sc = 1:sum(unique(cd_trials.stim_class)<5)
+                            
+                            while 1
+                                nr_attempts = nr_attempts+1;
+                                if ismember(nr_attempts,round(linspace(1,max_attempts,20)))
+                                    fprintf('.');
+                                end
+                                % Sample cued trials for given stimclass
+                                sampled_trials = datasample(find(curr_cued_trials & cd_trials.stim_class==sc), sum(sampled_stimclass==sc), 'Replace',false); % sample without replacement
+                                
+                                stimclass_trials = cond_mat(sampled_trials,sc_idx(sc));
+                                
+                                % Check constraints for each stimulus class
+                                if sc == 1 % Gabors
+                                    % check contrast levels if we have gabor trials
+                                    nr_trials = sum(cond_mat(sampled_trials, con_idx),1);
+                                    % if we sampled fewer trials than nr of contrast levels
+                                    if length(sampled_trials) < length(params.stim.gabor.contrast)
+                                        % then make sure we sample as many different
+                                        % contrast levels as we have trials
+                                        constraint = zeros(1,length(params.stim.gabor.contrast));
+                                        constraint(1:length(sampled_trials)) = ones(1,length(sampled_trials));
+                                        if  any(sort(nr_trials) < sort(constraint))
+                                            reshuffle_trials(sc) = true;
+                                        else
+                                            reshuffle_trials(sc) = false;
+                                        end
+                                    else % otherwise we will check against the expected number of contrast levels
+                                        constraint = repmat(floor(min_nr_cd_trials_per_stimclass(sc)/length(params.stim.gabor.contrast)),1,length(params.stim.gabor.contrast));
+                                        if  any(nr_trials < constraint)
+                                            reshuffle_trials(sc) = true;
+                                        else
+                                            reshuffle_trials(sc) = false;
+                                        end
+                                    end
+                                    
+                                elseif sc == 2 % RDKs
+                                    % check coherence levels if we have rdk trials
+                                    nr_trials = sum(cond_mat(sampled_trials(stimclass_trials==1), coh_idx),1);
+                                    % if we sampled fewer trials than nr of coherence levels
+                                    if length(sampled_trials) < length(params.stim.rdk.dots_coherence)
+                                        % then make sure we sample as many different
+                                        % coherence levels as we have trials
+                                        constraint = zeros(1,length(params.stim.rdk.dots_coherence));
+                                        constraint(1:length(sampled_trials)) = ones(1,length(sampled_trials));
+                                        if  any(sort(nr_trials) < sort(constraint))
+                                            reshuffle_trials(sc) = true;
+                                        else
+                                            reshuffle_trials(sc) = false;
+                                        end
+                                    else % otherwise we will check against the expected number of coherence levels
+                                        constraint = repmat(floor(min_nr_cd_trials_per_stimclass(sc)/length(params.stim.rdk.dots_coherence)),1,length(params.stim.rdk.dots_coherence));
+                                        if any(nr_trials < constraint)
+                                            reshuffle_trials(sc) = true;
+                                        else
+                                            reshuffle_trials(sc) = false;
+                                        end
+                                    end
+                                    
+                                elseif sc == 3 % single dot
+                                    % do nothing
+                                elseif sc == 4 % objects
+                                    % check super ordinate category levels if we have obj trials
+                                    nr_trials = sum(cond_mat(sampled_trials(stimclass_trials==1), sup_idx),1);
+                                    % if we sampled fewer trials than nr of superordinate categories
+                                    if length(sampled_trials) < length(params.stim.obj.super_cat)
+                                        % then make sure we sample as many different
+                                        % supercategories as we have trials
+                                        constraint = zeros(1,length(params.stim.obj.super_cat));
+                                        constraint(1:length(sampled_trials)) = ones(1,length(sampled_trials));
+                                        if  any(sort(nr_trials) < sort(constraint))
+                                            reshuffle_trials(sc) = true;
+                                        else
+                                            reshuffle_trials(sc) = false;
+                                        end
+                                    else % otherwise we will check against the expected number of superordinate categories
+                                        constraint = repmat(floor(min_nr_cd_trials_per_stimclass(sc)/length(params.stim.obj.super_cat)),1,length(params.stim.obj.super_cat));
+                                        if  any(nr_trials < constraint)
+                                            reshuffle_trials(sc) = true;
+                                        else
+                                            reshuffle_trials(sc) = false;
+                                        end
+                                    end
+                                end
+                                if sum(reshuffle_trials(:))==0
+                                    selected_cd_trials = cat(1,selected_cd_trials,sampled_trials);
+                                    break;
+                                else
+                                    if nr_attempts > max_attempts
+                                        error('\n[%s]: Can''t reach a solution for CD trial selection after %d attempts!',mfilename, max_attempts)
+                                    end
+                                end
                             end
                         end
+                    end
+                    
+                case 3 % NS-CD
+                    
+                    if ~sample_not_ok
                         
-                    elseif sc == 3 % single dot
-                        % do nothing
-                    elseif sc == 4 % objects
-                        % check super ordinate category levels if we have obj trials
-                        nr_trials = sum(cond_mat(sampled_trials(stimclass_trials==1), sup_idx),1);
-                        % if we sampled fewer trials than nr of superordinate categories
-                        if length(sampled_trials) < length(params.stim.obj.super_cat)
-                            % then make sure we sample as many different
-                            % supercategories as we have trials
-                            constraint = zeros(1,length(params.stim.obj.super_cat));
-                            constraint(1:length(sampled_trials)) = ones(1,length(sampled_trials));
-                            if  any(sort(nr_trials) < sort(constraint))
-                                reshuffle_trials(sc) = true;
-                            else
-                                reshuffle_trials(sc) = false;
+                        % Get trials with the given spatial cue
+                        curr_cued_trials = cond_mat(:,ct)==1;
+                        
+                        % Get stim class
+                        sc = find(ismember(params.exp.stimclassnames,'ns'));
+                        
+                        while 1
+                            nr_attempts = nr_attempts+1;
+                            
+                            % Sample neutral cued trials
+                            sampled_stimclass = ones(1,expected_nr_cd_trials_per_cue(ct));
+                            
+                            % Sample cued trials for given stimclass
+                            sampled_trials = datasample(find(curr_cued_trials & cd_trials.stim_class==sc), sum(sampled_stimclass), 'Replace',false); % sample without replacement
+                            
+                            stimclass_trials = cond_mat(sampled_trials,sc_idx(sc));
+                            
+                            % check super ordinate category levels if we have ns trials
+                            nr_trials = sum(cond_mat(sampled_trials(stimclass_trials==1), sup_idx),1);
+                            % if we sampled fewer trials than nr of superordinate categories
+                            if length(sampled_trials) < length(params.stim.ns.super_cat)
+                                % then make sure we sample as many different
+                                % supercategories as we have trials
+                                constraint = zeros(1,length(params.stim.ns.super_cat));
+                                constraint(1:length(sampled_trials)) = ones(1,length(sampled_trials));
+                                if  any(sort(nr_trials) < sort(constraint))
+                                    reshuffle_trials(sc) = true;
+                                else
+                                    reshuffle_trials(sc) = false;
+                                end
+                            else % otherwise we will check against the expected number of superordinate categories
+                                constraint = repmat(floor(min_nr_cd_trials_per_stimclass(sc)/length(params.stim.ns.super_cat)),1,length(params.stim.ns.super_cat));
+                                if any(nr_trials < constraint)
+                                    reshuffle_trials(sc) = true;
+                                else
+                                    reshuffle_trials(sc) = false;
+                                end
                             end
-                        else % otherwise we will check against the expected number of superordinate categories
-                            constraint = repmat(floor(min_nr_cd_trials_per_stimclass(sc)/length(params.stim.obj.super_cat)),1,length(params.stim.obj.super_cat));
-                            if  any(nr_trials < constraint)
-                                reshuffle_trials(sc) = true;
+                            
+                            if sum(reshuffle_trials(:))==0
+                                selected_cd_trials = cat(1,selected_cd_trials,sampled_trials);
+                                sample_not_ok = false;
+                                break;
                             else
-                                reshuffle_trials(sc) = false;
+                                if nr_attempts > max_attempts
+                                    error('\n[%s]: Can''t reach a solution for CD trial selection after %d attempts!',mfilename, max_attempts)
+                                end
                             end
                         end
                     end
-                    if sum(reshuffle_trials(:))==0
-                        selected_cd_trials = cat(1,selected_cd_trials,sampled_trials);
-                        break;
-                    else
-                        if nr_attempts > max_attempts
-                            error('\n[%s]: Can''t reach a solution for CD trial selection after %d attempts!',mfilename, max_attempts)
-                        end
-                    end
-                end
-            end
-            
-        elseif ct == 3 % scenes % NS
-            sc = 5;
-            
-            while 1
-                nr_attempts = nr_attempts+1;
-                
-                % Sample neutral cued trials
-                sampled_stimclass = ones(1,expected_nr_cd_trials_per_cue(ct));
-                
-                % Sample cued trials for given stimclass
-                sampled_trials = datasample(find(curr_cued_trials & cd_trials.stim_class==sc), sum(sampled_stimclass), 'Replace',false); % sample without replacement
-                
-                stimclass_trials = cond_mat(sampled_trials,sc_idx(sc));
-                
-                % check super ordinate category levels if we have ns trials
-                nr_trials = sum(cond_mat(sampled_trials(stimclass_trials==1), sup_idx),1);
-                % if we sampled fewer trials than nr of superordinate categories
-                if length(sampled_trials) < length(params.stim.ns.super_cat)
-                    % then make sure we sample as many different
-                    % supercategories as we have trials
-                    constraint = zeros(1,length(params.stim.ns.super_cat));
-                    constraint(1:length(sampled_trials)) = ones(1,length(sampled_trials));
-                    if  any(sort(nr_trials) < sort(constraint))
-                        reshuffle_trials(sc) = true;
-                    else
-                        reshuffle_trials(sc) = false;
-                    end
-                else % otherwise we will check against the expected number of superordinate categories
-                    constraint = repmat(floor(min_nr_cd_trials_per_stimclass(sc)/length(params.stim.ns.super_cat)),1,length(params.stim.ns.super_cat));
-                    if any(nr_trials < constraint)
-                        reshuffle_trials(sc) = true;
-                    else
-                        reshuffle_trials(sc) = false;
-                    end
-                end
-                
-                if sum(reshuffle_trials(:))==0
-                    selected_cd_trials = cat(1,selected_cd_trials,sampled_trials);
-                    break;
-                else
-                    if nr_attempts > max_attempts
-                        error('\n[%s]: Can''t reach a solution for CD trial selection after %d attempts!',mfilename, max_attempts)
-                    end
-                end
             end
         end
     end
     
+    
     % Make sure we selected the nr of trials we expect for the given probability.
     assert(isequal(expected_nr_cd_trials,length(selected_cd_trials)));
     
+    % Collapse the matrix distribution across trials
     cd_trials_mat = cond_mat(sort(selected_cd_trials),:);
     cond_cnt      = sum(cd_trials_mat,1);
     
@@ -365,9 +424,12 @@ if any(ismember(condition_master.is_cued(condition_master.task_class==2 & condit
 end
 if any(condition_master.is_cued(condition_master.task_class==2 & condition_master.is_cued>0)==3)
     assert(isequal(sum(~isnan(condition_master.cd_start(condition_master.task_class == 2 & condition_master.is_cued==3))),...
-         sum(~isnan(condition_master.cd_start(condition_master.task_class == 2 & condition_master.is_cued==3)))))
+        sum(~isnan(condition_master.cd_start(condition_master.task_class == 2 & condition_master.is_cued==3)))))
 end
 
+% check if the number CD+ trials matches with our probability
+assert( ismember(sum(~isnan(condition_master.cd_start)),round(sum(condition_master.task_class==2).*params.exp.trial.cd.prob_change)+[-1:1]) ); % we allow rounding error of 1 trial.
 
+return
 
 
