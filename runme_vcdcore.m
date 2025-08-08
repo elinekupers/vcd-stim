@@ -242,9 +242,9 @@ if strcmp(params.env_type,'BEHAVIOR')
     assert(isequal(params.ses_type,1));
     
 elseif strcmp(params.env_type,'MRI')
-    assert(params.ses_nr>=1 && params.ses_nr<=27);
+    assert(params.ses_nr>=1 && params.ses_nr<=31);
     if params.ses_nr == 1, params.is_wide = true; end
-    if ismember(params.ses_nr, [1,30]), assert(ismember(params.ses_type, [1,2]));
+    if ismember(params.ses_nr, [1,31]), assert(ismember(params.ses_type, [1,2]));
     else, assert(isequal(params.ses_type,1)); end
     assert(params.run_nr>=1 && params.run_nr<=10);
 end
