@@ -232,6 +232,7 @@ end
 % Can we actually run this experiment?
 assert(params.subj_nr>=0 && (params.subj_nr<=999));
 if strcmp(params.env_type,'BEHAVIOR')
+    params.is_wide  = false;
     if params.is_demo
         if params.run_nr~=1, error('[%s]: Run number can only be 1 for demo runs',mfilename); end
         if ~ismember(params.ses_nr,[1:3]), error('[%s]: Session number can only be 1, 3, or 3 for demo runs',mfilename); end
