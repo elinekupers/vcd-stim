@@ -235,12 +235,13 @@ for ses = 1:length(session_nrs)
                 
                 
                 % use crossingIDs to remove any fixation related button responses outside fixation task blocks
-                fix_crossing_nr = unique(this_run.crossing_nr(find(ismember(this_run.crossing_nr,find(~cellfun(@isempty, regexp(params.exp.crossingnames,'fix')))))));
+                fix_crossing_nr = this_run.crossing_nr(this_run.event_id==90 & (ismember(this_run.crossing_nr,find(~cellfun(@isempty, regexp(params.exp.crossingnames,'fix'))))));
+                fix_crossing_blocknr = this_run.block_nr(this_run.event_id==90 & (ismember(this_run.crossing_nr,find(~cellfun(@isempty, regexp(params.exp.crossingnames,'fix'))))));
                 fix_block_on = [];
                 for fc = 1:length(fix_crossing_nr)
-                    fix_block_start = min(this_run.event_start(this_run.crossing_nr == fix_crossing_nr(fc)))+1; % note +1 for frame indexing
-                    fix_block_end   = max(this_run.event_end(this_run.crossing_nr == fix_crossing_nr(fc))); % note -1 +1 cancel eachother to align with end of frame
-                    fix_block_on    = cat(1,fix_block_on,fix_block_start:fix_block_end);
+                    fix_block_start = min(this_run.event_start(this_run.block_nr==fix_crossing_blocknr(fc) & this_run.crossing_nr == fix_crossing_nr(fc)))+1; % note +1 for frame indexing
+                    fix_block_end   = max(this_run.event_end(this_run.block_nr==fix_crossing_blocknr(fc) & this_run.crossing_nr == fix_crossing_nr(fc))); % note -1 +1 cancel eachother to align with end of frame
+                    fix_block_on    = cat(2,fix_block_on,fix_block_start:fix_block_end);
                 end
                 fix_block_off   = setdiff([1:run_dur],fix_block_on);
                 assert(isempty(intersect(fix_block_on,fix_block_off)))
