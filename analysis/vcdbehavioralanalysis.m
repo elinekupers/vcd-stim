@@ -1,8 +1,11 @@
-function results = vcdbehavioralanalysis(filename);
+function results = vcdbehavioralanalysis(filename,wantverbose,blockswap);
 
-% function results = vcdbehavioralanalysis(filename);
+% function results = vcdbehavioralanalysis(filename,wantverbose,blockswap);
 %
 % <filename> is the .mat file saved after running the VCD experiment for one run
+% <wantverbose> (optional) is whether to verbosely report extra information. Default: 0.
+% <blockswap> (optional) is a vector (possibly empty) of block numbers for which we
+%   should swap 1s and 2s. Default: [].
 %
 % Check timing, deal with buttons and triggers, and analyze the behavioral data.
 % We include a number of sanity checks (various asserts and warnings).
@@ -115,6 +118,7 @@ function results = vcdbehavioralanalysis(filename);
 % - The initial dot color is not treated as a change event.
 %
 % History:
+% - 2025/08/11 - add <wantverbose>, <blockswap>
 % - 2025/07/21 - add cdonset to trialinfo
 
 %% Internal constants
@@ -127,6 +131,16 @@ triggerkeys = {'5' 't'};  % this indicates buttons that are interpreted as a tri
 responsewindow_reg = [0 4500 4800];  % we accept buttons in this range of milliseconds after stimulus onset (for all tasks other than fixation)
                                        % the third number indicates how far to detect excess buttons
 responsewindow_fix = [100 1500];  % for the fixation task, we accept buttons in this range of milliseconds after each dot change
+
+%% Inputs
+
+% inputs
+if ~exist('wantverbose','var') || isempty(wantverbose)
+  wantverbose = 0;
+end
+if ~exist('blockswap','var') || isempty(blockswap)
+  blockswap = [];
+end
 
 %% Setup
 
@@ -482,6 +496,17 @@ while 1
     results.trialinfo.crossing_nr(rii) =  a1.run_table.crossing_nr(ii);
     results.trialinfo.trial_nr(rii) =     a1.run_table.trial_nr(ii);
     
+    % report to command window
+    if wantverbose
+      fprintf('session nr = %d, session type = %d, run nr = %d, block nr = %d, crossing nr = %d, trial nr = %d\n', ...
+              results.trialinfo.session_nr(rii), ...
+              results.trialinfo.session_type(rii), ...
+              results.trialinfo.run_nr(rii), ...
+              results.trialinfo.block_nr(rii), ...
+              results.trialinfo.crossing_nr(rii), ...
+              results.trialinfo.trial_nr(rii));
+    end
+    
     % figure out if this is a single- or double-image trial
     if a1.run_table.trial_type(ii)==1
       idmatch = 94;  % for stim1
@@ -540,6 +565,16 @@ while 1
       okok = find( buttontimes > windowstart & ...
                    buttontimes <= windowend & ...
                    ismember(buttonpressed,choicebuttons) );
+      
+      % swap if necessary
+      if ismember(results.trialinfo.block_nr(rii),flatten(blockswap))
+        buttonpressed(okok) = swapstuff(buttonpressed(okok));
+      end
+      
+      % report to command window
+      if wantverbose
+        fprintf('  buttonpressed: %s\n',cell2str(buttonpressed(okok)));
+      end
 
       % if no buttons pressed
       if isempty(okok)
@@ -629,6 +664,17 @@ while 1
       results.trialinfo.stim_cued{rii} =    NaN;   % NOTE!
       results.trialinfo.excess_buttons(rii) = NaN; % NOTE!
 
+      % report to command window
+      if wantverbose
+        fprintf('session nr = %d, session type = %d, run nr = %d, block nr = %d, crossing nr = %d, trial nr = %d\n', ...
+                results.trialinfo.session_nr(rii), ...
+                results.trialinfo.session_type(rii), ...
+                results.trialinfo.run_nr(rii), ...
+                results.trialinfo.block_nr(rii), ...
+                results.trialinfo.crossing_nr(rii), ...
+                results.trialinfo.trial_nr(rii));
+      end
+
       % calc some times
       stimonset = timeframes(fixstart-1+seq(p)+1);
       windowstart = stimonset + responsewindow_fix(1)/1000;
@@ -645,6 +691,16 @@ while 1
       okok = find( buttontimes > windowstart & ...
                    buttontimes <= windowend & ...
                    ismember(buttonpressed,choicebuttons) );
+
+      % swap if necessary
+      if ismember(results.trialinfo.block_nr(rii),flatten(blockswap))
+        buttonpressed(okok) = swapstuff(buttonpressed(okok));
+      end
+
+      % report to command window
+      if wantverbose
+        fprintf('  buttonpressed: %s\n',cell2str(buttonpressed(okok)));
+      end
 
       % if no buttons pressed
       if isempty(okok)
@@ -719,3 +775,12 @@ for p=1:max(results.trialinfo.block_nr)
 end
 fprintf('==============================================================\n');
 warning(prevwarn.state,'MATLAB:table:RowsAddedExistingVars');
+
+%%%%%%%%%%%%%%%%%%
+
+function f = swapstuff(f)
+
+where1 = ismember(f,'1');
+where2 = ismember(f,'2');
+f(where1) = repmat({'2'},[1 sum(where1)]);
+f(where2) = repmat({'1'},[1 sum(where2)]);
