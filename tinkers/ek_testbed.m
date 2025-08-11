@@ -38,7 +38,7 @@ data_dir = fullfile(vcd_rootPath, 'data','BEHAVIOR',sprintf('vcd_subj%03d',subj_
 
 all_images = struct;
 [data,all_images] = runme_vcdcore(subj_nr, ses_nr, 1, 1, 'PPROOM_EIZOFLEXSCAN', 'wanteyetracking', false, ...
-'all_images',all_images,'wantdatabypass',false,'wantptbbypass',true,'exp_env',4); 
+'all_images',all_images,'wantdatabypass',true,'exp_env',4); 
 
 tt_file    = dir(fullfile(data_dir, sprintf('vcd_subj%03d_time_table_master_PPROOM_EIZOFLEXSCAN_*.mat',subj_nr)));
 load(fullfile(tt_file(end).folder, tt_file(end).name));
