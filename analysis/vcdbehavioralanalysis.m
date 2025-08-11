@@ -1,9 +1,11 @@
-function results = vcdbehavioralanalysis(filename,wantverbose);
+function results = vcdbehavioralanalysis(filename,wantverbose,blockswap);
 
-% function results = vcdbehavioralanalysis(filename,wantverbose);
+% function results = vcdbehavioralanalysis(filename,wantverbose,blockswap);
 %
 % <filename> is the .mat file saved after running the VCD experiment for one run
 % <wantverbose> (optional) is whether to verbosely report extra information. Default: 0.
+% <blockswap> (optional) is a vector (possibly empty) of block numbers for which we
+%   should swap 1s and 2s. Default: [].
 %
 % Check timing, deal with buttons and triggers, and analyze the behavioral data.
 % We include a number of sanity checks (various asserts and warnings).
@@ -116,7 +118,7 @@ function results = vcdbehavioralanalysis(filename,wantverbose);
 % - The initial dot color is not treated as a change event.
 %
 % History:
-% - 2025/08/11 - add <wantverbose>
+% - 2025/08/11 - add <wantverbose>, <blockswap>
 % - 2025/07/21 - add cdonset to trialinfo
 
 %% Internal constants
@@ -135,6 +137,9 @@ responsewindow_fix = [100 1500];  % for the fixation task, we accept buttons in 
 % inputs
 if ~exist('wantverbose','var') || isempty(wantverbose)
   wantverbose = 0;
+end
+if ~exist('blockswap','var') || isempty(blockswap)
+  blockswap = [];
 end
 
 %% Setup
@@ -561,6 +566,11 @@ while 1
                    buttontimes <= windowend & ...
                    ismember(buttonpressed,choicebuttons) );
       
+      % swap if necessary
+      if ismember(results.trialinfo.block_nr(rii),flatten(blockswap))
+        buttonpressed(okok) = swapstuff(buttonpressed(okok));
+      end
+      
       % report to command window
       if wantverbose
         fprintf('  buttonpressed: %s\n',cell2str(buttonpressed(okok)));
@@ -682,6 +692,11 @@ while 1
                    buttontimes <= windowend & ...
                    ismember(buttonpressed,choicebuttons) );
 
+      % swap if necessary
+      if ismember(results.trialinfo.block_nr(rii),flatten(blockswap))
+        buttonpressed(okok) = swapstuff(buttonpressed(okok));
+      end
+
       % report to command window
       if wantverbose
         fprintf('  buttonpressed: %s\n',cell2str(buttonpressed(okok)));
@@ -760,3 +775,12 @@ for p=1:max(results.trialinfo.block_nr)
 end
 fprintf('==============================================================\n');
 warning(prevwarn.state,'MATLAB:table:RowsAddedExistingVars');
+
+%%%%%%%%%%%%%%%%%%
+
+function f = swapstuff(f)
+
+where1 = ismember(f,'1');
+where2 = ismember(f,'2');
+f(where1) = repmat({'2'},[1 sum(where1)]);
+f(where2) = repmat({'1'},[1 sum(where2)]);
