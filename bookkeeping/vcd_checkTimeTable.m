@@ -641,16 +641,20 @@ for ses = 1:results.total_nr_of_sessions
                         
                         % check difference between gabor/rdks and object/dot
                         % stimulus classes
-                        if strcmp(env_type,'BEHAVIOR') && count_diff ~= 1
+                        if strcmp(env_type,'BEHAVIOR')
                             count_diff = abs(diff(n0([1,3])))<=1 && abs(diff(n0([2,4])))<=1; % less than 2 counts difference in nr of button presses across all blocks (1 for gabors/rdks and 1 for object/dot)
-                            warning('[%s]: SCC button press distribution is off by more than 1 when comparing gabors vs rdks AND objects vs dots', mfilename)
+                            if count_diff ~= 1
+                                warning('[%s]: SCC button press distribution is off by more than 1 when comparing gabors vs rdks AND objects vs dots', mfilename)
+                            end
                         elseif strcmp(env_type,'MRI')
                             count_diff = (abs(diff(n0([1,3]))) + abs(diff(n0([2,4])))) <=2; % less than 2 counts difference in nr of button presses per block
                             ratio = n0./sum(n0);
                             if isequal(ratio,[2 2 2 2]./8) || isequal(sort(ratio),[1 2 2 3]./8) || isequal(sort(ratio),[1 1 3 3]./8)
                                 % all good
                             else
-                                warning('[%s]: SCC MRI button press distribution is off by more than 1 when comparing gabors vs rdks AND objects vs dots',mfilename)
+                                if count_diff ~= 1
+                                    warning('[%s]: SCC MRI button press distribution is off by more than 1 when comparing gabors vs rdks AND objects vs dots',mfilename)
+                                end
                             end
                         end
                         
