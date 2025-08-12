@@ -492,11 +492,13 @@ else % Recreate conditions and blocks and trials
         nr_objectcatch_trials_per_rep = round(size(condition_master(pcobj_trial_idx,:),1)*params.exp.trial.pc.prob_objcatch);
         
         % Select object catch trials randomly from the total list (without
-        % replacement). Ensure we distribute object catch trials across
-        % left/right cued locations and unique objects (as much as
-        % possible), as well as equal distribution of button presses.
+        % replacement), using the following constraints:
+        % 1. Ensure we distribute object catch trials evenly across left/right cued locations
+        % 2. Ensure we distribute object catch trials evenly across unique objects (to the extent possible)
+        % 3. Ensure we distribute object catch trials evenly across possible correct button presses.
+        % 4. Ensure we distribute object catch trials evenly across blocks
         while 1
-            objcatch_ok = false(1,3);
+            objcatch_ok = false(1,4); % 4 constraints
             
             objcatch_idx = datasample(pcobj_trial_idx,nr_objectcatch_trials_per_rep,'Replace',false);
             
@@ -519,6 +521,21 @@ else % Recreate conditions and blocks and trials
             end
             if abs(diff(histcounts(button_objcatch,[1:3])))<=1
                 objcatch_ok(3) = true;
+            end
+            
+            % Check the block in those selected trials
+            objcblock_nr = unique(condition_master.stim_class_unique_block_nr(objcatch_idx));
+            possible_block_nrs = unique(condition_master.stim_class_unique_block_nr(pcobj_trial_idx));
+            if length(objcatch_idx) >= length(possible_block_nrs) % if we have more obj catch trials than obj-pc blocks
+                if length(objcblock_nr)/length(possible_block_nrs) > (2/3) % if 2/3 object catch trials are distributed across blocks, we are happy..
+                    objcatch_ok(4) = true;
+                end
+            elseif length(objcatch_idx) < length(possible_block_nrs) % if we have fewer obj catch trials than obj-pc blocks
+                if length(objcblock_nr)/length(possible_block_nrs) > (1/2) % if 1/2 object catch trials are distributed across blocks, we are happy..
+                   objcatch_ok(4) = true;
+                end
+            else
+                error('wtf')
             end
             
             if sum(objcatch_ok)==length(objcatch_ok)
