@@ -115,6 +115,10 @@ params.exp    = vcd_getSessionParams('disp_name', params.disp.name, ...
 % * vcd_createConditionMaster
 % * vcd_shuffleStimForTaskClass
 % * vcd_getCorrectButtonResponse
+% * (no subfunction): Select object catch trials for OBJ-PC crossing
+% * vcd_balanceButtonCorrectPresses
+% * vcd_allocateBlocksToRuns
+% * vcd_determineContrastDecrementChangeTrials
 
 [params, condition_master, all_unique_im, all_cond] = ...
             vcd_createConditions(params,  'load_params',  load_params, ...
@@ -127,7 +131,6 @@ params.exp    = vcd_getSessionParams('disp_name', params.disp.name, ...
 % (load_params) to true and load an existing file
 %
 % This function contains the following important steps/functions:
-% * vcd_allocateBlocksToRuns
 % * vcd_createRunTimeTables
 % * vcd_createRunFrames
 [params,condition_master_shuffled,time_table_master_shuffled, all_subj_run_frames] = ...
