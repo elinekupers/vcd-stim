@@ -46,20 +46,37 @@ for st = unique(condition_master.session_type)'
     nr_cued_cd_trials = length(cd_blocks_cued_side);
     
     % How often do we expect a trial with a CD change?
-    expected_nr_cd_trials = round((nr_cued_cd_trials*params.exp.trial.cd.prob_change)/2)*2;
+    expected_nr_cd_trials = round(nr_cued_cd_trials*params.exp.trial.cd.prob_change);
     expected_nr_cd_trials_per_cue = round(histcounts(cd_blocks_cued_side)*params.exp.trial.cd.prob_change);
     
     % If the rounding of separate left/right/neutral cued trials results
-    % in 1 less CD+ trial than the overal expected nr of CD+ trials across
-    % all cueing conditions, then we remove one trial from the overall
-    % expected nr of CD+ trials
+    % in 1 less/more CD+ trial than the overal expected nr of CD+ trials 
+    % across all cueing conditions, then we add/remove one trial 
+    % to/from expected nr of CD+ trials across spatial cues. Here we pick
+    % the cue type with the most/least nr of trials.
     if sum(expected_nr_cd_trials_per_cue) < expected_nr_cd_trials
         if isequal(sum(expected_nr_cd_trials_per_cue)+1, expected_nr_cd_trials)
-            expected_nr_cd_trials = expected_nr_cd_trials-1;
+            if exist('add_me','var') && st == 2 % don't add a trial to the same cue type twice
+                [~,mi] = min(expected_nr_cd_trials_per_cue);
+                tmp    = intersect(mi, setdiff(1:length(expected_nr_cd_trials_per_cue),add_me));
+                add_me = datasample(tmp,1);
+            else
+                [~,mi] = min(expected_nr_cd_trials_per_cue);
+                add_me = randi(mi,1);
+            end
+            expected_nr_cd_trials_per_cue(add_me) = expected_nr_cd_trials_per_cue(add_me)+1;
         end
     elseif sum(expected_nr_cd_trials_per_cue) > expected_nr_cd_trials
         if isequal(sum(expected_nr_cd_trials_per_cue)-1, expected_nr_cd_trials)
-            expected_nr_cd_trials = expected_nr_cd_trials+1;
+            if exist('remove_me','var') && st == 2 % don't remove a trial from the same cue type twice
+                [~,ma]    = max(expected_nr_cd_trials_per_cue);
+                tmp       = intersect(ma, setdiff(1:length(expected_nr_cd_trials_per_cue),remove_me));
+                remove_me = datasample(tmp,1);
+            else
+                [~,ma]    = max(expected_nr_cd_trials_per_cue);
+                remove_me = randi(ma,1);
+            end
+            expected_nr_cd_trials_per_cue(remove_me) = expected_nr_cd_trials_per_cue(remove_me)-1;
         end
     end
     assert(isequal(sum(expected_nr_cd_trials_per_cue),expected_nr_cd_trials));
@@ -350,7 +367,11 @@ for st = unique(condition_master.session_type)'
     cond_cnt      = sum(cd_trials_mat,1);
     
     % check cueing left/right
-    assert(isequal(cond_cnt(1),cond_cnt(2))) % nr of trials should be the same
+    if isequal(cond_cnt(1),cond_cnt(2))
+        assert(isequal(cond_cnt(1),cond_cnt(2))) % nr of trials should be the same
+    elseif any(mod(cond_cnt([1,2]),2)==1)
+        assert(isequal(abs(diff([cond_cnt(1),cond_cnt(2)])),1)) % nr of trials for left vs right cue should differ by 1 due to uneven nr of trials
+    end
     
     % check stim classes
     assert(all(cond_cnt(sc_idx) >= min_nr_cd_trials_per_stimclass))
@@ -419,9 +440,13 @@ assert(isequal(sum(condition_master.correct_response(condition_master.task_class
 
 % check nr of changes across left/right cueing conditions
 if any(ismember(condition_master.is_cued(condition_master.task_class==2 & condition_master.is_cued>0),[1,2]))
-    assert(isequal(sum(~isnan(condition_master.cd_start(condition_master.task_class == 2 & condition_master.is_cued==1))),...
-        sum(~isnan(condition_master.cd_start(condition_master.task_class == 2 & condition_master.is_cued==2)))));
+    leftcued_cd_trials = sum(~isnan(condition_master.cd_start(condition_master.task_class == 2 & condition_master.is_cued==1)));
+    rightcued_cd_trials = sum(~isnan(condition_master.cd_start(condition_master.task_class == 2 & condition_master.is_cued==2)));
+    if ~isequal(leftcued_cd_trials,rightcued_cd_trials)
+        assert(isequal(abs(diff([leftcued_cd_trials,rightcued_cd_trials])),1));
+    end
 end
+    
 if any(condition_master.is_cued(condition_master.task_class==2 & condition_master.is_cued>0)==3)
     assert(isequal(sum(~isnan(condition_master.cd_start(condition_master.task_class == 2 & condition_master.is_cued==3))),...
         sum(~isnan(condition_master.cd_start(condition_master.task_class == 2 & condition_master.is_cued==3)))))
