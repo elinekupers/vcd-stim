@@ -3,6 +3,12 @@ all_images = struct;
 [data,all_images] = runme_vcdcore(SUBJECTID, 1, 1, RUNNUMBER, 'PPROOM_EIZOFLEXSCAN', ...
   'wanteyetracking', true, 'all_images', all_images, 'exp_env', 2);
 
+%% Official vcdwide01 experiment (SUBJECTID is an integer up to 3 digits, RUNNUMBER is 1-10)
+% SESS_TYPE is 1 or 2 where 1=A, 2=B
+all_images = struct;
+[data,all_images] = runme_vcdcore(SUBJECTID, 1, SESS_TYPE, RUNNUMBER, '7TAS_BOLDSCREEN32', ...
+  'wanteyetracking', true, 'all_images', all_images, 'exp_env', 1);
+
 %% a run
 
 all_images = struct;
