@@ -1,6 +1,6 @@
-function results = vcdeyetrackingpreprocessing(filename,behfilename,behresults,wantfigures,blinkpad,maxpolydeg);
+function [results,behresults] = vcdeyetrackingpreprocessing(filename,behfilename,behresults,wantfigures,blinkpad,maxpolydeg);
 
-% function results = vcdeyetrackingpreprocessing(filename,behfilename,behresults,wantfigures,blinkpad,maxpolydeg);
+% function [results,behresults] = vcdeyetrackingpreprocessing(filename,behfilename,behresults,wantfigures,blinkpad,maxpolydeg);
 %
 % <filename> is the .edf file for one run
 % <behfilename> is the corresponding behavioral .mat file for that run
@@ -67,6 +67,17 @@ function results = vcdeyetrackingpreprocessing(filename,behfilename,behresults,w
 %                    A circle centered on the origin with radius <fixationradius>
 %                    should encompass 75% of the data.
 %
+% We return <behresults> as a struct. it is the same as the input <behresults>,
+% except that it has some additional fields:
+%   <stim1maxdeviance> - over the time window [0,1000] ms relative to stim1 onset,
+%                        the maximum recorded deviance from the origin (in dva).
+%                        If there is no valid eyetracking data, the result will be
+%                        NaN. Also, will be NaN in the case of fixation pseudo-trials
+%                        whose duration does not encounter a stim1 onset.
+%   <stim2maxdeviance> - same as <stim1maxdeviance> but for stim2. Note that 
+%                        this will also be NaN for single-image trials and for
+%                        fixation pseudo-trials.
+%
 % We also generate several figures:
 % 'timeseries' - This shows (1) raw data, (2) data after dva conversion, 
 %                removal of blinks, and time synchronization, (3) data after
@@ -88,6 +99,7 @@ function results = vcdeyetrackingpreprocessing(filename,behfilename,behresults,w
 %            histograms (0.25-deg bins).
 %
 % History:
+% - 2025/08/15 - add behresults.trialinfo output to handle <stim1maxdeviance> and <stim2maxdeviance>
 % - 2025/07/24 - change default blinkpad to [100 100]; implement half-blink removal;
 %                regress pupil-size-data at the same time as the polynomials
 % - 2025/07/21 - add results.fixationradius
@@ -99,6 +111,7 @@ function results = vcdeyetrackingpreprocessing(filename,behfilename,behresults,w
 targetwindow = [500 2000];    % number of milliseconds after target onset to extract from
 onsetwindow = [-1000 5000];   % number of milliseconds for window around stim/taskcue
 etloc = 4;                    % number of dva where eye tracking targets are placed (away from center)
+checkwindow = [0 1000];       % window relative to stim onset to check for deviance
 
 % related to half-blink removal
 hbdelta = 75;                 % number of milliseconds before and after a time point to check for half-blink
@@ -315,6 +328,28 @@ results.eyedata(2:3,:) = results.eyedata(2:3,:) - prctile(results.eyedata(2:3,:)
 
 % record
 results.maxpolydeg = maxpolydeg;
+
+%% Calculate trial-oriented eyetracking-related information
+
+% init
+behresults.trialinfo.stim1maxdeviance = NaN(size(behresults.trialinfo,1),1);
+behresults.trialinfo.stim2maxdeviance = NaN(size(behresults.trialinfo,1),1);
+
+% process each trial
+for zz=1:size(behresults.trialinfo,1)
+  tt = behresults.trialinfo.stim1onset_start(zz);
+  if ~isnan(tt)
+    time0 = behresults.timeframes(tt+1);
+    tix = results.eyedata(1,:) >= time0 + checkwindow(1)/1000 & results.eyedata(1,:) < time0 + checkwindow(2)/1000;
+    behresults.trialinfo.stim1maxdeviance(zz) = max(sqrt(sum(results.eyedata(2:3,tix).^2,1)));  % maximum distance from origin (in dva)
+  end
+  tt = behresults.trialinfo.stim2onset_start(zz);
+  if ~isnan(tt)
+    time0 = behresults.timeframes(tt+1);
+    tix = results.eyedata(1,:) >= time0 + checkwindow(1)/1000 & results.eyedata(1,:) < time0 + checkwindow(2)/1000;
+    behresults.trialinfo.stim2maxdeviance(zz) = max(sqrt(sum(results.eyedata(2:3,tix).^2,1)));  % maximum distance from origin (in dva)
+  end
+end
 
 %% Prep for visualizations
 
