@@ -719,6 +719,8 @@ while 1
           assert(length(temp1)==1);
           results.trialinfo.stim1onset_start(rii) = a1.run_table.event_start(iitemp(temp1));
         end
+      else
+        results.trialinfo.stim1onset_start(rii)   = NaN;
       end
       results.trialinfo.stim2onset_start(rii)     = NaN;  % FIX task never involves stim2
       
