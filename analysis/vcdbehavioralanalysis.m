@@ -69,6 +69,15 @@ function results = vcdbehavioralanalysis(filename,wantverbose,blockswap);
 %                 stim1 or stim2 where appropriate, and for the special FIX dot change
 %                 events, stimulus onset refers to the change in the dot luminance.)
 %   onset_abstime - stimulus onset time as a MATLAB serial date number (units are days).
+%   stim1onset_start - frame time corresponding to onset of stim1. the difference with
+%                      respect to onset_start is that onset_start is about behavior, so
+%                      onset_start might reflect stim2 (or the fixation dot). for the special 
+%                      FIX dot change trials, stim1onset_start will be NaN if the stim1 onset
+%                      does not occur during the duration of the current dot change trial.
+%                      we act as if catch trials still have a stim1onset_start.
+%   stim2onset_start - similar to stim1onset_start. note that a NaN will be supplied if
+%                      the current trial is a single-image trial or if we are in a FIX dot
+%                      change trial.
 %   cdonset - in the case of CD task and an actual contrast decrement that is present,
 %             this is the number of milliseconds between stimulus onset and the contrast
 %             decrement. in all other cases, this is NaN. the rationale for this output
@@ -118,6 +127,7 @@ function results = vcdbehavioralanalysis(filename,wantverbose,blockswap);
 % - The initial dot color is not treated as a change event.
 %
 % History:
+% - 2025/08/15 - add <stim1onset_start> and <stim2onset_start>
 % - 2025/08/11 - add <wantverbose>, <blockswap>
 % - 2025/07/21 - add cdonset to trialinfo
 
@@ -532,6 +542,18 @@ while 1
     results.trialinfo.is_catch(rii)         = a1.run_table.is_catch(ii);
     results.trialinfo.onset_start(rii)      = a1.run_table.event_start(ii);
     results.trialinfo.onset_abstime(rii)    = matlabnowtime + stimonset/60/60/24;  % convert from seconds to days and then add in
+
+    % record more (NOTE!! we assume catch trials will still have stim1 and stim2)
+    iitemp = find( a1.run_table.block_nr == blockcnt & a1.run_table.trial_nr == trialcnt & a1.run_table.event_id == 94 ); assert(length(iitemp)==1);
+    results.trialinfo.stim1onset_start(rii)    = a1.run_table.event_start(iitemp);
+    if a1.run_table.trial_type(ii)==2
+      iitemp = find( a1.run_table.block_nr == blockcnt & a1.run_table.trial_nr == trialcnt & a1.run_table.event_id == 95 ); assert(length(iitemp)==1);
+      results.trialinfo.stim2onset_start(rii)  = a1.run_table.event_start(iitemp);
+    else
+      results.trialinfo.stim2onset_start(rii)  = NaN;
+    end
+
+    % record more
     temp = a1.run_table.cd_start(ii);
     if isnan(temp)
       results.trialinfo.cdonset(rii)        = NaN;
@@ -650,6 +672,9 @@ while 1
     df = diff(a1.run_frames.fix_abs_lum(fixstart+1 : fixend+1));  % vector of luminance diffs
     seq = find(df~=0) + 1;  % vector of indices indicating frames on which the dot changed. these are indices into the extracted range.
 
+    % deal with stim1onset stuff (there isn't a stim2onset) [NOTE that we find and process all 8 trials]
+    iitemp = find( a1.run_table.block_nr == blockcnt & a1.run_table.event_id == 94 ); assert(length(iitemp)==8);
+
     % process each change
     for p=1:length(seq)
     
@@ -683,6 +708,21 @@ while 1
       % record
       results.trialinfo.onset_start(rii)      = fixstart-1+seq(p);
       results.trialinfo.onset_abstime(rii)    = matlabnowtime + stimonset/60/60/24;  % convert from seconds to days and then add in
+      
+      % record more
+      if p < length(seq)  % NOTE: this assumes stim1 (iitemp) will never come in on the very last fixation dot change!!
+        temp1 = find(a1.run_table.event_start(iitemp) >= fixstart-1+seq(p) & ...
+                     a1.run_table.event_start(iitemp) <  fixstart-1+seq(p+1));  % tricky. this is trying to find if a stim1 onset is within the current dot change
+        if isempty(temp1)
+          results.trialinfo.stim1onset_start(rii) = NaN;
+        else
+          assert(length(temp1)==1);
+          results.trialinfo.stim1onset_start(rii) = a1.run_table.event_start(iitemp(temp1));
+        end
+      end
+      results.trialinfo.stim2onset_start(rii)     = NaN;  % FIX task never involves stim2
+      
+      % record more
       results.trialinfo.cdonset(rii)          = NaN;  % FIX task has no contrast decrement
       results.trialinfo.correct_response(rii) = mod(sign(df(seq(p)-1)),3);  % 1 means positive luminance change, 2 means negative luminance change
       results.trialinfo.change_mind(rii)      = NaN;  % for FIX, no changing mind
