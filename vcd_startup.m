@@ -25,7 +25,7 @@ switch exp_env
     case 1 % 7TAS
         vcdcode_dir  = '/Users/7tasuser/Desktop/cvnlab/VCD/vcd-stim';             % where does vcd stim code live?
         knkutils_dir = '/Users/7tasuser/Desktop/cvnlab/VCD/knkutils';             % where does knk utils code live?
-        ptb_dir      = '/Applications/Psychtoolbox';                              % where does ptb code live?
+        ptb_dir      = '/Applications/Psychtoolbox_3.0.19';                       % where does ptb code live?
         edf2asc_func = '/Applications/Eyelink/EDF_Access_API/Example';            % where does edf2asc converter function live?
     case 2 % CMRR psychophysics room
         vcdcode_dir  = '/Users/psphuser/Desktop/cvnlab/VCD/vcd-stim';
