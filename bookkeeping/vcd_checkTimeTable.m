@@ -32,12 +32,12 @@ function results = vcd_checkTimeTable(time_table_master,varargin)
 %          total_nr_of_trials: (integer)    number of trials across all sessions
 %                crossing_nrs: [N×1 double] crossing numbers across all sessions
 %              crossing_names: {N×1 cell}   crossing names across all sessions
-%        trials_per_taskclass: [tasksclasses x 1 double] number of trials for each of the 10 task classes
-%              trials_per_run: [sessions x runs x 1 double] number of trials per run, for each session
-%              cues_per_block: [sessions × runs × blocks × 3 double] count of is_cued for each block.
+%        trials_per_taskclass: [sessions x sessiontype x tasksclasses x 1 double] number of trials for each of the 10 task classes
+%              trials_per_run: [sessions x sessiontype x runs x 1 double] number of trials per run, for each session
+%              cues_per_block: [sessions x sessiontype × runs × blocks × 3 double] count of is_cued for each block.
 %                              For the 4th dimension, order is cue=1 (left), cue=2 (right), cue=3 (both),
-%     nr_of_unique_conditions: [sessions x runs x 1 double] number of unique condition numbers for each run, for each session
-%              blocks_per_run: [sessions x runs x 1 double] number of blocks per run, for each session
+%     nr_of_unique_conditions: [sessions x sessiontype x runs x 1 double] number of unique condition numbers for each run, for each session
+%              blocks_per_run: [sessions x sessiontype x runs x 1 double] number of blocks per run, for each session
 %               condition_nrs: {[L×1 double]  [R×1 double]} condition
 %                               numbers for left/central (Lx1) and right
 %                               (Rx1) condition_nr columns in the time table master
@@ -205,27 +205,32 @@ elseif strcmp(env_type,'MRI')
 end
 
 % Compare crossing names
-expected_crossing_names = {};
+
+expected_crossing_names = cell(size(ses_blocks,3),size(ses_blocks,4),32);
+expected_crossing_nrs   = zeros(size(ses_blocks,3),size(ses_blocks,4),32);
 for kk = 1:size(ses_blocks,3) % session nr
     for ll = 1:size(ses_blocks,4) % session type
+        tmp = {};
         for mm = 1:size(ses_blocks,1) % stimulus classes
             tc_names = params.exp.taskclassnames(ses_blocks(mm,:,kk,ll)>0);
             for nn = 1:length(tc_names) %  task classes crossed with given stimulus class
                 if strcmp(tc_names{nn},'scc') || strcmp(tc_names{nn},'ltm')
-                    expected_crossing_names = cat(1,expected_crossing_names, sprintf('%s-%s',tc_names{nn},'all'));
+                    tmp = catcell(1, {tmp, sprintf('%s-%s',tc_names{nn},'all')});
                 else
-                    expected_crossing_names = cat(1,expected_crossing_names, sprintf('%s-%s',tc_names{nn},params.exp.stimclassnames{mm}));
+                    tmp = catcell(1,{tmp, sprintf('%s-%s',tc_names{nn},params.exp.stimclassnames{mm})});
                 end
             end
         end
+        tmp = unique(tmp, 'stable')';
+        expected_crossing_names(kk,ll,1:length(tmp)) = tmp;
+        expected_crossing_nrs(kk,ll,1:length(tmp))   = find(ismember(params.exp.crossingnames,tmp));
+        
+        assert(isequal(sort(squeeze(expected_crossing_names(kk,ll,~squeeze(cellfun(@isempty, expected_crossing_names(kk,ll,:)))))), ...
+            unique(time_table_master.crossing_name(results.total_nr_of_sessions(kk) & results.total_nr_of_sessiontypes(ll) & ~cellfun(@(x) isequalwithequalnans(x,NaN), time_table_master.crossing_name)))))
+        assert(isequal(sort(squeeze(expected_crossing_nrs(kk,ll,~squeeze(cellfun(@isempty, expected_crossing_names(kk,ll,:)))))), ...
+            setdiff(unique(time_table_master.crossing_nr(results.total_nr_of_sessions(kk) & results.total_nr_of_sessiontypes(ll) & ~isnan(time_table_master.crossing_nr))),999)));
     end
 end
-
-expected_crossing_names = unique(expected_crossing_names);
-expected_crossing_nrs = find(ismember(params.exp.crossingnames,expected_crossing_names'));
-
-assert(isequal(expected_crossing_names, unique(time_table_master.crossing_name(~cellfun(@(x) isequalwithequalnans(x,NaN), time_table_master.crossing_name)))))
-assert(isequal(expected_crossing_nrs, setdiff(unique(time_table_master.crossing_nr(~isnan(time_table_master.crossing_nr))),999)));
 
 % record
 results.crossing_nrs   = expected_crossing_nrs;
@@ -233,8 +238,6 @@ results.crossing_names = expected_crossing_names;
 
 % find eyetracking block
 eye_tracking_block = find(time_table_master.block_nr==999);
-
-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % check where the NaNs are to see if columns are yoked as expected
@@ -326,6 +329,9 @@ blocks_per_run       = zeros(results.total_nr_of_sessions,length(results.total_n
 trials_per_block     = zeros(results.total_nr_of_sessions,length(results.total_nr_of_sessiontypes),max(time_table_master.run_nr), 7);
 nr_of_unique_conditions = zeros(results.total_nr_of_sessions,length(results.total_nr_of_sessiontypes),max(time_table_master.run_nr));
 cues_per_block       = zeros(results.total_nr_of_sessions,length(results.total_nr_of_sessiontypes),max(time_table_master.run_nr), 7, 3); % assume max 7 blocks and 3 cuing options (left/right/neutral)
+stim_task_crossings_blocks  = zeros(results.total_nr_of_sessions,length(results.total_nr_of_sessiontypes),5,10);
+stim_task_crossings_trials  = stim_task_crossings_blocks;
+correct_response_tally = zeros(results.total_nr_of_sessions,length(results.total_nr_of_sessiontypes),length(params.exp.crossingnames),4);
 
 for ses = 1:results.total_nr_of_sessions
     for st = 1:length(results.total_nr_of_sessiontypes) % session type
@@ -369,9 +375,9 @@ for ses = 1:results.total_nr_of_sessions
             trials_per_taskclass(ses,st,rr,:) = all_tc;
         end
         
-        assert(isequal(unique(trials_per_block(ses,st,rr,:)),[0,4,8]')); % we expect either no, 4 or 8 blocks per trial.
-        assert(all(mod(squeeze(trials_per_taskclass(ses,st,rr,:)),2)==0)); % we expect even nr of trials per taskclass
-        assert(all(all(mod(squeeze(trials_per_block(ses,st,rr,:)),2)==0))); % we expect even nr of trials per block
+        assert(isequal(unique(trials_per_block(ses,st,:)),[0,4,8]')); % we expect either no, 4 or 8 blocks per trial.
+        assert(all(mod(squeeze(trials_per_taskclass(ses,st,:)),2)==0)); % we expect even nr of trials per taskclass
+        assert(all(all(mod(squeeze(trials_per_block(ses,st,:)),2)==0))); % we expect even nr of trials per block
         
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         % Condition specific stats
@@ -384,7 +390,8 @@ for ses = 1:results.total_nr_of_sessions
         for side = [1,2]
             
             % check conditon nrs and names
-            condition_nan                   = find(isnan(curr_ses_table.condition_nr(:,side)));
+            condition_nan{ses,st,side}           = isnan(curr_ses_table.condition_nr(:,side));
+            condition_nan_trial{ses,st,side}     = condition_nan{ses,st,side}(curr_ses_table.event_id==94);
             results.condition_nrs{ses,st,side}   = curr_ses_table.condition_nr(curr_ses_table.event_id==94 & ~isnan(curr_ses_table.condition_nr(:,side)),side);
             results.condition_names{ses,st,side} = curr_ses_table.condition_name(curr_ses_table.event_id==94 & ~isnan(curr_ses_table.condition_nr(:,side)),side);
             
@@ -394,19 +401,19 @@ for ses = 1:results.total_nr_of_sessions
             % we expect conditon nrs to be yoked in terms of NaNs for left/right
             % stimulus numbers
             if side==1
-                assert(isequal(condition_nan,find(isnan(curr_ses_table.stim_nr_left))))
-                filter_me = condition_nan;
+                assert(isequal(find(condition_nan{ses,st,side}),find(isnan(curr_ses_table.stim_nr_left))))
+                filter_me = condition_nan{ses,st,side};
                 
             elseif side==2
-                assert(isequal(condition_nan,find(isnan(curr_ses_table.stim_nr_right))))
+                assert(isequal(find(condition_nan{ses,st,side}),find(isnan(curr_ses_table.stim_nr_right))))
                 filter_me = ismember(curr_ses_table.stim_class,[1:5,99]);
             end
             
             % we should expect the same nr of NaNs as for contrast, repeat
             % nr and special core column
-            assert(isequal(condition_nan, find(isnan(curr_ses_table.contrast(:,side)))));
-            assert(isequal(condition_nan, find(isnan(curr_ses_table.repeat_nr(:,side)))));
-            assert(isequal(condition_nan, find(isnan(curr_ses_table.is_special_core(:,side)))));
+            assert(isequal(find(condition_nan{ses,st,side}), find(isnan(curr_ses_table.contrast(:,side)))));
+            assert(isequal(find(condition_nan{ses,st,side}), find(isnan(curr_ses_table.repeat_nr(:,side)))));
+            assert(isequal(find(condition_nan{ses,st,side}), find(isnan(curr_ses_table.is_special_core(:,side)))));
             
             % For WM cases, we check if this is true for those task-crossings only
             assert(isequal(isnan(curr_ses_table.condition_nr(curr_ses_table.task_class==5,side)), isnan(curr_ses_table.stim2_im_nr(curr_ses_table.task_class==5,side))))
@@ -416,6 +423,25 @@ for ses = 1:results.total_nr_of_sessions
             
             for sc = [1:length(params.exp.stimclassnames), 99] % 99 is 'all', for scc/ltm
                 
+                if side == 1
+                    class_names = {'gabor','rdk','dot','obj','ns'};
+                    for tc = 1:10
+                        if sc==99
+                            % scc-all block count are summed in first row
+                            stim_task_crossings_blocks(ses,st,1,tc)  = stim_task_crossings_blocks(ses,st,1,tc) + sum(curr_ses_table.stim_class==sc & curr_ses_table.task_class==tc & curr_ses_table.event_id==90);
+                        else
+                            % block count
+                            stim_task_crossings_blocks(ses,st,sc,tc) = sum(curr_ses_table.stim_class==sc & curr_ses_table.task_class==tc & curr_ses_table.event_id==90);
+                            if tc == 3 % scc-all trial count are separated by stim class
+                                tmp = ismember(curr_ses_table.stim_class_name(curr_ses_table.task_class==tc & curr_ses_table.event_id==94,:),class_names{sc});
+                                cued_side = curr_ses_table.is_cued(curr_ses_table.task_class==tc & curr_ses_table.event_id==94);
+                                stim_task_crossings_trials(ses,st,sc,tc) = sum([tmp(cued_side==1,1)+tmp(cued_side==2,2)]);
+                            else % trial count
+                                stim_task_crossings_trials(ses,st,sc,tc) = sum(curr_ses_table.stim_class==sc & curr_ses_table.task_class==tc & curr_ses_table.event_id==94);
+                            end
+                        end
+                    end
+                end
                 switch sc
                     case 1 % Gabor
                         gbr_phase_nan  = find(isnan(curr_ses_table.gbr_phase(strcmp(curr_ses_table.stim_class_name(:,side),'gabor'),side)));
@@ -905,68 +931,71 @@ for ses = 1:results.total_nr_of_sessions
             end
         end
         
-        results.total_nr_of_conditions(ses,st) = sum(length(results.condition_names{1})+length(results.condition_names{2}));
+        results.total_nr_of_conditions(ses,st) = sum(length(results.condition_names{ses,st,1})+length(results.condition_names{ses,st,2}));
         
-        correct_response_tally = zeros(ses,st,length(params.exp.crossingnames),4);
         for cc = 1:length(params.exp.crossingnames)
             correct_response_tally(ses,st,cc,:) = histcounts(curr_ses_table.correct_response(curr_ses_table.crossing_nr==cc), [1:5]);
         end
+
+        % CD onset checks
+        total_cd_trials = length(find(curr_ses_table.task_class(curr_ses_table.event_id==94)==2));
+        cd_cond_names   = curr_ses_table.condition_name(find(~isnan(curr_ses_table.cd_start)),:);
+        cd_cond_nr      = curr_ses_table.condition_nr(find(~isnan(curr_ses_table.cd_start)),:);
+        cd_cond_names_no_nan = cell2mat(cellfun(@(x) isequalwithequalnans(x,NaN), cd_cond_names, 'UniformOutput',0));
+        
+        side_cd_plus = []; cd_plus_cond_names = {}; cd_plus_cond_nr = [];
+        for jj = 1:length(find(~isnan(curr_ses_table.cd_start)))
+            idx_cd_plus = find(~cellfun(@isempty, (regexp( cd_cond_names(jj,~cd_cond_names_no_nan(jj,:)), '+'))));
+            assert(length(idx_cd_plus==1))
+            side_cd_plus = cat(1,side_cd_plus,idx_cd_plus);
+            cd_plus_cond_names(jj) = cd_cond_names(jj,idx_cd_plus);
+            cd_plus_cond_nr(jj) = cd_cond_nr(jj,idx_cd_plus);
+        end
+        assert(isequal(all_cond_names(cd_plus_cond_nr),cd_plus_cond_names))
+        
+        results.total_nr_of_CDplus_trials(ses,st) = length(cd_plus_cond_names);
+        results.total_nr_of_CD_trials(ses,st) = total_cd_trials;
+        % ltm stats
+        % assert(isequal(condition_nan, find(isnan(time_table_master.is_lure(:,side)))));
+        
+        % cued stats
+        cue_ID{ses,st}        = curr_ses_table.is_cued(curr_ses_table.event_id==94);
+        is_NS{ses,st}         = ( curr_ses_table.stim_class(curr_ses_table.event_id==94)==5 );
+        is_FIX{ses,st}        = ( curr_ses_table.task_class(curr_ses_table.event_id==94)==1 );
+        is_NS_or_FIX{ses,st}  = ( curr_ses_table.task_class(curr_ses_table.event_id==94)==1 | curr_ses_table.stim_class(curr_ses_table.event_id==94)==5 );
+        is_SCC{ses,st}        = ( curr_ses_table.stim_class(curr_ses_table.event_id==94)==99 | curr_ses_table.task_class(curr_ses_table.event_id==94)==3 );
+        is_LTM{ses,st}        = ( curr_ses_table.stim_class(curr_ses_table.event_id==94)==99 | curr_ses_table.task_class(curr_ses_table.event_id==94)==6 );
+        stimclass_name{ses,st} = curr_ses_table.stim_class_name(curr_ses_table.event_id==94,:);
+
+        results.cued_count(ses,st,:) = histcounts(cue_ID{ses,st},[1:4]);
+        assert(isequal(results.cued_count(ses,st,1),results.cued_count(ses,st,2))); % equal nr of left and right cues
+        assert(isequal(results.cued_count(ses,st,3), sum(is_NS_or_FIX{ses,st}))); % equal nr of left and right cues
     end
 end
 
+% record
 results.trials_per_taskclass            = trials_per_taskclass;
 results.trials_per_run                  = trials_per_run;
 results.cues_per_block                  = cues_per_block;
 results.nr_of_unique_conditions_per_run = nr_of_unique_conditions;
 results.trials_per_block                = trials_per_block;
 results.blocks_per_run                  = blocks_per_run;
-results.total_nr_of_unique_conditions   = sum(nr_of_unique_conditions(:));
+results.total_nr_of_unique_conditions   = sum(nr_of_unique_conditions,3);
 results.all_repeated_im_nrs_ns          = all_repeated_im_nrs_ns;
-
-% CD onset checks
-total_cd_trials = length(find(time_table_master.task_class(time_table_master.event_id==94)==2));
-cd_cond_names = time_table_master.condition_name(cd_start_not_nan,:);
-cd_cond_nr = time_table_master.condition_nr(cd_start_not_nan,:);
-cd_cond_names_no_nan = cell2mat(cellfun(@(x) isequalwithequalnans(x,NaN), cd_cond_names, 'UniformOutput',0));
-side_cd_plus = []; cd_plus_cond_names = {};
-for jj = 1:length(cd_start_not_nan)
-    idx_cd_plus = find(~cellfun(@isempty, (regexp( cd_cond_names(jj,~cd_cond_names_no_nan(jj,:)), '+'))));
-    assert(length(idx_cd_plus==1))
-    side_cd_plus = cat(1,side_cd_plus,idx_cd_plus);
-    cd_plus_cond_names(jj) = cd_cond_names(jj,idx_cd_plus);
-    cd_plus_cond_nr(jj) = cd_cond_nr(jj,idx_cd_plus);
-end
-assert(isequal(all_cond_names(cd_plus_cond_nr),cd_plus_cond_names))
-
-results.total_nr_of_CDplus_trials = length(cd_plus_cond_names);
-results.total_nr_of_CD_trials = total_cd_trials;
-% ltm stats
-% assert(isequal(condition_nan, find(isnan(time_table_master.is_lure(:,side)))));
-
-% cued stats
-cue_ID        = time_table_master.is_cued(time_table_master.event_id==94);
-is_NS         = ( time_table_master.stim_class(time_table_master.event_id==94)==5 );
-is_FIX        = ( time_table_master.task_class(time_table_master.event_id==94)==1 );
-is_NS_or_FIX  = ( time_table_master.task_class(time_table_master.event_id==94)==1 | time_table_master.stim_class(time_table_master.event_id==94)==5 );
-is_SCC        = ( time_table_master.stim_class(time_table_master.event_id==94)==99 | time_table_master.task_class(time_table_master.event_id==94)==3 );
-is_LTM        = ( time_table_master.stim_class(time_table_master.event_id==94)==99 | time_table_master.task_class(time_table_master.event_id==94)==6 );
-
-c_names       = time_table_master.condition_name(time_table_master.event_id==94,:);
-results.cued_count = histcounts(cue_ID,[1:4]);
-assert(isequal(results.cued_count(1),results.cued_count(2))); % equal nr of left and right cues
-assert(isequal(results.cued_count(3), sum(is_NS_or_FIX))); % equal nr of left and right cues
+results.correct_response_tally          = correct_response_tally;
+results.overallsummary_blockcount       = stim_task_crossings_blocks;
+results.overallsummary_trialcount       = stim_task_crossings_trials;
 
 %%%%% Condition name checks:
+cname1              = cellfun(@(x) strsplit(x,'-'),catcell(1,results.condition_names(:,:,1)),'UniformOutput',0); % condition_nan_trial
+cname2              = cellfun(@(x) strsplit(x,'-'),catcell(1,results.condition_names(:,:,2)),'UniformOutput',0);
+cond_names_lr     = catcell(1,{cname1,cname2});
+cond_names_lr_idx = cat(1, ones(length(cname1),1), 2*ones(length(cname2),1));
 
-loc1        = cellfun(@(x) strsplit(x,'-') ,c_names(:,1),'UniformOutput',0);
-loc2        = cellfun(@(x) strsplit(x,'-') ,c_names(~isnan(time_table_master.condition_nr(time_table_master.event_id==94,2)),2),'UniformOutput',0);
-is_FIX_lr   = cat(1,is_FIX,is_FIX(~isnan(time_table_master.condition_nr(time_table_master.event_id==94,2))));
-is_NS_lr    = cat(1,is_NS,is_NS(~isnan(time_table_master.condition_nr(time_table_master.event_id==94,2))));
-cue_ID_lr   = cat(1,cue_ID,cue_ID(~isnan(time_table_master.condition_nr(time_table_master.event_id==94,2))));
-stimclass_name    = time_table_master.stim_class_name(time_table_master.event_id==94,:);
-stimclass_name_lr = cat(1,stimclass_name(:,1), stimclass_name(~isnan(time_table_master.condition_nr(time_table_master.event_id==94,2)),2));
-cond_names_lr     = cat(1,loc1,loc2);
-cond_names_lr_idx = cat(1, ones(length(loc1),1), 2*ones(length(loc2),1));
+is_FIX_lr           = catcell(1,is_FIX);  is_FIX_lr = cat(1, is_FIX_lr, is_FIX_lr(~catcell(1,condition_nan_trial(:,:,2))));
+is_NS_lr            = catcell(1,is_NS);   is_NS_lr = cat(1, is_NS_lr, is_NS_lr(~catcell(1,condition_nan_trial(:,:,2))));
+cue_ID_lr           = catcell(1,cue_ID);  cue_ID_lr = cat(1, cue_ID_lr, cue_ID_lr(~catcell(1,condition_nan_trial(:,:,2))));
+stimclass_name_lr = catcell(1,stimclass_name); stimclass_name_lr = cat(1, stimclass_name_lr(:,1), stimclass_name_lr(~catcell(1,condition_nan_trial(:,:,2)),2));
 
 extended_task_class_names = cat(2,upper(params.exp.taskclassnames),strcat(upper(params.exp.taskclassnames),'#'),{'PC+','CD+'});
 
@@ -1263,11 +1292,106 @@ if ~isempty(behresults)
             
             all_crossing_nr_beh = cat(1,all_crossing_nr_beh, crossing_nr(~isnan(crossing_nr)));
         end
-        assert(isequal(expected_crossing_nrs,unique(sort(all_crossing_nr_beh(:)))))
-        
+        expected_crossings = squeeze(results.crossing_nrs(ses, sestypes_behresults,:));
+        expected_crossings(expected_crossings==0)=[];
+        assert(isequal(expected_crossings,unique(sort(all_crossing_nr_beh(:)))))
     end
     results.beh_crossing_count = beh_runnumblocks;
     results.tt_crossing_count = tt_runnumblocks;
+        
+    % define
+    crossings = [1 1 1 1 1 1 1 0 0 0;1 1 1 1 1 1 1 0 0 0;1 1 1 1 1 1 1 0 0 0;1 1 1 1 1 1 1 1 0 1;1 1 0 1 1 1 1 1 1 1]; % scc and ltm are expanded
+    cntotable = [1:5:31  2 7 17 22 32  3 8 18 23 33  4 9 19 24 34 39 49  5 10 20 25 35 40 45 50];  % from 1-32 to matrix index (scc and ltm are associated with gabor)
+    numoptions = 2*ones(1,32);
+    numoptions([31]) = 3;
+    numoptions([3 23 24 30 32]) = 4;
+    scn = vcd('stimulusclassnames',[]);
+    tcn = vcd('taskclassnames',[]);
+    cn  = vcd('crossingnames',[]);
+    sccord = {'gabor' 'rdk' 'dot' 'obj'};  % the order in which scc will be expanded
+    
+%     % count crossing-wise stuff
+%     numblocks    = NaN(5,10);
+%     numtrials    = NaN(5,10);
+%     responserate = NaN(5,10);
+%     pctcorrect   = NaN(5,10);
+%     rts          = cell(5,10);
+%     chanceperf   = NaN(5,10);
+%     for pp=1:length(cn)
+%         
+%         % deal with numblocks
+%         ii = behresults.trialinfo.crossing_nr==pp;
+%         ix = cntotable(pp);
+%         [numblocks(ix)] = trialinfoanalyze(ii,trialinfo);
+%         
+%         % handle scc-all case
+%         if pp==3
+%             assert(isequal(cn{pp},'scc-all'));
+%             for qq=1:length(sccord)
+%                 ii = trialinfo.crossing_nr==pp & cellfun(@(x) isequal(x,sccord{qq}),trialinfo.stim_cued);
+%                 ix = cntotable(pp)-1 + qq;
+%                 [~,numtrials(ix),responserate(ix),pctcorrect(ix),rts{ix}] = trialinfoanalyze(ii,trialinfo);
+% %                 chanceperf(ix) = 1/numoptions(pp) * 100;
+%             end
+%             
+%             % all other cases
+%         else
+%             ii = trialinfo.crossing_nr==pp;
+%             ix = cntotable(pp);
+%             [~,numtrials(ix),responserate(ix),pctcorrect(ix),rts{ix}] = trialinfoanalyze(ii,trialinfo);
+% %             chanceperf(ix) = 1/numoptions(pp) * 100;
+%         end
+%         
+%     end
+    
+%     % summary RT using median
+%     medianrt = cellfun(@nanmedian,rts);
+%     if all(isnan(medianrt(:)))
+%         medianrt(:) = 0;  % THIS IS A HACK FOR DEGENERATE CASES
+%     end
+%     
+%     % count run-wise stuff
+%     runnumblocks   = zeros(0,length(cn));  % runs x crossings with number of blocks
+%     runnumtrials   = zeros(0,length(cn));  % runs x crossings with number of trials
+%     runcorrectresp = cell(0,length(cn));   % runs x crossings with [A B C D] with counts for buttons 1-4
+%     cnt = 1;          % which trialinfo row we are processing
+%     runcnt = 0;       % the total counter for run
+%     while cnt <= size(trialinfo,1)
+%         runcnt = runcnt + 1;  % update run counter
+%         
+%         % indices into trialinfo indicating all trials that are matching this run
+%         ix = flatten(find(trialinfo.session_nr==trialinfo.session_nr(cnt) & ...
+%             trialinfo.session_type==trialinfo.session_type(cnt) & ...
+%             trialinfo.run_nr==trialinfo.run_nr(cnt)));
+%         assert(isequal(ix-ix(1)+1,1:length(ix)));
+%         
+%         % for each crossing
+%         for p=1:length(cn)
+%             ix2 = flatten(find(trialinfo.crossing_nr(ix)==p));
+%             runnumtrials(runcnt,p) = length(ix2);  % count number of trials for this crossing
+%             
+%             % for each button
+%             for q=1:4
+%                 runcorrectresp{runcnt,p}(q) = sum(trialinfo.correct_response(ix(ix2))==q);
+%             end
+%             
+%             % figure out number of blocks
+%             temp = trialinfo(ix(ix2),:);
+%             if size(temp,1) > 0
+%                 ix3 = flatten(find(diff(temp.session_nr)~=0 | ...
+%                     diff(temp.session_type)~=0 | ...
+%                     diff(temp.run_nr)~=0 | ...
+%                     diff(temp.block_nr)~=0));
+%                 runnumblocks(runcnt,p) = length(ix3)+1;
+%             else
+%                 runnumblocks(runcnt,p) = 0;
+%             end
+%         end
+%         
+%         % move on to next run
+%         cnt = ix(end)+1;
+%         
+%     end
 end
 
 
@@ -1281,17 +1405,17 @@ if strcmp(env_type,'BEHAVIOR')
 end
 fprintf('***** TIME TABLE CHECKS *****\n')
 fprintf('Total number of sessions: \t\t\t\t\t%d', results.total_nr_of_sessions);
-fprintf('\nTotal number of sessions types: \t\t\t\t%d %d', results.total_nr_of_sessiontypes);
-fprintf('\nTotal number of runs: \t\t\t\t\t\t%d', results.total_nr_of_runs);
-fprintf('\nTotal number of block: \t\t\t\t\t\t%d', results.total_nr_of_blocks);
-fprintf('\nTotal number of crossings: \t\t\t\t\t%d', length(results.crossing_nrs));
-fprintf('\nTotal number of trials: \t\t\t\t\t%d', results.total_nr_of_trials);
-fprintf('\nTotal number of cues: \t\t\t\t\t\tleft: %d, right: %d, both: %d', results.cued_count(1),results.cued_count(2),results.cued_count(3));
-fprintf('\nTotal number of conditions (incl. repeats) all sessions: \t\t\t%d', results.total_nr_of_conditions);
+fprintf('\nTotal number of sessions types: \t\t\t\t%s', sprintf('%d ',results.total_nr_of_sessiontypes));
+fprintf('\nTotal number of runs: \t\t\t\t\t\t%s', sprintf('%d ',results.total_nr_of_runs));
+fprintf('\nTotal number of block: \t\t\t\t\t\t%s', sprintf('%d ',results.total_nr_of_blocks));
+fprintf('\nTotal number of crossings: \t\t\t\t\t%s', sprintf('%d ', length(squeeze(results.crossing_nrs(:,1,results.crossing_nrs(:,1,:)~=0))), length(squeeze(results.crossing_nrs(:,2,results.crossing_nrs(:,2,:)~=0)))));
+fprintf('\nTotal number of trials: \t\t\t\t\t%s', sprintf('%d ',results.total_nr_of_trials));
+fprintf('\nTotal number of cues: \t\t\t\t\t\tleft: %d, right: %d, both: %d', squeeze(results.cued_count)');
+fprintf('\nTotal number of conditions (incl. repeats) all sessions: \t\t\t%s', sprintf('%d ',results.total_nr_of_conditions));
 fprintf('\nTotal number of unique condition across all sessions: \t\t%s', sprintf('%d ',results.total_nr_of_unique_conditions))
 fprintf('\nTotal number of conditions repeated across all sessions: \t%s', sprintf('%d ',results.total_nr_of_conditions-results.total_nr_of_unique_conditions))
-fprintf('\nTotal number of CD+ trials (out of %d CD trials): \t\t%d (%2.1f%%)', results.total_nr_of_CD_trials, results.total_nr_of_CDplus_trials, 100*(results.total_nr_of_CDplus_trials/results.total_nr_of_CD_trials))
-fprintf('\nTotal number of OBJ-PC+ trials (out of %d OBJ-PC trials): \t%d (%2.1f%%)', results.nr_of_objpc_trials, results.nr_of_objectcatch_trials, 100*(results.nr_of_objectcatch_trials/results.nr_of_objpc_trials))
+fprintf('\nTotal number of CD+ trials (out of N CD trials): \t\t%s', sprintf('%d %d out of %d %d (%2.1f%% %2.1f%%)',results.total_nr_of_CD_trials, results.total_nr_of_CDplus_trials, 100*(results.total_nr_of_CDplus_trials./results.total_nr_of_CD_trials)))
+fprintf('\nTotal number of OBJ-PC+ trials (out of N OBJ-PC trials): \t%s', sprintf('%d %d out of %d %d (%2.1f%% %2.1f%%)', results.nr_of_objpc_trials, results.nr_of_objectcatch_trials, 100*(results.nr_of_objectcatch_trials./results.nr_of_objpc_trials)))
 fprintf('\n')
 for ss = 1:size(results.nr_of_unique_conditions_per_run,1)
     for st = 1:size(results.nr_of_unique_conditions_per_run,2)
@@ -1310,6 +1434,7 @@ if ~isempty(behresults)
     fprintf('\n***** BEHAVIORAL RESULTS CHECKS *****\n')
     fprintf('Session nr:     \t\t\t\t\t%d\n', sessions_behresults);
     fprintf('Session type:   \t\t\t\t\t%d\n', sestypes_behresults);
+    fprintf('Number of runs: \t\t\t\t\t%d\n', nr_runs_behresults);
     fprintf('Number of runs: \t\t\t\t\t%d\n', nr_runs_behresults);
 end
 
