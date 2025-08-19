@@ -153,7 +153,7 @@ switch dispname
         disp.clut        = 0;                   % linear clut
         disp.fontsize    = 25;                  % fontsize of text
         % EYELINK DISPLAY PARAMS
-        disp.el_monitor_size    = [-349.2, 196.45, 349.2, -196.45]; % monitor size in millimeters (center to left, top, right, and bottom). Numbers come from [39.29 cm height, 69.84 cm width] --> [392.9 cm height, 698.4 cm width] * 0.5.
+        disp.el_monitor_size    = [-349.2, 196.45, 349.2, -196.45]; % monitor size in millimeters (center to left, top, right, and bottom). Numbers come from [39.29 cm height, 69.84 cm width] --> [392.9 mm height, 698.4 mm width] * 0.5.
         disp.el_screen_distance = [1845 1845];  % distance in millimeters from eye to top and bottom edge of the monitor. Given the 183.5 cm viewing distance, this is calculated as:  sqrt(183.5^2+(32.5/2)^2)*10 and then rounded to nearest integer.    
     case 'PPROOM_EIZOFLEXSCAN'                  
         % Mac tower has MATLAB version 2016b, psychtoolbox version 3.0.14 December 30th 2014
