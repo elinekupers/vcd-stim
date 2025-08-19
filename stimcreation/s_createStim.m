@@ -87,21 +87,23 @@ params.exp    = vcd_getSessionParams('disp_name', params.disp.name, ...
 % target on a black and white background.
 %
 % DESIRED target distance:
+% PPROOM EIZOFLEXSCAN:
 % Between the center and 4 left/right/up/down targets is 4 degrees visual
-% angle. This results in [xc,yc] ± 352 pixels (7TAS BOLDscreen) or [xc,yc] 
-% ± 265 pixels (PPROOM EIZOFLEXSCAN).
+% angle. This results in [xc,yc] ± 265 pixels. EMPIRICAL target distance:
+% 265 pixels, which corresponds to 4.0061 degrees.
 %
-% EMPIRICAL target distance:
-% * 7TAS BOLDscreen: 352 pixels, which corresponds to 3.9914 degrees.
-% * PPROOM EIZOFLEXSCAN: 265 pixels, which corresponds to 4.0061 degrees.
+% 7TAS BOLDscreen:
+% Between the center and 4 left/right/up/down targets is 3 degrees visual
+% angle. This results in[xc,yc] ± 264 pixels (round to the nearest even
+% pixel), which corresponds to 2.9935 degrees.
 %
 % This results in dots at the following pixel coordinates for the 5 targets
 % BOLDscreen target rect coordinates in pixels 
 % [x1,y1,x1,y2] = [top-left-x, top-left-y, bottom-right-x bottom-right-y]:
 %
-%                    [949,177,972,200]
-% [597,529,620,552]  [949,529,972,552]   [1301,529,1324, 552]
-%                    [949,881,972,904]
+%                    [948,264,972,288]
+% [684,528,708,552]  [948,528,972,552]   [1212,528,1236,552]
+%                    [948,792,972,816]
 %
 % EIZOFLEXSCAN target rect coordinates in pixels 
 % [x1,y1,x1,y2] = [top-left-x, top-left-y, bottom-right-x bottom-right-y]:
