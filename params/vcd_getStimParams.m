@@ -258,11 +258,29 @@ else
     % * PP room EIZOFLEX: 256 pixels, which corresponds to 4.0061 degrees.
     % See vcd_setEyelinkParams.m for other parameters regarding Eyelink.
     stim.el.stimfile = fullfile(vcd_rootPath,'workspaces','stimuli',disp_params.name,sprintf('eye_%s',disp_params.name)); % mat file
-    stim.el.point2point_distance_deg = 4.0;                                % desired target distance (in deg) from fixation 
+    if strcmp(disp_params.name,'7TAS_BOLDSCREEN32') % slightly closer target locations to ensure stable pupil tracking
+        stim.el.point2point_distance_deg = 3.0;                                % desired target distance (in deg) from fixation 
+    else
+        stim.el.point2point_distance_deg = 4.0;                                % desired target distance (in deg) from fixation 
+    end
     stim.el.point2point_distance_pix = round((stim.el.point2point_distance_deg*disp_params.ppd/2))*2; % desired target distance in pixels
     stim.el.total_target_diam_pix    = stim.fix.dotthickborderdiam_pix;    % same as thick fixation circle (22 pixels for BOLDscreen)
     stim.el.target_center_diam_pix   = stim.fix.dotcenterdiam_pix;         % same as inner fixation circle (10 pixels for BOLDscreen)
-
+    % Calibration/validation proportion area refers to the fraction of the 
+    % native screen resolution at which the center of Eyelink's default   
+    % calibration and validation targets will be placed. 
+    % A proportion of [1,1] means that the upper/lower/left/right targets
+    % are centered on the screen width and height. Default Eyelink
+    % proportion area is x = 0.88 and y = 0.83.
+    % To get the proportion area for our prefered distance for a 
+    % Horizontal-Vertical 5-point (HV5) square grid: we multiply the  
+    % distance from center of screen to center of target in pixels by 2 
+    % (for left and right / up vs down) and divide by the horizontal and 
+    % vertical native screen resolution in pixels.
+    % We use the rounded stim.el.point2point_distance_pix parameter because
+    % we also use this value for creating the targets in the run's
+    % eyetracking block.
+    stim.el.cv_proportion_area = ([2,2].*stim.el.point2point_distance_pix) ./ [disp_params.w_pix,disp_params.h_pix]; % proportion area for [x,y]-dimensions used by Eyelink to place automated calibration/validation target. 
     
     %% STIM PARAMS
     for ii = 1:length(stim_class)
