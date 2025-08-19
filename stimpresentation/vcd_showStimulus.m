@@ -318,8 +318,13 @@ else
     Eyelink('message','DISPLAY_COORDS %ld %ld %ld %ld',0,0,wwidth-1,wheight-1);
     % IF YOU DON'T WANT CUSTOM DOT POSITIONS: Set number of calibration/validation dots and spread: horizontal-only(H) or horizontal-vertical(HV) as H3, HV3, HV5, HV9 or HV13
     Eyelink('command','calibration_type = HV5'); % horizontal-vertical 5-points.
-    Eyelink('command','calibration_area_proportion 0.367, 0.652');
-    Eyelink('command','validation_area_proportion 0.367, 0.652');
+    % Calibration and validation area proportion correspond to proportion of 
+    % screen at which HV5 targets are shown. First value is x-dim, second value is y-dim. 
+    % Proportion area = 1.0 -> targets are centered on the edge of the screen.
+    % Proportion area < 1.0 -> targets in between edge and center of the screen. 
+    % 7TAS 4 deg targets -> prop area = [0.367, 0.652]. 7TAS 3 deg targets -> prop area = [0.275, 0.489]
+    Eyelink('command', sprintf('calibration_area_proportion %1.3f, %1.3f', params.stim.el.cv_proportion_area(1),params.stim.el.cv_proportion_area(2))); % proportion of [x,y] screen resolution (in pixels) at which we place calibration targets.
+    Eyelink('command', sprintf('validation_area_proportion %1.3f, %1.3f', params.stim.el.cv_proportion_area(1),params.stim.el.cv_proportion_area(2))); % proportion of [x,y] screen resolution (in pixels) at which we place calibration targets.
     Eyelink('command','generate_default_targets = NO');
     Eyelink('command','calibration_samples  = 6');
     Eyelink('command','calibration_sequence = 0,1,2,3,4,5');
