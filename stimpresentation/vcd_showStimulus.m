@@ -318,6 +318,8 @@ else
     Eyelink('message','DISPLAY_COORDS %ld %ld %ld %ld',0,0,wwidth-1,wheight-1);
     % IF YOU DON'T WANT CUSTOM DOT POSITIONS: Set number of calibration/validation dots and spread: horizontal-only(H) or horizontal-vertical(HV) as H3, HV3, HV5, HV9 or HV13
     Eyelink('command','calibration_type = HV5'); % horizontal-vertical 5-points.
+    Eyelink('command','calibration_area_proportion 0.367, 0.652');
+    Eyelink('command','validation_area_proportion 0.367, 0.652');
     Eyelink('command','generate_default_targets = NO');
     Eyelink('command','calibration_samples  = 6');
     Eyelink('command','calibration_sequence = 0,1,2,3,4,5');
