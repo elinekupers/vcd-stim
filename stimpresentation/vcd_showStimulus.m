@@ -271,6 +271,7 @@ if ~params.wanteyetracking
 else
     % ANON EYE FUN for SYNC TIME
     tfunEYE     = @() Eyelink('Message','SYNCTIME');
+    targetFunEYE = @() Eyelink('Message',sprintf('VCDEYETRACKINGTARGET %.5f', params.stim.el.point2point_distance_deg));
 
     % Initialize Eyelink
     et_ok = EyelinkInit;
@@ -510,7 +511,7 @@ while 1
         % Draw ET targets on grey/white/black background
         case {990, 991, 992, 993, 994, 995, 996, 997}
             Screen('DrawTexture',win,im_tex{framecnt},[],im_rect{framecnt},0,[],1,framecolor{framecnt});
-
+            
         % Draw fix circle (thin or thick)
         case {0, 91, 92, 93, 96, 97, 98, 99}
             Screen('DrawTexture',win,im_tex{framecnt},[],im_rect{framecnt},0,[],1,framecolor{framecnt});
@@ -602,6 +603,11 @@ while 1
                 didglitch = 1;
             else
                 didglitch = 0;
+            end
+            
+            % tell eyelink about our eyetracking target
+            if ismember(run_frames.frame_event_nr(framecnt), [991:995])
+                feval(targetFunEYE)
             end
             
             % get out of this loop
@@ -778,7 +784,7 @@ end
 ptviewmoviecheck(data.timing.timeframes,data.timeKeys,[],{'5' 't'});
 
 % Check eyetracking data
-if params.wanteyetracking
+if params.wanteyetracking && params.wanteyetrackingfigures
     eyeresults = vcdeyetrackingpreprocessing( ...
         fullfile(params.savedatafolder,params.eyelinkfile), ...
         fullfile(params.savedatafolder,params.behaviorfile), performance);

@@ -136,6 +136,8 @@ function [data,all_images] = runme_vcdcore(subj_nr,ses_nr,ses_type,run_nr, dispN
 %   [exp_env]            : argument to vcd_startup.m. Default: []. Choose between 1:'7tas', 2:'cmrr pproom', 2:'nyu pproom', 4:'other'
 %   [is_demo]            : if true, we will treat this as a demo run. if false, we treat this as a normal run.
 %                          Default: false;
+%   [wanteyetrackingfigures] : if true, we will analyze and show eyetracking figures. if false, we will skip this step.
+%                          Default: true;
 %
 % OUTPUTS:
 %   data                 : struct with behavioral button presses and monitor
@@ -209,6 +211,8 @@ p.addParameter('triggerkeyname'     , '''5'' or ''t''', @isstring) % for display
 p.addParameter('userkeys'           , {'1','2','3','4'}, @(x) iscell(x) || isstring(x)) % key(s) that participants are expected to push.
 p.addParameter('store_imgs'         , false     , @islogical)  % whether to save figures locally (true) or not (false).                      
 p.addParameter('is_demo'            , false     , @islogical)  % whether this is a demo run (true) or not (false).
+p.addParameter('wanteyetrackingfigures', true   , @islogical)  % whether to plot preliminary analysis results of eyetracking data.
+
 % Parse inputs
 p.parse(subj_nr, ses_nr, ses_type, run_nr, dispName, varargin{:});
 
@@ -311,6 +315,7 @@ if isempty(params.subjfilename)
             ts0,params.subj_nr,params.ses_nr,choose(params.ses_type==1,'A','B'),params.run_nr);
     else
         params.eyelinkfilename = '';
+        params.wanteyetrackingfigures = false;
     end
 else
     params.behavioralfilename  = fullfile(params.savedatafolder,sprintf('%s_%s.mat',ts0,params.subjfilename));
@@ -318,6 +323,7 @@ else
         params.eyelinkfilename = fullfile(params.savedatafolder,sprintf('%s_%s.edf',ts0,params.subjfilename));
     else
         params.eyelinkfilename = '';
+        params.wanteyetrackingfigures = false;
     end
 end
     

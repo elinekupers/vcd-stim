@@ -41,6 +41,7 @@ function [data, all_images] = vcd_singleRun(params)
 %       instrfolder          : (char) where are the txt and png files with task instructions?
 %   	exp_env              : (unsigned integer between 1-4) argument to vcd_startup.m. Default: []. Choose between 1:'7tas', 2:'cmrr pproom', 2:'nyu pproom', 4:'other'
 %       is_demo              : (logical) if true, we will treat this as a demo run. if false, we treat this as a normal run. Default: false;  
+%       wanteyetrackingfigures : (logical) if true, we will plot figures from a preliminary eyetracking data analysis of a given run.
 %
 % OUTPUTS:
 %   data        : struct with behavioral button presses and monitor
