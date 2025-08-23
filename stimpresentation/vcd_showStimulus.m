@@ -454,7 +454,8 @@ end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%% LOG THE START     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-feval(tfunEYE);
+feval(tfunEYE); 
+feval(targetFunEYE) % tell eyelink about our eyetracking target
 timekeys = [timekeys; {GetSecs 'trigger'}];
 fprintf('EXP START.\n'); 
 
@@ -603,11 +604,6 @@ while 1
                 didglitch = 1;
             else
                 didglitch = 0;
-            end
-            
-            % tell eyelink about our eyetracking target
-            if ismember(run_frames.frame_event_nr(framecnt), [991:995])
-                feval(targetFunEYE)
             end
             
             % get out of this loop
