@@ -46,6 +46,7 @@ function [results,behresults] = vcdeyetrackingpreprocessing(filename,behfilename
 %   <synctimes> - The times corresponding to the SYNCTIME messages. These are whole
 %                 numbers of milliseconds as reported by the Eyelink clock.
 %                 In the case of partial data, only the first SYNCTIME will be found.
+%   <etloc> - number of dva where eye tracking targets are placed (away from center)
 %   <eyedata> - 4 x samples with the eyetracking data. The rows are:
 %               time - The time corresponding to each sample, where 0 corresponds
 %                      to the onset of the first stimulus frame. The sampling rate
@@ -99,6 +100,7 @@ function [results,behresults] = vcdeyetrackingpreprocessing(filename,behfilename
 %            histograms (0.25-deg bins).
 %
 % History:
+% - 2025/08/23 - add <etloc> derivation from the edf file
 % - 2025/08/15 - add behresults.trialinfo output to handle <stim1maxdeviance> and <stim2maxdeviance>
 % - 2025/07/24 - change default blinkpad to [100 100]; implement half-blink removal;
 %                regress pupil-size-data at the same time as the polynomials
@@ -110,7 +112,6 @@ function [results,behresults] = vcdeyetrackingpreprocessing(filename,behfilename
 
 targetwindow = [500 2000];    % number of milliseconds after target onset to extract from
 onsetwindow = [-1000 5000];   % number of milliseconds for window around stim/taskcue
-etloc = 4;                    % number of dva where eye tracking targets are placed (away from center)
 checkwindow = [0 1000];       % window relative to stim onset to check for deviance
 
 % related to half-blink removal
@@ -211,6 +212,16 @@ else
   assert(length(ok)==2);
 end
 results.synctimes = cellfun(@str2double,ok);
+
+% deal with etloc.
+ok = b1.msg(cellfun(@(x) ~isempty(regexp(x,'VCDEYETRACKINGTARGET')),b1.msg(:,3)),3);
+if isempty(ok)
+  results.etloc = 4;  % older runs did not include the message. let's assume 4.0 deg for those.
+else
+  assert(length(ok)==1);
+  results.etloc = sscanf(ok{1}(length('VCDEYETRACKINGTARGET')+1:end),'%f');
+else
+end
 
 % cross-check the eyetracking data duration (according to synctimes) against the
 % duration according to the stimulus computer's logs. assuming that this passes,
@@ -456,8 +467,8 @@ end
 figureprep([100 100 500 500],wantfigwin); hold on;
 ii = find(ismember(a1.run_table.event_id,991:995));  % et_sac (the targets)
 assert(length(ii)==5);
-targetxxs = [0 -etloc etloc 0 0];  % central, left, right, up, down.
-targetyys = [0  0 0 etloc -etloc];
+targetxxs = [0 -results.etloc results.etloc 0 0];  % central, left, right, up, down.
+targetyys = [0  0 0 results.etloc -results.etloc];
 colors0 = cool(5);
 results.targeterrs = [];
 for p=1:length(ii)  % for each target, in the order they appear
@@ -476,7 +487,7 @@ for p=1:length(ii)  % for each target, in the order they appear
   % calculate error as mean Euclidean distance from target (mean over time samples)
   results.targeterrs(ix) = mean(sqrt(sum((results.eyedata(2:3,tt) - [targetxxs(ix); targetyys(ix)]).^2,1)),'omitnan');  % NOTE: omitnan
 end
-axis(2*[-etloc etloc -etloc etloc]);
+axis(2*[-results.etloc results.etloc -results.etloc results.etloc]);
 axis square;
 xlabel('X-position (deg)');
 ylabel('Y-position (deg)');
