@@ -31,8 +31,8 @@ function exp = vcd_getSessionParams(varargin)
 p0 = inputParser;
 p0.addParameter('disp_name'             , '7TAS_BOLDSCREEN32', @(x) any(strcmp(x,{'7TAS_BOLDSCREEN32', 'KKOFFICE_AOCQ3277', 'PPROOM_EIZOFLEXSCAN', 'EKHOME_ASUSVE247','CCNYU_VIEWPIXX3D'})));                   
 p0.addParameter('presentationrate_hz'   , 60     , @isnumeric);
-p0.addParameter('load_params'           , true   , @islogical);                    
-p0.addParameter('store_params'          , true   , @islogical);
+p0.addParameter('load_params'           , false  , @islogical);                    
+p0.addParameter('store_params'          , false  , @islogical);
 p0.addParameter('verbose'               , true   , @islogical); 
 
 % Parse inputs
@@ -54,14 +54,14 @@ if load_params
             if length(d) > 1
                 warning('[%s]: Multiple .mat files! Will pick the most recent one', mfilename);
             end
-            fprintf('[%s]: Loading exp params .mat file: %s\n', mfilename, d(end).name);
+            fprintf('[%s]: Loading exp params from .mat file: %s\n', mfilename, d(end).name);
         end
         load(fullfile(d(end).folder,d(end).name),'exp');
     else
-        error('[%s]: Can''t find experiment session params file!\n', mfilename)
+        error('[%s]: Can''t find experiment session params file to load!\n', mfilename)
     end
 else
-    if verbose, fprintf('[%s]: Define exp params\n', mfilename); end
+    if verbose, fprintf('[%s]: Define exp params from scratch.\n', mfilename); end
     
     % We will create a big struct where we separate params based on the
     % experimental hierarchy, i.e.: if it is at the session level, run
