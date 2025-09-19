@@ -127,6 +127,7 @@ function results = vcdbehavioralanalysis(filename,wantverbose,blockswap);
 % - The initial dot color is not treated as a change event.
 %
 % History:
+% - 2025/09/19 - allow 'trigger' to be a valid trigger key event
 % - 2025/08/15 - add <stim1onset_start> and <stim2onset_start>
 % - 2025/08/11 - add <wantverbose>, <blockswap>
 % - 2025/07/21 - add cdonset to trialinfo
@@ -276,8 +277,8 @@ for p=1:size(timekeysB,1)
   end
 
   % figure out auxiliary and trigger events
-  bad1a = ismember(timekeysB{p,2},{'absolutetimefor0' 'trigger' 'DONE'});  % auxiliary events
-  bad1b = ~bad1a & ismember(timekeysB{p,2}(1),triggerkeys);                % trigger events (as specified by <triggerkeys>)
+  bad1a = ismember(timekeysB{p,2},{'absolutetimefor0' 'DONE'});            % auxiliary events (NOTE: 'trigger' is handled in bad1b!!!)
+  bad1b = ~bad1a & (ismember(timekeysB{p,2}(1),triggerkeys) | ismember(timekeysB{p,2},{'trigger'}));  % trigger events (as specified by <triggerkeys>, or 'trigger')
   bad = bad1a | bad1b;                                                     % either auxiliary or trigger events
   
   % is this a "held down" case? (is the current key a user-pressed key that is repeated and within <deltatime>?)
