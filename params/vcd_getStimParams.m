@@ -69,15 +69,15 @@ if load_params
             if length(d) > 1
                 warning('[%s]: Multiple .mat files! Will pick the most recent one\n', mfilename);
             end
-            fprintf('[%s]: Loading stim params .mat file: %s\n', mfilename, d(end).name);
+            fprintf('[%s]: Loading stim params from .mat file: %s\n', mfilename, d(end).name);
         end
         load(fullfile(d(end).folder,d(end).name),'stim');
     else
-        error('[%s]: Can''t find stim params file!\n', mfilename)
+        error('[%s]: Can''t find stim params file to load!\n', mfilename)
     end
 else 
     %% We will load params if requested
-    if verbose, fprintf('[%s]: Define stim params\n', mfilename); end
+    if verbose, fprintf('[%s]: Define stim params from scratch.\n', mfilename); end
     
     % Setup struct
     stim = struct();
@@ -785,12 +785,12 @@ else
                 p.unique_im_nrs_specialcore = p.unique_im_nrs_core([1,3,5,7,8,10,12,14]);   % 8 SELECTED IMAGES USED (SUBSET of 16 IMAGES)--these are hand picked! damon, sophia, cat, giraffe, drill, bus, pizza, church
                 
                 % IMAGERY QUIZ DOT PARAMS
-                p.imagery_sz_deg           = 5;                                  % desired diameter (degree) of the second, quiz dots image in an imagery trial to encourage subjects to create a vidid mental image.
-                p.imagery_sz_pix           = (round(p.img_sz_deg* disp_params.ppd)/2)*2; % pixel diameter of quiz dot image (ensure even nr of pixels)
+                p.imagery_sz_pix           = p.crop_img_sz_pix;                  % pixel diameter of quiz dot image (ensure even nr of pixels)
+                p.imagery_sz_deg           = p.imagery_sz_pix / disp_params.ppd; % empirical diameter (degree) of the second, quiz dots image in an imagery trial to encourage subjects to create a vidid mental image.
                 p.unique_im_nrs_img_test   = [903:1062];                         % Unique image nrs associated with the 8*20=160 IMG OBJ test dot images
                 p.imagery_quiz_images      = [ones(1,10),2.*ones(1,10)];         % quiz dots overlap (1) or not (2)
                 p.imagery_text_prompt_file = fullfile(vcd_rootPath,'workspaces','instructions','img_text_prompts',sprintf('*_vcd_object*.txt')); % txt file
-                p.imagery_raw_dot_file     = fullfile(vcd_rootPath,'workspaces','stimuli','RAW','IMG_dots','obj',sprintf('*_vcd_object*')); % raw quiz dot png folder
+                p.imagery_raw_dot_folder   = fullfile(vcd_rootPath,'workspaces','stimuli','RAW','vcd_objects','img_test',sprintf('*_vcd_object*')); % raw quiz dot png folder
 
                 % LTM PAIR
                 p.ltm_pairs          = [];                                     %% TODO: list of core stim numbers of same/other stim classes in the order of obj core images
@@ -804,8 +804,8 @@ else
                 p.core_png_folder    = fullfile(vcd_rootPath,'workspaces','stimuli','RAW','vcd_natural_scenes'); % folder, where to find core scene pngs?
                 p.wmtest_png_folder  = fullfile(p.core_png_folder, 'wm_test');                                   % folder, where to find individual wm test pngs?
                 p.ltmlure_png_folder = fullfile(p.core_png_folder, 'ltm_novel_lures');                           % folder, where to find individual novel ltm lure pngs?
-                p.imgtest_png_folder = fullfile(p.core_png_folder, 'img_test');                                  % folder, where to find individual imagery test pngs?
-                
+                p.imagery_raw_dot_folder = fullfile(p.core_png_folder, 'img_test','vcd_ns*');                                  % folder, where to find raw individual imagery test pngs?
+
                 p.stimfile = fullfile(vcd_rootPath,'workspaces','stimuli',disp_params.name,sprintf('scene_%s',disp_params.name)); % prefix to mat file of preprocessed stimulus images
                 p.infofile = fullfile(vcd_rootPath,'workspaces','info',sprintf('scene_info_%s',disp_params.name));                % csv-file with stimulus info
                 
@@ -881,14 +881,13 @@ else
                 p.change_im_name            = {'easy_remove','hard_remove','hard_add','easy_add'};
                 p.unique_im_nrs_wm_test     = [303:422];                               % Unique image nrs associated with the 120 WM NS changed stimuli
                 
-                % IMAGERY 
-                p.unique_im_nrs_specialcore = p.unique_im_nrs_core([2,4,5,8,10,11,13,18,20,21,23,26,27,30]); % 14 scenes will be used for  IMG/LTM pairing (these are carefully handpicked! see scene_info csv file)
+                % IMAGERY
+                p.unique_im_nrs_specialcore = p.unique_im_nrs_core([2,4,5,8,10,11,14,17,19,21,24,26,27,30]); % 14 scenes will be used for  IMG/LTM pairing (these are carefully handpicked! see scene_info csv file)
                 p.imagery_sz_deg            = p.img_sz_deg;                                                     % desired diameter (degree) of the second, quiz dots image in an imagery trial to encourage subjects to create a vidid mental image.
                 p.imagery_sz_pix            = p.img_sz_pix;                                                     % diameter of quiz dot image (pixels) (we already ensured even nr of pixels)
                 p.unique_im_nrs_img_test    = [1063:1342];                                                      % Unique image nrs associated with the 14*20=280 IMG NS test dot images
                 p.imagery_quiz_images       = [ones(1,10),2.*ones(1,10)];                                       % Quiz dots overlap (1=yes) or not (2=no)
                 p.imagery_text_prompt_file  = fullfile(vcd_rootPath,'workspaces','instructions','img_text_prompts',sprintf('*_vcd_ns*.txt')); % txt file
-                p.imagery_raw_dot_file      = fullfile(vcd_rootPath,'workspaces','stimuli','RAW','IMG_dots','ns',sprintf('*_vcd_ns*')); % raw quiz dot png folder
 
                 % FOR LTM incorrect trials, we have very similar looking images called "lures":
                 p.lure_im                   = {'lure01', 'lure02', 'lure03', 'lure04'};
