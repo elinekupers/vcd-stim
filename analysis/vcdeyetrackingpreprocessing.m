@@ -220,7 +220,6 @@ if isempty(ok)
 else
   assert(length(ok)==1);
   results.etloc = sscanf(ok{1}(length('VCDEYETRACKINGTARGET')+1:end),'%f');
-else
 end
 
 % cross-check the eyetracking data duration (according to synctimes) against the
