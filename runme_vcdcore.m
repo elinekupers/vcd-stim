@@ -138,6 +138,8 @@ function [data,all_images] = runme_vcdcore(subj_nr,ses_nr,ses_type,run_nr, dispN
 %                          Default: false;
 %   [wanteyetrackingfigures] : if true, we will analyze and show eyetracking figures. if false, we will skip this step.
 %                          Default: true;
+%   [is_wide]            : if true, we will treat this as a wide session. if false, we treat this as a deep run.
+%                          Default: false;
 %
 % OUTPUTS:
 %   data                 : struct with behavioral button presses and monitor
@@ -212,6 +214,7 @@ p.addParameter('userkeys'           , {'1','2','3','4'}, @(x) iscell(x) || isstr
 p.addParameter('store_imgs'         , false     , @islogical)  % whether to save figures locally (true) or not (false).                      
 p.addParameter('is_demo'            , false     , @islogical)  % whether this is a demo run (true) or not (false).
 p.addParameter('wanteyetrackingfigures', true   , @islogical)  % whether to plot preliminary analysis results of eyetracking data.
+p.addParameter('is_wide'            , false     , @islogical)  % whether this is a wide session (true) or a deep session (false).
 
 % Parse inputs
 p.parse(subj_nr, ses_nr, ses_type, run_nr, dispName, varargin{:});
@@ -247,10 +250,14 @@ if strcmp(params.env_type,'BEHAVIOR')
     assert(isequal(params.ses_type,1));
     
 elseif strcmp(params.env_type,'MRI')
-    assert(params.ses_nr>=1 && params.ses_nr<=31);
-    if params.ses_nr == 1, params.is_wide = true; end
-    if ismember(params.ses_nr, [1,31]), assert(ismember(params.ses_type, [1,2]));
-    else, assert(isequal(params.ses_type,1)); end
+    assert(params.ses_nr>=1 && params.ses_nr<=46);
+    if params.is_wide == 1
+        assert(isequal(params.ses_nr,1))
+        assert(ismember(params.ses_type, [1,2]));
+    elseif params.is_wide == 0
+        assert(ismember(params.ses_nr, [1,46]))
+        assert(ismember(params.ses_type, [1,2]))
+    end
     assert(params.run_nr>=1 && params.run_nr<=10);
 end
 
@@ -274,7 +281,11 @@ if isempty(params.timetable_file)
        if strcmp(params.dispName,'CCNYU_VIEWPIXX3D')
            tempfiles = matchfiles(fullfile(tmp_timetable_dir,sprintf('vcd_subj%03d_time_table_master_%s%s*.mat',params.subj_nr, choose(params.is_demo,'demo_',''),'PPROOM_EIZOFLEXSCAN')));
        else
-           tempfiles = matchfiles(fullfile(tmp_timetable_dir,sprintf('vcd_subj%03d_time_table_master_%s%s%s*.mat',params.subj_nr, choose(params.is_wide,'wide_',''), choose(params.is_demo,'demo_',''),params.dispName)));
+           if strcmp(params.env_type, 'MRI')
+               tempfiles = matchfiles(fullfile(tmp_timetable_dir,sprintf('vcd_subj%03d_time_table_master_%s%s%s*.mat',params.subj_nr, choose(params.is_wide,'wide_','deep_'), choose(params.is_demo,'demo_',''),params.dispName)));
+           else
+               tempfiles = matchfiles(fullfile(tmp_timetable_dir,sprintf('vcd_subj%03d_time_table_master_%s%s*.mat',params.subj_nr, choose(params.is_demo,'demo_',''),params.dispName)));
+           end
        end
        % If user doesn't want to generate a time table and we can't find any, end the run gracefully
        if isempty(tempfiles)
@@ -331,8 +342,8 @@ end
 %% %%%%%%%%%%%%%%%%%%%%%%%% DON'T EDIT BELOW %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % Tell operator what experiment are running
-fprintf('[%s]: Running VCD core %s experiment: subj_nr %03d - session %02d %s - run %02d \n', ...
-    mfilename, params.env_type, params.subj_nr,params.ses_nr,choose(params.ses_type==1,'A','B'),params.run_nr)
+fprintf('[%s]: Running VCD core %s experiment: subj_nr %03d - %s session %02d %s - run %02d \n', ...
+    mfilename, params.env_type, params.subj_nr,choose(params.is_wide==1,'wide', 'deep'), params.ses_nr,choose(params.ses_type==1,'A','B'),params.run_nr)
 fprintf('[%s]: %s eyetracking \n', mfilename, choose(params.wanteyetracking,'YES','NO'))
 fprintf('[%s]: Running experiment with images optimized for %s\n', mfilename, params.dispName)
 if isempty(params.timetable_file)
