@@ -219,7 +219,11 @@ else % if not, then we look user pointed to a timetable_file
 
         % see if there is a subject condition_master_shuffled, which is the precursor of time_table_master
         % and create the time_table_master from there..
-        fname = sprintf('%s_condition_master_%s%s*.mat',sprintf('vcd_subj%03d',params.subj_nr),choose(params.is_wide,'wide_',''),choose(params.is_demo,'demo_',''));
+        if strcmp(params.env_type, 'MRI')
+            fname = sprintf('%s_condition_master_%s%s*.mat',sprintf('vcd_subj%03d',params.subj_nr),choose(params.is_wide,'wide_','deep_'),choose(params.is_demo,'demo_',''));
+        else
+            fname = sprintf('%s_condition_master_%s*.mat',sprintf('vcd_subj%03d',params.subj_nr),choose(params.is_demo,'demo_',''));
+        end
         d = dir(fullfile(params.timetablefiledir, fname));
         if ~isempty(d)
             fprintf('[%s]: Create new time_table_master with locally stored subject-specific condition_master.\n',mfilename);
@@ -238,7 +242,11 @@ else % if not, then we look user pointed to a timetable_file
             %% %% CREATE CONDITION_MASTER AND TIME_TABLE_MASTER %%%%%%%%%
             % if there is no condition_master_shuffled for this subject, then
             % we create both condition_master_shuffled and time_table_master on the spot.
-            fname = sprintf('condition_master_%s%s%s*.mat', choose(params.is_wide,'wide_',''), choose(params.is_demo,'demo_',''), params.disp.name);
+            if strcmp(params.env_type, 'MRI')
+                fname = sprintf('condition_master_%s%s%s*.mat', choose(params.is_wide,'wide_','deep_'), choose(params.is_demo,'demo_',''), params.disp.name);
+            else
+                fname = sprintf('condition_master_%s%s*.mat', choose(params.is_demo,'demo_',''), params.disp.name);
+            end
             d = dir(fullfile(vcd_rootPath,'workspaces','info', fname));
             if ~isempty(d)
                 a1 = load(fullfile(d(end).folder,d(end).name),'condition_master');
