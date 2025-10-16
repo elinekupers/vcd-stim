@@ -145,7 +145,11 @@ end
 if load_params
     if ~isfield(params,'is_demo'), params.is_demo = false; end
     if ~isfield(params,'is_wide'), params.is_wide = false; end
-    fname = sprintf('%s_time_table_master_%s%s%s*.mat',subj_id,choose(params.is_wide,'wide_',''),choose(params.is_demo,'demo_',''),params.disp.name);
+    if strcmp(env_type, 'MRI')
+        fname = sprintf('%s_time_table_master_%s%s%s*.mat',subj_id,choose(params.is_wide,'wide_','deep_'),choose(params.is_demo,'demo_',''),params.disp.name);
+    else
+        fname = sprintf('%s_time_table_master_%s%s*.mat',subj_id,choose(params.is_demo,'demo_',''),params.disp.name);
+    end
     d = dir(fullfile(vcd_rootPath,'data', env_type, subj_id, fname));
     if isempty(d)
         error('[%s]: Can''t find time table file with subj_id: %s!\n', mfilename, subj_id)
@@ -163,8 +167,11 @@ else
     
     % check if trial struct is already defined and load it if needed
     if ~exist('condition_master','var') || isempty(condition_master)
-        fname = sprintf('%s_condition_master_%s%s*%s*.mat',subj_id, choose(params.is_wide,'wide_',''), choose(params.is_demo,'demo_',''),params.disp.name);
-        
+        if strcmp(env_type, 'MRI')
+            fname = sprintf('%s_condition_master_%s%s*%s*.mat',subj_id, choose(params.is_wide,'wide_','deep_'), choose(params.is_demo,'demo_',''),params.disp.name);
+        else
+            fname = sprintf('%s_time_table_master_%s%s*.mat',subj_id,choose(params.is_demo,'demo_',''),params.disp.name);
+        end
         % load trial info
         d = dir(fullfile(vcd_rootPath,'workspaces','data',env_type, subj_id, fname));
         
@@ -1086,8 +1093,11 @@ if store_params
         saveDir = fullfile(vcd_rootPath,'data',env_type, subj_id);
     end
     if ~exist(saveDir,'dir'), mkdir(saveDir); end
-    fname = sprintf('%stime_table_master_%s%s%s_%s.mat', [subj_id '_'], choose(params.is_wide,'wide_',''), choose(params.is_demo,'demo_',''),params.disp.name, datestr(now,30));
-    
+    if strcmp(env_type, 'MRI')
+        fname = sprintf('%stime_table_master_%s%s%s_%s.mat', [subj_id '_'], choose(params.is_wide,'wide_','deep_'), choose(params.is_demo,'demo_',''),params.disp.name, datestr(now,30));
+    else
+        fname = sprintf('%stime_table_master_%s%s_%s.mat', [subj_id '_'], choose(params.is_demo,'demo_',''),params.disp.name, datestr(now,30));
+    end
     fprintf('[%s]: Storing time table master for subject in:\n',mfilename)
     fprintf('\t%s\n',fullfile(saveDir,fname))
     save(fullfile(saveDir, fname), 'time_table_master','all_run_frames')
