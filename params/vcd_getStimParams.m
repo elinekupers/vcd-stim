@@ -282,6 +282,48 @@ else
     % eyetracking block.
     stim.el.cv_proportion_area = ([2,2].*stim.el.point2point_distance_pix) ./ [disp_params.w_pix,disp_params.h_pix]; % proportion area for [x,y]-dimensions used by Eyelink to place automated calibration/validation target. 
     
+    
+    
+    %% DEEP MRI EXPERIMENT TASKS
+    
+    % -- Imagery quiz dots -- 
+    d = dir(fullfile(vcd_rootPath, 'workspaces', 'info', 'imagery_quiz_dot_info*.mat'));
+    if ~isempty(d)
+        a = load(fullfile(d(end).folder,d(end).name));
+        img_quiz_dots = a.all_quiz_dots; clear a;
+    else
+        img_quiz_dots = [];
+        warning('[%s]: Can''t find imagery quiz dot info. Please run img_quiz_dots = vcd_getImageryQuizDots(params, true, false)',mfilename);
+    end
+    
+    % -- LTM pairs --
+    % Special core stimuli are used to create 23 pairs:
+    % * 32 classic special core stimuli are involved in 16 pairs amongst themselves
+    % * 15 NS special core stimuli are involved in 7 pairs amongst themselves (I guess leave one out??)
+    %
+    % Pairing constraints:
+    % * A and B pairings are unique. We will not reuse A's or B's.
+    % * Pairing is bidirectional A --> B and B --> A
+    % > Classic stimuli:
+    %   * A's and B's cannot come from the same stimulus class.
+    %   * Maximize stimulus class variability, such that A's from one stimulus
+    %   class will not be paired with B's from ONE other stimulus class, but
+    %   rather, B's from ALL other stimulus classes.
+    % > Natural scenes:
+    %   * A's and B's must both be scenes (so same stimulus class).
+    %   * Maximize stimulus class variability, such that A's from one super-
+    %   ordinate category (ex: animal) cannot be paired with a B from the same
+    %   superordinate category (ex: also an animal).
+    % Probability of subjects seeing a correct associated pair is 0.5.
+    d = dir(fullfile(vcd_rootPath, 'workspaces', 'info', 'ltm_stim_pairs*.mat'));
+    if ~isempty(d)
+        a = load(fullfile(d(end).folder,d(end).name));
+        ltm_pairs = a.ltmPairs; clear a;
+    else
+        ltm_pairs = [];
+        warning('[%s]: Can''t find ltm stim pairs info. Please run ltm_pairs = vcd_getImageryQuizDots(params, true)',mfilename);
+    end
+    
     %% STIM PARAMS
     for ii = 1:length(stim_class)
         
@@ -336,7 +378,6 @@ else
                 p.delta_from_ref        = [-16, -8, 8, 16];                     % how much should stim iso-eccen loc deviate from reference (WM: double epochs)
                                                                                 % the bigger the delta, the easier the judgement in a trial
                 p.unique_im_nrs_wm_test = [111:142];                            % unique image nrs associated with the 32 WM test images
-
                 
                 % check if all test images for WM have unique orientations
                 tmp = p.ori_deg + [0, p.delta_from_ref]';
@@ -345,11 +386,15 @@ else
                 assert(isequal(length(unique(tmp(:))), length(tmp(:))));
                 clear tmp
 
-                % LTM/IMG
+                % SPECIAL CORE STIM
                 p.unique_im_nrs_specialcore   = p.unique_im_nrs_core(17:end);               % SELECTED UNIQUE IMAGES (SUBSET of all 24) (only high contrast)
 
-                % LTM
-                p.ltm_pairs = [];
+                % LTM PAIRED ASSOCIATES:
+                if ~isempty(ltm_pairs)
+                    p.ltm_pairs = ltm_pairs(ismember(ltm_pairs(:,1),p.unique_im_nrs_specialcore),2);
+                else
+                    p.ltm_pairs = [];
+                end
                 
                 % IMAGERY
                 % QUIZ DOT PARAMS (STIM 2) to encourage subjects to create a vidid mental image.
@@ -361,7 +406,23 @@ else
                 p.unique_im_nrs_img_test       = [423:582];                                  % Unique image nrs associated with the 8*20=160 IMG gabor test dot images
                 p.imagery_quiz_images          = [ones(1,10),2.*ones(1,10)];                 % quiz dots overlap (1) or not (2)
                 p.imagery_text_prompt_file     = fullfile(vcd_rootPath,'workspaces','instructions','img_text_prompts',sprintf('*_vcd_gabor*.txt')); % txt file
-
+                
+                if ~isempty(img_quiz_dots)
+                    p.imagery_quiz_dot_xy_coords_pix = img_quiz_dots.gabor.xy_coords_pix;
+                    p.imagery_quiz_dot_xy_coords_deg = img_quiz_dots.gabor.xy_coords_deg;
+                    p.imagery_quiz_dot_orient_deg    = img_quiz_dots.gabor.quiz_dot_orient_deg;
+                    p.imagery_quiz_dot_overlap       = img_quiz_dots.gabor.quiz_dot_overlap;
+                    p.imagery_quiz_dot_specialcore_stim_nr = img_quiz_dots.gabor.special_core_stim_nr;
+                    p.imagery_quiz_dot_stim_nr      = img_quiz_dots.gabor.quiz_dot_stim_nr;
+                else
+                    p.imagery_quiz_dot_xy_coords_pix = [];
+                    p.imagery_quiz_dot_xy_coords_deg = [];
+                    p.imagery_quiz_dot_orient_deg    = [];
+                    p.imagery_quiz_dot_overlap       = [];
+                    p.imagery_quiz_dot_specialcore_stim_nr = [];
+                    p.imagery_quiz_dot_stim_nr      = [];
+                end
+                
                 % Add params to struct
                 stim.gabor = p;
                 
@@ -427,11 +488,16 @@ else
                 assert(isequal(length(unique(tmp(:))), length(tmp(:))));
                 clear tmp 
 
-                % LTM
-                p.ltm_pairs = [];
+                p.unique_im_nrs_specialcore    = p.unique_im_nrs_core(17:end);               % SELECTED UNIQUE IMAGES (SUBSET of all 24) (only high coherence) 
+                
+                % LTM PAIRED ASSOCIATES:
+                if ~isempty(ltm_pairs)
+                    p.ltm_pairs = ltm_pairs(ismember(ltm_pairs(:,1),p.unique_im_nrs_specialcore),2);
+                else
+                    p.ltm_pairs = [];
+                end
                 
                 % IMAGERY: 
-                p.unique_im_nrs_specialcore    = p.unique_im_nrs_core(17:end);               % SELECTED UNIQUE IMAGES (SUBSET of all 24) (only high coherence) 
                 p.imagery_dot_radius_deg       = 0.5;                                        % desired diameter (deg) of a single quiz dot in an imagery trial
                 p.imagery_sz_deg               = p.img_sz_deg;                               % desired diameter (degree) of the spatial support (where quiz dots will be shown)
                 p.imagery_sz_pix               = (round(p.img_sz_deg* disp_params.ppd)/2)*2; % diameter of quiz dot image support (pixels) (ensure even nr of pixels)
@@ -442,6 +508,22 @@ else
                 p.imagery_quiz_images          = [ones(1,10),2.*ones(1,10)];                 % quiz dots overlap (1) or not (2)
                 p.imagery_text_prompt_file     = fullfile(vcd_rootPath,'workspaces','instructions','img_text_prompts',sprintf('*_vcd_rdk*.txt')); % txt file
 
+                if ~isempty(img_quiz_dots)
+                    p.imagery_quiz_dot_xy_coords_pix = img_quiz_dots.rdk.xy_coords_pix;
+                    p.imagery_quiz_dot_xy_coords_deg = img_quiz_dots.rdk.xy_coords_deg;
+                    p.imagery_quiz_dot_orient_deg    = img_quiz_dots.rdk.quiz_dot_orient_deg;
+                    p.imagery_quiz_dot_overlap       = img_quiz_dots.rdk.quiz_dot_overlap;
+                    p.imagery_quiz_dot_specialcore_stim_nr = img_quiz_dots.rdk.special_core_stim_nr;
+                    p.imagery_quiz_dot_stim_nr      = img_quiz_dots.rdk.quiz_dot_stim_nr;
+                else
+                    p.imagery_quiz_dot_xy_coords_pix = [];
+                    p.imagery_quiz_dot_xy_coords_deg = [];
+                    p.imagery_quiz_dot_orient_deg    = [];
+                    p.imagery_quiz_dot_overlap       = [];
+                    p.imagery_quiz_dot_specialcore_stim_nr = [];
+                    p.imagery_quiz_dot_stim_nr      = [];
+                end
+                
                 % Add params to struct
                 stim.rdk = p;
                 
@@ -537,11 +619,15 @@ else
                     p.y0_pix_delta(dd,:) = disp_params.yc + round(y_d * disp_params.ppd);  % y-center ref dot loc in pix (translation from upper left corner [0,0])
                 end
 
-                % LTM PAIR
-                p.ltm_pairs          = [];                                       %%
-
-                % IMAGERY: 
+                % SPECIAL CORE STIM
                 p.unique_im_nrs_specialcore    = p.unique_im_nrs_core(1:2:p.num_loc);        % SELECTED UNIQUE IMAGES (SUBSET of all 16 dots)
+                
+                % LTM PAIRED ASSOCIATES:
+                if ~isempty(ltm_pairs)
+                    p.ltm_pairs = ltm_pairs(ismember(ltm_pairs(:,1),p.unique_im_nrs_specialcore),2);
+                else
+                    p.ltm_pairs = [];
+                end
                 
                 % IMAGERY: QUIZ DOT PARAMS
                 % two dots (on the 4 deg iso-ecc circle) straddling the imagined dot or not
@@ -552,6 +638,22 @@ else
                 p.imagery_minmax_anglemismatch = [5, 20];                                    % for "yes" dots, what distance (in degrees) do we allow quiz dots to be near special core dot
                 p.imagery_quiz_images          = [ones(1,10),2.*ones(1,10)];                 % quiz dots overlap (1) or not (2)
                 p.imagery_text_prompt_file     = fullfile(vcd_rootPath,'workspaces','instructions','img_text_prompts',sprintf('*_vcd_dot_delta00.txt')); % txt file
+                
+                if ~isempty(img_quiz_dots)
+                    p.imagery_quiz_dot_xy_coords_pix = img_quiz_dots.dot.xy_coords_pix;
+                    p.imagery_quiz_dot_xy_coords_deg = img_quiz_dots.dot.xy_coords_deg;
+                    p.imagery_quiz_dot_orient_deg    = img_quiz_dots.dot.quiz_dot_orient_deg;
+                    p.imagery_quiz_dot_overlap       = img_quiz_dots.dot.quiz_dot_overlap;
+                    p.imagery_quiz_dot_specialcore_stim_nr = img_quiz_dots.dot.special_core_stim_nr;
+                    p.imagery_quiz_dot_stim_nr      = img_quiz_dots.dot.quiz_dot_stim_nr;
+                else
+                    p.imagery_quiz_dot_xy_coords_pix = [];
+                    p.imagery_quiz_dot_xy_coords_deg = [];
+                    p.imagery_quiz_dot_orient_deg    = [];
+                    p.imagery_quiz_dot_overlap       = [];
+                    p.imagery_quiz_dot_specialcore_stim_nr = [];
+                    p.imagery_quiz_dot_stim_nr      = [];
+                end
                 
                 % Add params to struct
                 stim.dot = p;
@@ -781,8 +883,15 @@ else
                 p.unique_im_nrs_wm_test  = [239:302];                           %  Unique image nrs associated with the 64 WM OBJ test stimuli
                                                                             
                                    
-                % IMAGERY: 
+                % SPECIAL CORE STIM: 
                 p.unique_im_nrs_specialcore = p.unique_im_nrs_core([1,3,5,7,8,10,12,14]);   % 8 SELECTED IMAGES USED (SUBSET of 16 IMAGES)--these are hand picked! damon, sophia, cat, giraffe, drill, bus, pizza, church
+                
+                % LTM PAIRED ASSOCIATES:
+                if ~isempty(ltm_pairs)
+                    p.ltm_pairs = ltm_pairs(ismember(ltm_pairs(:,1),p.unique_im_nrs_specialcore),2);
+                else
+                    p.ltm_pairs = [];
+                end
                 
                 % IMAGERY QUIZ DOT PARAMS
                 p.imagery_sz_pix           = p.crop_img_sz_pix;                  % pixel diameter of quiz dot image (ensure even nr of pixels)
@@ -792,9 +901,22 @@ else
                 p.imagery_text_prompt_file = fullfile(vcd_rootPath,'workspaces','instructions','img_text_prompts',sprintf('*_vcd_object*.txt')); % txt file
                 p.imagery_raw_dot_folder   = fullfile(vcd_rootPath,'workspaces','stimuli','RAW','vcd_objects','img_test',sprintf('*_vcd_object*')); % raw quiz dot png folder
 
-                % LTM PAIR
-                p.ltm_pairs          = [];                                     %% TODO: list of core stim numbers of same/other stim classes in the order of obj core images
-                
+                if ~isempty(img_quiz_dots)
+                    p.imagery_quiz_dot_xy_coords_pix = img_quiz_dots.obj.xy_coords_pix;
+                    p.imagery_quiz_dot_xy_coords_deg = img_quiz_dots.obj.xy_coords_deg;
+                    p.imagery_quiz_dot_orient_deg    = img_quiz_dots.obj.quiz_dot_orient_deg;
+                    p.imagery_quiz_dot_overlap       = img_quiz_dots.obj.quiz_dot_overlap;
+                    p.imagery_quiz_dot_specialcore_stim_nr = img_quiz_dots.obj.special_core_stim_nr;
+                    p.imagery_quiz_dot_stim_nr      = img_quiz_dots.obj.quiz_dot_stim_nr;
+                else
+                    p.imagery_quiz_dot_xy_coords_pix = [];
+                    p.imagery_quiz_dot_xy_coords_deg = [];
+                    p.imagery_quiz_dot_orient_deg    = [];
+                    p.imagery_quiz_dot_overlap       = [];
+                    p.imagery_quiz_dot_specialcore_stim_nr = [];
+                    p.imagery_quiz_dot_stim_nr      = [];
+                end
+
                 % Add params to struct
                 stim.obj = p;
                 
@@ -881,20 +1003,42 @@ else
                 p.change_im_name            = {'easy_remove','hard_remove','hard_add','easy_add'};
                 p.unique_im_nrs_wm_test     = [303:422];                               % Unique image nrs associated with the 120 WM NS changed stimuli
                 
-                % IMAGERY
+                % SPECIAL CORE STIM: 
                 p.unique_im_nrs_specialcore = p.unique_im_nrs_core([2,4,5,8,10,11,14,17,19,21,24,26,27,30]); % 14 scenes will be used for  IMG/LTM pairing (these are carefully handpicked! see scene_info csv file)
+                
+                % IMAGERY
                 p.imagery_sz_deg            = p.img_sz_deg;                                                     % desired diameter (degree) of the second, quiz dots image in an imagery trial to encourage subjects to create a vidid mental image.
                 p.imagery_sz_pix            = p.img_sz_pix;                                                     % diameter of quiz dot image (pixels) (we already ensured even nr of pixels)
                 p.unique_im_nrs_img_test    = [1063:1342];                                                      % Unique image nrs associated with the 14*20=280 IMG NS test dot images
                 p.imagery_quiz_images       = [ones(1,10),2.*ones(1,10)];                                       % Quiz dots overlap (1=yes) or not (2=no)
                 p.imagery_text_prompt_file  = fullfile(vcd_rootPath,'workspaces','instructions','img_text_prompts',sprintf('*_vcd_ns*.txt')); % txt file
 
+                if ~isempty(img_quiz_dots)
+                    p.imagery_quiz_dot_xy_coords_pix = img_quiz_dots.ns.xy_coords_pix;
+                    p.imagery_quiz_dot_xy_coords_deg = img_quiz_dots.ns.xy_coords_deg;
+                    p.imagery_quiz_dot_orient_deg    = img_quiz_dots.ns.quiz_dot_orient_deg;
+                    p.imagery_quiz_dot_overlap       = img_quiz_dots.ns.quiz_dot_overlap;
+                    p.imagery_quiz_dot_specialcore_stim_nr = img_quiz_dots.ns.special_core_stim_nr;
+                    p.imagery_quiz_dot_stim_nr      = img_quiz_dots.ns.quiz_dot_stim_nr;
+                else
+                    p.imagery_quiz_dot_xy_coords_pix = [];
+                    p.imagery_quiz_dot_xy_coords_deg = [];
+                    p.imagery_quiz_dot_orient_deg    = [];
+                    p.imagery_quiz_dot_overlap       = [];
+                    p.imagery_quiz_dot_specialcore_stim_nr = [];
+                    p.imagery_quiz_dot_stim_nr      = [];
+                end
+                
                 % FOR LTM incorrect trials, we have very similar looking images called "lures":
                 p.lure_im                   = {'lure01', 'lure02', 'lure03', 'lure04'};
                 p.unique_im_nrs_ltm_lures   = [1343:1398];                                                      % Unique image nrs associated with the 14*4=56 WM NS lure images
                 
                 % LTM PAIRED ASSOCIATES
-                p.ltm_pairs                 = [];
+                if ~isempty(ltm_pairs)
+                    p.ltm_pairs = ltm_pairs(ismember(ltm_pairs(:,1),p.unique_im_nrs_specialcore),2);
+                else
+                    p.ltm_pairs = [];
+                end
 
                 % Add params to struct
                 stim.ns = p;
@@ -913,7 +1057,7 @@ else
     stim.all_core_im_nrs         = sort(cat(2, stim.gabor.unique_im_nrs_core, stim.rdk.unique_im_nrs_core, stim.dot.unique_im_nrs_core, stim.obj.unique_im_nrs_core, stim.ns.unique_im_nrs_core));
     stim.all_specialcore_im_nrs  = sort(cat(2, stim.gabor.unique_im_nrs_specialcore, stim.rdk.unique_im_nrs_specialcore, stim.dot.unique_im_nrs_specialcore, stim.obj.unique_im_nrs_specialcore, stim.ns.unique_im_nrs_specialcore));
     stim.all_wm_test_im_nrs      = sort(cat(2, stim.gabor.unique_im_nrs_wm_test, stim.rdk.unique_im_nrs_wm_test, stim.dot.unique_im_nrs_wm_test, stim.obj.unique_im_nrs_wm_test, stim.ns.unique_im_nrs_wm_test));
-    stim.all_ltm_pairs           = sort(cat(2, stim.gabor.ltm_pairs, stim.rdk.ltm_pairs, stim.dot.ltm_pairs, stim.obj.ltm_pairs, stim.ns.ltm_pairs));
+    stim.all_ltm_pairs           = cat(1, stim.gabor.ltm_pairs, stim.rdk.ltm_pairs, stim.dot.ltm_pairs, stim.obj.ltm_pairs, stim.ns.ltm_pairs)';
     stim.all_img_test_im_nrs     = sort(cat(2, stim.gabor.unique_im_nrs_img_test, stim.rdk.unique_im_nrs_img_test, stim.dot.unique_im_nrs_img_test, stim.obj.unique_im_nrs_img_test, stim.ns.unique_im_nrs_img_test));
     stim.all_ltm_lure_im_nrs     = sort(stim.ns.unique_im_nrs_ltm_lures);
     stim.all_objectcatch_im_nrs  = sort(stim.obj.unique_im_nrs_objcatch);
