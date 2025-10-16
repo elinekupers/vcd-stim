@@ -580,7 +580,9 @@ else % Recreate conditions and blocks and trials
             condition_master.orient_dir(objcatch_idx(cc),cued_loc_objcatch(cc)) = possible_objcatch_rotations1(objcatch_rot);
             
             % remove rotation from list
-            possible_objcatch_rotations(old_stim_obj_nr,objcatch_rot) = NaN;
+            remove_me = (possible_objcatch_rotations1(objcatch_rot)==possible_objcatch_rotations(old_stim_obj_nr,:));
+            assert(isequal(possible_objcatch_rotations(old_stim_obj_nr,remove_me),condition_master.orient_dir(objcatch_idx(cc),cued_loc_objcatch(cc))))
+            possible_objcatch_rotations(old_stim_obj_nr,remove_me) = NaN;
             
             % Update special core column (objectcatch stimuli can never be
             % special core stimuli)
