@@ -122,7 +122,6 @@ for ses = 1:size(all_sessions,3)
                     
                     if strcmp(env_type,'MRI')
                         task_start = params.exp.session.mri.task_start(tc);
-                        
                     elseif strcmp(env_type,'BEHAVIOR')
                         task_start = params.exp.session.behavior.task_start(tc);
                     end
@@ -149,7 +148,7 @@ for ses = 1:size(all_sessions,3)
                                     half_block_flag = false;
                                 end
 
-                                if ismember(params.exp.taskclassnames{tc},'scc')
+                                if strcmp(params.exp.taskclassnames{tc},'scc')
                                     % We can't sort on stim class nr for SCC
                                     % otherwise stim will be allocated to different
                                     % blocks. Hence we use an if statement and call
@@ -157,7 +156,7 @@ for ses = 1:size(all_sessions,3)
                                     idx = ((condition_master.stim_class==99) & (condition_master.task_class==tc) & (condition_master.stim_class_unique_block_nr== scc_bb + find(curr_blocks==curr_blocks(ii))));
                                     condition_master.crossing_name(idx) = {sprintf('%s-all',params.exp.taskclassnames{tc})};
                                     stim_class_tmp_name = 'ALL';
-                                elseif ismember(params.exp.taskclassnames{tc},'ltm')
+                                elseif strcmp(params.exp.taskclassnames{tc},'ltm')
                                     % We can't sort on stim class nr for LTM either (they are all defined as 99)
                                     idx = ((condition_master.stim_class==99) & (condition_master.task_class==tc) & (condition_master.stim_class_unique_block_nr == ltm_bb + find(curr_blocks==curr_blocks(ii))));
                                     condition_master.crossing_name(idx) = {sprintf('%s-all',params.exp.taskclassnames{tc})};
@@ -272,7 +271,7 @@ for ses = 1:size(all_sessions,3)
                                 assert(all(isnan(condition_master.session_type(idx))))
                                 assert(all(isnan(condition_master.block_nr(idx))))
                                 assert(all(isnan(condition_master.global_block_nr(idx))))
-                                assert(isequal(sum(condition_master.is_cued(idx)==1),sum(condition_master.is_cued(idx)==2)))
+                                assert(isequal(sum(condition_master.is_cued(~condition_master.is_catch(idx))==1),sum(condition_master.is_cued(~condition_master.is_catch(idx))==2)))
                                 
                                 % get block numbers for this stim-task crossing
                                 condition_master.session_nr(idx)        = ses;
@@ -371,8 +370,14 @@ for ses = 1:size(all_sessions,3)
                                     
                                     % add dash here, otherwise sprintf interprets dash as left align
                                     for cl = 1:length(cue_label)
-                                        if isnan(cue_label{cl})
-                                            if strcmp(stim_class_tmp_name,'NS') && cl==2
+                                        if isnan(cue_label{cl}) % if there is a NaN cue label, then it's either a NS trial or a catch trial
+                                            if condition_master.stim_nr_left(sub_idx(tt)) == 0 && condition_master.is_catch(sub_idx(tt)) == 1
+                                                condition_master.condition_name(sub_idx(tt),cl) = {NaN};
+                                                condition_master.condition_nr(sub_idx(tt),cl) = NaN;
+                                            elseif cl==2 && ...
+                                                    ( (strcmp(stim_class_tmp_name,'ALL') && ismember(condition_master.stim_nr_left(sub_idx(tt)),params.stim.ns.unique_im_nrs_specialcore)) ...
+                                                    || (strcmp(stim_class_tmp_name,'NS') && ismember(condition_master.stim_nr_left(sub_idx(tt)),params.stim.ns.unique_im_nrs_core)) ) ...
+                                                    
                                                 condition_master.condition_name(sub_idx(tt),cl) = {NaN};
                                                 condition_master.condition_nr(sub_idx(tt),cl) = NaN;
                                             else
