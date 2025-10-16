@@ -11,6 +11,7 @@ workspaces/info/*
 !workspaces/info/condition_master_*.mat
 !workspaces/info/*.csv
 !workspaces/info/ltm*.mat
+!workspaces/info/imagery_quiz_dot_info*.mat
 !workspaces/instructions/
 !workspaces/instructions/instruction_images/
 !workspaces/instructions/instruction_txt/
