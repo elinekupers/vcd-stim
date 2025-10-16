@@ -38,12 +38,12 @@ if strcmp(env_type,'MRI')
         nr_blocks_per_run    = params.exp.session.mri.wide.nr_blocks_per_run;
         unique_trial_repeats = params.exp.n_unique_trial_repeats_wide;
         catch_trial_flag     = params.exp.session.mri.wide.add_catch_trials;
-    else % wide+deep session
-        all_sessions         = cat(3, params.exp.session.mri.wide.ses_blocks, params.exp.session.mri.deep.ses_blocks);
-        session_types        = cat(1, params.exp.session.mri.wide.session_types, params.exp.session.mri.deep.session_types);
-        n_runs_per_session   = cat(1, params.exp.session.mri.wide.n_runs_per_session, params.exp.session.mri.deep.n_runs_per_session);
-        nr_blocks_per_run    = cat(1, params.exp.session.mri.wide.nr_blocks_per_run, params.exp.session.mri.deep.nr_blocks_per_run);
-        unique_trial_repeats = params.exp.n_unique_trial_repeats_mri;
+    else % deep session
+        all_sessions         = params.exp.session.mri.deep.ses_blocks;
+        session_types        = params.exp.session.mri.deep.session_types;
+        n_runs_per_session   = params.exp.session.mri.deep.n_runs_per_session;
+        nr_blocks_per_run    = params.exp.session.mri.deep.nr_blocks_per_run;
+        unique_trial_repeats = params.exp.n_unique_trial_repeats_deep;
         catch_trial_flag     = params.exp.session.mri.deep.add_catch_trials;
     end
     nr_session_types     = 2;
