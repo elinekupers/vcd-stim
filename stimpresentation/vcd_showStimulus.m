@@ -268,6 +268,7 @@ fix_rect_preruninstr = fix.fix_thick_rect{1};
 if ~params.wanteyetracking
     % No need for EYE fun
     tfunEYE            = @() fprintf('\n');
+    targetFunEYE       = @() fprintf('\n');
 else
     % ANON EYE FUN for SYNC TIME
     tfunEYE     = @() Eyelink('Message','SYNCTIME');
