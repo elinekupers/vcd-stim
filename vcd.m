@@ -405,9 +405,6 @@ if isempty(vcd_info) || ~exist('vcd_info','var')
     
     % remove demo file from list of condition_master files; we don't want to use that for vcd.m
     if ~isempty(is_DEMO_file), filenames(is_DEMO_file) = {NaN}; end
-    if ~isempty(is_WIDE_MRI_file), filenames(is_WIDE_MRI_file) = {NaN}; end
-    % if we have a PPROOM and/or MRI condition_master files; pick MRI file
-    if ~isempty(is_DEEP_MRI_file) && ~isempty(is_BEH_file), filenames(is_BEH_file) = {NaN}; end
 
     % Check if we have a condition_master filename to load
     if isempty(filenames{1}) || all(cell2mat(cellfun(@(x) isequalwithequalnans(x,NaN), filenames, 'UniformOutput', false)))
@@ -419,28 +416,26 @@ if isempty(vcd_info) || ~exist('vcd_info','var')
                 fprintf('[%s]: *** WARNING *** \n', mfilename);
                 fprintf('[%s]: Found %d vcd info files with the same name! Will pick the most recent one. (We ignore demo files.) \n', mfilename,length(filenames));
             end
-            
-            if ~isempty(is_DEEP_MRI_file) && isempty(is_BEH_file)
-                d = dir(fullfile(vcd_rootPath,'workspaces','info',sprintf('condition_master_7TAS*.mat')));
-            elseif isempty(is_DEEP_MRI_file) && ~isempty(is_BEH_file)
+            % if we have a MRI condition_master file, we pick MRI file, as
+            % it is more accurate, otherwise we use PPROOM
+            if ~isempty(is_DEEP_MRI_file)
+                d = dir(fullfile(vcd_rootPath,'workspaces','info',sprintf('condition_master_deep_7TAS*.mat')));
+            elseif ~isempty(is_WIDE_MRI_file)
+                d = dir(fullfile(vcd_rootPath,'workspaces','info',sprintf('condition_master_wide_7TAS*.mat')));
+            elseif ~isempty(is_BEH_file)
                 d = dir(fullfile(vcd_rootPath,'workspaces','info',sprintf('condition_master_PPROOM*.mat')));
             end
             % pick the most recent one
-            filenames0 = d(end).name;
-            % Check if the most recent filename is one we are considering
-            assert(isequal(filenames0,filenames{1}))
-            % replace filenames variable
-            filenames = {filenames0};
+            fname = d(end).name;
         end
         
-        % ensure we only have one file name left to load
-        assert(length(filenames)==1)
-        filenames = filenames{1}; % release from cell.
+        % ensure we have a filename to load
+        assert(~isempty(fname))
 
         if verbose
-            fprintf('[%s]: Loading condition_master .mat file: %s\n', mfilename, filenames);
+            fprintf('[%s]: Loading condition_master .mat file: %s\n', mfilename, fname);
         end
-        vcd_info = load(fullfile(d(end).folder,filenames),'condition_master');
+        vcd_info = load(fullfile(d(end).folder,fname),'condition_master');
     end
 end
 
