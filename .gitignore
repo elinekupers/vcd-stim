@@ -10,6 +10,7 @@ workspaces/info/*
 !workspaces/info/wide_info/
 !workspaces/info/condition_master_*.mat
 !workspaces/info/*.csv
+!workspaces/info/ltm*.mat
 !workspaces/instructions/
 !workspaces/instructions/instruction_images/
 !workspaces/instructions/instruction_txt/
