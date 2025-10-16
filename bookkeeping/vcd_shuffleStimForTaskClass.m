@@ -76,7 +76,61 @@ assert(any(strcmp(task_class_name_to_shuffle,{'scc','ltm'})));
 % scc task crossings have 8 trials/block, ltm task crossings have 4 trials/block
 assert(isequal(nr_of_trials_per_block, choose(strcmp(task_class_name_to_shuffle,'scc'), params.exp.block.n_trials_single_epoch,params.exp.block.n_trials_double_epoch)));
 
+% set block and trial constraints for shuffling
+if strcmp(session_type,'MRI')
+    %  -- FIRST SHUFFLE (mix left and right stim) --
+    % S1 - Constraint 1: try to minimize same stimclass for left and right stim position within a trial
+    %
+    % S1 - Optimization param 1: when do we abort and start over
+    
+    %  -- SECOND SHUFFLE (mix trials / left and right stim are fixed) --
+    % S2 - Constraint 1: try to equalize distribution of relevant stimulus classes within a block (in SCC, this equals the distribution of
+    % button responses within a block.) We want to equalize stimclass/button responses as much as possible, i.e., distribution within an 
+    % scc block = ([2 2 2 2]) or difference between button presses is minimized to +/- 1, such as distribution like [1 2 3 2].
+    %
+    % S2 - Optimization param 1: how many times do we shuffle trials without any progress (i.e., order of trials violates constraints).
+    if params.is_wide
+        min_stimclass_leftright  = 2; % Constraint 1
+        max_no_progress_attempts = 25; % Optimization param 1
+        max_attempts_shuffle1    = 20000; % S1 - Optimization param 1
+        max_attempts_shuffle2    = 5000;  % SECOND SHUFFLE Optimization param 2 when do we abort and start over
+        unique_trial_repeats     = params.exp.n_unique_trial_repeats_wide; % how many unique trial repeats do we expect?
+        if strcmp(task_class_name_to_shuffle,'scc')
+            stimclss_constraint_fun  = @(x) isequal(x,[2 2 2 2]) || isequal(sort(x),[1 2 2 3]) || isequal(sort(x),[1 1 3 3]);
+        else
+            error('[%s]: No rules defined for this task class name!', mfilename) % no ltm in wide
+        end
+    else % DEEP
+        min_stimclass_leftright  = 3; % Constraint 1
+        max_no_progress_attempts = 50; % Optimization param 1
+        max_attempts_shuffle1    = 50000; % FIRST SHUFFLE when do we abort and start over
+        max_attempts_shuffle2    = 10000; % SECOND SHUFFLE when do we abort and start over
+        unique_trial_repeats = params.exp.n_unique_trial_repeats_deep; % how many unique trial repeats do we expect? This is for LTM: check that column lengths is the same as sum of repeats * special core stimuli
+        if strcmp(task_class_name_to_shuffle,'scc')
+            stimclss_constraint_fun  = @(x) isequal(x,[2 2 2 2]) || isequal(sort(x),[1 2 2 3]) || isequal(sort(x),[1 1 3 3]) || isequal(sort(x),[1 1 2 4]) || isequal(sort(x),[0 2 3 3]); % 8 trials per block
+        elseif strcmp(task_class_name_to_shuffle,'ltm')
+            stimclss_constraint_fun  = @(x) isequal(x,[1 1 1 1]) || isequal(sort(x),[0 0 2 2]) || isequal(sort(x),[0 1 1 2]); % 4 trials per block
+        else
+            error('[%s]: No rules defined for this task class name!', mfilename)
+        end
+    end
+elseif strcmp(session_type,'BEHAVIOR')
+    min_stimclass_leftright  = 2; % Constraint 1
+    max_no_progress_attempts = 25; % Optimization param 1
+    max_attempts_shuffle1    = 20000; % FIRST SHUFFLE when do we abort and start over
+    max_attempts_shuffle2    = 5000;  % SECOND SHUFFLE when do we abort and start over
+    unique_trial_repeats = params.exp.n_unique_trial_repeats_behavior; % how many unique trial repeats do we expect?
+    if strcmp(task_class_name_to_shuffle,'scc')
+        stimclss_constraint_fun  = @(x) all(x >=1 ); % if we have at least one of each stimulus class per block (cued or uncued), we are happy
+    else
+        error('[%s]: No rules defined for this task class name!', mfilename) % no ltm in behavior
+    end
+else
+    error('[%s]: Can''t recognize "session_type", needs to be "MRI" or "BEHAVIOR"',mfilename)
+end
 
+                
+%%%%%%%%%%%%%%%
 %% Get nr of cueing directions
 cued_stim_loc = unique(master_table.is_cued(strcmp(master_table.task_class_name,{task_class_name_to_shuffle})));
 
@@ -154,12 +208,7 @@ elseif ~isempty(cued_stim_loc)
                 
                 m0_left_img_nr  = master_table.stim_nr_left(m0_idx);
                 m0_right_img_nr = master_table.stim_nr_right(m0_idx);
-                
-                %         m0_left_catch   = master_table.stim_nr_left(catch_sub);
-                %         m0_right_catch  = master_table.stim_nr_right(catch_sub);
-                %         n_catch_l       = length(m0_left_catch);
-                %         n_catch_r       = length(m0_right_catch);
-                %
+               
                 % try to shape nr of trials into an 8 trials x m blocks matrix,
                 % such that the columns contain different stimulus classes. If we
                 % have a nr of trials that can't be divided by 8, we call them
@@ -186,12 +235,12 @@ elseif ~isempty(cued_stim_loc)
                 
                 % set a limit to the number of trial shuffles to avoid infinite loop
                 attempts = 0;
-                
+                    
                 while 1
                     attempts = attempts+1;
                     
-                    if attempts > 20000
-                        warning('[%s]: Can''t find a solution for within trial shuffle after 20,000 attempts! Aborting!', mfilename)
+                    if attempts > max_attempts_shuffle1
+                        warning('[%s]: Can''t find a solution for within trial shuffle after %d attempts! Aborting!', mfilename, max_attempts_shuffle1)
                         restart_shuffle = true;
                         break;
                     end
@@ -247,13 +296,18 @@ elseif ~isempty(cued_stim_loc)
                         end
                         unique_stimclass = unique(curr_sample(:));
                         if length(unique_stimclass)==length(unique(stimclss_idx(:)))
-                            if sum(curr_sample(:,1)==curr_sample(:,2)) <= 2 % try to minimize same stimclass for left and right stim position within a trial
+                            
+                            if sum(curr_sample(:,1)==curr_sample(:,2)) <= min_stimclass_leftright % try to minimize same stimclass for left and right stim position within a trial
                                 sample_ok(nn) = true;
                             else
                                 sample_ok(nn) = false;
                             end
                         else
                             sample_ok(nn) = false;
+                            break;
+                        end
+                        % if sample is not ok, then we won't try the other samples
+                        if sample_ok(nn) == false
                             break;
                         end
                     end
@@ -302,7 +356,7 @@ elseif ~isempty(cued_stim_loc)
         % sub_shuffle_left is indexing the table rows (not the actual image nrs)
         % Note: sub_shuffle_left dim 1 order: left cued, right cued
         %       sub_shuffle_right dim 1 order: left cued, right cued
-        if all(ismember(cued_stim_loc,[1,2]))
+        if sum(ismember(cued_stim_loc,[1,2]))==2
             combined_trial_shuffleA = [sub_shuffle_left(1,:); sub_shuffle_right(1,:)]'; % shuffled left cued, shuffled right uncued (N/2 trials x 2 loc (l/r))
             combined_trial_shuffleB = [sub_shuffle_left(2,:); sub_shuffle_right(2,:)]'; % shuffled left uncued, shuffled right cued (N/2 trials x 2 loc (l/r))
             combined_trial_shuffleAB = cat(1, combined_trial_shuffleA, combined_trial_shuffleB); % N trials x 2 loc (l/r) (first half is cued left, second half is cued right)
@@ -324,17 +378,6 @@ elseif ~isempty(cued_stim_loc)
             stim_orient          = [master_table.orient_dir(combined_trial_shuffleAB(:,1),1), master_table.orient_dir(combined_trial_shuffleAB(:,2),2)];
             master_trial         = combined_trial_shuffleAB;
             master_im_nr         = combined_img_nr_shuffleAB;
-            % for LTM: check that column lengths is the same as sum of repeats * special core
-            % stimuli
-            if strcmp(session_type, 'MRI')
-                if params.is_wide
-                    unique_trial_repeats = params.exp.n_unique_trial_repeats_wide;
-                else
-                    unique_trial_repeats = params.exp.n_unique_trial_repeats_mri;
-                end
-            else
-                unique_trial_repeats = params.exp.n_unique_trial_repeats_behavior;
-            end
             
             if strcmp(task_class_name_to_shuffle,{'ltm'})
                 % check nr of repeated trials
@@ -343,7 +386,7 @@ elseif ~isempty(cued_stim_loc)
                     (2*(length(params.stim.all_specialcore_im_nrs)-length(params.stim.ns.unique_im_nrs_specialcore))))); % 8*4 (=32) * 2 (double nr of repeats)
                 
                 % get start of block [1:5:end]
-                block_start = 1:(params.exp.block.n_trials_double_epoch):length(correct_response);
+                block_start = 1:nr_of_trials_per_block:length(correct_response);
             elseif strcmp(task_class_name_to_shuffle,{'scc'})
                 % check nr of repeated trials
                 assert(isequal(size(combined_trial_shuffleAB,1), ...
@@ -352,21 +395,21 @@ elseif ~isempty(cued_stim_loc)
                     length(params.stim.dot.unique_im_nrs_core),length(params.stim.obj.unique_im_nrs_core) ]))); %
                 
                 % get start of block [1:9:end]
-                block_start = 1:(params.exp.block.n_trials_single_epoch):length(correct_response);
+                block_start = 1:nr_of_trials_per_block:length(correct_response);
             else
                 error('[%s]: Unique nr of stimulus classes doesn''t match expected number', mfilename)
             end
             
             % What stimulus class numbers and distribution do we expect?
             stim_class_nrs        = unique(correct_response);
-            abs_stim_class_chance = chance_of_stimclass*params.exp.block.n_trials_single_epoch;
+            abs_stim_class_chance = chance_of_stimclass*nr_of_trials_per_block;
             
             %%%%%%%%% SECOND SHUFFLE (mix trials) %%%%%%
-            
+
             % preallocate space, reset counters, define nr of shuffle attempts
             stored_shuffled_cued_side = []; stored_master_trial = []; stored_master_im_nr = [];
-            no_progress_attempts = 0;
-            max_attempts = 5000;
+            no_progress_attempts = 0; 
+
             attempt = 0;
             while 1 % second shuffle loop
                 % Shuffle across all trials, using the following constraints:
@@ -407,11 +450,11 @@ elseif ~isempty(cued_stim_loc)
                 not_ok_shuffle_vec        = [];
                 not_ok_indices            = [];
                 counter = 1;
-                
+
                 % Loop over trials within a block, check the distribution of
                 % correct button responses
                 for cc = block_start
-                    curr_indices    = cc:(cc+(params.exp.block.n_trials_single_epoch-1));
+                    curr_indices    = cc:(cc+(nr_of_trials_per_block-1));
                     curr_responses  = shuffled_responses(curr_indices);
                     curr_cues       = cued_side_shuffled(curr_indices);
                     curr_orient     = stim_orient_shuffled(curr_indices,:);
@@ -424,15 +467,9 @@ elseif ~isempty(cued_stim_loc)
                     % difference between button presses is minimized to +/- 1
                     % count difference (e.g., [1 2 3 2])
                     n1 = histcounts(curr_responses,[stim_class_nrs, stim_class_nrs(end)+1]); % check stim class within a block
-                    if strcmp(session_type, 'MRI') && (isequal(n1,[2 2 2 2]) || isequal(sort(n1),[1 2 2 3]) || isequal(sort(n1),[1 1 3 3]))
-                        press_ok = true;
-                    elseif strcmp(session_type, 'BEHAVIOR') && all(n1>=1)
-                        press_ok = true;
-                    else
-                        press_ok = false;
-                    end
+                    press_ok = stimclss_constraint_fun(n1);
                     
-                    if all(n1>=1) && press_ok
+                    if press_ok
                         % Check if trials have two single dots
                         dot_idx     = find(sum(curr_stimclass==3,2)==2);
                         % Check if the dot location angles match with stimulus params
@@ -444,7 +481,7 @@ elseif ~isempty(cued_stim_loc)
                             % if we have more than two double dot trials, see if we
                             % can swap them
                             if length(dot_idx) > 1
-                                n2 = histcounts(curr_cues(dot_idx),[1:3]); % check if they share the same spatial cue
+                                n2 = histcounts(curr_cues(dot_idx),[1:3]); % check if they share the same spatial cue: [1:3] --> histcount bins = [0,1,2]
                                 if any(n2 > 1)
                                     for jj = 1:length(n2)
                                         same_cue_idx = dot_idx(ismember(curr_cues(dot_idx),jj));
@@ -498,21 +535,35 @@ elseif ~isempty(cued_stim_loc)
                     else
                         dot_ok = false;
                     end
-                    
-                    % if we have at least one of each stimulus class per block
-                    % (cued or uncued) and dots aren't too close, we are happy
-                    if all(n1>=1) && dot_ok
+
+                    % if dots aren't too close, we are happy
+                    if dot_ok
                         block_ok(counter)     = 1;
                         ok_shuffled_cued      = cat(1,ok_shuffled_cued,     curr_cues');
                         ok_master_trial_list  = cat(1,ok_master_trial_list, curr_master_trial_idx);
                         ok_im_nr              = cat(1,ok_im_nr,             curr_master_im_nr);
-                    elseif any(n1<1) || ~dot_ok
+                        
+                    elseif strcmp(session_type, 'MRI') && ~params.is_wide && ... % if this is a deep MRI session
+                            length(block_ok)==1 && dot_ok && ... % and we have one block left, with no single dot location issues
+                            sum(n1==0) <=1 % and this trial order is only excluded because we lack one stimulus class
+                        % then we say, ok.. let's keep the block
+                        % and move on with our lives
+                        block_ok(counter)     = 1;
+                        ok_shuffled_cued      = cat(1,ok_shuffled_cued,     curr_cues');
+                        ok_master_trial_list  = cat(1,ok_master_trial_list, curr_master_trial_idx);
+                        ok_im_nr              = cat(1,ok_im_nr,             curr_master_im_nr);
+                        
+                    % if we have button press and/or single dot location
+                    % issues, we note the block and reshuffle them later
+                    elseif ~dot_ok
                         block_ok(counter)        = 0;
                         not_ok_shuffle_vec       = cat(1,not_ok_shuffle_vec,shuffle_vec(curr_indices));
                         not_ok_indices           = cat(1,not_ok_indices,curr_indices');
                         not_ok_shuffled_cued     = cat(1,not_ok_shuffled_cued, curr_cues');
                         not_ok_master_trial_list = cat(1,not_ok_master_trial_list, curr_master_trial_idx);
                         not_ok_im_nr             = cat(1,not_ok_im_nr,             curr_master_im_nr);
+                    else
+                        error('wtf')
                     end
                     % update block counter
                     counter = counter + 1;
@@ -522,7 +573,7 @@ elseif ~isempty(cued_stim_loc)
                 stored_shuffled_cued_side = cat(1,stored_shuffled_cued_side, ok_shuffled_cued);
                 stored_master_trial        = cat(1,stored_master_trial, ok_master_trial_list);
                 stored_master_im_nr        = cat(1,stored_master_im_nr, ok_im_nr);
-                
+
                 % if all indices are stored, then we break the loop
                 if size(stored_master_trial,1) == size(combined_trial_shuffleAB,1)
                     restart_shuffle = false;
@@ -532,18 +583,20 @@ elseif ~isempty(cued_stim_loc)
                     if sum(block_ok)==0
                         % if none of the blocks adhere by our constraints, we
                         % call them "no_progress_attempts". We try to shuffle
-                        % 25 more times to see if that solves anything,
+                        % 25 (behavior/wide) or 50 (deep) more times to see if that solves anything,
                         % otherwise we start over
                         no_progress_attempts = no_progress_attempts + 1;
                         
-                        if no_progress_attempts == 25 || ...
-                                length(unique(shuffled_responses(not_ok_indices)))<length(stim_class_nrs) || ...
-                                any(histcounts(shuffled_responses(not_ok_indices),[1:4]) < length(block_ok))
+                        % for debug purposes: print nr of blocks left to shuffle, and distribution of stimulus classes
+                        fprintf('\n%02d - %s',length(block_ok), num2str(histcounts(shuffled_responses,1:5)));  
+                        if no_progress_attempts == max_no_progress_attempts || ...
+                                length(unique(shuffled_responses(not_ok_indices)))<length(stim_class_nrs) || ... % if we miss one stimulus class (we will never be able to reach a solution)
+                                any(histcounts(shuffled_responses(not_ok_indices),[1:(length(stim_class_nrs)+1)]) < length(block_ok)) % if we can't allocate at least one stimulus from 3 stimulus classes per block (we will never be able to reach a solution)
                             
                             % if we can't further optimize then we restart shuffling
                             correct_response = [stimclass_left_cued,stimclass_right_cued];
                             cued_side        = [ones(size(stimclass_left_cued)),2*ones(size(stimclass_right_cued))];
-                            block_start      = 1:params.exp.block.n_trials_single_epoch:length(correct_response);
+                            block_start      = 1:nr_of_trials_per_block:length(correct_response);
                             stimclass_both   = [vcd('stimtostimclassnumber',combined_img_nr_shuffleAB(:,1));vcd('stimtostimclassnumber',combined_img_nr_shuffleAB(:,2))]';
                             stim_orient      = [master_table.orient_dir(combined_trial_shuffleAB(:,1),1), master_table.orient_dir(combined_trial_shuffleAB(:,2),2)];
                             master_trial     = combined_trial_shuffleAB;
@@ -590,13 +643,13 @@ elseif ~isempty(cued_stim_loc)
                             shuffle_concat(2:2:length(correct_response),1)]; % N trials
                     end
                 end
-                if attempt > max_attempts
+                if attempt > max_attempts_shuffle2
                     warning('\n[%s]: Can''t reach a solution for across trial shuffle! Will run the same code again.',mfilename)
                     restart_shuffle = true;
                     break;
                 end
                 
-                if ismember(attempt,round(linspace(1,max_attempts,20)))
+                if ismember(attempt,round(linspace(1,max_attempts_shuffle2,20)))
                     fprintf('.');
                 end
             end
@@ -615,8 +668,9 @@ elseif ~isempty(cued_stim_loc)
                 right_stimclass_updated_stim_nr = vcd('stimtostimclassnumber',stored_master_im_nr(:,2));
                 stimclass_from_stim_nr          = [left_stimclass_updated_stim_nr; right_stimclass_updated_stim_nr]';
                 correct_response                = [stimclass_from_stim_nr(stored_shuffled_cued_side==1,1);stimclass_from_stim_nr(stored_shuffled_cued_side==2,2)];
+                cued_side                       = repmat([1,2], 1, length(correct_response)/2);
                 n2 = histcounts(correct_response,[stim_class_nrs, stim_class_nrs(end)+1]); % check stim class across all blocks.
-                assert(isequal(n2,abs_stim_class_chance * (length(correct_response)/params.exp.block.n_trials_single_epoch)))
+                assert(isequal(n2,abs_stim_class_chance * (length(correct_response)/nr_of_trials_per_block)))
                 assert(isequal(stored_shuffled_cued_side, repmat([1;2],size(stored_shuffled_cued_side,1)/2,1)))
                 assert(isequal(sort(stimclass_from_stim_nr(:))', sort(vcd('stimtostimclassnumber',combined_img_nr_shuffleAB(:)))))
 
@@ -635,17 +689,18 @@ elseif ~isempty(cued_stim_loc)
                     sub_shuffle_center2 = cat(2,sub_shuffle_center,NaN(size(sub_shuffle_center)));
 
                     combined_trial_shuffleABC  = NaN(size(combined_trial_shuffleAB3,1) + size(sub_shuffle_center2,1),2);
-                    combined_cueloc_shuffleABC = NaN(size(combined_trial_shuffleAB3,1) + size(sub_shuffle_center2,1),2);
+                    combined_cueloc_shuffleABC = NaN(size(combined_trial_shuffleAB3,1) + size(sub_shuffle_center2,1),1);
                     combined_im_nr_shuffleABC  = NaN(size(combined_trial_shuffleAB3,1) + size(sub_shuffle_center2,1),2);
+                    
                     insert_scenes_here   = datasample(1:size(combined_trial_shuffleABC,1),size(sub_shuffle_center2,1), 'Replace',false);
                     insert_classics_here = setdiff(1:size(combined_trial_shuffleABC,1),insert_scenes_here);
                     combined_trial_shuffleABC(insert_scenes_here,:)   = sub_shuffle_center2;
                     combined_trial_shuffleABC(insert_classics_here,:) = combined_trial_shuffleAB3;
 
-                    combined_cueloc_shuffleABC(insert_scenes_here,:)   = 3;
-                    combined_cueloc_shuffleABC(insert_classics_here,:) = cued_side_shuffled;
+                    combined_cueloc_shuffleABC(insert_scenes_here)   = 3;
+                    combined_cueloc_shuffleABC(insert_classics_here) = cued_side;
 
-                    combined_im_nr_shuffleABC(insert_scenes_here,:)   = img_nr_shuffle_center;
+                    combined_im_nr_shuffleABC(insert_scenes_here,1)   = img_nr_shuffle_center;
                     combined_im_nr_shuffleABC(insert_classics_here,:) = combined_img_nr_shuffleAB3;
                 else
                     combined_trial_shuffleABC = combined_trial_shuffleAB3;
@@ -655,29 +710,60 @@ elseif ~isempty(cued_stim_loc)
 
                 % shuffle catch trials
                 if sum(master_table.is_catch==1) > 1
-                    sub_center_catch_shuffle = shuffle_concat(sub_center_catch,1);
+                    
+                    % get classic stim catch trials
+                    sub_left_catch_shuffled       = [sub_left_catch(1,randperm(size(sub_left_catch,2),size(sub_left_catch,2))); ... left stim, left cued
+                        sub_left_catch(2,randperm(size(sub_left_catch,2),size(sub_left_catch,2)))]; % left stim, right cued
+                    sub_right_catch_shuffled      = [sub_right_catch(1,randperm(size(sub_right_catch,2),size(sub_right_catch,2))); ... right stim, left cued
+                        sub_right_catch(2,randperm(size(sub_right_catch,2),size(sub_right_catch,2)))]; % right stim, right cued
+                    sub_leftright_catch_shuffle   = [sub_left_catch_shuffled(:), sub_right_catch_shuffled(:)];
+                    cued_leftright_catch_shuffle  = reshape(master_table.is_cued(sub_leftright_catch_shuffle(:)),[],2);
+                    im_nr_leftright_catch_shuffle = [master_table.stim_nr_left(sub_leftright_catch_shuffle(:,1)),master_table.stim_nr_right(sub_leftright_catch_shuffle(:,2))];
+
+                    % check if all shuffled trials are catch trials and have stim nr 0
+                    assert(all(master_table.is_catch(sub_leftright_catch_shuffle(:))==1));
+                    assert(all(master_table.stim_nr_left(sub_leftright_catch_shuffle(:))==0));
+                    assert(all(master_table.stim_nr_right(sub_leftright_catch_shuffle(:))==0));
+                    assert(all(im_nr_leftright_catch_shuffle(:)==0));
+                    assert(isequal(cued_leftright_catch_shuffle, repmat([1,1;2,2],length(sub_left_catch_shuffled),1)));
+                    
+                    % get NS stim catch trials
+                    sub_center_catch_shuffle   = shuffle_concat(sub_center_catch,1);
                     cued_center_catch_shuffle  = master_table.is_cued(sub_center_catch_shuffle(:));
                     im_nr_center_catch_shuffle = master_table.stim_nr_left(sub_center_catch_shuffle);
 
+                    % check if all shuffled trials are catch trials and have stim nr 0
                     assert(all(master_table.is_catch(sub_center_catch_shuffle(:))==1));
                     assert(all(master_table.stim_nr_left(sub_center_catch_shuffle(:))==0));
 
                     % distribute catch trials across all scc or ltm trials
-                    combined_trial_shuffleABC0   = NaN(size(combined_trial_shuffleABC,1)+size(sub_center_catch_shuffle,1),2);
-                    combined_cueloc_shuffleABC0  = NaN(1,size(combined_trial_shuffleABC,1)+size(sub_center_catch_shuffle,2));
-                    combined_im_nr_shuffleABC0   = NaN(size(combined_trial_shuffleABC,1)+size(sub_center_catch_shuffle,1),2);
+                    combined_trial_shuffleABC0   = NaN(size(combined_trial_shuffleABC,1)+size(sub_leftright_catch_shuffle,1)+size(sub_center_catch_shuffle,1),2);
+                    combined_cueloc_shuffleABC0  = NaN(1,size(combined_trial_shuffleABC,1)+size(sub_leftright_catch_shuffle,1)+size(sub_center_catch_shuffle,1));
+                    combined_im_nr_shuffleABC0   = NaN(size(combined_trial_shuffleABC,1)+size(sub_leftright_catch_shuffle,1)+size(sub_center_catch_shuffle,1),2);
 
                     % insert catch  trials every X trials + some noise.
                     trial_idx0 = find(all_task_rows);
                     [~,catch_idx] = intersect(trial_idx0,find(master_table.is_catch==1 & strcmp(master_table.task_class_name,{task_class_name_to_shuffle})));
                     non_catch_idx = setdiff(1:size(combined_trial_shuffleABC0,1),catch_idx);
-                    combined_trial_shuffleABC0(catch_idx,:)     = sub_center_catch_shuffle;
-                    combined_trial_shuffleABC0(non_catch_idx,:) = combined_trial_shuffleABC;
+                    
+                    assert(isequal(size(sub_leftright_catch_shuffle,1)+size(sub_center_catch_shuffle,1),length(catch_idx)));
+                    
+                    insert_all_catch_here       = catch_idx(randperm(length(catch_idx),length(catch_idx)));
+                    insert_catch_scenes_here    = insert_all_catch_here(1:size(sub_center_catch_shuffle,1));
+                    insert_catch_classics_here  = insert_all_catch_here((size(sub_center_catch_shuffle,1)+1):end);
+                    assert(isequal(length(insert_catch_scenes_here),size(sub_center_catch_shuffle,1)));
+                    assert(isequal(length(insert_catch_classics_here),size(sub_leftright_catch_shuffle,1)));
+                    
+                    combined_trial_shuffleABC0(insert_catch_scenes_here,:)   = [sub_center_catch_shuffle, NaN(size(sub_center_catch_shuffle))];
+                    combined_trial_shuffleABC0(insert_catch_classics_here,:) = sub_leftright_catch_shuffle;
+                    combined_trial_shuffleABC0(non_catch_idx,:)              = combined_trial_shuffleABC;
 
-                    combined_cueloc_shuffleABC0(catch_idx)      = cued_center_catch_shuffle'; % left and right columns are the same, code expects only one row vector that is used for left and right stim nr
-                    combined_cueloc_shuffleABC0(non_catch_idx)  = combined_cueloc_shuffleABC;
+                    combined_cueloc_shuffleABC0(insert_catch_scenes_here)   = cued_center_catch_shuffle'; % left and right columns are the same, code expects only one row vector that is used for left and right stim nr
+                    combined_cueloc_shuffleABC0(insert_catch_classics_here) = cued_leftright_catch_shuffle(:,1);
+                    combined_cueloc_shuffleABC0(non_catch_idx)              = combined_cueloc_shuffleABC;
 
-                    combined_im_nr_shuffleABC0(catch_idx,:)     = im_nr_center_catch_shuffle;
+                    combined_im_nr_shuffleABC0(insert_catch_scenes_here,:)     = [im_nr_center_catch_shuffle, NaN(size(im_nr_center_catch_shuffle))];
+                    combined_im_nr_shuffleABC0(insert_catch_classics_here,:)    = im_nr_leftright_catch_shuffle;
                     combined_im_nr_shuffleABC0(non_catch_idx,:) = combined_im_nr_shuffleABC;
 
                     % overwrite
@@ -687,8 +773,7 @@ elseif ~isempty(cued_stim_loc)
                     clear combined_trial_shuffleABC0 combined_cueloc_shuffleABC0 combined_im_nr_shuffleABC0
 
                     assert(isequal(size(combined_trial_shuffleABC,1), length(unique(combined_trial_shuffleABC(:,1)))));
-                    assert(all(combined_im_nr_shuffleABC(:)==0));
-                    assert(isequal(combined_cueloc_shuffleABC, repmat(3,length(sub_center_catch_shuffle),1)));
+                    assert(all(combined_im_nr_shuffleABC(catch_idx,1)==0));
                 end
             else
                 combined_trial_shuffleABC  = combined_trial_shuffleAB3;
@@ -721,6 +806,7 @@ elseif ~isempty(cued_stim_loc)
                     trial_idx0 = find(all_task_rows);
                     [~,catch_idx] = intersect(trial_idx0,find(master_table.is_catch==1 & strcmp(master_table.task_class_name,{task_class_name_to_shuffle})));
                     non_catch_idx = setdiff(1:size(combined_trial_shuffleABC0,1),catch_idx);
+                    
                     combined_trial_shuffleABC0(catch_idx,:)     = sub_leftright_catch_shuffle;
                     combined_trial_shuffleABC0(non_catch_idx,:) = combined_trial_shuffleABC;
 
@@ -767,6 +853,10 @@ elseif ~isempty(cued_stim_loc)
         shuffled_master_table.stim_class_unique_block_nr(ii) = ceil(ii/nr_of_trials_per_block);
         shuffled_master_table.trial_nr(ii) = mod(ii-1,nr_of_trials_per_block)+1;
         
+        if new_trial_l.is_catch==1
+            shuffled_master_table.stim_class_name(ii,:) = {NaN,NaN};
+        end
+        
         % check cuing & stim nr
         assert(isequal(new_trial_l.is_cued, combined_cueloc_shuffleABC(ii)));
         assert(isequal(new_trial_l.stim_nr_left, combined_im_nr_shuffleABC(ii,1)));
@@ -780,8 +870,12 @@ elseif ~isempty(cued_stim_loc)
             assert(isnan(new_trial_l.cd_start)); assert(isnan(new_trial_r.cd_start));
             assert(isequal(new_trial_r.stim_nr_right, combined_im_nr_shuffleABC(ii,2)));
             shuffled_master_table.stim_nr_right(ii) = new_trial_r.stim_nr_right;
-        else
+        else % we assume this is a scene
             shuffled_master_table.stim_nr_right(ii) = NaN;
+            new_trial_r = master_table(combined_trial_shuffleABC(ii,1),:);
+            assert(strcmp(new_trial_r.stim_class_name{1}, 'ns'));
+            assert(isequal(combined_cueloc_shuffleABC(ii),3));
+            assert(ismember(combined_im_nr_shuffleABC(ii,1),[0,params.stim.ns.unique_im_nrs_specialcore]));
         end
         
         % Combine double columns
@@ -801,7 +895,10 @@ elseif ~isempty(cued_stim_loc)
     end
     % Check that left and right image nrs are not overlapping
     assert(sum(shuffled_master_table.stim_nr_left(shuffled_master_table.is_catch==0)==shuffled_master_table.stim_nr_right(shuffled_master_table.is_catch==0))==0)
-    assert(all(shuffled_master_table.stim_nr_left(shuffled_master_table.is_catch==1)==shuffled_master_table.stim_nr_right(shuffled_master_table.is_catch==1)))
+    ns_indx = strcmp(shuffled_master_table.stim_class_name(:,1),'ns');
+    assert(all(shuffled_master_table.stim_nr_left(~ns_indx & shuffled_master_table.is_catch==1)==shuffled_master_table.stim_nr_right(~ns_indx & shuffled_master_table.is_catch==1)))
+    assert(all(shuffled_master_table.stim_nr_left(ns_indx & shuffled_master_table.is_catch==1)==0))
+    assert(isequalwithequalnans(shuffled_master_table.stim_nr_right(ns_indx & shuffled_master_table.is_catch==1),NaN(sum((ns_indx & shuffled_master_table.is_catch==1)),1)))
     
     % Check that we have equal nr of left/right cuing conditions
     assert(sum(shuffled_master_table.stim_nr_left(shuffled_master_table.is_catch==0)==shuffled_master_table.stim_nr_right(shuffled_master_table.is_catch==0))==0)
