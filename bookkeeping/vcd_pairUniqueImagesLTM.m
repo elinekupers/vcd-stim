@@ -1,4 +1,4 @@
-function ltmPairs = vcd_pairUniqueImagesLTM(params)
+function ltmPairs = vcd_pairUniqueImagesLTM(params, varargin)
 % VCD function to pair special core images to core images of other stimulus
 % class (for classic stimuli: gabor/rdk/dot/obj) or same class (for NS).
 % 
@@ -21,18 +21,19 @@ function ltmPairs = vcd_pairUniqueImagesLTM(params)
 %   class will not be paired with B's from ONE other stimulus class, but
 %   rather, B's from ALL other stimulus classes.
 % > Natural scenes:
-%   * A's and B's must come from the same stimulus class. 
+%   * A's and B's must both be scenes (so same stimulus class). 
 %   * Maximize stimulus class variability, such that A's from one super-
 %   ordinate category (ex: animal) cannot be paired with a B from the same
 %   superordinate category (ex: also an animal).
 %
 % INPUT:
-%   params      : (struct) params struct with stimulus and experiment
-%                   parameters. Requires the following fields:
+%   params            : (struct) params struct with stimulus and experiment
+%                       parameters. Requires the following fields:
 %     params.exp.(stimclassnames).infofile - path to where csv info file lives.
 %     params.stim.(stimclassnames).unique_im_nrs_core - list with unique image nrs for the core stimuli.
 %     params.stim.(stimclassnames).unique_im_nrs_specialcore - list with unique image nrs for the special core stimuli only used for IMG and LTM.
-% 
+%  [update_info_file] : [optional] (logical) update the csv info file (true) or not (false)? default = false
+%
 % OUTPUT:
 % * ltmPairs    : (double) 47 x 2 matrix where the first column is the
 %                 unique special core stimulus number for A. The second 
@@ -45,6 +46,15 @@ function ltmPairs = vcd_pairUniqueImagesLTM(params)
 % ltmPairs = vcd_pairUniqueImagesLTM(params)
 %
 % Written by Eline K. @ UMN 2025/05, update 2025/07
+
+% Check inputs
+if nargin == 1
+    update_info_file = false;
+elseif nargin == 2
+    update_info_file = varargin{1};
+else
+    error('[%s]: Wrong number of inputs!',mfilename)
+end
 
 % Preallocate space for special_core and non_special_core stimuli
 special_core    = [];
@@ -166,4 +176,59 @@ assert( all(ltmPairs_w_info((ltmPairs_w_info(:,2)<5),2) ~= ltmPairs_w_info((ltmP
 assert( all(ltmPairs_w_info(:,1) ~= ltmPairs_w_info(:,3))); % A's cannot be matched with themselves
 assert( all(ltmPairs_w_info((ltmPairs_w_info(:,2)==5),1) ~= ltmPairs_w_info((ltmPairs_w_info(:,2)==5),3))); % ns A's cannot be ns B's
 assert( all(pairsupercat_ns(:,1) ~= pairsupercat_ns(:,2))); % supercat of ns A's cannot be supercat of ns B's
+
+if update_info_file
+    
+    for ii = 1:length(params.exp.stimclassnames)
+        stimClass = params.exp.stimclassnames{ii};
+        
+        % load csv file
+        d1 = dir(sprintf('%s*.mat',params.stim.(stimClass).stimfile));
+        stim_mat_file = fullfile(d1(end).folder,d1(end).name);
+        a = load(stim_mat_file,'info');
+        
+        % find matched ltm stim
+        matched_stim_nr      = ltmPairs(ismember(ltmPairs(:,1),a.info.unique_im(a.info.is_specialcore==1 & ismember(a.info.unique_im,params.stim.(stimClass).unique_im_nrs_core))),2);
+        matched_stim_class   = ltmPairs_stimclass(ismember(ltmPairs(:,1),a.info.unique_im(a.info.is_specialcore==1 & ismember(a.info.unique_im,params.stim.(stimClass).unique_im_nrs_core))),2);
+        
+        % Make a copy of info table
+        info = a.info;
+        
+        % Add new columns
+        info.ltm_paired_stim         = NaN(size(a.info,1),1);
+        info.ltm_paired_stim_class_i = NaN(size(a.info,1),1);
+        
+        info.ltm_paired_stim(info.is_specialcore==1 & ismember(info.unique_im,params.stim.(stimClass).unique_im_nrs_core)) = matched_stim_nr;
+        info.ltm_paired_stim_class_i(info.is_specialcore==1 & ismember(info.unique_im,params.stim.(stimClass).unique_im_nrs_core)) = matched_stim_class;
+        
+        clear a d1;
+        
+        % load in csv info for each stimulus class.
+        d2 = dir(fullfile(sprintf('%s*.csv',params.stim.(params.exp.stimclassnames{ii}).infofile)));
+        csv = readtable(fullfile(d2(end).folder,d2(end).name));
+        csv.ltm_paired_stim         = NaN(size(csv,1),1);
+        csv.ltm_paired_stim_class_i = NaN(size(csv,1),1);
+        csv.ltm_paired_stim(csv.is_specialcore==1 & ismember(csv.unique_im,params.stim.(stimClass).unique_im_nrs_core)) = matched_stim_nr;
+        csv.ltm_paired_stim_class_i(csv.is_specialcore==1 & ismember(csv.unique_im,params.stim.(stimClass).unique_im_nrs_core)) = matched_stim_class;
+        
+        clear d2;
+        
+                 
+        % Copy stim mat file and append updated info table
+        fprintf('[%s]: Storing updated info table and csv file..\n',mfilename)
+        new_file = fullfile(sprintf('%s_%s.mat',params.stim.(stimClass).stimfile,datestr(now,30)));
+        copyfile(stim_mat_file,new_file);
+        save(new_file,'info','-append');
+        writetable(csv, fullfile(sprintf('%s_%s.csv',params.stim.(stimClass).infofile,datestr(now,30))))
+        
+        % Store images and info table into a new file
+        fprintf('[%s]: Storing ltm pairings..\n',mfilename)
+        fname = fullfile(fileparts(params.stim.gabor.infofile), sprintf('ltm_stim_pairs_%s.mat',datestr(now,30)));
+        save(fname,'ltmPairs','ltmPairs_w_info');
+    end
+end
+
+
+end
+
 
