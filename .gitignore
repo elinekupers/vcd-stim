@@ -7,7 +7,7 @@
 workspaces/*
 !workspaces/info/
 workspaces/info/*
-!workspaces/info/wide_info/*
+!workspaces/info/wide_info/
 !workspaces/info/condition_master_*.mat
 !workspaces/info/*.csv
 !workspaces/instructions/
