@@ -202,7 +202,7 @@ clear rename_me ff p0
 if ~isfield(params,'is_demo'), params.is_demo = false; end
 if ~isfield(params,'is_wide'), params.is_wide = false; end
 unique_sessions  = unique(condition_master.session_nr);
-max_attempts     = 2000;
+max_attempts     = 10000;
 % Get session parameters depending on whether this is the Behavioral
 % experiment or MRI experiment.
 [~,session_types,runs_per_session,run_dur_min, ...
@@ -293,9 +293,10 @@ for ses = 1:length(unique_sessions)
                             
                             % Apply the randomization vector to reorder blocks,
                             % crossings, trial types accordingly..
-                            block_start_idx_shuffled{ii} = block_start_idx(all_blocks{ii}(bb_rnd{ii}));
-                            crossings_shuffled{ii}       = crossings_unique_blocks(all_blocks{ii}(bb_rnd{ii}));
-                            trialtypes_shuffled{ii}      = unique_trialtypes(all_blocks{ii}(bb_rnd{ii}));
+                            [~,jj] = ismember(all_blocks{ii}(bb_rnd{ii}),unique_blocks);
+                            block_start_idx_shuffled{ii} = block_start_idx(jj);
+                            crossings_shuffled{ii}       = crossings_unique_blocks(jj);
+                            trialtypes_shuffled{ii}      = unique_trialtypes(jj);
                             
                             % check if we have more than X crossings repeat
                             % back to back (default is 10) which may happen by
@@ -647,7 +648,7 @@ for ses = 1:length(unique_sessions)
                     
                     % If we shuffled all blocks more than 10,000 times, we will throw an error.
                     if attempts>max_attempts
-                        error('[%s]: Can''t seem to find a solution after 10000 attempts! Try running the same code again!\n',mfilename)
+                        error('[%s]: Can''t seem to find a solution after %d attempts! Try running the same code again!\n',max_attempts, mfilename)
                     end
                     
                 end % big while loop
@@ -725,15 +726,29 @@ for ses = 1:length(unique_sessions)
                             % get trial order within the run
                             trial_order       = curr_block_start(bb_idx):(curr_block_start(bb_idx)+nr_trials-1);
                             trial_order       = trial_order(local_trial_order);
-                            
+
                             % check order of image nrs, if we have any repeats, we shuffle
                             % the order of stimuli in a block
+                            [~,A] = ismember(condition_master0.stim_nr_left(trial_order), unique(condition_master0.stim_nr_left(trial_order)));
+                            [~,B] = ismember(condition_master0.stim_nr_right(trial_order), unique(condition_master0.stim_nr_right(trial_order)));
                             if all(diff(condition_master0.stim_nr_left(trial_order))~=0) && ...
                                     all(diff(condition_master0.stim_nr_right(trial_order))~=0)
                                 trial_order_not_ok = false;
                                 restart_shuffle = false;
+                            elseif all(isnan(condition_master0.stim_nr_right(trial_order)))
+                                if length(unique(A)) <= length(A)/2
+                                        warning('\n[%s]: There is a block with many stimulus repeats!',mfilename);
+                                end
+                            elseif length(unique(A)) <= length(A)/2 || length(unique(B)) <= length(B)/2
+                                    warning('\n[%s]: There is a block with many stimulus repeats!',mfilename);
                             end
-                            if attempt > 50000
+                            if all(ismember(condition_master0.task_class(trial_order), [6,7])) % ltm/img skip for now
+                                trial_order_not_ok = false;
+                                restart_shuffle = false;
+                                warning('\n[%s]: SKIPPING LTM AND IMG CHECKS for stimulus repeats!',mfilename);
+                            end
+                            
+                            if attempt > 2*50000
                                 if params.is_demo
                                     restart_shuffle = false;
                                     break;
@@ -834,7 +849,11 @@ if store_params
         saveDir = fullfile(vcd_rootPath,'data',env_type,subj_id);
     end
     if ~exist(saveDir,'dir'), mkdir(saveDir); end
-    fname = sprintf('%scondition_master_%s%s%s_%s.mat',[subj_id '_'],choose(params.is_wide,'wide_',''),choose(params.is_demo,'demo_',''),params.disp.name, datestr(now,30));
+    if strcmp(env_type,  'MRI')
+        fname = sprintf('%scondition_master_%s%s%s_%s.mat',[subj_id '_'],choose(params.is_wide,'wide_','deep_'),choose(params.is_demo,'demo_',''),params.disp.name, datestr(now,30));
+    else
+        fname = sprintf('%scondition_master_%s%s_%s.mat',[subj_id '_'],choose(params.is_demo,'demo_',''),params.disp.name, datestr(now,30));
+    end
     fprintf('\n[%s]: Storing shuffled condition master and randomization file here:\n',mfilename)
     fprintf('\t%s', fullfile(saveDir,fname))
     save(fullfile(saveDir,fname),'condition_master_shuffled','condition_master_shuffle_idx','session_block_matrix','session_crossing_matrix','randomization_params');
