@@ -78,8 +78,8 @@ end
 % Flag if this is a demo run (true) or not (false)..
 params.is_demo = false;
 
-% Flag if this is a wide MRI run (true) or not (false)..
-params.is_wide = true;
+% Flag if this is a wide MRI experiment (true) or deep MRI experiment (false)..
+params.is_wide = false;
 
 % SETUP RNG
 params.rng.rand_seed = sum(100*clock);
