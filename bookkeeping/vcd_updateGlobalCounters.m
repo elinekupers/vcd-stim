@@ -17,7 +17,7 @@ if strcmp(env_type,'MRI')
         assert(isequal(nr_sessions, params.exp.session.n_wide_sessions)) % since we separate the generation of wide and deep condition masters, we only expect one session
         assert(all(~isnan(params.exp.session.mri.wide.session_types)));
     else
-        assert(isequal(nr_sessions, find(~isnan(params.exp.session.mri.deep.session_types(:,2)))));
+        assert(isequal(max(nr_sessions), find(~isnan(params.exp.session.mri.deep.session_types(:,2)))));
         assert(all(~isnan(params.exp.session.mri.wide.session_types(end,:))));
     end
 end
