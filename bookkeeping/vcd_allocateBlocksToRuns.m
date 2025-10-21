@@ -272,6 +272,8 @@ for ses = 1:size(all_sessions,3)
                                 assert(all(isnan(condition_master.block_nr(idx))))
                                 assert(all(isnan(condition_master.global_block_nr(idx))))
                                 assert(isequal(sum(condition_master.is_cued(~condition_master.is_catch(idx))==1),sum(condition_master.is_cued(~condition_master.is_catch(idx))==2)))
+                                assert( sum(histcounts(condition_master.stim_nr_left(~condition_master.is_catch(idx)))==2) <=2 ); % less than two stim nr repeats per block
+                                assert( sum(histcounts(condition_master.stim_nr_right(~condition_master.is_catch(idx)))==2) <=2 ); % less than two stim nr repeats per block
                                 
                                 % get block numbers for this stim-task crossing
                                 condition_master.session_nr(idx)        = ses;
@@ -323,8 +325,14 @@ for ses = 1:size(all_sessions,3)
                                         if ~isnan(condition_master.is_objectcatch(sub_idx(tt))) && condition_master.is_objectcatch(sub_idx(tt))>0
                                             cue_label = {sprintf('%s %04d L CUED %s+',stim_class_tmp_name,condition_master.stim_nr_left(sub_idx(tt)),task_class_abbr{tc}), ...
                                                 sprintf('%s %04d R UNCUED %s',stim_class_tmp_name,condition_master.stim_nr_right(sub_idx(tt)),task_class_abbr{tc})};
+                                            
+                                            pcobjplus1 = condition_master.stim_nr_left(sub_idx(tt))==params.stim.obj.unique_im_nrs_core;
+                                            pcobjplus2 = params.stim.obj.catch_rotation(pcobjplus1,:) == condition_master.orient_dir(sub_idx(tt),1);
+                                            assert(isequal(condition_master.orient_dir(sub_idx(tt),1),params.stim.obj.catch_rotation(pcobjplus1,pcobjplus2)));
+                                            
                                             condition_master.stim_nr_left(sub_idx(tt)) = condition_master.is_objectcatch(sub_idx(tt)); % replace image nr with unique im nr associated with objectcatch
                                             condition_master.is_objectcatch(sub_idx(tt)) = 1; % Now we reset is_objectcatch to 1
+                                            
                                             % Left-side NON-object catch trials
                                         elseif isnan(condition_master.is_objectcatch(sub_idx(tt))) || condition_master.is_objectcatch(sub_idx(tt))==0
                                             cue_label = {sprintf('%s %04d L CUED %s',stim_class_tmp_name,condition_master.stim_nr_left(sub_idx(tt)),task_class_abbr{tc}), ...
@@ -339,8 +347,14 @@ for ses = 1:size(all_sessions,3)
                                         if ~isnan(condition_master.is_objectcatch(sub_idx(tt))) && condition_master.is_objectcatch(sub_idx(tt))>0
                                             cue_label = {sprintf('%s %04d L UNCUED %s',stim_class_tmp_name,condition_master.stim_nr_left(sub_idx(tt)),task_class_abbr{tc}),...
                                             sprintf('%s %04d R CUED %s+',stim_class_tmp_name,condition_master.stim_nr_right(sub_idx(tt)),task_class_abbr{tc})};
+                                            
+                                            pcobjplus1 = condition_master.stim_nr_right(sub_idx(tt))==params.stim.obj.unique_im_nrs_core;
+                                            pcobjplus2 = params.stim.obj.catch_rotation(pcobjplus1,:) == condition_master.orient_dir(sub_idx(tt),2);
+                                            assert(isequal(condition_master.orient_dir(sub_idx(tt),2),params.stim.obj.catch_rotation(pcobjplus1,pcobjplus2)));
+                                        
                                             condition_master.stim_nr_right(sub_idx(tt)) = condition_master.is_objectcatch(sub_idx(tt)); % replace image nr with unique im nr associated with objectcatch
                                             condition_master.is_objectcatch(sub_idx(tt)) = 1; % Now we reset is_objectcatch to 1
+                                            
                                             % Right-side NON-object catch trials
                                         elseif isnan(condition_master.is_objectcatch(sub_idx(tt)))  || condition_master.is_objectcatch(sub_idx(tt))==0
                                             cue_label = {sprintf('%s %04d L UNCUED %s',stim_class_tmp_name,condition_master.stim_nr_left(sub_idx(tt)),task_class_abbr{tc}),...
