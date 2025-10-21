@@ -287,7 +287,7 @@ for ses = session_nrs
                                     
                                     % Get their catch status, object catch status and cueing conditions
                                     catch_idx        = condition_master.is_catch(ti(potential_trials(1:nr_trials)))==1;
-                                    objectcatch_idx  = condition_master.is_objectcatch(ti(potential_trials(1:nr_trials)))==1;
+                                    objectcatch_idx  = ismember(params.stim.obj.unique_im_nrs_objcatch,condition_master.is_objectcatch(ti(potential_trials(1:nr_trials))));
                                     cued_conds       = condition_master.is_cued(ti(potential_trials(1:nr_trials)));
                                     stim_nr_left     = condition_master.stim_nr_left(ti(potential_trials(1:nr_trials)));
                                     stim_nr_right    = condition_master.stim_nr_right(ti(potential_trials(1:nr_trials)));
@@ -335,11 +335,15 @@ for ses = session_nrs
                                                 stim_nr_repeats(bb,1) = 1;
                                             elseif (params.exp.nr_trials_per_block(sc,tc) == 8) && (length(stim_nr_left(~catch_idx(bbi))) - length(unique(stim_nr_left(~catch_idx(bbi)))) <= nr_unique_stim_repeat_single)
                                                 stim_nr_repeats(bb,1) = 1;
+                                            else
+                                                stim_nr_repeats(bb,1) = 0;
                                             end
                                             if (params.exp.nr_trials_per_block(sc,tc) == 4) && (length(stim_nr_right(~catch_idx(bbi))) - length(unique(stim_nr_right(~catch_idx(bbi)))) <= nr_unique_stim_repeat_double)
                                                 stim_nr_repeats(bb,2) = 1;
                                             elseif (params.exp.nr_trials_per_block(sc,tc) == 8) && (length(stim_nr_right(~catch_idx(bbi))) - length(unique(stim_nr_right(~catch_idx(bbi)))) <= nr_unique_stim_repeat_single)
                                                 stim_nr_repeats(bb,2) = 1;
+                                            else
+                                                stim_nr_repeats(bb,1) = 0;
                                             end
                                         end
                                         if (sum(stim_nr_repeats(:))/2) == nr_blocks && sum(bb_ok) == nr_blocks
