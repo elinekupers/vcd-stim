@@ -220,14 +220,19 @@ else % if not, then we look user pointed to a timetable_file
         % see if there is a subject condition_master_shuffled, which is the precursor of time_table_master
         % and create the time_table_master from there..
         if strcmp(params.env_type, 'MRI')
-            fname = sprintf('%s_condition_master_%s%s*.mat',sprintf('vcd_subj%03d',params.subj_nr),choose(params.is_wide,'wide_','deep_'),choose(params.is_demo,'demo_',''));
+            fname = sprintf('%s_condition_master_%s%s%s*.mat',sprintf('vcd_subj%03d',params.subj_nr),choose(params.is_wide,'wide_','deep_'),choose(params.is_demo,'demo_',''), params.disp.name);
         else
             fname = sprintf('%s_condition_master_%s*.mat',sprintf('vcd_subj%03d',params.subj_nr),choose(params.is_demo,'demo_',''));
         end
         d = dir(fullfile(params.timetablefiledir, fname));
         if ~isempty(d)
-            fprintf('[%s]: Create new time_table_master with locally stored subject-specific condition_master.\n',mfilename);
-            load(fullfile(d(end).folder,d(end).name),'condition_master_shuffled');
+            fprintf('\n !!WARNING!! It appears you have already generated %d time tables for this specific subject.\n', length(d));
+            for mm = 1:length(d)
+               fprintf('  %d: %s\n', mm, d(mm).name)
+            end
+            fprintf('[%s]: Will create a time_table_master with latest subject-specific condition_master:\n',mfilename);
+            fprintf('  %d: %s\n', length(d), d(end).name)
+            load(fullfile(d(end).folder,d(end).name),'condition_master_shuffled'); 
 
             [time_table_master,all_run_frames] = ...
                 vcd_createRunTimeTables(params, ...
@@ -237,7 +242,7 @@ else % if not, then we look user pointed to a timetable_file
                 'env_type',params.env_type, ...
                 'saveDir',params.timetablefiledir, ...
                 'subj_id',sprintf('vcd_subj%03d',params.subj_nr));
-
+            clear d mm
         else
             %% %% CREATE CONDITION_MASTER AND TIME_TABLE_MASTER %%%%%%%%%
             % if there is no condition_master_shuffled for this subject, then
