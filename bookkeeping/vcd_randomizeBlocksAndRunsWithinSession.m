@@ -729,25 +729,34 @@ for ses = 1:length(unique_sessions)
 
                             % check order of image nrs, if we have any repeats, we shuffle
                             % the order of stimuli in a block
-                            [~,A] = ismember(condition_master0.stim_nr_left(trial_order), unique(condition_master0.stim_nr_left(trial_order)));
-                            [~,B] = ismember(condition_master0.stim_nr_right(trial_order), unique(condition_master0.stim_nr_right(trial_order)));
+                            st_nrL = condition_master0.stim_nr_left(trial_order);
+                            st_nrR = condition_master0.stim_nr_right(trial_order);
+                            A = accumarray(st_nrL(st_nrL>0),1); A = A(A>0);
+                            B = accumarray(st_nrR(st_nrR>0), 1); B = B(B>0);
                             if all(diff(condition_master0.stim_nr_left(trial_order))~=0) && ...
                                     all(diff(condition_master0.stim_nr_right(trial_order))~=0)
                                 trial_order_not_ok = false;
                                 restart_shuffle = false;
-                            elseif all(isnan(condition_master0.stim_nr_right(trial_order)))
-                                if length(unique(A)) <= length(A)/2
-                                        warning('\n[%s]: There is a block with many stimulus repeats!',mfilename);
+                            else
+                                if all(ismember(condition_master0.task_class(trial_order), [6,7])) % ltm/img skip for now
+                                    trial_order_not_ok = false;
+                                    restart_shuffle = false;
+                                    warning('\n[%s]: SKIPPING LTM AND IMG CHECKS for stimulus repeats!',mfilename);
+                                elseif all(condition_master0.session_nr(trial_order)==46 & condition_master0.session_type(trial_order) == 2 & condition_master0.task_class(trial_order)==5)
+                                    trial_order_not_ok = false;
+                                    restart_shuffle = false;
+                                    warning('\n[%s]: SKIPPING SESSION 46B FOR NOW for stimulus repeats!',mfilename);
+                                elseif any(ismember(A,3)) && length(trial_order)<=4
+                                    [A1, A2] = vcd_findGlobalTrialNrToSwap(condition_master,condition_master0,trial_order);
+                                    error('\n[%s]: !!!! There is a block with too many stimulus repeats for center/left stim!!!! Consider swapping global trial number %d with %d',mfilename, A1, A2);
+                                elseif sum(B>0) && length(trial_order)<=4
+                                    if any(ismember(A,3)) || any(ismember(B,3))
+                                        [A1, A2] = vcd_findGlobalTrialNrToSwap(condition_master,condition_master0,trial_order);
+                                        error('\n[%s]: !!!! There is a block with too many stimulus repeats for right stim!!!! Consider swapping global trial number %d with %d',mfilename, A1, A2);
+                                    end
                                 end
-                            elseif length(unique(A)) <= length(A)/2 || length(unique(B)) <= length(B)/2
-                                    warning('\n[%s]: There is a block with many stimulus repeats!',mfilename);
                             end
-                            if all(ismember(condition_master0.task_class(trial_order), [6,7])) % ltm/img skip for now
-                                trial_order_not_ok = false;
-                                restart_shuffle = false;
-                                warning('\n[%s]: SKIPPING LTM AND IMG CHECKS for stimulus repeats!',mfilename);
-                            end
-                            
+
                             if attempt > 2*50000
                                 if params.is_demo
                                     restart_shuffle = false;
