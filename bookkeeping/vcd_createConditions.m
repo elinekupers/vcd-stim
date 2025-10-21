@@ -574,13 +574,13 @@ else % Recreate conditions and blocks and trials
             possible_objcatch_rotations1 = possible_objcatch_rotations0(~isnan(possible_objcatch_rotations0));
             
             % randomly select object catch rotation
-            objcatch_rot = randi(length(possible_objcatch_rotations1),1);
+            objcatch_rot = datasample(possible_objcatch_rotations1,1);
             
             % update rotation of object
-            condition_master.orient_dir(objcatch_idx(cc),cued_loc_objcatch(cc)) = possible_objcatch_rotations1(objcatch_rot);
+            condition_master.orient_dir(objcatch_idx(cc),cued_loc_objcatch(cc)) = objcatch_rot;
             
             % remove rotation from list
-            remove_me = (possible_objcatch_rotations1(objcatch_rot)==possible_objcatch_rotations(old_stim_obj_nr,:));
+            remove_me = ismember(possible_objcatch_rotations0,objcatch_rot);
             assert(isequal(possible_objcatch_rotations(old_stim_obj_nr,remove_me),condition_master.orient_dir(objcatch_idx(cc),cued_loc_objcatch(cc))))
             possible_objcatch_rotations(old_stim_obj_nr,remove_me) = NaN;
             
@@ -591,7 +591,7 @@ else % Recreate conditions and blocks and trials
             % Insert object catch image number into "is_objectcatch" for now..
             % (we need to hold on to the core object number for the condition
             % label).
-            condition_master.is_objectcatch(objcatch_idx(cc)) = catch_im_nr(old_stim_obj_nr,objcatch_rot);
+            condition_master.is_objectcatch(objcatch_idx(cc)) = catch_im_nr(old_stim_obj_nr,remove_me);
         end
         condition_master.is_objectcatch(setdiff(pcobj_trial_idx,objcatch_idx)) = 0;
     end
@@ -667,7 +667,7 @@ else % Recreate conditions and blocks and trials
     condition_master.trial_nr(scc_trials) = new_trial_nr;
     condition_master.stim_class_unique_block_nr(scc_trials) = new_trial_nr;
 
-    % ---- bookkeeping: Check if button presses are balanced to the extent possible
+    %% ---- bookkeeping: Check if button presses are balanced to the extent possible
     condition_master = vcd_balanceButtonCorrectPresses(params, condition_master, env_type);
 
     %% ---- IMPORTANT FUNCTION: Allocate trials to blocks all unique trials and repeats of trials.
@@ -818,7 +818,7 @@ else % Recreate conditions and blocks and trials
                     if ismember(ii,[1:3]) % if GBR/RDK/DOT
                         tmp = condition_master(condition_master.is_catch==0 & isnan(condition_master.is_objectcatch) & any(strcmp(condition_master.stim_class_name, params.exp.stimclassnames{ii}),2),:);
                     elseif ii == 4 % OBJ
-                        tmp = condition_master(condition_master.is_catch==0 & condition_master.is_objectcatch~=1 & any(strcmp(condition_master.stim_class_name, params.exp.stimclassnames{ii}),2),:);
+                        tmp = condition_master(condition_master.is_catch==0 & condition_master.is_objectcatch==0 & any(strcmp(condition_master.stim_class_name, params.exp.stimclassnames{ii}),2),:);
                     end
                     % Get counts of stimulus numbers for left and right stimulus position.
                     [N, ~] = histcounts(cat(1,tmp.stim_nr_left(strcmp(tmp.stim_class_name(:,1), params.exp.stimclassnames{ii})),....
@@ -857,7 +857,9 @@ else % Recreate conditions and blocks and trials
                         if ismember(ii,[1:3]) % if GBR/RDK/DOT
                             tmp = condition_master(condition_master.is_catch==0 & condition_master.session_type==st & isnan(condition_master.is_objectcatch) & any(strcmp(condition_master.stim_class_name, params.exp.stimclassnames{ii}),2),:);
                         elseif ii == 4 % OBJ
-                            tmp = condition_master(condition_master.is_catch==0 & condition_master.is_objectcatch~=1 & condition_master.session_type==st & any(strcmp(condition_master.stim_class_name, params.exp.stimclassnames{ii}),2),:);
+                            tmp = condition_master(condition_master.is_catch==0 & condition_master.session_type==st & any(strcmp(condition_master.stim_class_name, params.exp.stimclassnames{ii}),2),:);
+                            tmp0 = cat(1,tmp(isnan(tmp.is_objectcatch),:),tmp(tmp.is_objectcatch==0,:)); tmp = tmp0; clear tmp0;
+                            tmp_catch = condition_master(condition_master.is_catch==0 & condition_master.is_objectcatch==1 & condition_master.session_type==st & any(strcmp(condition_master.stim_class_name, params.exp.stimclassnames{ii}),2),:);
                         end
                         
                         % Get counts of stimulus numbers for left and right stimulus position.
@@ -921,6 +923,10 @@ else % Recreate conditions and blocks and trials
                             empirical_nr_of_trials = ceil(sum([size(colsLR,1),size(unique(colsLR_scc),1)/2, size(unique(colsLR_ltm),1)/2])); % for GBR/RDK/DOT/OBJ: sum regular trials, scc trials (OBJ: we treat objectcatch trials as regular trials)
                         else
                             empirical_nr_of_trials = ceil(sum([size(colsLR,1),size(colsLR_scc,1), size(colsLR_ltm,1)])); % for GBR/RDK/DOT/OBJ: sum regular trials, scc trials (OBJ: we treat objectcatch trials as regular trials)
+
+                            if ii == 4 % add object catch trials
+                                empirical_nr_of_trials = empirical_nr_of_trials + size(tmp_catch,1);
+                            end
                         end
                         if st==2
                             if ~(abs(floor(empirical_nr_of_trials)-expected_nr_of_trials)<=(scc_tolerance(st)+ltm_tolerance(st))) % we allow for x trials difference per stim class due to imbalanced nr of trials for SCC
