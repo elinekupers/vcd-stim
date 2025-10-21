@@ -19,11 +19,20 @@ switch block_name
         % “Did image change contrast?” (1=yes, 2=no)
 
         if ~isnan(table_row.cd_start)
-            if table_row.cd_start(table_row.is_cued) > 0 % if this happens to be the cued side, then log the correct response
-                button_response = 1; % button 1: yes there was a change
-            elseif table_row.cd_start(table_row.is_cued) == 0
-                button_response = 2; % button 2: no there was a change (apply to all time points in the block)
+            if length(table_row.cd_start)>1
+                if table_row.cd_start(table_row.is_cued) > 0 % if this happens to be the cued side, then log the correct response
+                    button_response = 1; % button 1: yes there was a change
+                elseif table_row.cd_start(table_row.is_cued) == 0
+                    button_response = 2; % button 2: no there was no change (apply to all time points in the block)
+                end
+            elseif length(table_row.cd_start)==1 % of only one column
+                if table_row.cd_start > 0 % cd+ only happens to the cued side
+                    button_response = 1; % button 1: yes there was a change
+                elseif table_row.cd_start > 0
+                    button_response = 2; % button 2: no there was no change
+                end
             end
+            
         else
             button_response = NaN;
         end
@@ -322,13 +331,13 @@ switch block_name
         % 
         % 1-INDEX  = ADDED CONTENT
         % 2-MIDDLE = REMOVED CONTENT
-        if table_row.stim2_delta(1) == 2 % 'easy_add'
+        if table_row.stim2_delta(1) == 2 % 'hard_add'
             button_response = 1;
-        elseif table_row.stim2_delta(1) == 1 % 'hard_add'
+        elseif table_row.stim2_delta(1) == 1 % 'easy_add'
             button_response = 1;
-        elseif table_row.stim2_delta(1) == -2 % 'easy_remove'
+        elseif table_row.stim2_delta(1) == -2 % 'hard_remove'
             button_response = 2;
-        elseif table_row.stim2_delta(1) == -1 % 'hard_remove'
+        elseif table_row.stim2_delta(1) == -1 % 'easy_remove'
             button_response = 2;
         else
             error('[%s]: Ill-defined button response for %s!',mfilename,block_name)
