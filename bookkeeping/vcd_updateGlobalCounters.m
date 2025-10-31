@@ -30,6 +30,7 @@ global_trial_nr    = 1;
 global_run_nrB     = 1;
 global_block_nrB   = 1;
 global_trial_nrB   = 1;
+update_me          = true;
 
 for st = unique(condition_master.session_type)'
     
@@ -41,17 +42,6 @@ for st = unique(condition_master.session_type)'
         
         % MRI session type 1 uses regular counter. BEHAVIOR has no A/B versions, always use regular counter
         if strcmp(env_type,'BEHAVIOR') || (strcmp(env_type,'MRI') && st == 1)
-            
-            % We are dealing with all the deep MRI sessions, keep a record
-            % of the penultimate session's last global numbers: we want to
-            % use those as a starting point when we update global counters
-            % for the B version of this session.
-            if strcmp(env_type,'MRI') && params.is_wide ~=1 && max(condition_master.session_nr) > 1 && ...
-                    isequal(condition_master.session_nr(session_idx(ii)), max(condition_master.session_nr))
-                global_run_nrB   = global_run_nr;
-                global_block_nrB = global_block_nr;
-                global_trial_nrB = global_trial_nr;
-            end
             
             if ii > 1
                 if condition_master.run_nr(session_idx(ii-1)) ~= condition_master.run_nr(session_idx(ii))
@@ -72,6 +62,7 @@ for st = unique(condition_master.session_type)'
             
         elseif strcmp(env_type,'MRI') && st == 2
             
+            
             % if this is the B version of the wide session or last deep session
             if ismember(condition_master.session_nr(session_idx(ii)),sessionB)
                 assert(condition_master.session_type(session_idx(ii)) == 2)
@@ -79,6 +70,24 @@ for st = unique(condition_master.session_type)'
                     assert(isequal(sessionB,1));
                 else
                     assert(isequal(sessionB,max(params.exp.session.n_deep_sessions)));
+                    
+                    % We are dealing with all the deep MRI sessions, keep a record
+                    % of the penultimate session's last global numbers: we want to
+                    % use those as a starting point when we update global counters
+                    % for the B version of this session.
+                    if update_me 
+                        % find global run/block/trial nr of session 46A
+                        restart_idx = find(condition_master.session_nr == sessionB &  ...
+                            condition_master.session_type == 1 &  ...
+                            condition_master.run_nr == 1 &  ...
+                            condition_master.block_nr == 1 &  ...
+                            condition_master.trial_nr == 1);
+                        global_run_nrB   = condition_master.global_run_nr(restart_idx);
+                        global_block_nrB = condition_master.global_block_nr(restart_idx);
+                        global_trial_nrB = condition_master.global_trial_nr(restart_idx);
+                        
+                        update_me = false;
+                    end
                 end
                 
                 if ii > 1
