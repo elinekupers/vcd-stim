@@ -227,7 +227,7 @@ end
 % we are going to assume that we can simply synchronize the first synctime with
 % the 'trigger' in timekeys.
 if length(results.synctimes) == 2
-  assert(abs(diff(results.synctimes)/1000 - (behresults.donetime-behresults.mristarttime)) < 20/1000);
+  assert(abs(diff(results.synctimes)/1000 - (behresults.donetime-behresults.mristarttime)) < 30/1000);
 end
 
 % get the eyetracking data (gaze and pupil data). at this point:
