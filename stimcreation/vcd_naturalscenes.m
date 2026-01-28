@@ -109,14 +109,14 @@ info = table();
 [~,idx0] = intersect(info.unique_im,params.stim.ns.unique_im_nrs_core);
 [~,idx1] = intersect(info.unique_im,params.stim.ns.unique_im_nrs_wm_test);
 [~,idx2] = intersect(info.unique_im,params.stim.ns.unique_im_nrs_ltm_lures);
-% [~,idx3] = intersect(info.unique_im,params.stim.ns.unique_im_nrs_img_test);
+[~,idx3] = intersect(info.unique_im,params.stim.ns.unique_im_nrs_img_test);
 core_im_name     = info.filename(idx0);
 core_im_nr       = info.unique_im(idx0);
 wm_test_im_name  = info.filename(idx1);
 wm_test_im_nr    = info.unique_im(idx1);
 ltm_lure_im_name = info.filename(idx2);
-ltm_lure_im_nr    = info.unique_im(idx2);
-% img_test_im_name = info.filename(idx3);
+ltm_lure_im_nr   = info.unique_im(idx2);
+img_test_im_name = info.filename(idx3);
 
 % Define superordinate and basic categories, and number of exemplars per basic category
 superordinate = unique(params.stim.ns.super_cat, 'stable');                 % 5 superordinate categories
@@ -138,29 +138,41 @@ n_scenes     = length(core_im_name);
 n_wm_im      = length(wm_test_im_name);
 n_ltm_lures  = length(ltm_lure_im_name);
 n_wm_changes = length(params.stim.ns.change_im_name);
-n_ltm_lure_types = length(params.stim.ns.lure_im);
+n_ltm_lure_types = length(params.stim.ns.lure_im); % 4 lures per special core stim
+n_img_quiz_dot_images = length(params.stim.ns.imagery_quiz_images); % 10 yes, 10 no per special core stim.
+
+% Get specialcore im order to add ltm/img ns super category info
+specialcore_idx = ismember(params.stim.ns.unique_im_nrs_core,params.stim.ns.unique_im_nrs_specialcore);
+% LTM Lures
+tmp_so_name = repelem(superordinate,length(basic)*length(subordinate)); 
+tmp_so_idx  = repelem(1:length(superordinate),length(basic)*length(subordinate)); 
+sc_so_name  = tmp_so_name(specialcore_idx)';
+sc_so_idx   = tmp_so_idx(specialcore_idx)';
+
+% IMG 
+
 
 % Predefine im_order table
 info.stim_pos_name   = repmat('center',size(info,1),1);
 info.stim_pos        = repmat(3,size(info,1),1);
 info.super_cat_name  = cat(1,repelem(superordinate,length(basic)*length(subordinate))', ... core im
-    repelem(superordinate,n_wm_changes*length(basic)*length(subordinate))',... wm test
-    repelem(superordinate,n_ltm_lures/length(superordinate))'); % ltm lures
+                             repelem(superordinate,n_wm_changes*length(basic)*length(subordinate))', ... wm test
+                             repelem(sc_so_name, n_ltm_lures/sum(specialcore_idx)));  % ltm lures
 info.super_cat       = cat(1,repelem(1:length(superordinate),length(basic)*length(subordinate))', ... core im
-    repelem(1:length(superordinate),n_wm_changes*length(basic)*length(subordinate))',... wm test
-    repelem(1:length(superordinate),n_ltm_lures/length(superordinate))'); % ltm lures
+                             repelem(1:length(superordinate),n_wm_changes*length(basic)*length(subordinate))',... wm test
+                             repelem(sc_so_idx, n_ltm_lures/sum(specialcore_idx)));  % ltm lures
 info.basic_cat_name  = cat(1,repmat(basic(:),length(superordinate)*length(subordinate),1), ... core im
-    repelem(repmat(basic(:),length(superordinate)*length(subordinate),1),4),... wm test
-    repmat({NaN},n_ltm_lures,1)); % ltm lures
+                             repelem(repmat(basic(:),length(superordinate)*length(subordinate),1),4),... wm test
+                             repmat({NaN},n_ltm_lures,1)); % ltm lures    
 info.basic_cat       = cat(1,repmat([1:length(basic)]',length(superordinate)*length(subordinate),1), ... core im
-    repelem(repmat([1:length(basic)]',length(superordinate)*length(subordinate),1),4),... wm test
-    NaN(n_ltm_lures,1)); % ltm lures
+                             repelem(repmat([1:length(basic)]',length(superordinate)*length(subordinate),1),4),... wm test
+                             NaN(n_ltm_lures,1)); % ltm lures
 info.sub_cat_name    = cat(1,repmat(repelem(subordinate(:),length(basic)),length(superordinate),1), ... core im
-    repmat(repelem(subordinate(:),length(basic)*n_wm_changes),length(superordinate),1),... wm test
-    repmat({NaN},n_ltm_lures,1)); % ltm lures
+                             repmat(repelem(subordinate(:),length(basic)*n_wm_changes),length(superordinate),1),... wm test
+                             repmat({NaN},n_ltm_lures,1)); % ltm lures
 info.sub_cat         = cat(1,repmat(repelem([1:length(subordinate)]',length(basic)),length(superordinate),1), ... core im
-    repmat(repelem([1:length(subordinate)]',length(basic)*n_wm_changes),length(superordinate),1),... wm test
-    NaN(n_ltm_lures,1)); % ltm lures
+                             repmat(repelem([1:length(subordinate)]',length(basic)*n_wm_changes),length(superordinate),1),... wm test
+                             NaN(n_ltm_lures,1)); % ltm lures
 info.affordance_name = cat(1,affordance,repelem(affordance,n_wm_changes), repmat({NaN},n_ltm_lures,1));
 info.affordance_cat  = cat(1,affordance_i,repelem(affordance_i,n_wm_changes), NaN(n_ltm_lures,1));
 info.is_specialcore  = ismember(info.unique_im,params.stim.ns.unique_im_nrs_specialcore);  % is_specialcore (logical)
@@ -227,7 +239,7 @@ for ii = 1:n_scenes
             % Load image into array
             ltmlures0(:,:,:,ss,tt,uu,lure_idx) = imread(fullfile(d.folder,d.name));
         end
-        
+
     end
 end
 
