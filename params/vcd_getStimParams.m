@@ -321,7 +321,7 @@ else
         ltm_pairs = a.ltmPairs; clear a;
     else
         ltm_pairs = [];
-        warning('[%s]: Can''t find ltm stim pairs info. Please run ltm_pairs = vcd_getImageryQuizDots(params, true)',mfilename);
+        warning('[%s]: Can''t find ltm stim pairs info. Please run ltm_pairs = vcd_pairUniqueImagesLTM(params, [true/false for update_info_file])',mfilename);
     end
     
     %% STIM PARAMS
@@ -391,9 +391,12 @@ else
 
                 % LTM PAIRED ASSOCIATES:
                 if ~isempty(ltm_pairs)
-                    p.ltm_pairs = ltm_pairs(ismember(ltm_pairs(:,1),p.unique_im_nrs_specialcore),2);
+                    p.ltm_pairs   = ltm_pairs(ismember(ltm_pairs(:,1),p.unique_im_nrs_specialcore),:);
+                    p.ltm_ori_deg = p.ori_deg(ismember(p.ltm_pairs(:,1),p.unique_im_nrs_specialcore));
                 else
-                    p.ltm_pairs = [];
+                    p.ltm_pairs   = [];
+                    p.ltm_ori_deg = [];
+                    warning('[%s]: LTM associated stimulus pairs are not defined!', mfilename)
                 end
                 
                 % IMAGERY
@@ -492,9 +495,12 @@ else
                 
                 % LTM PAIRED ASSOCIATES:
                 if ~isempty(ltm_pairs)
-                    p.ltm_pairs = ltm_pairs(ismember(ltm_pairs(:,1),p.unique_im_nrs_specialcore),2);
+                    p.ltm_pairs      = ltm_pairs(ismember(ltm_pairs(:,1),p.unique_im_nrs_specialcore),:);
+                    p.ltm_motdir_deg = p.dots_direction(ismember(p.ltm_pairs(:,1),p.unique_im_nrs_specialcore));
                 else
-                    p.ltm_pairs = [];
+                    p.ltm_pairs      = [];
+                    p.ltm_motdir_deg = [];
+                    warning('[%s]: LTM associated stimulus pairs are not defined!', mfilename)
                 end
                 
                 % IMAGERY: 
@@ -624,9 +630,12 @@ else
                 
                 % LTM PAIRED ASSOCIATES:
                 if ~isempty(ltm_pairs)
-                    p.ltm_pairs = ltm_pairs(ismember(ltm_pairs(:,1),p.unique_im_nrs_specialcore),2);
+                    p.ltm_pairs   = ltm_pairs(ismember(ltm_pairs(:,1),p.unique_im_nrs_specialcore),:);
+                    p.ltm_ang_deg = p.ang_deg(ismember(p.ltm_pairs(:,1),p.unique_im_nrs_specialcore));
                 else
-                    p.ltm_pairs = [];
+                    p.ltm_pairs   = [];
+                    p.ltm_ang_deg = [];
+                    warning('[%s]: LTM associated stimulus pairs are not defined!', mfilename)
                 end
                 
                 % IMAGERY: QUIZ DOT PARAMS
@@ -886,11 +895,26 @@ else
                 % SPECIAL CORE STIM: 
                 p.unique_im_nrs_specialcore = p.unique_im_nrs_core([1,3,5,7,8,10,12,14]);   % 8 SELECTED IMAGES USED (SUBSET of 16 IMAGES)--these are hand picked! damon, sophia, cat, giraffe, drill, bus, pizza, church
                 
+                p.all_super_cat = cat(1,repmat(p.super_cat(1),3,1), ...
+                                        repmat(p.super_cat(2),4,1), ...
+                                        repmat(p.super_cat(3),4,1), ...
+                                        repmat(p.super_cat(4),2,1), ...
+                                        repmat(p.super_cat(5),3,1));
+                p.all_super_cat = p.all_super_cat(:);
+                p.all_basic_cat = cat(2,p.basic_cat{:})';
+                p.all_sub_cat   = cat(2,p.sub_cat{:})';
+                
                 % LTM PAIRED ASSOCIATES:
                 if ~isempty(ltm_pairs)
-                    p.ltm_pairs = ltm_pairs(ismember(ltm_pairs(:,1),p.unique_im_nrs_specialcore),2);
+                    p.ltm_pairs   = ltm_pairs(ismember(ltm_pairs(:,1),p.unique_im_nrs_specialcore),:);
+                    ltm_cat       = cat(2, p.all_super_cat, p.all_basic_cat, p.all_sub_cat);
+                    p.ltm_cat     = ltm_cat(ismember(p.unique_im_nrs_core, p.unique_im_nrs_specialcore),:);
+                    p.ltm_stimloc = [ones(size(p.ltm_cat,1),1), NaN(size(p.ltm_cat,1),1)]; % 1=left / 2=right stim positions.
                 else
-                    p.ltm_pairs = [];
+                    p.ltm_pairs   = [];
+                    p.ltm_cat     = [];
+                    p.ltm_stimloc = [];
+                    warning('[%s]: LTM associated stimulus pairs are not defined!', mfilename)
                 end
                 
                 % IMAGERY QUIZ DOT PARAMS
@@ -1030,14 +1054,34 @@ else
                 end
                 
                 % FOR LTM incorrect trials, we have very similar looking images called "lures":
-                p.lure_im                   = {'lure01', 'lure02', 'lure03', 'lure04'};
-                p.unique_im_nrs_ltm_lures   = [1343:1398];                                                      % Unique image nrs associated with the 14*4=56 WM NS lure images
+                p.lure_im                       = {'lure01', 'lure02', 'lure03', 'lure04'};
+                p.unique_im_nrs_novel_ltm_lures = [1343:1398];                                                      % Unique image nrs associated with the 14*4=56 WM NS lure images
                 
-                % LTM PAIRED ASSOCIATES
+                p.all_super_cat = repmat(p.super_cat,6,1);
+                p.all_super_cat = p.all_super_cat(:);
+                p.all_basic_cat = cat(1,p.basic_cat{:,1}', ...
+                                        p.basic_cat{:,2}', ...
+                                        p.basic_cat{:,3}', ...
+                                        p.basic_cat{:,4}', ...
+                                        p.basic_cat{:,5}');
+                p.all_basic_cat = repmat(p.all_basic_cat,3,1);
+                p.all_sub_cat   = cat(1,reshape(cat(1,p.sub_cat{1,:}),[],1), ...
+                                        reshape(cat(1,p.sub_cat{2,:}),[],1), ...
+                                        reshape(cat(1,p.sub_cat{3,:}),[],1), ...
+                                        reshape(cat(1,p.sub_cat{4,:}),[],1), ...
+                                        reshape(cat(1,p.sub_cat{5,:}),[],1));
+                    
+                % LTM PAIRED ASSOCIATES:
                 if ~isempty(ltm_pairs)
-                    p.ltm_pairs = ltm_pairs(ismember(ltm_pairs(:,1),p.unique_im_nrs_specialcore),2);
+                    p.ltm_pairs   = ltm_pairs(ismember(ltm_pairs(:,1),p.unique_im_nrs_specialcore),:); % unique stimulus numbers (col 1 = stim A, col 2 = stim B)
+                    ltm_cat       = cat(1, p.all_super_cat, p.all_basic_cat, p.all_sub_cat);
+                    p.ltm_cat     = ltm_cat(ismember(p.unique_im_nrs_core, p.unique_im_nrs_specialcore),:);
+                    p.ltm_stimloc = [3*ones(size(p.ltm_cat,1),1), NaN(size(p.ltm_cat,1),1)]; % all central stim positions.
                 else
-                    p.ltm_pairs = [];
+                    p.ltm_pairs   = [];
+                    p.ltm_cat     = [];
+                    p.ltm_stimloc = [];
+                    warning('[%s]: LTM associated stimulus pairs are not defined!', mfilename)
                 end
 
                 % Add params to struct
@@ -1057,13 +1101,28 @@ else
     stim.all_core_im_nrs         = sort(cat(2, stim.gabor.unique_im_nrs_core, stim.rdk.unique_im_nrs_core, stim.dot.unique_im_nrs_core, stim.obj.unique_im_nrs_core, stim.ns.unique_im_nrs_core));
     stim.all_specialcore_im_nrs  = sort(cat(2, stim.gabor.unique_im_nrs_specialcore, stim.rdk.unique_im_nrs_specialcore, stim.dot.unique_im_nrs_specialcore, stim.obj.unique_im_nrs_specialcore, stim.ns.unique_im_nrs_specialcore));
     stim.all_wm_test_im_nrs      = sort(cat(2, stim.gabor.unique_im_nrs_wm_test, stim.rdk.unique_im_nrs_wm_test, stim.dot.unique_im_nrs_wm_test, stim.obj.unique_im_nrs_wm_test, stim.ns.unique_im_nrs_wm_test));
-    stim.all_ltm_pairs           = cat(1, stim.gabor.ltm_pairs, stim.rdk.ltm_pairs, stim.dot.ltm_pairs, stim.obj.ltm_pairs, stim.ns.ltm_pairs)';
+    stim.all_ltm_pairs           = cat(1, stim.gabor.ltm_pairs, stim.rdk.ltm_pairs, stim.dot.ltm_pairs, stim.obj.ltm_pairs, stim.ns.ltm_pairs);
     stim.all_img_test_im_nrs     = sort(cat(2, stim.gabor.unique_im_nrs_img_test, stim.rdk.unique_im_nrs_img_test, stim.dot.unique_im_nrs_img_test, stim.obj.unique_im_nrs_img_test, stim.ns.unique_im_nrs_img_test));
-    stim.all_ltm_lure_im_nrs     = sort(stim.ns.unique_im_nrs_ltm_lures);
     stim.all_objectcatch_im_nrs  = sort(stim.obj.unique_im_nrs_objcatch);
-    stim.all_test_im_nrs         = sort(cat(2, stim.all_wm_test_im_nrs, stim.all_img_test_im_nrs, stim.all_ltm_lure_im_nrs));
+    stim.all_test_im_nrs         = sort(cat(2, stim.all_wm_test_im_nrs, stim.all_img_test_im_nrs));
     stim.all_im_nrs              = sort(cat(2, stim.all_core_im_nrs, stim.all_test_im_nrs, stim.all_objectcatch_im_nrs));
 
+    
+    ltm_tmp1 = cat(1, ones(length(stim.gabor.unique_im_nrs_specialcore),1), ... special core gabors = 1
+                   2*ones(length(stim.rdk.unique_im_nrs_specialcore),1), ... special core rdks = 2
+                   3*ones(length(stim.dot.unique_im_nrs_specialcore),1), ... special core dots = 3
+                   4*ones(length(stim.obj.unique_im_nrs_specialcore),1), ... special core objs = 4
+                   5*ones(length(stim.ns.unique_im_nrs_specialcore),1)); ... special core ns = 5
+    ltm_tmp2 = sum(cat(2, ismember(stim.all_ltm_pairs(:,2), stim.gabor.unique_im_nrs_specialcore), ... 
+                        ismember(stim.all_ltm_pairs(:,2), stim.rdk.unique_im_nrs_specialcore), ...
+                        ismember(stim.all_ltm_pairs(:,2), stim.dot.unique_im_nrs_specialcore), ...
+                        ismember(stim.all_ltm_pairs(:,2), stim.obj.unique_im_nrs_specialcore), ...
+                        ismember(stim.all_ltm_pairs(:,2), stim.ns.unique_im_nrs_specialcore)) .* [1:5],2);
+    stim.all_ltm_pairs_stim_class = cat(2, ltm_tmp1,ltm_tmp2); % combine a vector of stimclass for LTM stim (A) and stim (B) pairs 
+   
+    stim.all_ltm_pairs_stim_loc = cat(2, [], []); % combine a vector of stimulus location (1=left or 2=right or 3=central) for LTM stim (A) and stim (B) pairs
+    
+    
     % Tell the user more info
     if verbose
         fprintf('*** ALL STIMULI: Using a stimulus duration of %d frames (%3.2f seconds), where one frame relates to %d monitor refreshes (%d Hz) ***\n', ...
@@ -1073,21 +1132,19 @@ else
         fprintf('\t %d core (%03d-%03d) \n',length(stim.all_core_im_nrs),min(stim.all_core_im_nrs), max(stim.all_core_im_nrs)) 
         fprintf('\t %d WM test (%03d-%03d) \n',length(stim.all_wm_test_im_nrs),min(stim.all_wm_test_im_nrs), max(stim.all_wm_test_im_nrs))
         fprintf('\t %d IMG test (%03d-%03d) \n',length(stim.all_img_test_im_nrs),min(stim.all_img_test_im_nrs), max(stim.all_img_test_im_nrs))
-        fprintf('\t %d LTM novel lures (%03d-%03d) \n',length(stim.all_ltm_lure_im_nrs),min(stim.all_ltm_lure_im_nrs), max(stim.all_ltm_lure_im_nrs))
+        fprintf('\t %d LTM NS novel lures (%03d-%03d) \n',length(stim.ns.unique_im_nrs_novel_ltm_lures),min(stim.ns.unique_im_nrs_novel_ltm_lures), max(stim.ns.unique_im_nrs_novel_ltm_lures))
         fprintf('\t %d OBJ catch images (%03d-%03d) \n', length(stim.all_objectcatch_im_nrs), min(stim.all_objectcatch_im_nrs), max(stim.all_objectcatch_im_nrs));
         fprintf('\t %d special core\n',length(stim.all_specialcore_im_nrs))
         fprintf('\t %d LTM pairs \n',length(stim.all_ltm_pairs)) 
-        
     end
     
     
     % do some checks
     assert(isequal(1:length(stim.all_core_im_nrs),stim.all_core_im_nrs));
     assert(all(ismember(stim.all_specialcore_im_nrs,stim.all_core_im_nrs)));
-%     assert(all(ismember(stim.all_ltm_pairs,stim.all_core_im_nrs)));
+    assert(all(ismember(stim.all_ltm_pairs(:),stim.all_core_im_nrs)));
     assert(all(~ismember(stim.all_wm_test_im_nrs,stim.all_core_im_nrs)));
     assert(all(~ismember(stim.all_img_test_im_nrs,stim.all_core_im_nrs)));
-    assert(all(~ismember(stim.all_ltm_lure_im_nrs,stim.all_core_im_nrs)));
 
     
     % Store params if requested
