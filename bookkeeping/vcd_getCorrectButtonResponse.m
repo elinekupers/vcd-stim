@@ -1,5 +1,26 @@
 function button_response = vcd_getCorrectButtonResponse(params, table_row)
+% VCD bookkeeping function to determine correct button press given the 
+% spatial cue, stim-task crossing, and stimuli presented.
+% Takes only one trial at a time! 
+%
+%   button_response = vcd_getCorrectButtonResponse(params, table_row)
+%
+%
+% INPUTS:
+%   params                :  (struct) parameter struct needed to get subject
+%                             nrs and run type params. REQUIRES params.trials
+%                             to exist and contain condition_master v0.
+%   table_row             :  (table) single row of the general 
+%                             condition_master table.
+%
+% OUTPUTS:
+%  button_response        : (double) correct button response given this
+%                            trial, where 1 = index finger, 2 = middle
+%                            finger, 3 = ring finger, 4 = pinky.
+%
+% Written by Eline Kupers @ UMN 2026/01
 
+% Determine stim-task crossing
 if strcmp(table_row.stim_class_name{1},'ns')
     block_name = sprintf('%s-%s',table_row.task_class_name{1},table_row.stim_class_name{1});
 elseif strcmp(table_row.task_class_name{:},'fix')
@@ -102,33 +123,21 @@ switch block_name
         % 
         % 1-INDEX  = YES
         % 2-MIDDLE = NO
-        button_response = NaN;
+        if table_row.is_cued <= 2
+            idx = table_row.is_cued;
+        else
+            idx = 1; % center scene stimulus
+        end
+
+        is_match = table_row.stim2_delta(table_row.is_cued(idx)); % determined in vcd_createConditionMaster > vcd_getLTMTestStim (stim2_match) 
         
-%         if table_row.is_cued <= 2
-%             idx = table_row.is_cued;
-%         else
-%             idx = 1; % center scene stimulus
-%         end
-%         
-%         if idx == 1
-%             [~,idx2] = ismember(table_row.stim_nr_left, params.stim.(table_row.stim_class_name{table_row.is_cued}).unique_im_nrs_specialcore);
-%         elseif idx == 2
-%             [~,idx2] = ismember(table_row.stim_nr_right,  params.stim.(table_row.stim_class_name{table_row.is_cued}).unique_im_nrs_specialcore);
-%         end
-%         
-%         ltm_pair = params.stim.(table_row.stim_class_name{table_row.is_cued}).ltm_pairs(idx2);
-%         
-%         if table_row.is_lure(idx)
-%             button_response = 2; % NO
-%         elseif isnan(table_row.stim2_im_nr(idx))
-%             button_response = 0; % NO
-%         elseif table_row.stim2_im_nr(idx) ~= ltm_pair
-%             button_response = 2; % NO
-%         elseif table_row.stim2_im_nr(idx) == ltm_pair
-%             button_response = 1; % YES
-%         else
-%             error('[%s]: Ill-defined button response for %s!',mfilename,block_name)
-%         end
+        if is_match == 0 % not a match
+            button_response = 2; % NO
+        elseif is_match == 1 % a match
+            button_response = 1; % YES
+        else
+            error('[%s]: Ill-defined button response for %s!',mfilename,block_name)
+        end
 
     case {'img_all','img-gabor','img-rdk', 'img-dot','img-obj','img-ns'}
         % Imagery task - Gabors
