@@ -8,6 +8,7 @@ workspaces/*
 !workspaces/info/
 workspaces/info/*
 !workspaces/info/wide_info/
+!workspaces/info/deep_info_files_ses01_07/
 !workspaces/info/condition_master_*.mat
 !workspaces/info/*.csv
 !workspaces/info/ltm*.mat
@@ -16,6 +17,8 @@ workspaces/info/*
 !workspaces/instructions/instruction_images/
 !workspaces/instructions/instruction_txt/
 !workspaces/instructions/performance_phrases/
+!workspaces/instructions/img_text_prompts/
+!workspaces/instructions/img_image_prompts/
 
 figs/*
 data/*
