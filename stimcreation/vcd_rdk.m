@@ -192,10 +192,10 @@ info = table(NaN(n_unique_videos,1), ... unique_im
     NaN(n_unique_videos,1), ... dot_coh_i
     NaN(n_unique_videos,1), ... rel_motdir_deg
     NaN(n_unique_videos,1), ... rel_motdir_deg_i
-    NaN(n_unique_videos,1), ... is_special_core
+    NaN(n_unique_videos,1), ... is_specialcore
     cell(n_unique_videos,1)); % dot_pos
 info.Properties.VariableNames = {'unique_im','dot_motdir_deg','dot_motdir_deg_i',...
-    'dot_coh','dot_coh_i','rel_motdir_deg','rel_motdir_deg_i','is_special_core','dot_pos'};
+    'dot_coh','dot_coh_i','rel_motdir_deg','rel_motdir_deg_i','is_specialcore','dot_pos'};
 
 %% RNG seed parameters
 rseed    = [1000 2010];
