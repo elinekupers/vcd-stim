@@ -2,7 +2,7 @@ function ltmPairs = vcd_pairUniqueImagesLTM(params, varargin)
 % VCD function to pair special core images to core images of other stimulus
 % class (for classic stimuli: gabor/rdk/dot/obj) or same class (for NS).
 % 
-%    ltmPairs = vcd_pairUniqueImagesLTM(params)
+%    ltmPairs = vcd_pairUniqueImagesLTM(params, [update_info_file])
 % 
 % Probability of subjects seeing a correct associated pair is 0.5.
 %
@@ -73,12 +73,28 @@ for ii = 1:length(params.exp.stimclassnames)
     
     special_core_nums       = csv.unique_im(special_core_idx);
     nonspecial_core_nums    = csv.unique_im(non_special_core_idx);
-
-    special_core    = cat(1,special_core, [sort(special_core_nums), ii.*ones(length(special_core_nums),1)]);
-    nonspecial_core = cat(1,nonspecial_core, [sort(nonspecial_core_nums), ii.*ones(length(nonspecial_core_nums),1)]);
+    
+    if ismember('stim_pos_i',csv.Properties.VariableNames)
+        special_core_loc       = csv.stim_pos_i(special_core_idx);
+        nonspecial_core_loc    = csv.stim_pos_i(non_special_core_idx);
+    elseif ismember('stim_pos',csv.Properties.VariableNames)
+        special_core_loc       = csv.stim_pos(special_core_idx);
+        nonspecial_core_loc    = csv.stim_pos(non_special_core_idx);
+        if iscell(special_core_loc)
+            [~,tmp] = ismember(special_core_loc,{'left','right'});
+            special_core_loc = tmp;
+            [~,tmp] = ismember(nonspecial_core_loc,{'left','right'});
+            nonspecial_core_loc = tmp;
+            clear tmp;
+        end
+    else
+        error('[%s]: Can''t find stim position from csv info table!',mfilename)
+    end
+    special_core    = cat(1,special_core, [sort(special_core_nums), ii.*ones(length(special_core_nums),1), special_core_loc]);
+    nonspecial_core = cat(1,nonspecial_core, [sort(nonspecial_core_nums), ii.*ones(length(nonspecial_core_nums),1), nonspecial_core_loc]);
 
     if ii == 5
-        special_core_cat_info    = [csv.super_cat(special_core_idx),csv.basic_cat(special_core_idx)];
+        special_core_cat_info    = [csv.super_cat(special_core_idx),csv.basic_cat(special_core_idx), special_core_loc];
     end
 end
 assert(sum(ismember(special_core(:,1),nonspecial_core(:,1),'rows'))==0) % special_core's cannot be nonspecial_core's 
@@ -88,14 +104,21 @@ assert(sum(ismember(nonspecial_core(:,1),special_core(:,1),'rows'))==0) % specia
 special_core_no_scenes = special_core(special_core(:,2)~=5,:); % grab the non scene special_core's
 special_core_yes_scenes = special_core(special_core(:,2)==5,:); % let's also define the scene special_core's
 
-pairnums_classic = []; pairclass_classic = [];
+% split left/right stim loc
+special_core_no_scenes_left  = special_core_no_scenes(special_core_no_scenes(:,3)==1,:);
+special_core_no_scenes_right = special_core_no_scenes(special_core_no_scenes(:,3)==2,:);
 
+%%%%% LEFT SIDE %%%%%
+% preallocate space
+pairnums_classic_left = []; pairclass_classic_left = [];
+
+% Shuffle and pair left special core stim
 while 1
     % Generate shuffled image order
-    shuffle_idx = randperm(length(special_core_no_scenes),length(special_core_no_scenes));
+    shuffle_idx = randperm(length(special_core_no_scenes_left),length(special_core_no_scenes_left));
     
     % Apply shuffle
-    shuffled_im = special_core_no_scenes(shuffle_idx,:);
+    shuffled_im = special_core_no_scenes_left(shuffle_idx,:);
     
     % Split shuffled list of classic special core stimuli in A's and B's
     A = shuffled_im(1:(length(shuffled_im)/2),:);
@@ -108,19 +131,64 @@ while 1
     overlap_stimclassAB = (A(:,2) == B(:,2));
         
     % If we have more than 2 per class, we break the while loop
-    if all(count_stimclassA==4) && all(count_stimclassB==4) ...
-        && sum(overlap_stimclassAB)==0
+    if length(count_stimclassA)==4 && length(count_stimclassB)==4 ...
+        && sum(overlap_stimclassAB)==0 ...
+        && all(count_stimclassA>1) && all(count_stimclassB>1)
         % combine the pairs
-        pairnums_classic  = [A(:,1), B(:,1)]; 
-        pairclass_classic = [A(:,2), B(:,2)];
+        pairnums_classic_left  = [A(:,1), B(:,1)]; 
+        pairclass_classic_left = [A(:,2), B(:,2)];
         break
     end
     
 end
-
+% do some checks
 assert(sum(ismember(A(:,1), B(:,1)))==0)
 assert(sum(ismember(B(:,1), A(:,1)))==0)
 assert(all(A(:,2)~=B(:,2)))
+assert(all(A(:,3)==B(:,3))) % same stim loc (1)
+
+
+%%%%% RIGHT SIDE %%%%%
+% preallocate space
+pairnums_classic_right = []; pairclass_classic_right = [];
+
+% Shuffle and pair right special core stim
+while 1
+    % Generate shuffled image order
+    shuffle_idx = randperm(length(special_core_no_scenes_right),length(special_core_no_scenes_right));
+    
+    % Apply shuffle
+    shuffled_im = special_core_no_scenes_right(shuffle_idx,:);
+    
+    % Split shuffled list of classic special core stimuli in A's and B's
+    A = shuffled_im(1:(length(shuffled_im)/2),:);
+    B = shuffled_im((1+(length(shuffled_im)/2)):end,:);
+    
+    % Check now many samples we have for each stimulus class
+    count_stimclassA = histcounts(A(:,2));
+    count_stimclassB = histcounts(B(:,2));
+    
+    overlap_stimclassAB = (A(:,2) == B(:,2));
+        
+    % If we have more than 2 per class, we break the while loop
+    if length(count_stimclassA)==4 && length(count_stimclassB)==4 ...
+        && sum(overlap_stimclassAB)==0 ...
+        && all(count_stimclassA>1) && all(count_stimclassB>1)
+        % combine the pairs
+        pairnums_classic_right  = [A(:,1), B(:,1)]; 
+        pairclass_classic_right = [A(:,2), B(:,2)];
+        break
+    end
+    
+end
+assert(sum(ismember(A(:,1), B(:,1)))==0)
+assert(sum(ismember(B(:,1), A(:,1)))==0)
+assert(all(A(:,2)~=B(:,2)))
+assert(all(A(:,3)==B(:,3))); % same stim loc (2)
+
+% combine left and right stimloc
+pairnums_classic = cat(1, pairnums_classic_left, pairnums_classic_right);
+pairclass_classic = cat(1, pairclass_classic_left,pairclass_classic_right);
 
 %% Now do the same for NS
 pairnums_ns = []; 
@@ -146,7 +214,7 @@ while 1
     
     overlap_stimclassAB = (A(:,2) == B(:,2));
     
-    % If we have more than 2 per class, we break the while loop
+    % If we have more than 1 per class, we break the while loop
     if all(count_stimclassA>=1) && all(count_stimclassB>=1) ...
             && sum(overlap_stimclassAB)==0
         % combine the pairs
@@ -182,53 +250,93 @@ if update_info_file
     for ii = 1:length(params.exp.stimclassnames)
         stimClass = params.exp.stimclassnames{ii};
         
-        % load csv file
+        % load mat file for each stimulus class.
         d1 = dir(sprintf('%s*.mat',params.stim.(stimClass).stimfile));
         stim_mat_file = fullfile(d1(end).folder,d1(end).name);
         a = load(stim_mat_file,'info');
-        
-        % find matched ltm stim
-        matched_stim_nr      = ltmPairs(ismember(ltmPairs(:,1),a.info.unique_im(a.info.is_specialcore==1 & ismember(a.info.unique_im,params.stim.(stimClass).unique_im_nrs_core))),2);
-        matched_stim_class   = ltmPairs_stimclass(ismember(ltmPairs(:,1),a.info.unique_im(a.info.is_specialcore==1 & ismember(a.info.unique_im,params.stim.(stimClass).unique_im_nrs_core))),2);
-        
+                
         % Make a copy of info table
         info = a.info;
         
-        % Add new columns
+        % Warn if columns are already defined
+        if ismember('ltm_paired_stim',info.Properties.VariableNames)
+            if all(isnan(info.ltm_paired_stim))==0
+                warning('[%s]: FYI LTM pairs have already been defined in %s. We will not overwrite this info file, but you may want to check why you are running this function again',mfilename, stim_mat_file)
+            end
+        end
+        
+        % add or reset ltm columns
         info.ltm_paired_stim         = NaN(size(a.info,1),1);
         info.ltm_paired_stim_class_i = NaN(size(a.info,1),1);
         
-        info.ltm_paired_stim(info.is_specialcore==1 & ismember(info.unique_im,params.stim.(stimClass).unique_im_nrs_core)) = matched_stim_nr;
-        info.ltm_paired_stim_class_i(info.is_specialcore==1 & ismember(info.unique_im,params.stim.(stimClass).unique_im_nrs_core)) = matched_stim_class;
-        
-        clear a d1;
-        
+        %%%%
         % load in csv info for each stimulus class.
         d2 = dir(fullfile(sprintf('%s*.csv',params.stim.(params.exp.stimclassnames{ii}).infofile)));
         csv = readtable(fullfile(d2(end).folder,d2(end).name));
+        
+        % Warn if columns are already defined
+        if ismember('ltm_paired_stim',csv.Properties.VariableNames)
+            if all(isnan(csv.ltm_paired_stim))==0
+                warning('[%s]: FYI LTM pairs have already been defined in %s. We will not overwrite this info file, but you may want to check why you are running this function again',mfilename, d2(end).name)
+            end
+        end
+        
+        % add or reset ltm columns
         csv.ltm_paired_stim         = NaN(size(csv,1),1);
         csv.ltm_paired_stim_class_i = NaN(size(csv,1),1);
-        csv.ltm_paired_stim(csv.is_specialcore==1 & ismember(csv.unique_im,params.stim.(stimClass).unique_im_nrs_core)) = matched_stim_nr;
-        csv.ltm_paired_stim_class_i(csv.is_specialcore==1 & ismember(csv.unique_im,params.stim.(stimClass).unique_im_nrs_core)) = matched_stim_class;
         
-        clear d2;
+        % insert ltm paired stim
+        for jj = 1:length(params.stim.(stimClass).unique_im_nrs_specialcore)
+            
+            % get A and B stim
+            im_A = params.stim.(stimClass).unique_im_nrs_specialcore(jj);
+            im_A_idx = find(ltmPairs(:,1)==im_A);
+            im_A_class = ltmPairs_stimclass(im_A_idx,1);
+            im_B = ltmPairs(im_A_idx,2);
+            im_B_class = ltmPairs_stimclass(im_A_idx,2);
+            
+            % do some checks
+            assert(isequal(im_A_class,ii));
+            assert(ismember(im_A, a.info.unique_im(a.info.is_specialcore==1 & ismember(a.info.unique_im,params.stim.(stimClass).unique_im_nrs_core))));
+            assert(ismember(im_A, csv.unique_im(csv.is_specialcore==1 & ismember(csv.unique_im,params.stim.(stimClass).unique_im_nrs_core))));
+
+            % MAT FILE
+            t_idx = find(info.unique_im==im_A);
+            assert(info.is_specialcore(t_idx)==1)
+            
+            % insert matched stim nr and stim class of B
+            info.ltm_paired_stim(t_idx) = im_B;
+            info.ltm_paired_stim_class_i(t_idx) = im_B_class;
+            
+            
+            % CSV FILE
+            t_idx = find(csv.unique_im==im_A);
+            assert(csv.is_specialcore(t_idx)==1)
+            
+            % insert matched stim nr
+            csv.ltm_paired_stim(t_idx) = im_B;
+            csv.ltm_paired_stim_class_i(t_idx) = im_B_class;
+        end
         
-                 
-        % Copy stim mat file and append updated info table
+        % clear memory
+        clear a d1 d2
+        
+        % %%% SAVE %%%       
+        % Save stim mat file and updated info table with new filename
         fprintf('[%s]: Storing updated info table and csv file..\n',mfilename)
         new_file = fullfile(sprintf('%s_%s.mat',params.stim.(stimClass).stimfile,datestr(now,30)));
         copyfile(stim_mat_file,new_file);
         save(new_file,'info','-append');
         writetable(csv, fullfile(sprintf('%s_%s.csv',params.stim.(stimClass).infofile,datestr(now,30))))
-        
-        % Store images and info table into a new file
-        fprintf('[%s]: Storing ltm pairings..\n',mfilename)
-        fname = fullfile(fileparts(params.stim.gabor.infofile), sprintf('ltm_stim_pairs_%s.mat',datestr(now,30)));
-        save(fname,'ltmPairs','ltmPairs_w_info');
     end
+    
+    % Store images and info table into a new file
+    fprintf('[%s]: Storing ltm pairings..\n',mfilename)
+    fname = fullfile(fileparts(params.stim.gabor.infofile), sprintf('ltm_stim_pairs_%s.mat',datestr(now,30)));
+    save(fname,'ltmPairs','ltmPairs_w_info');
 end
 
 
-end
+return
 
 
