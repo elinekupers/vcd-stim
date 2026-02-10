@@ -234,6 +234,7 @@ else
     stim.img.quiz_dot_diam_deg  = 0.5;  % diameter of an individual quiz dot in degrees
     stim.img.quiz_dot_diam_pix  = round(stim.img.quiz_dot_diam_deg * disp_params.ppd);   % diameter of an individual quiz dot in pixels (rounded to the nearest integer)
     stim.img.img_sz_pix         = round((stim.img.quiz_dot_diam_pix + 6)/2)*2;           % spatial support for the quiz dot in pixels (diameter + 6 pixels) (ensure even nr of pixels)
+    stim.img.stimfile           = fullfile(vcd_rootPath,'workspaces','info',sprintf('imagery_quiz_dot_info')); % mat file
     
     %% EYETRACKING BLOCK PARAMS
     % Each run starts with an eyetracking "block", which mimics the 
@@ -287,6 +288,24 @@ else
     %% DEEP MRI EXPERIMENT TASKS
     
     % -- Imagery quiz dots -- 
+    %   im_quiz_dots.(stimClass) : struct with the following fields for each stimulus class: 
+    %       * im                  : quiz dot images: height (pixels) by width (pixels) x 3 (rgb)
+    %       * mask                : alpha masks for each quiz dot image to crop out image edges
+    %       * xy_coords_deg       : (double) is a 4D array with [angle,eccentricity] coordinates in deg 
+    %                               (relative to center of imagined core stimulus [0,0]):
+    %                               Dimensions of array: 
+    %                               nr special core images (8 for Gabor/RDK/DOT/OBJ, 14 for NS)
+    %                               x 20 unique quiz images (1-10 = "yes", 11-20 = "no")
+    %                               x quiz dot x-pos (deg) 
+    %                               x quiz dot y-pos (deg)
+    %       * xy_coords_pix       : (double) is a 4D array with [x,y] coordinates in pixels 
+    %                               (relative to center of imagined core stimulus [0,0])
+    %                               Dimensions of array: 
+    %                               nr special core images (8 for Gabor/RDK/DOT/OBJ, 14 for NS)
+    %                               x 20 unique quiz images (1-10 = "yes", 11-20 = "no")
+    %                               x quiz dot x-pos (deg) 
+    %                               x quiz dot y-pos (deg)
+    % see vcd_getImageryQuizDots.m and vcd_im_quiz_dot.m
     d = dir(fullfile(vcd_rootPath, 'workspaces', 'info', 'imagery_quiz_dot_info*.mat'));
     if ~isempty(d)
         a = load(fullfile(d(end).folder,d(end).name));
@@ -393,9 +412,11 @@ else
                 if ~isempty(ltm_pairs)
                     p.ltm_pairs   = ltm_pairs(ismember(ltm_pairs(:,1),p.unique_im_nrs_specialcore),:);
                     p.ltm_ori_deg = p.ori_deg(ismember(p.ltm_pairs(:,1),p.unique_im_nrs_specialcore));
+                    p.ltm_stimloc = [1, 2, 1, 2, 1, 2, 1, 2]; % 1=left, 2 = right
                 else
                     p.ltm_pairs   = [];
                     p.ltm_ori_deg = [];
+                    p.ltm_stimloc = []; % 1=left, 2 = right
                     warning('[%s]: LTM associated stimulus pairs are not defined!', mfilename)
                 end
                 
@@ -497,9 +518,11 @@ else
                 if ~isempty(ltm_pairs)
                     p.ltm_pairs      = ltm_pairs(ismember(ltm_pairs(:,1),p.unique_im_nrs_specialcore),:);
                     p.ltm_motdir_deg = p.dots_direction(ismember(p.ltm_pairs(:,1),p.unique_im_nrs_specialcore));
+                    p.ltm_stimloc    = [1, 2, 1, 2, 1, 2, 1, 2]; % 1=left, 2 = right
                 else
                     p.ltm_pairs      = [];
                     p.ltm_motdir_deg = [];
+                    p.ltm_stimloc    = [];
                     warning('[%s]: LTM associated stimulus pairs are not defined!', mfilename)
                 end
                 
@@ -632,9 +655,11 @@ else
                 if ~isempty(ltm_pairs)
                     p.ltm_pairs   = ltm_pairs(ismember(ltm_pairs(:,1),p.unique_im_nrs_specialcore),:);
                     p.ltm_ang_deg = p.ang_deg(ismember(p.ltm_pairs(:,1),p.unique_im_nrs_specialcore));
+                    p.ltm_stimloc = [1, 1, 1, 1, 2, 2, 2, 2]; % 1=left, 2 = right
                 else
                     p.ltm_pairs   = [];
                     p.ltm_ang_deg = [];
+                    p.ltm_stimloc = [];
                     warning('[%s]: LTM associated stimulus pairs are not defined!', mfilename)
                 end
                 
@@ -909,7 +934,7 @@ else
                     p.ltm_pairs   = ltm_pairs(ismember(ltm_pairs(:,1),p.unique_im_nrs_specialcore),:);
                     ltm_cat       = cat(2, p.all_super_cat, p.all_basic_cat, p.all_sub_cat);
                     p.ltm_cat     = ltm_cat(ismember(p.unique_im_nrs_core, p.unique_im_nrs_specialcore),:);
-                    p.ltm_stimloc = [ones(size(p.ltm_cat,1),1), NaN(size(p.ltm_cat,1),1)]; % 1=left / 2=right stim positions.
+                    p.ltm_stimloc = [1,1,1,1,2,2,2,2]; % 1=left / 2=right stim positions.
                 else
                     p.ltm_pairs   = [];
                     p.ltm_cat     = [];
@@ -1076,7 +1101,7 @@ else
                     p.ltm_pairs   = ltm_pairs(ismember(ltm_pairs(:,1),p.unique_im_nrs_specialcore),:); % unique stimulus numbers (col 1 = stim A, col 2 = stim B)
                     ltm_cat       = cat(1, p.all_super_cat, p.all_basic_cat, p.all_sub_cat);
                     p.ltm_cat     = ltm_cat(ismember(p.unique_im_nrs_core, p.unique_im_nrs_specialcore),:);
-                    p.ltm_stimloc = [3*ones(size(p.ltm_cat,1),1), NaN(size(p.ltm_cat,1),1)]; % all central stim positions.
+                    p.ltm_stimloc = 3*ones(1,size(p.ltm_cat,1)); % all central stim positions.
                 else
                     p.ltm_pairs   = [];
                     p.ltm_cat     = [];
@@ -1120,7 +1145,7 @@ else
                         ismember(stim.all_ltm_pairs(:,2), stim.ns.unique_im_nrs_specialcore)) .* [1:5],2);
     stim.all_ltm_pairs_stim_class = cat(2, ltm_tmp1,ltm_tmp2); % combine a vector of stimclass for LTM stim (A) and stim (B) pairs 
    
-    stim.all_ltm_pairs_stim_loc = cat(2, [], []); % combine a vector of stimulus location (1=left or 2=right or 3=central) for LTM stim (A) and stim (B) pairs
+    stim.all_ltm_pairs_stim_loc = cat(2, stim.gabor.ltm_stimloc, stim.rdk.ltm_stimloc, stim.dot.ltm_stimloc, stim.obj.ltm_stimloc, stim.ns.ltm_stimloc)'; % combine a vector of stimulus location (1=left or 2=right or 3=central) for LTM stim (A) and stim (B) pairs
     
     
     % Tell the user more info
