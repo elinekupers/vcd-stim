@@ -281,12 +281,12 @@ for ses = 1:length(session_nrs)
                         for side = nsides
                             if strcmp(this_run.event_name(stim_row(ii),1),'stim1')
                                 if side == 1
-                                    unique_im = this_run.stim_nr_left(stim_row(ii));
+                                    unique_im = this_run.stim_nr_left(stim_row(ii)); % for img, this will be a text prompt
                                 elseif side == 2
                                     unique_im = this_run.stim_nr_right(stim_row(ii));
                                 end
                             elseif strcmp(this_run.event_name(stim_row(ii),1),'stim2')
-                                unique_im = this_run.stim2_im_nr(stim_row(ii),side);
+                                unique_im = this_run.stim2_im_nr(stim_row(ii),side); % for img, this will be a quiz dot image
                             else
                                 error('[%s]: Expecting a unique image but found none..',mfilename);
                             end
