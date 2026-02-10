@@ -27,7 +27,7 @@ function [dot, mask, info] = vcd_singledot(params, verbose, store_imgs)
 %   When params.stim.store_imgs = true, 
 %   * We store a single matfile with all the dot uint8 images, as well as
 %   corresponding transparency masks, and big info table. 
-%   Single mat file is defined by params.stim.rdk.stimfile:
+%   Single mat file is defined by params.stim.dot.stimfile:
 %   fullfile(vcd_rootPath,'workspaces','stimuli',
 %   params.disp.name,'dot_<params.disp.name>_<datestr(now,'yyyymmdd')>.mat')
 %
