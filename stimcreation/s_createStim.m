@@ -568,4 +568,27 @@ params.exp    = vcd_getSessionParams('disp_name', params.disp.name, ...
 [scenes, ~, ~, ~] = vcd_naturalscenes(params, verbose, store_imgs); % outputs are [scenes, ltm_lures, wm_im, info]
 
 
-
+%% IMG quiz dot
+% vcd_img_quiz_dot function creates 1 dot that will be used for the imagery 
+% quiz test dot images.
+%
+% If params.verbose = true, then .. 
+% If params.store_imgs = true, this function will store
+% these figures in fullfile(vcd_rootPath,'figs',dispname,'img_quiz_dot').
+%
+% INPUTS:
+% * params      : parameter struct (requires display and stimulus parameters)
+% * verbose     : (logical) show debug figures
+% * store_imgs  : (logical) store stimuli and debug figures as pngs 
+%
+% OUTPUTS:
+% * img_quiz_dot  : (uint8) matrix with single dot image:
+%                 For BOLDscreen:
+%                   height (BOLDscreen: X pixels, Eizoflexscan: X pixels)
+%                   x width (BOLDscreen: X pixels, Eizoflexscan: X pixels) 
+%                   x 3 (rgb).
+% * masks       : (uint8) matrix with single alpha transparency mask:
+%                 For BOLDscreen:
+%                   height (BOLDscreen: X pixels, Eizoflexscan: X pixels) 
+%                   x width (BOLDscreen: X pixels, Eizoflexscan: X pixels)
+[img_quiz_dot, ~] = vcd_img_quiz_dot(params, verbose, store_imgs); % outputs are [img_quiz_dot, masks]
