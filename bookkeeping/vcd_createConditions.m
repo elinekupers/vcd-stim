@@ -600,14 +600,6 @@ else % Recreate conditions and blocks and trials
     condition_master = vcd_shuffleStimForTaskClass(params,  'scc', condition_master, params.exp.block.n_trials_single_epoch,env_type);
     if strcmp(env_type,'MRI') && ~params.is_wide
         condition_master = vcd_shuffleStimForTaskClass(params,  'ltm', condition_master, params.exp.block.n_trials_double_epoch,env_type);
-        
-        % EK hack -- delete me after LTM implementation --
-        tmp_tbl = condition_master(condition_master.task_class == 6,:);
-        tmp_tbl.unique_trial_nr = max(tmp_tbl.unique_trial_nr)+[1:length(tmp_tbl.unique_trial_nr)]';
-        tmp_block_nr = repmat(1:max(tmp_tbl.stim_class_unique_block_nr),4,1);
-        tmp_block_nr2 = cat(1,ones(2,1)*max(tmp_tbl.stim_class_unique_block_nr), max(tmp_tbl.stim_class_unique_block_nr) + tmp_block_nr(:));
-        tmp_tbl.stim_class_unique_block_nr = tmp_block_nr2(1:size(tmp_tbl,1));
-        condition_master = cat(1,condition_master,tmp_tbl);%,tmp_tbl);
     end
     
     % ---- IMPORTANT STEP: Add correct button press ----
