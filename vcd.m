@@ -6,27 +6,27 @@ function outputs = vcd(varargin)
 %   outputs = vcd('varname1',var1,'varname2',var2, ...'varnameN',varN);
 %
 % Input argument names options, corresponding input type, and an example input type:
-%  *  'stimulusclassnames',        [stimclass_number] or []                 -- example: [1]
-%  *  'stimulusclassnumbers',      {'stimclass_name'} or {}                 -- example: {'gabor'}
-%  *  'taskclassnames',            [taskclass_number] or []                 -- example: [4]
-%  *  'taskclassnumbers',          {'taskclass_name'} or {}                 -- example: {'pc'}
-%  *  'crossingnames',             [crossing_number] or []                  -- example: [32]
-%  *  'crossingnumbers',           {'crossing_name'} or {}                  -- example: {'how'}
-%  *  'allstimulusnumbers',        {'stimclass_name'} or {}                 -- example: {'rdk'}
-%  *  'stimulusnumberstonames',    [stim_number]                            -- example: [56]
-%  *  'stimulusnamestonumbers',    {stim_name}                              -- example: {'DOT-0056-L'}
-%  *  'allcore',                   [stim_number], {stim_name}, [], or {}    -- example: [4] or {'obj'}
-%  *  'specialcore',               [stim_number], {stim_name}, [], or {}    -- example: [3] or {'dot'}
-%  *  'stimtostimclassname',       [stim_number]                            -- example: [1400]
-%  *  'stimtostimclassnumber',     [stim_number]                            -- example: [800]
-%  *  'stimtotaskclassname',       [stim_number]                            -- example: [21]
-%  *  'stimtotaskclassnumber',     [stim_number]                            -- example: [480]
-%  *  'fullinfo',                  [stim_number]                            -- example: [3]
-%  *  'conditionnumbertoname',     [stim_number]                            -- example: [340]
-%  *  'conditionnametonumber',     {'condition_name'}                       -- example: {'OBJ-0065-L-UNCUED-WHAT'}
-%  *  'allwmteststimulusnumbers',  [stimclass_number], {'stimclass_name'}, [], or {} -- example: [1] or {'gabor'}
-%  *  'allltmteststimulusnumbers', [stimclass_number], {'stimclass_name'}, [], or {} -- example: [5] or {'ns'}
-%  *  'allimgteststimulusnumbers', [stimclass_number], {'stimclass_name'}, [], or {} -- example: [4] or {'obj'}
+%  *  'stimulusclassnames',        [stimclass_number] or []                 -- example input: [1] -> output: 'gabor'
+%  *  'stimulusclassnumbers',      {'stimclass_name'} or {}                 -- example input: {'gabor'} -> output: [1]
+%  *  'taskclassnames',            [taskclass_number] or []                 -- example input: [4] -> output: 'pc'
+%  *  'taskclassnumbers',          {'taskclass_name'} or {}                 -- example input: {'pc'} -> output: [4]
+%  *  'crossingnames',             [crossing_number] or []                  -- example input: [32] -> output: 'gabor'
+%  *  'crossingnumbers',           {'crossing_name'} or {}                  -- example input: {'how'} -> output: 'gabor'
+%  *  'allstimulusnumbers',        {'stimclass_name'} or {}                 -- example input: {'rdk'} -> output: 'gabor'
+%  *  'stimulusnumberstonames',    [stim_number]                            -- example input: [56] -> output: 'gabor'
+%  *  'stimulusnamestonumbers',    {stim_name}                              -- example input: {'DOT-0056-L'} -> output: 'gabor'
+%  *  'allcore',                   [stim_number], {stim_name}, [], or {}    -- example input: [4] or {'obj'} -> output: 'gabor'
+%  *  'specialcore',               [stim_number], {stim_name}, [], or {}    -- example input: [3] or {'dot'} -> output: 'gabor'
+%  *  'stimtostimclassname',       [stim_number]                            -- example input: [1400] -> output: 'gabor'
+%  *  'stimtostimclassnumber',     [stim_number]                            -- example input: [800] -> output: 'gabor'
+%  *  'stimtotaskclassname',       [stim_number]                            -- example input: [21] -> output: 'gabor'
+%  *  'stimtotaskclassnumber',     [stim_number]                            -- example input: [480] -> output: 'gabor'
+%  *  'fullinfo',                  [stim_number]                            -- example input: [3] -> output: 'gabor'
+%  *  'conditionnumbertoname',     [stim_number]                            -- example input: [340] -> output: 'gabor'
+%  *  'conditionnametonumber',     {'condition_name'}                       -- example input: {'OBJ-0065-L-UNCUED-WHAT'} -> output: 'gabor'
+%  *  'allwmteststimulusnumbers',  [stimclass_number], {'stimclass_name'}, [], or {} -- example: [1] or {'gabor'} -> output: 'gabor'
+%  *  'allltmteststimulusnumbers', [stimclass_number], {'stimclass_name'}, [], or {} -- example: [5] or {'ns'} -> output: 'gabor'
+%  *  'allimgteststimulusnumbers', [stimclass_number], {'stimclass_name'}, [], or {} -- example: [4] or {'obj'} -> output: 'gabor'
 %
 %
 % Note that 'fullinfo', 'stimulusnumberstonames', and
@@ -460,9 +460,9 @@ all_img_test_im_stimclassnumbers   = ...
     cat(2, ones(1, numel(stim.gabor.unique_im_nrs_img_test)), 2*ones(1, numel(stim.rdk.unique_im_nrs_img_test)), ...
     3*ones(1, numel(stim.dot.unique_im_nrs_img_test)), 4*ones(1, numel(stim.obj.unique_im_nrs_img_test)), ...
     5*ones(1, numel(stim.ns.unique_im_nrs_img_test)));
-all_ltm_lure_im_stimclassnumbers    = 5*ones(1, numel(stim.ns.unique_im_nrs_ltm_lures));
+all_ltm_lure_im_stimclassnumbers    = 5*ones(1, numel(stim.ns.unique_im_nrs_novel_ltm_lures));
 all_objectcatch_im_stimclassnumbers = 4*ones(1, numel(stim.obj.unique_im_nrs_objcatch));
-all_im_stimclassnumbers            = cat(2,all_core_im_stimclassnumbers,all_wm_test_im_stimclassnumbers,all_img_test_im_stimclassnumbers,all_ltm_lure_im_stimclassnumbers,all_objectcatch_im_stimclassnumbers);
+all_im_stimclassnumbers            = cat(2,all_core_im_stimclassnumbers,all_wm_test_im_stimclassnumbers,all_img_test_im_stimclassnumbers,all_objectcatch_im_stimclassnumbers);
 
 % Stimulus class names
 all_core_im_stimclassnames         = exp.stimclassnames(all_core_im_stimclassnumbers);
@@ -824,7 +824,10 @@ for ii = 1:2:length(requested_info)
             else
                 out = all_im_stimclassnames(stim_nr);
             end
-            
+            % if needed, transpose to mantain size
+            if ~isequal(size(info_val,1) > size(info_val,2),size(out,1) > size(out,2))
+                out = out';
+            end
         case 'stimtostimclassnumber'
             % translate stimulus number(s) to stimulus class number(s)
             if isnumeric(info_val) % if user provides singleton or vector
@@ -942,7 +945,7 @@ for ii = 1:2:length(requested_info)
             
             % prepare output
             if length(stim_nr) > 1
-                out = cell(1,length(stim_nr));
+                out = [];
             else
                 out = [];
             end
@@ -963,37 +966,54 @@ for ii = 1:2:length(requested_info)
                 if ismember(stim_nr(nn), stim.all_core_im_nrs,'legacy')
                     % find unique stim number for left core image 
                     [~,idx] = ismember(stim_nr(nn),vcd_info.condition_master.stim_nr_left,'legacy');
-                    if idx == 0 % if we can't find it, we assume this is a stimulus on the right
+                    if isempty(idx) || idx == 0 % if we can't find it, we assume this is a stimulus on the right
                         [~,idx] = ismember(stim_nr(nn), vcd_info.condition_master.stim_nr_right,'legacy');
                         im_loc = 2; % right stim
                         stim_info.stim_nr = vcd_info.condition_master.stim_nr_right(idx);
+                        
+                        assert(isequal(stim_nr(nn),vcd_info.condition_master.stim_nr_right(idx)))
+                        assert(~isempty(regexp(vcd_info.condition_master.condition_name{idx,2},'\w+-R-\w+')))
                     else
-                        im_loc = 1; % left stim
+                        im_loc = 1; % left/central stim
                         stim_info.stim_nr = vcd_info.condition_master.stim_nr_left(idx);
+                        
+                        assert(isequal(stim_nr(nn),vcd_info.condition_master.stim_nr_left(idx)))
+                        assert(~isempty(regexp(vcd_info.condition_master.condition_name{idx,1},'\w+-[LC]-\w+')))
                     end
                 % if we deal with a test image (i.e., wm test, img test, or ltm lure)
                 elseif ismember(stim_nr(nn), stim.all_test_im_nrs)
                     % find unique stim number for left test image 
                     [~,idx] = ismember(stim_nr(nn),vcd_info.condition_master.stim2_im_nr(:,1),'legacy');
-                    if idx == 0 % if we can't find it, we assume this is a test stimulus on the right
+                    if isempty(idx) || idx == 0 % if we can't find it, we assume this is a test stimulus on the right
                         [~,idx] = ismember(stim_nr(nn), vcd_info.condition_master.stim2_im_nr(:,2),'legacy');
                         im_loc = 2; % right stim
                         stim_info.stim_nr = vcd_info.condition_master.stim2_im_nr(idx,2);
+                        
+                        assert(isequal(stim_nr(nn),vcd_info.condition_master.stim2_im_nr(idx,2)))
+                        assert(~isempty(regexp(vcd_info.condition_master.condition_name{idx,2},'\w+-R-\w+')))
                     else
                         im_loc = 1; % left stim
+                        assert(isequal(stim_nr(nn),vcd_info.condition_master.stim2_im_nr(idx,1)))
                         stim_info.stim_nr = vcd_info.condition_master.stim2_im_nr(idx,1);
+                        assert(~isempty(regexp(vcd_info.condition_master.condition_name{idx,1},'\w+-[LC]-\w+')))
                     end
                 % if we deal with an object catch image    
                 elseif ismember(stim_nr(nn),stim.all_objectcatch_im_nrs)
                     % find unique stim number for test image
                     [~,idx] = ismember(stim_nr(nn),vcd_info.condition_master.stim2_im_nr(:,1),'legacy');
-                    if idx == 0 % if we can't find it, we assume this is an object catch stimulus on the right
+                    if isempty(idx) || idx == 0 % if we can't find it, we assume this is an object catch stimulus on the right
                         [~,idx] = ismember(stim_nr(nn), vcd_info.condition_master.stim2_im_nr(:,2),'legacy');
                         im_loc = 2; % right stim
                         stim_info.stim_nr = vcd_info.condition_master.stim_nr_right(idx);
+                        
+                        assert(isequal(stim_nr(nn),vcd_info.condition_master.stim_nr_right(idx)))
+                        assert(~isempty(regexp(vcd_info.condition_master.condition_name{idx,2},'\w+-R-\w+')))
                     else
                         im_loc = 1; % left stim
                         stim_info.stim_nr = vcd_info.condition_master.stim_nr_left(idx);
+                        
+                        assert(isequal(stim_nr(nn),vcd_info.condition_master.stim_nr_left(idx)))
+                        assert(~isempty(regexp(vcd_info.condition_master.condition_name{idx,1},'\w+-[LC]-\w+')))
                     end
                 else
                     error('[%s]: Not sure what type of image this is..',mfilename);
@@ -1005,9 +1025,14 @@ for ii = 1:2:length(requested_info)
                     tmp_info = vcd_info.condition_master(idx,:);
                     
                     % add stim loc
-                    if stim_info.stim_class == 5
+                    
+                    % Check if we deal with a NS..
+                    if any(ismember(stim_info.stim_nr,[stim.ns.unique_im_nrs_core, ...
+                                stim.ns.unique_im_nrs_wm_test,stim.ns.unique_im_nrs_novel_ltm_lures, stim.ns.unique_im_nrs_img_test])) ...
+                                || (~isempty(stim_info.stim_class) && stim_info.stim_class == 5)
                         stim_info.stim_loc = 3;
                         stim_info.stim_loc_name = 'center';
+                        assert(isnan(tmp_info.condition_nr(2)));
                     else
                         stim_info.stim_loc = im_loc;
                         stim_info.stim_loc_name = choose(im_loc==1,'left','right');
@@ -1023,13 +1048,44 @@ for ii = 1:2:length(requested_info)
                             tmp_condname0 = tmp_info.(fn{ff});
                             tmp_condname1 = strsplit(tmp_condname0{1},'-');
                             tmp_condname2 = [tmp_condname1{1} '-'  tmp_condname1{2} '-' tmp_condname1{3}];
-                            
                             tmp_idx = ~cellfun(@isempty, regexp(all_condition_names,[tmp_condname2 '\w*']));
                             stim_info.(fn{ff}) = cat(2,all_condition_names(tmp_idx));
                             stim_info.condition_nr = vcd_conditionName2Number(stim_info.(fn{ff}));
                         elseif strcmp(fn{ff},'task_class')
-                            stim_info.task_class = find(exp.crossings(stim_info.stim_class,:));
-                            stim_info.task_class_name = exp.taskclassnames(exp.crossings(stim_info.stim_class,:));
+                            % check for mixed stim class 
+                            if isempty(stim_info.stim_class) % if we haven't defined this field yet
+                                if tmp_info.stim_class == 99
+                                    stim_idx = find(ismember(exp.stimclassnames,tmp_info.stim_class_name(stim_info.stim_loc)));   
+                                else
+                                    stim_idx = tmp_info.stim_class;
+                                end
+                            else % we use it and assume it is correct
+                                if stim_info.stim_class == 99
+                                    stim_idx = find(ismember(exp.stimclassnames,stim_info.stim_class_name));   
+                                else
+                                    stim_idx = stim_info.stim_class;
+                                end
+                            end
+                            stim_info.task_class = find(exp.crossings(stim_idx,:));
+                            stim_info.task_class_name = exp.taskclassnames(exp.crossings(stim_idx,:));
+                            
+                            % check if stim is not a special core, then we
+                            % remove LTM/IMG crossings
+                            if ~ismember(stim_info.stim_nr, stim.all_specialcore_im_nrs)
+                                if any(ismember(stim_info.task_class,[6,7]))
+                                    stim_info.task_class(ismember(stim_info.task_class,[6,7])) = [];
+                                    stim_info.task_class_name(ismember(stim_info.task_class,[6,7])) = [];
+                                end
+                            end
+                        elseif strcmp(fn{ff},'stim_class')
+                            if tmp_info.stim_class == 99
+                                stim_idx = find(ismember(exp.stimclassnames,tmp_info.stim_class_name(stim_info.stim_loc)));   
+                            else
+                                stim_idx = tmp_info.stim_class;
+                            end
+                            stim_info.stim_class = stim_idx;
+                            stim_info.stim_class_name = exp.stimclassnames(stim_idx);
+  
                         elseif strcmp(fn{ff},'crossing_nr')
                             stim_info.crossing_nr = find(~cellfun(@isempty, regexp(exp.crossingnames,[stim_info.stim_class_name{1} '\w*'])));
                             stim_info.crossing_name = exp.crossingnames(stim_info.crossing_nr);
@@ -1043,7 +1099,7 @@ for ii = 1:2:length(requested_info)
                     end
                     
                     if length(stim_nr) > 1
-                        out{nn} = stim_info;
+                        out = [out,stim_info];
                     else
                         out = stim_info;
                     end
