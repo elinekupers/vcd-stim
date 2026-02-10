@@ -155,7 +155,7 @@ for ses = session_nrs
                                 else % classic
                                     % number of unique conditions in a cycle
                                     nr_unique_conds = sum(params.exp.nr_unique_trials_per_crossing(:,tc));
-                                end 
+                                end
                             else
                                 ti = find(t(:,1)==sc & t(:,2)==tc);
                                 % number of unique conditions in a cycle
@@ -195,11 +195,11 @@ for ses = session_nrs
                                     else
                                         idx = trials_to_be_allocated(1:nr_unique_conds);
                                     end
-                                        
+
                                     if reshuffle_me
                                         if tc ~= 6
                                             if mod(attempt,100)==0
-                                                % every 100 attempts, we add 4 extra trials to the list of trials we can allocate, so we have more options 
+                                                % every 100 attempts, we add 4 extra trials to the list of trials we can allocate, so we have more options
                                                 if length(trials_to_be_allocated) > nr_unique_conds
                                                     trials_to_add = choose(nr_unique_conds+4 <= length(trials_to_be_allocated),4,length(trials_to_be_allocated)-nr_unique_conds);
                                                     new_n = nr_unique_conds+((attempt/100)*trials_to_add);
@@ -212,7 +212,7 @@ for ses = session_nrs
                                             else % just shuffle with what we have
                                                 order = shuffle_concat(idx,1);
                                             end
-                                        
+
                                         % LTM has mixed NS and classic
                                         % blocks, so we need to handle
                                         % those separately, and make sure
@@ -221,7 +221,7 @@ for ses = session_nrs
                                         elseif tc == 6
                                             ns_stim = condition_master.is_cued(ti(idx)) == 3;
                                             
-                                            idx0 = idx; counter = 0; 
+                                            idx0 = idx; counter = 0;
                                             opt_trial = trials_to_be_allocated((length(idx0)+1):end);
                                             while mod(sum(ns_stim), params.exp.nr_trials_per_block(sc,tc))>0 % if we sample too few NS trials, we have to change the idx.
                                                 if length(trials_to_be_allocated) > nr_unique_conds % if we have extra trials
@@ -255,7 +255,7 @@ for ses = session_nrs
                                                 order0 = order0(:,randperm(size(order0,2),size(order0,2)));
                                                 order = [order0(:); remainder_idx];
                                                 
-  
+
                                                 potential_trials = find(allocated_trials(ti(order))==0);
                                                 cued_conds       = condition_master.is_cued(ti(order(potential_trials(1:nr_trials))));
 
@@ -293,7 +293,7 @@ for ses = session_nrs
                                     stim_nr_right    = condition_master.stim_nr_right(ti(potential_trials(1:nr_trials)));
                                     
                                     
-                                    % Check for (1) cueing left/right balance or all neutral cues. 
+                                    % Check for (1) cueing left/right balance or all neutral cues.
                                     % Check for (2) if any unique stimulus number repeats within a block
                                     if all(cued_conds==3) % neutral cues (fixation or NS trials)
                                         stim_nr_repeats = zeros(nr_blocks,1);
@@ -357,7 +357,7 @@ for ses = session_nrs
                                     
                                 end
                                 
-                                % ------ CHECK DISTRIBUTION OF CORRECT BUTTON PRESSES ------ 
+                                % ------ CHECK DISTRIBUTION OF CORRECT BUTTON PRESSES ------
                                 assert(all(st_idx(ti(potential_trials(1:nr_trials)))==0))
                                 st_idx = (ti(potential_trials(1:nr_trials)));
                                 assert(isequal(length(st_idx),nr_trials));
@@ -369,215 +369,273 @@ for ses = session_nrs
                                 
                                 % check if crossing exists
                                 if sum(ismember(condition_master.task_class(st_idx), curr_tc) & ismember(condition_master.stim_class(st_idx), curr_sc))>0
-                                    if ismember(curr_tc, [6,7])
-                                        warning('[%s]: !!! WARNING !!! SKIPPING LTM & IMG FOR NOW!! ', mfilename)
-                                        break;
-                                    else
+                                    
+                                    % if so, then set the number of expected button presses
+                                    % **** !!! careful this is hardcoded stuff !!! *****
+                                    if ismember(curr_tc,[2,4,5,6,7]) % cd, pc, wm, ltm, img have 2 response options
+                                        nr_responses = 2;
+                                    elseif ismember(curr_tc,[3,8,10]) % scc, what, how have 4 response options
+                                        nr_responses = 4;
+                                    elseif ismember(curr_tc,[9]) % where has 3 response options
+                                        nr_responses = 3;
+                                    end
+                                    
+                                    resp = condition_master.correct_response(st_idx);
+                                    resp = resp(~catch_idx);
+                                    n = histcounts(resp,1:(nr_responses+1)); % histcount(x,[1:n]) corresponds to bins = [0,1,..,n-1]
+                                    
+                                    % For WHAT/HOW tasks we go by category info, because we combine
+                                    % object and foods into one button press..
+                                    if ismember(curr_sc,[4,5]) && ismember(curr_tc,8) % **** !!! careful this is hardcoded stuff !!! *****
+                                        supercat = condition_master.super_cat(st_idx,:);
+                                        if curr_sc == 4 % objects
+                                            cued0  = condition_master.is_cued(st_idx);
+                                            n0     = histcounts([supercat(cued0==1,1);supercat(cued0==2,2)],1:6); % histcount(x,[1:6]) corresponds to bins = [0,1,2,3,4,5] --> 5 superordinate categories
+                                        elseif curr_sc == 5 % scenes, no left/right, only center
+                                            n0     = histcounts(supercat,1:6); % histcount(x,[1:6]) corresponds to bins = [0,1,2,3,4,5] --> 5 superordinate categories
+                                        end
+                                        n1 = [n0([1,2]), n0(3)+n0(4), n0(5)];  % we combine (3) objects and (4) food into a single button press (the ring finger)
                                         
-                                        % if so, then set the number of expected button presses
-                                        % **** !!! careful this is hardcoded stuff !!! *****
-                                        if ismember(curr_tc,[2,4,5,6,7]) % cd, pc, wm, ltm, img have 2 response options
-                                            nr_responses = 2;
-                                        elseif ismember(curr_tc,[3,8,10]) % scc, what, how have 4 response options
-                                            nr_responses = 4;
-                                        elseif ismember(curr_tc,[9]) % where has 3 response options
-                                            nr_responses = 3;
+                                        if (all(n==n1))
+                                            % all responses are balanced
+                                            reshuffle_me = false;
+                                            break;
+                                        elseif trial_to_condition_ratio == 1 && sum(catch_idx) > 0
+                                            % if we sampled all unique conditions AND have catch trials,
+                                            % then we will likely never reach a solution unless we allow for a small difference in response distribution.
+                                            if (all(diff(n)<=sum(catch_idx))) % if difference caused by catch trials, we don't reshuffle
+                                                reshuffle_me = false;
+                                                break;
+                                            else
+                                                reshuffle_me = true;
+                                            end
+                                        else
+                                            reshuffle_me = true;
+                                        end
+
+                                    elseif ismember(curr_sc,4) && ismember(curr_tc,4) % PC-OBJ
+                                        resp2 = resp(~objectcatch_idx(~catch_idx)); % only check non-obj catch  trials
+                                        n2 = histcounts(resp2,1:(nr_responses+1)); % histcount(x,[1:n]) corresponds to bins = [0,1,..,n-1]
+
+                                        if (diff(n2)==0)
+                                            % ideally all responses are balanced
+                                            reshuffle_me = false;
+                                            break;
+                                        elseif (all(diff(n)<=sum(catch_idx))) % if difference caused by catch trials, we don't reshuffle
+                                            reshuffle_me = false;
+                                            break;
+                                        elseif all(diff(n2)~=0) % but if not, we assume we have an uneven nr of trials due to objectcatch trials.
+                                            if mod(length(resp2),2)==1 % if we have an uneven nr of trials after we removed objectcatch trials
+                                                if trial_to_condition_ratio == 1 && sum(catch_idx) > 0
+                                                    diff_allowed = sum(catch_idx) +1;
+                                                else
+                                                    diff_allowed = 1;
+                                                end
+
+                                                if ~(diff(n2)<=diff_allowed) % we allow for a difference of one, but not more
+                                                    reshuffle_me = true;
+                                                else
+                                                    reshuffle_me = false;
+                                                    break;
+                                                end
+                                            elseif trial_to_condition_ratio == 1 && sum(catch_idx) > 0
+                                                % if we sampled all unique conditions AND have catch trials,
+                                                % then we will likely never reach a solution unless we allow for a small difference in response distribution.
+                                                if (all(diff(n)<=sum(catch_idx)))
+                                                    reshuffle_me = false;
+                                                    break;
+                                                else
+                                                    reshuffle_me = true;
+                                                end
+                                            else
+                                                reshuffle_me = true;
+                                            end
+                                        else % assume we have an even nr of trials after we removed objectcatch trials
+                                            if abs(diff(n2))<=1 % we don't allow for a difference more than one
+                                                reshuffle_me = false;
+                                                break;
+                                            else
+                                                reshuffle_me = true;
+                                            end
+                                        end
+
+
+                                    elseif ismember(curr_sc,5) && ismember(curr_tc,9) % NS-WHERE
+
+                                        if all(diff(n)==0) % we want equal distribution of L/C/R
+                                            reshuffle_me = false;
+                                            break % hurray
+                                        elseif rem(length(st_idx),3)>0
+                                            % but if that is not possible,
+                                            % we can be 1 off.
+                                            if sum(abs(diff(n)))==1
+                                                reshuffle_me = false;
+                                                break % hurray
+                                            elseif trial_to_condition_ratio == 1 && sum(catch_idx) > 0
+                                                % if we sampled all unique conditions AND have catch trials,
+                                                % then we will likely never reach a solution unless we allow for a small difference in response distribution.
+                                                if (all(diff(n)<=sum(catch_idx))) % if difference caused by catch trials, we don't reshuffle
+                                                    reshuffle_me = false;
+                                                    break;
+                                                else
+                                                    reshuffle_me = true;
+                                                end
+                                            else
+                                                reshuffle_me = true;
+                                            end
+                                        elseif (all(diff(n)<=sum(catch_idx))) % if difference caused by catch trials, we don't reshuffle
+                                            reshuffle_me = false;
+                                            break;
+                                        else
+                                            reshuffle_me = true;
+                                        end
+                                    elseif ismember(curr_sc,[4,5]) && ismember(curr_tc,10) % OBJ-HOW & NS-HOW
+                                        affordcat = condition_master.affordance_cat(st_idx,:);
+                                        affordcat = affordcat(~catch_idx,:);
+                                        if curr_sc == 4 % OBJ-HOW
+                                            cued0 = condition_master.is_cued(st_idx);
+                                            cued0 = cued0(~catch_idx);
+                                            n1    = histcounts([affordcat(cued0==1,1);affordcat(cued0==2,2)],1:(nr_responses+1)); % histcount(x,[1:n]) corresponds to bins = [0,1,..,n-1]
+                                            
+                                        elseif curr_sc == 5 % NS-HOW
+                                            n1     = histcounts(affordcat,1:(nr_responses+1)); % histcount(x,[1:n]) corresponds to bins = [0,1,..,n-1]
                                         end
                                         
-                                        resp = condition_master.correct_response(st_idx);
-                                        resp = resp(~catch_idx);
-                                        n = histcounts(resp,1:(nr_responses+1)); % histcount(x,[1:n]) corresponds to bins = [0,1,..,n-1]
+                                        if (all(n==n1))
+                                            reshuffle_me = false;
+                                            break % hurray
+                                        elseif trial_to_condition_ratio == 1 && sum(catch_idx) > 0
+                                            % if we sampled all unique conditions AND have catch trials,
+                                            % then we will likely never reach a solution unless we allow for a small difference in response distribution.
+                                            if (all(diff(n)<=sum(catch_idx))) % if difference caused by catch trials, we don't reshuffle
+                                                reshuffle_me = false;
+                                                break;
+                                            else
+                                                reshuffle_me = true;
+                                            end
+                                        else
+                                            reshuffle_me = true;
+                                        end
                                         
-                                        % For WHAT/HOW tasks we go by category info, because we combine
-                                        % object and foods into one button press..
-                                        if ismember(curr_sc,[4,5]) && ismember(curr_tc,8) % **** !!! careful this is hardcoded stuff !!! *****
-                                            supercat = condition_master.super_cat(st_idx,:);
-                                            if curr_sc == 4 % objects
-                                                cued0  = condition_master.is_cued(st_idx);
-                                                n0     = histcounts([supercat(cued0==1,1);supercat(cued0==2,2)],1:6); % histcount(x,[1:6]) corresponds to bins = [0,1,2,3,4,5] --> 5 superordinate categories
-                                            elseif curr_sc == 5 % scenes, no left/right, only center
-                                                n0     = histcounts(supercat,1:6); % histcount(x,[1:6]) corresponds to bins = [0,1,2,3,4,5] --> 5 superordinate categories
-                                            end
-                                            n1 = [n0([1,2]), n0(3)+n0(4), n0(5)];  % we combine (3) objects and (4) food into a single button press (the ring finger)
-                                            
-                                            if (all(n==n1))
-                                                % all responses are balanced
-                                                reshuffle_me = false;
-                                                break;
-                                            elseif trial_to_condition_ratio == 1 && sum(catch_idx) > 0
-                                                % if we sampled all unique conditions AND have catch trials,
-                                                % then we will likely never reach a solution unless we allow for a small difference in response distribution.
-                                                if (all(diff(n)<=sum(catch_idx))) % if difference caused by catch trials, we don't reshuffle
-                                                    reshuffle_me = false;
-                                                    break;
-                                                else
-                                                    reshuffle_me = true;
-                                                end
-                                            else
-                                                reshuffle_me = true;
-                                            end
-                                            
-                                        elseif ismember(curr_sc,4) && ismember(curr_tc,4) % PC-OBJ
-                                            resp2 = resp(~objectcatch_idx(~catch_idx)); % only check non-obj catch  trials
-                                            n2 = histcounts(resp2,1:(nr_responses+1)); % histcount(x,[1:n]) corresponds to bins = [0,1,..,n-1]
-                                            
-                                            if (diff(n2)==0)
-                                                % ideally all responses are balanced
-                                                reshuffle_me = false;
-                                                break;
-                                            elseif (all(diff(n)<=sum(catch_idx))) % if difference caused by catch trials, we don't reshuffle
-                                                reshuffle_me = false;
-                                                break;
-                                            elseif all(diff(n2)~=0) % but if not, we assume we have an uneven nr of trials due to objectcatch trials.
-                                                if mod(length(resp2),2)==1 % if we have an uneven nr of trials after we removed objectcatch trials
-                                                    if trial_to_condition_ratio == 1 && sum(catch_idx) > 0
-                                                        diff_allowed = sum(catch_idx) +1;
-                                                    else
-                                                        diff_allowed = 1;
-                                                    end
-                                                    
-                                                    if ~(diff(n2)<=diff_allowed) % we allow for a difference of one, but not more
-                                                        reshuffle_me = true;
-                                                    else
-                                                        reshuffle_me = false;
-                                                        break;
-                                                    end
-                                                elseif trial_to_condition_ratio == 1 && sum(catch_idx) > 0
-                                                    % if we sampled all unique conditions AND have catch trials,
-                                                    % then we will likely never reach a solution unless we allow for a small difference in response distribution.
-                                                    if (all(diff(n)<=sum(catch_idx)))
-                                                        reshuffle_me = false;
-                                                        break;
-                                                    else
-                                                        reshuffle_me = true;
-                                                    end
-                                                else
-                                                    reshuffle_me = true;
-                                                end
-                                            else % assume we have an even nr of trials after we removed objectcatch trials
-                                                if abs(diff(n2))<=1 % we don't allow for a difference more than one
-                                                    reshuffle_me = false;
-                                                    break;
-                                                else
-                                                    reshuffle_me = true;
-                                                end
-                                            end
-                                            
-                                            
-                                        elseif ismember(curr_sc,5) && ismember(curr_tc,9) % NS-WHERE
-                                            
-                                            if all(diff(n)==0) % we want equal distribution of L/C/R
-                                                reshuffle_me = false;
-                                                break % hurray
-                                            elseif rem(length(st_idx),3)>0
-                                                % but if that is not possible,
-                                                % we can be 1 off.
-                                                if sum(abs(diff(n)))==1
-                                                    reshuffle_me = false;
-                                                    break % hurray
-                                                elseif trial_to_condition_ratio == 1 && sum(catch_idx) > 0
-                                                    % if we sampled all unique conditions AND have catch trials,
-                                                    % then we will likely never reach a solution unless we allow for a small difference in response distribution.
-                                                    if (all(diff(n)<=sum(catch_idx))) % if difference caused by catch trials, we don't reshuffle
-                                                        reshuffle_me = false;
-                                                        break;
-                                                    else
-                                                        reshuffle_me = true;
-                                                    end
-                                                else
-                                                    reshuffle_me = true;
-                                                end
-                                            elseif (all(diff(n)<=sum(catch_idx))) % if difference caused by catch trials, we don't reshuffle
+                                    elseif ismember(curr_sc,99) || ismember(curr_tc,3) % scc-all
+                                        % Check if we sample all core images across trials
+                                        stmclass0 = condition_master.stim_class_name(st_idx,:);
+                                        stmclass0 = stmclass0(~catch_idx,:);
+                                        cued0     = condition_master.is_cued(st_idx);
+                                        cued0     = cued0(~catch_idx);
+                                        stmclass0_cued      = [stmclass0(cued0==1,1);stmclass0(cued0==2,2)];
+                                        [~,stmclass_cued_i] = ismember(stmclass0_cued,params.exp.stimclassnames([1,3,2,4]));
+                                        
+                                        n1 = histcounts(stmclass_cued_i,1:(nr_responses+1)); % histcount(x,[1:n]) corresponds to bins = [0,1,..,n-1]
+                                        % check distribution of stim class
+                                        if (all(n==n1))
+                                            reshuffle_me = false;
+                                            break % hurray
+                                        elseif trial_to_condition_ratio == 1 && sum(catch_idx) > 0
+                                            % if we sampled all unique conditions AND have catch trials,
+                                            % then we will likely never reach a solution unless we allow for a small difference in response distribution.
+                                            if (all(diff(n)<=sum(catch_idx))) % if difference caused by catch trials, we don't reshuffle
                                                 reshuffle_me = false;
                                                 break;
                                             else
                                                 reshuffle_me = true;
                                             end
-                                        elseif ismember(curr_sc,[4,5]) && ismember(curr_tc,10) % OBJ-HOW & NS-HOW
-                                            affordcat = condition_master.affordance_cat(st_idx,:);
-                                            affordcat = affordcat(~catch_idx,:);
-                                            if curr_sc == 4 % OBJ-HOW
-                                                cued0 = condition_master.is_cued(st_idx);
-                                                cued0 = cued0(~catch_idx);
-                                                n1    = histcounts([affordcat(cued0==1,1);affordcat(cued0==2,2)],1:(nr_responses+1)); % histcount(x,[1:n]) corresponds to bins = [0,1,..,n-1]
-                                                
-                                            elseif curr_sc == 5 % NS-HOW
-                                                n1     = histcounts(affordcat,1:(nr_responses+1)); % histcount(x,[1:n]) corresponds to bins = [0,1,..,n-1]
-                                            end
-                                            
-                                            if (all(n==n1))
-                                                reshuffle_me = false;
-                                                break % hurray
-                                            elseif trial_to_condition_ratio == 1 && sum(catch_idx) > 0
-                                                % if we sampled all unique conditions AND have catch trials,
-                                                % then we will likely never reach a solution unless we allow for a small difference in response distribution.
-                                                if (all(diff(n)<=sum(catch_idx))) % if difference caused by catch trials, we don't reshuffle
-                                                    reshuffle_me = false;
-                                                    break;
-                                                else
-                                                    reshuffle_me = true;
-                                                end
-                                            else
-                                                reshuffle_me = true;
-                                            end
-                                            
-                                        elseif ismember(curr_sc,99) || ismember(curr_tc,3) % scc-all
-                                            % Check if we sample all core images across trials
+                                        else
+                                            reshuffle_me = true;
+                                        end
+                                        
+                                    elseif ismember(curr_sc,99) || ismember(curr_tc,6) % LTM-all
+                                        
+                                        % Check 1: did we equally sample
+                                        % match/nonmatch
+                                        cued0     = condition_master.is_cued(st_idx);
+                                        cued0     = cued0(~catch_idx);
+                                        if all(cued0==3) % ns stim
+                                            stmcat0 = condition_master.super_cat(st_idx,:);
+                                            stmcat0 = stmcat0(~catch_idx,:);
+                                            [~,stm_cued_i] = ismember(stmcat0, params.stim.ns.super_cat);
+                                            n1 = histcounts(stm_cued_i,[1:6]); % histcount(x,[1:n]) corresponds to bins = [0,1,..,n-1] n = 5 super cat
+                                        else
                                             stmclass0 = condition_master.stim_class_name(st_idx,:);
                                             stmclass0 = stmclass0(~catch_idx,:);
-                                            cued0     = condition_master.is_cued(st_idx);
-                                            cued0     = cued0(~catch_idx);
-                                            stmclass0_cued      = [stmclass0(cued0==1,1);stmclass0(cued0==2,2)];
-                                            [~,stmclass_cued_i] = ismember(stmclass0_cued,params.exp.stimclassnames([1,3,2,4]));
-                                            
-                                            n1 = histcounts(stmclass_cued_i,1:(nr_responses+1)); % histcount(x,[1:n]) corresponds to bins = [0,1,..,n-1]
-                                            % check distribution of stim class
-                                            if (all(n==n1))
-                                                reshuffle_me = false;
-                                                break % hurray
-                                            elseif trial_to_condition_ratio == 1 && sum(catch_idx) > 0
-                                                % if we sampled all unique conditions AND have catch trials,
-                                                % then we will likely never reach a solution unless we allow for a small difference in response distribution.
-                                                if (all(diff(n)<=sum(catch_idx))) % if difference caused by catch trials, we don't reshuffle
-                                                    reshuffle_me = false;
-                                                    break;
-                                                else
-                                                    reshuffle_me = true;
-                                                end
-                                            else
-                                                reshuffle_me = true;
-                                            end
-                                            
-                                        elseif all(n==0) && curr_tc~=2 && ~ismember(curr_tc,[8,9,10])
-                                            error('[%s]: No correct responses found?!',mfilename);
-                                        else
-                                            if (all(diff(n)==0)) % check if we have balanced button presses
-                                                reshuffle_me = false;
-                                                break % hurray
-                                            elseif trial_to_condition_ratio == 1 && sum(catch_idx) > 0
-                                                % if we sampled all unique conditions AND have catch trials,
-                                                % then we will likely never reach a solution unless we allow for a small difference in response distribution.
-                                                if (all(diff(n)<=sum(catch_idx))) % if difference caused by catch trials, we don't reshuffle
-                                                    reshuffle_me = false;
-                                                    break;
-                                                else
-                                                    reshuffle_me = true;
-                                                end
-                                            elseif sum(catch_idx) > 0 
-                                                if (all(diff(n)<=sum(catch_idx))) % if difference caused by catch trials, we don't reshuffle
-                                                    reshuffle_me = false;
-                                                    break;
-                                                else
-                                                    reshuffle_me = true;
-                                                end    
-                                            else
-                                                reshuffle_me = true;
-                                            end
-                                            
+                                            stmclass0_cued = [stmclass0(cued0==1,1);stmclass0(cued0==2,2)];
+                                            [~,stm_cued_i] = ismember(stmclass0_cued,params.exp.stimclassnames([1,3,2,4])); 
+                                            n1 = histcounts(stm_cued_i,[1:5]); % histcount(x,[1:n]) corresponds to bins = [0,1,..,n-1] n = 4 stim cat
                                         end
+
+                                        % check distribution of stim class
+                                        if isequal(sort(n1),[1 1 1 1]) || isequal(sort(n1),[0 0 2 2])
+                                            reshuffle_me = false;
+                                            break % hurray
+                                        elseif trial_to_condition_ratio == 1 && sum(catch_idx) > 0
+                                            % if we sampled all unique conditions AND have catch trials,
+                                            % then we will likely never reach a solution unless we allow for a small difference in response distribution.
+                                            if (all(diff(n)<=sum(catch_idx))) % if difference caused by catch trials, we don't reshuffle
+                                                reshuffle_me = false;
+                                                break;
+                                            else
+                                                reshuffle_me = true;
+                                            end
+                                        else
+                                            reshuffle_me = true;
+                                        end
+                                        
+                                        % check 2: Do we have balanced button presses
+                                        if (all(diff(n)==0)) % check if we have balanced button presses
+                                            reshuffle_me = false;
+                                            break % hurray
+                                        elseif trial_to_condition_ratio == 1 && sum(catch_idx) > 0
+                                            % if we sampled all unique conditions AND have catch trials,
+                                            % then we will likely never reach a solution unless we allow for a small difference in response distribution.
+                                            if (all(diff(n)<=sum(catch_idx))) % if difference caused by catch trials, we don't reshuffle
+                                                reshuffle_me = false;
+                                                break;
+                                            else
+                                                reshuffle_me = true;
+                                            end
+                                        elseif sum(catch_idx) > 0
+                                            if (all(diff(n)<=sum(catch_idx))) % if difference caused by catch trials, we don't reshuffle
+                                                reshuffle_me = false;
+                                                break;
+                                            else
+                                                reshuffle_me = true;
+                                            end
+                                        else
+                                            reshuffle_me = true;
+                                        end
+
+                                    elseif all(n==0) && curr_tc~=2 && ~ismember(curr_tc,[8,9,10])
+                                        error('[%s]: No correct responses found?!',mfilename);
+                                        
+                                    else % FIX (curr_tc==1), CD (curr_tc==2), IMG (curr_tc==7)
+                                        if (all(diff(n)==0)) % check if we have balanced button presses
+                                            reshuffle_me = false;
+                                            break % hurray
+                                        elseif trial_to_condition_ratio == 1 && sum(catch_idx) > 0
+                                            % if we sampled all unique conditions AND have catch trials,
+                                            % then we will likely never reach a solution unless we allow for a small difference in response distribution.
+                                            if (all(diff(n)<=sum(catch_idx))) % if difference caused by catch trials, we don't reshuffle
+                                                reshuffle_me = false;
+                                                break;
+                                            else
+                                                reshuffle_me = true;
+                                            end
+                                        elseif sum(catch_idx) > 0
+                                            if (all(diff(n)<=sum(catch_idx))) % if difference caused by catch trials, we don't reshuffle
+                                                reshuffle_me = false;
+                                                break;
+                                            else
+                                                reshuffle_me = true;
+                                            end
+                                        else
+                                            reshuffle_me = true;
+                                        end
+                                        
+                                        
                                     end
-                                end
-                            end
+                                end % if crossing exists
+                            end % while loop
+                            
                             % Updated allocated trials to this session
                             allocated_trials(ti(potential_trials(1:nr_trials))) = 1;
                             
@@ -618,14 +676,14 @@ for ses = session_nrs
                             
                             % Update crossing counter
                             all_stimtask_counter(sc,tc) = all_stimtask_counter(sc,tc) + nr_blocks;
-                        end
-                    end
-                    
-                end
-            end
-        end
-    end
-end
+                            
+                        end % if nr_trials > 0
+                    end % tc loop
+                end % sc loop
+            end % session_flag
+        end % isnan ses_types(ses,st)
+    end % ses_type
+end % ses_nr
 
 % update unused trials
 unique_stim_classes = unique(condition_master.stim_class);
@@ -687,7 +745,7 @@ for curr_sc = 1:(length(unique_stim_classes)-1)
             if isempty(allocated_idx)
                 start_block_nr = min(condition_master.stim_class_unique_block_nr);
             else
-            	start_block_nr = max(condition_master.stim_class_unique_block_nr(allocated_idx)) + 1;
+                start_block_nr = max(condition_master.stim_class_unique_block_nr(allocated_idx)) + 1;
             end
             % update stim_class_unique_block_nr
             nr_blocks = length(unused_idx)/params.exp.nr_trials_per_block(unique_stim_classes(curr_sc),unique_task_classes(curr_tc));
