@@ -738,11 +738,7 @@ for ses = 1:length(unique_sessions)
                                 trial_order_not_ok = false;
                                 restart_shuffle = false;
                             else
-                                if all(ismember(condition_master0.task_class(trial_order), [6,7])) % ltm/img skip for now
-                                    trial_order_not_ok = false;
-                                    restart_shuffle = false;
-                                    warning('\n[%s]: SKIPPING LTM AND IMG CHECKS for stimulus repeats!',mfilename);
-                                elseif all(condition_master0.session_nr(trial_order)==46 & condition_master0.session_type(trial_order) == 2 & condition_master0.task_class(trial_order)==5)
+                                if all(condition_master0.session_nr(trial_order)==46 & condition_master0.session_type(trial_order) == 2 & condition_master0.task_class(trial_order)==5)
                                     trial_order_not_ok = false;
                                     restart_shuffle = false;
                                     warning('\n[%s]: SKIPPING SESSION 46B FOR NOW for stimulus repeats!',mfilename);
