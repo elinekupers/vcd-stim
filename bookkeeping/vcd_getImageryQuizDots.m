@@ -21,7 +21,9 @@ function all_quiz_dots = vcd_getImageryQuizDots(params, varargin)
 %   phrase at center of display (stim1) [allow eye movements], 8-s delay,
 %   two-dot test image in both left and right hemifields for classic 
 %   stimuli (stim2).
-% - Exact text prompts can be found here: XXXX
+% - Exact text prompts can be found here:
+%       ./workspaces/instructions/img_image_prompts/ (pngs)
+%       ./workspaces/instructions/img_text_prompts/  (txt files)
 % - Creation of imagery quiz dots for Gabors/RDKs/Dots are automated.
 % - Creation of imagery quiz dots for Objects and Scenes are manually drawn 
 %   dots that are then postprocessed. Postprocessing will deal with  
@@ -46,8 +48,8 @@ function all_quiz_dots = vcd_getImageryQuizDots(params, varargin)
 % * Object support area: circular aperture with 5-degree diameter (XX
 %     pixels for BOLDscreen). Support location: centered on corresponding 
 %     core object that subjects imagine, either [-4,0] or [4,0] degrees 
-%     relative from the center of the display ([0,0]). (XX or XX pixels for 
-%     BOLDscreen).
+%     relative from the center of the display ([0,0]). (608 or 1312 pixels 
+%     for BOLDscreen).
 % * NS support area: square aperture width/height: 8.4 degrees.
 %   (741 pixels for BOLDscreen). Support location: centered on display:
 %   [0,0] degrees or [960,540] pixels.
