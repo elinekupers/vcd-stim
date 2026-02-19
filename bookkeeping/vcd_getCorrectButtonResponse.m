@@ -129,7 +129,7 @@ switch block_name
             idx = 1; % center scene stimulus
         end
 
-        is_match = table_row.stim2_delta(table_row.is_cued(idx)); % determined in vcd_createConditionMaster > vcd_getLTMTestStim (stim2_match) 
+        is_match = table_row.stim2_delta(idx); % determined in vcd_createConditionMaster > vcd_getLTMTestStim (stim2_match) 
         
         if is_match == 0 % not a match
             button_response = 2; % NO
@@ -151,10 +151,13 @@ switch block_name
         else
             idx = 1; % center scene stimulus
         end
-        answer_options  = unique(params.stim.(table_row.stim_class_name{idx}).imagery_quiz_images);
-        button_response = find(table_row.stim2_delta(idx) == answer_options);
-        if isempty(button_response) || button_response==0
-            error('[%s]: No response options for %s!',mfilename,block_name)
+        is_match = table_row.stim2_delta(idx);
+        if is_match == 2 % not a match
+            button_response = 2; % NO
+        elseif is_match == 1 % a match
+            button_response = 1; % YES
+        else
+            error('[%s]: Ill-defined button response for %s!',mfilename,block_name)
         end
         
     case {'pc-rdk'   }
