@@ -193,6 +193,12 @@ if params.loadstimfromrunfile
         all_images.info.instr = a1.instr_im.info;
         run_frames = a1.run_frames;
         run_table  = a1.run_table;
+        if isfield(a1.instr_im,'instr_img')
+            all_images.instr_img = a1.instr_img;
+        end
+        if isfield(a1,'img_quiz_dot_coords')
+            stim.img_quiz_dot_coords = a1.img_quiz_dot_coords;
+        end
     else
         error('[%s]: Can''t find file with run_images!!',mfilename)
     end
@@ -317,7 +323,7 @@ else % if not, then we look user pointed to a timetable_file
             all_images = struct();
         end
 
-        [images, masks, all_images] = vcd_getImageOrderSingleRun(params, ...
+        [images, masks, all_images, img_quiz_dot_coords] = vcd_getImageOrderSingleRun(params, ...
             run_table, run_frames, params.subj_nr, params.ses_nr, params.ses_type, params.run_nr, params.env_type, ...
             'all_images', all_images, 'savestim', params.savestim);
         
@@ -326,7 +332,8 @@ else % if not, then we look user pointed to a timetable_file
         stim.im    = images;
         stim.masks = masks;
         stim.eye   = cat(4, all_images.eye.sac_im, all_images.eye.pupil_im_black, all_images.eye.pupil_im_white);
-        
+        stim.img_quiz_dot_coords = img_quiz_dot_coords;
+
         clear images masks
     end
     
@@ -407,7 +414,7 @@ if ~exist('scan','var') || ~isfield(scan, 'rects') || isempty(scan.rects)
     
     % Now loop over stimuli
     for nn = 1:size(stim.im,1)
-
+        
         % We only do get centers/sizes for stimulus events or images in the
         % eye tracking block
         if ismember(run_frames.frame_event_nr(nn), ...
@@ -423,54 +430,112 @@ if ~exist('scan','var') || ~isfield(scan, 'rects') || isempty(scan.rects)
                     
                     % If it is a gabor..
                     if ismember(run_frames.frame_im_nr(nn,side), [params.stim.gabor.unique_im_nrs_core,params.stim.gabor.unique_im_nrs_wm_test])
-                        centers{nn,side} = [params.stim.gabor.x0_pix(side) + params.stim.xc, ... % x-coord (pixels)
-                            params.stim.gabor.y0_pix(side) + params.stim.yc]; % y-coord (pixels)
+                        
+                        % If it is a IMG trial
+                        if ismember(run_frames.crossingIDs(nn), find(~cellfun(@isempty, regexp(params.exp.crossingnames, 'img*'))))
+                            centers{nn,side} = [params.stim.xc,params.stim.yc]; % centered
+                        else
+                            centers{nn,side} = [params.stim.gabor.x0_pix(side) + params.stim.xc, ... % x-coord (pixels)
+                                params.stim.gabor.y0_pix(side) + params.stim.yc]; % y-coord (pixels)
+                        end
                         
                     % If it is an RDK..
                     elseif ismember(run_frames.frame_im_nr(nn,side), [params.stim.rdk.unique_im_nrs_core,params.stim.rdk.unique_im_nrs_wm_test])
-                        centers{nn,side} = [params.stim.rdk.x0_pix(side) + params.stim.xc, ...
-                            params.stim.rdk.y0_pix(side) + params.stim.yc];
+                        
+                        % If it is a IMG trial
+                        if ismember(run_frames.crossingIDs(nn), find(~cellfun(@isempty, regexp(params.exp.crossingnames, 'img*'))))
+                            centers{nn,side} = [params.stim.xc,params.stim.yc]; % centered
+                        else
+                            centers{nn,side} = [params.stim.rdk.x0_pix(side) + params.stim.xc, ... % x-coord (pixels)
+                            params.stim.rdk.y0_pix(side) + params.stim.yc]; % y-coord (pixels)
+                        end
                         
                     % If it is an single dot..
                     elseif ismember(run_frames.frame_im_nr(nn,side), [params.stim.dot.unique_im_nrs_core,params.stim.dot.unique_im_nrs_wm_test])
-                        % deal with dot pol2cart
-                        if ismember(run_frames.frame_im_nr(nn,side), params.stim.dot.unique_im_nrs_wm_test)
-                            test_im2D  = reshape(params.stim.dot.unique_im_nrs_wm_test,4,[]);
-                            [~,test_im_idx] = ismember(run_frames.frame_im_nr(nn,side), test_im2D);
-                            [x,y] = ind2sub([size(test_im2D,1),size(test_im2D,2)],test_im_idx);
-                            dot_x = params.stim.dot.x0_pix_delta(x,y);
-                            dot_y = params.stim.dot.y0_pix_delta(x,y);
-                        elseif ismember(run_frames.frame_im_nr(nn,side), params.stim.dot.unique_im_nrs_core)
-                            [~,core_im_idx] = ismember(run_frames.frame_im_nr(nn,side), params.stim.dot.unique_im_nrs_core);
-                            dot_x = params.stim.dot.x0_pix(core_im_idx);
-                            dot_y = params.stim.dot.y0_pix(core_im_idx);
+                        % If it is a IMG trial
+                        if ismember(run_frames.crossingIDs(nn), find(~cellfun(@isempty, regexp(params.exp.crossingnames, 'img*'))))
+                            centers{nn,side} = [params.stim.xc,params.stim.yc]; % centered
+                        else
+                            % deal with dot coords
+                            if ismember(run_frames.frame_im_nr(nn,side), params.stim.dot.unique_im_nrs_wm_test)
+                                test_im2D  = reshape(params.stim.dot.unique_im_nrs_wm_test,4,[]);
+                                [~,test_im_idx] = ismember(run_frames.frame_im_nr(nn,side), test_im2D);
+                                [x,y] = ind2sub([size(test_im2D,1),size(test_im2D,2)],test_im_idx);
+                                dot_x = params.stim.dot.x0_pix_delta(x,y);
+                                dot_y = params.stim.dot.y0_pix_delta(x,y);
+                            elseif ismember(run_frames.frame_im_nr(nn,side), params.stim.dot.unique_im_nrs_core)
+                                
+                                [~,core_im_idx] = ismember(run_frames.frame_im_nr(nn,side), params.stim.dot.unique_im_nrs_core);
+                                dot_x = params.stim.dot.x0_pix(core_im_idx);
+                                dot_y = params.stim.dot.y0_pix(core_im_idx);
+                            end
+                             centers{nn,side} = [dot_x,dot_y];
                         end
-                        centers{nn,side} = [dot_x,dot_y];
+                       
                         
                     % If it is an object..
                     elseif ismember(run_frames.frame_im_nr(nn,side), [params.stim.obj.unique_im_nrs_core,params.stim.obj.unique_im_nrs_wm_test, params.stim.obj.unique_im_nrs_objcatch])
-                        centers{nn,side} = [params.stim.obj.x0_pix(side) + params.stim.xc, ...
-                            params.stim.obj.y0_pix(side) + params.stim.yc];
-                        
+                        % If it is a IMG trial
+                        if ismember(run_frames.crossingIDs(nn), find(~cellfun(@isempty, regexp(params.exp.crossingnames, 'img*'))))
+                            centers{nn,side} = [params.stim.xc,params.stim.yc]; % centered
+                        else
+                            centers{nn,side} = [params.stim.obj.x0_pix(side) + params.stim.xc, ...
+                                                params.stim.obj.y0_pix(side) + params.stim.yc];
+                        end
                     % If it is a natural scene..
                     elseif ismember(run_frames.frame_im_nr(nn,side), ...
-                            [params.stim.ns.unique_im_nrs_core,params.stim.ns.unique_im_nrs_wm_test,params.stim.ns.unique_im_nrs_ltm_lures])
-                        centers{nn,side} = [params.stim.ns.x0_pix + params.stim.xc, params.stim.ns.y0_pix + params.stim.yc];
+                            [params.stim.ns.unique_im_nrs_core,params.stim.ns.unique_im_nrs_wm_test,params.stim.ns.unique_im_nrs_novel_ltm_lures])
+                        % If it is a IMG trial
+                        if ismember(run_frames.crossingIDs(nn), find(~cellfun(@isempty, regexp(params.exp.crossingnames, 'img*'))))
+                            centers{nn,side} = [params.stim.xc,params.stim.yc]; % centered
+                        else
+                            centers{nn,side} = [params.stim.ns.x0_pix + params.stim.xc, params.stim.ns.y0_pix + params.stim.yc];
+                        end
+                    % If it is a imagery quiz dot image
+                    elseif ismember(run_frames.frame_im_nr(nn,side),params.stim.all_img_test_im_nrs)
+                        tmp_coords = [stim.img_quiz_dot_coords{nn,side}(:,1) + params.stim.xc, ... rows are dots, cols are x,y
+                                      stim.img_quiz_dot_coords{nn,side}(:,2) + params.stim.yc];
+                        
+                        if ismember(run_frames.frame_im_nr(nn,side),params.stim.gabor.unique_im_nrs_img_test)
+                            centers{nn,side} = [tmp_coords(:,1) + params.stim.gabor.x0_pix(side), ...
+                                                tmp_coords(:,2) + params.stim.gabor.y0_pix(side)];
+                        elseif ismember(run_frames.frame_im_nr(nn,side),params.stim.rdk.unique_im_nrs_img_test)
+                            centers{nn,side} = [tmp_coords(:,1) + params.stim.rdk.x0_pix(side), ...
+                                                tmp_coords(:,2) + params.stim.rdk.y0_pix(side)];
+                        elseif ismember(run_frames.frame_im_nr(nn,side),params.stim.dot.unique_im_nrs_img_test)
+                            centers{nn,side} = tmp_coords(:,1); % already relative to iso-eccen circle
+                        elseif ismember(run_frames.frame_im_nr(nn,side),params.stim.obj.unique_im_nrs_img_test)
+                            centers{nn,side} = [tmp_coords(:,1) + params.stim.obj.x0_pix(side), ...
+                                                tmp_coords(:,2) + params.stim.obj.y0_pix(side)];
+                        elseif ismember(run_frames.frame_im_nr(nn,side),params.stim.ns.unique_im_nrs_img_test)
+                            centers{nn,side} = [tmp_coords(:,1) + params.stim.ns.x0_pix(side), ...
+                                                tmp_coords(:,2) + params.stim.ns.y0_pix(side)];
+                        else
+                            error('wtf')
+                        end
                         
                     % If it is a catch trial
                     elseif isnan(run_frames.frame_im_nr(nn,side)) || (run_frames.frame_im_nr(nn,side)==0)
-                        centers{nn,side} = [NaN, NaN];
+                        centers{nn,side} = [NaN, NaN];  
+                    else
+                        error('wtf')
                     end
                     
                     % ADD STIMULUS SIZE
                     if isnan(run_frames.frame_im_nr(nn,side))
                         % If it is a catch trial
                         apsize{nn,side}  = [NaN, NaN];
-                        
+                                                
                     else % ADD IMAGE ID, copy size/im_ID/center if we deal with static stim.
-
+                        
+                        % If it is a IMG trial
+                        if ismember(run_frames.crossingIDs(nn), find(~cellfun(@isempty, regexp(params.exp.crossingnames, 'img*'))))
+                            
+                            im_IDs(nn,side) = nn;
+                            apsize{nn,side} = [size(stim.im{nn,side},2), size(stim.im{nn,side},1)]; % stim2 = height x width of image prompt = 700x700, should only be left side // OR small dot
+                            
                         % If we have RDKs, then we have a new image every time frame so we can just use the counter
-                        if ismember(run_frames.frame_im_nr(nn,side), [params.stim.rdk.unique_im_nrs_core,params.stim.rdk.unique_im_nrs_wm_test])
+                        elseif ismember(run_frames.frame_im_nr(nn,side), [params.stim.rdk.unique_im_nrs_core,params.stim.rdk.unique_im_nrs_wm_test])
                             
                             % Add image ID
                             im_IDs(nn,side) = nn;
@@ -548,25 +613,79 @@ for side = nSides
     % Now only select the nonempty centers and sizes
     centers_shortlist = stim.centers(nonemptycenters,side);
     apsize_shortlist  = stim.apsize(nonemptycenters,side);
-    centers_mat       = cell2mat(centers_shortlist);
-    size_mat          = cell2mat(apsize_shortlist);
-    destination_mat = [centers_mat(:,1) - size_mat(:,1)./2, ... x1 top-left-x 
-                       centers_mat(:,2) - size_mat(:,2)./2, ... y1 top-left-y
-                       centers_mat(:,1) + size_mat(:,1)./2, ... x2 bottom-right-x
-                       centers_mat(:,2) + size_mat(:,2)./2];  % y2 bottom-right-y
-                            
-    % Create stimulus "rects" for PTB. 
-    % CenterRect cannot handle empty cells or NaNs or multiple
-    % stim/destination rects (hence we use arrayfun)
-    % Inputs to CenterRect are two [1x4] vectors:
-    % * stimsize        = [0, 0, width, height] in pixels
-    % * destinationRect = [top-left-x, top-left-y, bottom-right-x, bottom-right-y] pixel location of the stimulus
-    rects_mat       = arrayfun(@(stim_x1,stim_y1,stim_x2,stim_y2,dest_x1,dest_y1,dest_x2,dest_y2) ...
-                         CenterRect([stim_x1,stim_y1,stim_x2,stim_y2],[dest_x1,dest_y1,dest_x2,dest_y2]), ...
-                        zeros(size(size_mat,1),1), zeros(size(size_mat,1),1), size_mat(:,1), size_mat(:,2), ...
-                        destination_mat(:,1), destination_mat(:,2),destination_mat(:,3), destination_mat(:,4), ...
-                        'UniformOutput', false);
     
+    if any(run_table.task_class==7) % IMG trials (two stim centers per side)
+        % We deal with a 3D array
+        centers_mat    = NaN(size(centers_shortlist,1),2,2);
+        size_mat     = NaN(size(apsize_shortlist,1),2,2);
+        
+        sz = NaN(size(apsize_shortlist,1),2);
+        for ii = 1:size(centers_shortlist)
+            sz(ii,:) = size(centers_shortlist{ii});
+            
+            if isequal(sz(ii,:),[2 2])
+                centers_mat(ii,:,1) = centers_shortlist{ii}(1,:);
+                centers_mat(ii,:,2) = centers_shortlist{ii}(2,:);
+                
+                size_mat(ii,:,1) = apsize_shortlist{ii};
+                size_mat(ii,:,2) = apsize_shortlist{ii};
+            else
+                centers_mat(ii,:,1) = centers_shortlist{ii}(1,:);
+                size_mat(ii,:,1) = apsize_shortlist{ii};
+            end
+        end
+        % create two destination matrices (one for left/one for right
+        % imagery test dot per left/right stim location)
+        destination_mat1 = [centers_mat(:,1,1) - size_mat(:,1,1)./2, ... x1 top-left-x
+                            centers_mat(:,2,1) - size_mat(:,2,1)./2, ... y1 top-left-y
+                            centers_mat(:,1,1) + size_mat(:,1,1)./2, ... x2 bottom-right-x
+                            centers_mat(:,2,1) + size_mat(:,2,1)./2];  % y2 bottom-right-y
+        destination_mat2 = [centers_mat(:,1,2) - size_mat(:,1,2)./2, ... x1 top-left-x
+                            centers_mat(:,2,2) - size_mat(:,2,2)./2, ... y1 top-left-y
+                            centers_mat(:,1,2) + size_mat(:,1,2)./2, ... x2 bottom-right-x
+                            centers_mat(:,2,2) + size_mat(:,2,2)./2];  % y2 bottom-right-y
+        
+        % Create stimulus "rects" for PTB.
+        % CenterRect cannot handle empty cells or NaNs or multiple
+        % stim/destination rects (hence we use arrayfun)
+        % Inputs to CenterRect are two [1x4] vectors:
+        % * stimsize        = [0, 0, width, height] in pixels
+        % * destinationRect = [top-left-x, top-left-y, bottom-right-x, bottom-right-y] pixel location of the stimulus
+        rects_mat1       = arrayfun(@(stim_x1,stim_y1,stim_x2,stim_y2,dest_x1,dest_y1,dest_x2,dest_y2) ...
+            CenterRect([stim_x1,stim_y1,stim_x2,stim_y2],[dest_x1,dest_y1,dest_x2,dest_y2]), ...
+            zeros(size(size_mat,1),1), zeros(size(size_mat,1),1), size_mat(:,1), size_mat(:,2), ...
+            destination_mat1(:,1), destination_mat1(:,2),destination_mat1(:,3), destination_mat1(:,4), ...
+            'UniformOutput', false);
+        rects_mat2       = arrayfun(@(stim_x1,stim_y1,stim_x2,stim_y2,dest_x1,dest_y1,dest_x2,dest_y2) ...
+            CenterRect([stim_x1,stim_y1,stim_x2,stim_y2],[dest_x1,dest_y1,dest_x2,dest_y2]), ...
+            zeros(size(size_mat,1),1), zeros(size(size_mat,1),1), size_mat(:,1), size_mat(:,2), ...
+            destination_mat2(:,1), destination_mat2(:,2),destination_mat2(:,3), destination_mat2(:,4), ...
+            'UniformOutput', false);
+        
+        % Combine matrices: For Non-IMG trials, second row contains NaN(1,4)
+        rects_mat = cellfun(@(x,y) cat(1,x,y), rects_mat1,rects_mat2,'UniformOutput',false);
+
+    else
+        % We deal with a 2D array
+        centers_mat       = cell2mat(centers_shortlist);
+        size_mat          = cell2mat(apsize_shortlist);
+        destination_mat = [centers_mat(:,1) - size_mat(:,1)./2, ... x1 top-left-x
+            centers_mat(:,2) - size_mat(:,2)./2, ... y1 top-left-y
+            centers_mat(:,1) + size_mat(:,1)./2, ... x2 bottom-right-x
+            centers_mat(:,2) + size_mat(:,2)./2];  % y2 bottom-right-y
+        
+        % Create stimulus "rects" for PTB.
+        % CenterRect cannot handle empty cells or NaNs or multiple
+        % stim/destination rects (hence we use arrayfun)
+        % Inputs to CenterRect are two [1x4] vectors:
+        % * stimsize        = [0, 0, width, height] in pixels
+        % * destinationRect = [top-left-x, top-left-y, bottom-right-x, bottom-right-y] pixel location of the stimulus
+        rects_mat       = arrayfun(@(stim_x1,stim_y1,stim_x2,stim_y2,dest_x1,dest_y1,dest_x2,dest_y2) ...
+            CenterRect([stim_x1,stim_y1,stim_x2,stim_y2],[dest_x1,dest_y1,dest_x2,dest_y2]), ...
+            zeros(size(size_mat,1),1), zeros(size(size_mat,1),1), size_mat(:,1), size_mat(:,2), ...
+            destination_mat(:,1), destination_mat(:,2),destination_mat(:,3), destination_mat(:,4), ...
+            'UniformOutput', false);
+    end
     % Insert the "rects" into the struct
     stim.rects(nonemptycenters,side) = rects_mat;
 end
