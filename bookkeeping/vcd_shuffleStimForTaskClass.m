@@ -90,10 +90,10 @@ if strcmp(session_type,'MRI')
     %
     % S2 - Optimization param 1: how many times do we shuffle trials without any progress (i.e., order of trials violates constraints).
     if params.is_wide
-        min_stimclass_leftright  = 2; % Constraint 1
-        max_no_progress_attempts = 25; % Optimization param 1
+        min_stimclass_leftright  = 2;     % Constraint 1 - try to minimize same stimclass for left and right stim position within a trial
+        max_no_progress_attempts = 25;    % Optimization param 1 - when do we abort and start over
         max_attempts_shuffle1    = 20000; % S1 - Optimization param 1
-        max_attempts_shuffle2    = 5000;  % SECOND SHUFFLE Optimization param 2 when do we abort and start over
+        max_attempts_shuffle2    = 5000;  % S2 - Optimization param 2 when do we abort and start over
         unique_trial_repeats     = params.exp.n_unique_trial_repeats_wide; % how many unique trial repeats do we expect?
         if strcmp(task_class_name_to_shuffle,'scc')
             stimclss_constraint_fun  = @(x) isequal(x,[2 2 2 2]) || isequal(sort(x),[1 2 2 3]) || isequal(sort(x),[1 1 3 3]);
@@ -101,15 +101,18 @@ if strcmp(session_type,'MRI')
             error('[%s]: No rules defined for this task class name!', mfilename) % no ltm in wide
         end
     else % DEEP
-        min_stimclass_leftright  = 3; % Constraint 1
-        max_no_progress_attempts = 50; % Optimization param 1
+        min_stimclass_leftright  = 3; % Constraint 1 - try to minimize same stimclass for left and right stim position within a trial
+        
         max_attempts_shuffle1    = 50000; % FIRST SHUFFLE when do we abort and start over
         max_attempts_shuffle2    = 10000; % SECOND SHUFFLE when do we abort and start over
         unique_trial_repeats = params.exp.n_unique_trial_repeats_deep; % how many unique trial repeats do we expect? This is for LTM: check that column lengths is the same as sum of repeats * special core stimuli
         if strcmp(task_class_name_to_shuffle,'scc')
+            max_no_progress_attempts = 50; % Optimization param 1 - when do we abort and start over
             stimclss_constraint_fun  = @(x) isequal(x,[2 2 2 2]) || isequal(sort(x),[1 2 2 3]) || isequal(sort(x),[1 1 3 3]) || isequal(sort(x),[1 1 2 4]) || isequal(sort(x),[0 2 3 3]); % 8 trials per block
         elseif strcmp(task_class_name_to_shuffle,'ltm')
-            stimclss_constraint_fun  = @(x) isequal(x,[1 1 1 1]) || isequal(sort(x),[0 0 2 2]) || isequal(sort(x),[0 1 1 2]); % 4 trials per block
+            max_no_progress_attempts = 1000; % Optimization param 1 - when do we abort and start over
+            stimclss_constraint_fun  = @(x) isequal(x,[1 1 1 1]) || isequal(sort(x),[0 0 2 2]) || isequal(sort(x),[0 1 1 2]) || isequal(sort(x),[0 0 1 3]); % 4 trials per block 
+            allow_uneven_cues        = false; % at the end, if we get stuck in an endless loop, we allow for uneven distribution of spatial cues for the last 3 blocks
         else
             error('[%s]: No rules defined for this task class name!', mfilename)
         end
@@ -242,6 +245,7 @@ elseif ~isempty(cued_stim_loc)
                     if attempts > max_attempts_shuffle1
                         warning('[%s]: Can''t find a solution for within trial shuffle after %d attempts! Aborting!', mfilename, max_attempts_shuffle1)
                         restart_shuffle = true;
+                        allow_uneven_cues = false; extra_shuffle = [];
                         break;
                     end
 
@@ -382,11 +386,18 @@ elseif ~isempty(cued_stim_loc)
             if strcmp(task_class_name_to_shuffle,{'ltm'})
                 % check nr of repeated trials
                 assert(isequal(size(combined_trial_shuffleAB,1), ...
-                    unique(unique_trial_repeats(1:4,strcmp(task_class_name_to_shuffle,params.exp.taskclassnames)))  * ... 23 repeats
-                    (2*(length(params.stim.all_specialcore_im_nrs)-length(params.stim.ns.unique_im_nrs_specialcore))))); % 8*4 (=32) * 2 (double nr of repeats)
+                    unique(unique_trial_repeats(1:4,strcmp(task_class_name_to_shuffle,params.exp.taskclassnames)))  * ... 20 repeats
+                    (2*2*(length(params.stim.all_specialcore_im_nrs)-length(params.stim.ns.unique_im_nrs_specialcore))))); % 8*4 (=32) * 2 (double nr of repeats) * 2 (A->B, and B->A)
                 
                 % get start of block [1:5:end]
                 block_start = 1:nr_of_trials_per_block:length(correct_response);
+                
+                % get stim2 class and stim_orient
+                stim2_class  = [vcd('stimtostimclassnumber',master_table.stim2_im_nr(combined_trial_shuffleAB(:,1),1)); ...
+                                vcd('stimtostimclassnumber',master_table.stim2_im_nr(combined_trial_shuffleAB(:,2),2))]'; % trials x 2 stim loc (left/right)
+                stim2_orient = [master_table.stim2_orient_dir(combined_trial_shuffleAB(:,1),1), master_table.stim2_orient_dir(combined_trial_shuffleAB(:,2),2)]; % trials x 2 stim loc (left/right)
+
+                
             elseif strcmp(task_class_name_to_shuffle,{'scc'})
                 % check nr of repeated trials
                 assert(isequal(size(combined_trial_shuffleAB,1), ...
@@ -409,7 +420,8 @@ elseif ~isempty(cued_stim_loc)
             % preallocate space, reset counters, define nr of shuffle attempts
             stored_shuffled_cued_side = []; stored_master_trial = []; stored_master_im_nr = [];
             no_progress_attempts = 0; 
-
+            ignore_uneven_cues   = false;
+            allow_uneven_cues    = false;
             attempt = 0;
             while 1 % second shuffle loop
                 % Shuffle across all trials, using the following constraints:
@@ -422,12 +434,19 @@ elseif ~isempty(cued_stim_loc)
                 end
                 shuffle_vec         = shuffle_vec(:);
                 
+                if allow_uneven_cues && strcmp(task_class_name_to_shuffle,{'ltm'})
+                    extra_shuffle = repmat(randperm(length(shuffle_vec),length(shuffle_vec)),2,1);
+                    shuffle_vec = shuffle_vec(extra_shuffle(1,:));
+                end
+                
                 % Get cued side of each trial
                 cued_side_shuffled  = cued_side(shuffle_vec');
                 
-                % check cuing status of shuffled trial order
-                assert(isequal(cued_side_shuffled,repmat([1,2],1,length(cued_side_shuffled)/2))) % should be [1,2,1,2,1,2, etc]
-                
+                if ~ignore_uneven_cues
+                     % check cuing status of shuffled trial order
+                    assert(isequal(cued_side_shuffled,repmat([1,2],1,length(cued_side_shuffled)/2))) % should be [1,2,1,2,1,2, etc]
+                end
+                    
                 % get correct response for shuffled trial order
                 shuffled_responses = correct_response(shuffle_vec);
                 
@@ -439,6 +458,12 @@ elseif ~isempty(cued_stim_loc)
                 master_trial_shuffled     = master_trial(shuffle_vec,:);
                 master_im_nr_shuffled     = master_im_nr(shuffle_vec,:);
                 
+                % also check test stim for LTM
+                if strcmp(task_class_name_to_shuffle,{'ltm'})
+                    stim2_class_shuffled  = stim2_class(shuffle_vec,:);
+                    stim2_orient_shuffled = stim2_orient(shuffle_vec,:);
+                end
+                
                 % reset counters
                 block_ok                  = zeros(1,length(block_start));
                 ok_shuffled_cued          = [];
@@ -449,18 +474,24 @@ elseif ~isempty(cued_stim_loc)
                 not_ok_im_nr              = [];
                 not_ok_shuffle_vec        = [];
                 not_ok_indices            = [];
+                ok_indices                = [];
                 counter = 1;
 
                 % Loop over trials within a block, check the distribution of
                 % correct button responses
                 for cc = block_start
-                    curr_indices    = cc:(cc+(nr_of_trials_per_block-1));
-                    curr_responses  = shuffled_responses(curr_indices);
-                    curr_cues       = cued_side_shuffled(curr_indices);
-                    curr_orient     = stim_orient_shuffled(curr_indices,:);
-                    curr_stimclass  = stim_both_sides_shuffled(curr_indices,:);
-                    curr_master_trial_idx   = master_trial_shuffled(curr_indices,:);
-                    curr_master_im_nr       = master_im_nr_shuffled(curr_indices,:);
+                    curr_indices    = repmat(cc:(cc+(nr_of_trials_per_block-1)),2,1)';
+                    curr_responses  = shuffled_responses(curr_indices(:,1));
+                    curr_cues       = cued_side_shuffled(curr_indices(:,1));
+                    curr_orient     = [stim_orient_shuffled(curr_indices(:,2),1),stim_orient_shuffled(curr_indices(:,2),2)];
+                    curr_stimclass  = [stim_both_sides_shuffled(curr_indices(:,1),1), stim_both_sides_shuffled(curr_indices(:,2),2)];
+                    curr_master_trial_idx   = [master_trial_shuffled(curr_indices(:,1),1),master_trial_shuffled(curr_indices(:,2),2)];
+                    curr_master_im_nr       = [master_im_nr_shuffled(curr_indices(:,1),1),master_im_nr_shuffled(curr_indices(:,2),2)];
+                    
+                    if strcmp(task_class_name_to_shuffle,{'ltm'})
+                        curr_stim2_class  = [stim2_class_shuffled(curr_indices(:,1),1),stim2_class_shuffled(curr_indices(:,2),2)];
+                        curr_stim2_orient = [stim2_orient_shuffled(curr_indices(:,1),1),stim2_orient_shuffled(curr_indices(:,2),2)];
+                    end
                     
                     % Get distribution of button responses, we want to equalize
                     % button responses as much as possible ([2 2 2 2]) or
@@ -474,60 +505,177 @@ elseif ~isempty(cued_stim_loc)
                         dot_idx     = find(sum(curr_stimclass==3,2)==2);
                         % Check if the dot location angles match with stimulus params
                         if ~isempty(dot_idx), assert(all(reshape(ismember(curr_orient(dot_idx,:),params.stim.dot.ang_deg),[],1))); end
-                        % Caclulate the difference in angle between to dots
+                        % Caclulate the difference in angle between to dots(for stim 1)
                         diff_orient = abs(circulardiff(curr_orient(dot_idx,1),curr_orient(dot_idx,2),360));
                         
-                        if ~isempty(dot_idx) && any(diff_orient<=params.stim.dot.min_ang_distance_dot)
-                            % if we have more than two double dot trials, see if we
-                            % can swap them
+                        % do the same for stim2 if this is LTM
+                        if strcmp(task_class_name_to_shuffle,{'ltm'})
+                            % Check if trials have two single dots
+                            dot_idx2     = find(sum(curr_stim2_class==3,2)==2);
+                            % Check if the dot location angles match with stimulus params
+                            if ~isempty(dot_idx2), assert(all(reshape(ismember(curr_stim2_orient(dot_idx2,:),params.stim.dot.ang_deg),[],1))); end
+                            % Caclulate the difference in angle between to dots
+                            diff_orient2 = abs(circulardiff(curr_stim2_orient(dot_idx2,1),curr_stim2_orient(dot_idx2,2),360));
+                        else
+                            dot_idx2 = [];
+                            diff_orient2 = [];
+                        end
+                        
+                        if ~allow_uneven_cues && (~isempty(dot_idx) && any(diff_orient<=params.stim.dot.min_ang_distance_dot))    
+                            % if we have more than two double dot trials where dots are too close to eachother, see if we can swap them
                             if length(dot_idx) > 1
-                                n2 = histcounts(curr_cues(dot_idx),[1:3]); % check if they share the same spatial cue: [1:3] --> histcount bins = [0,1,2]
-                                if any(n2 > 1)
-                                    for jj = 1:length(n2)
-                                        same_cue_idx = dot_idx(ismember(curr_cues(dot_idx),jj));
-                                        if length(same_cue_idx)==2 % if we have two "double dot" scc trials, then:
-                                            new_order = same_cue_idx([2,1]); % swap the two indices
-                                        elseif length(same_cue_idx)>2 % if we have more than two "double dot" scc trials, then:
-                                            swap_me   = find(diff_orient(ismember(dot_idx,same_cue_idx))<=params.stim.dot.min_ang_distance_dot); % find the orientations that are too small
-                                            other_ori = setdiff([1:length(same_cue_idx)], swap_me);  % set apart the other orientations
-                                            if isempty(other_ori)
-                                                new_order = same_cue_idx(shuffle_concat(swap_me,1)); % shuffle order
-                                            else
-                                                new_order = same_cue_idx([sort(cat(1,swap_me,other_ori(1)),'descend'); other_ori(2:end)']); % place orientation that needs to be swapped first and add the rest
+                                [new_order,swap_ok] = vcd_doubleDotAngleCheck(params.stim.dot.min_ang_distance_dot, dot_idx, curr_orient, curr_cues);
+                                if swap_ok==1 % 1 = swap is needed and works 
+                                    % check if this swap works for stim2 in LTM 
+                                    if strcmp(task_class_name_to_shuffle,{'ltm'})
+                                        if ~isempty(dot_idx2) || any(diff_orient2<=params.stim.dot.min_ang_distance_dot) % do we have trials with two single dot stim?
+                                            tmp_curr_stim2_class = [curr_stim2_class(new_order(:,1),1), curr_stim2_class(new_order(:,2),2)];
+                                            tmp_dot_idx2         = find(sum(tmp_curr_stim2_class)==3,2)==2;
+                                            tmp_orient2          = [curr_stim2_orient(new_order(:,1),1),curr_stim2_orient(new_order(:,2),2)];
+                                            tmp_curr_cues        = curr_cues;
+                                            assert(all(isequal(tmp_curr_cues,curr_cues(new_order(:,1)))));
+                                            
+                                            [~, swap_ok2] = vcd_doubleDotAngleCheck(params.stim.dot.min_ang_distance_dot, tmp_dot_idx2, tmp_orient2, curr_cues);
+                                            if swap_ok2==0 % update is ok, apply new order
+                                                curr_master_trial_idx = [curr_master_trial_idx(new_order(:,1),1),curr_master_trial_idx(new_order(:,2),2)];
+                                                curr_master_im_nr     = [curr_master_im_nr(new_order(:,1),1),curr_master_im_nr(new_order(:,2),2)];
+
+                                                % we will update the orientation info; if it doesn't work for stim2, it will be caught below. 
+                                                curr_orient           = [curr_orient(new_order(:,1),1),curr_orient(new_order(:,2),2)];
+                                                curr_stim2_orient     = [curr_stim2_orient(new_order(:,1),1),curr_stim2_orient(new_order(:,2),2)];
+                                                curr_indices          = [curr_indices(new_order(:,1),1),curr_indices(new_order(:,2),2)];
+                                                diff_orient           = abs(circulardiff(curr_orient(dot_idx,1),curr_orient(dot_idx,2),360));
+                                                curr_stim2_class      = [curr_stim2_class(new_order(:,1),1), curr_stim2_class(new_order(:,2),2)];
+                                                dot_idx2              = find(sum(curr_stim2_class==3,2)==2);
+                                                if allow_uneven_cues && exist('extra_shuffle','var') && ~isempty(extra_shuffle)
+                                                    extra_shuffle(1,curr_indices(:,1)) = extra_shuffle(1,curr_indices(:,1));
+                                                    extra_shuffle(2,curr_indices(:,1)) = extra_shuffle(2,curr_indices(:,2));
+                                                end
+                                                if ~isempty(dot_idx2)
+                                                    diff_orient2      = abs(circulardiff(curr_stim2_orient(dot_idx2,1),curr_stim2_orient(dot_idx2,2),360));
+                                                end
                                             end
-                                        elseif length(same_cue_idx)==1 % if we have only one double dot trial, then we cannot swap because we want to keep the spatial cue consistent
-                                            % do nothing
-                                        end
-                                        if length(same_cue_idx) > 1
-                                            % make a copy of the current dot orientations
-                                            tmp0 = curr_orient;
-                                            % shuffle the right side, keep the left side the same
-                                            tmp0(same_cue_idx,2) = tmp0(new_order,2);
-                                            % recalculate difference angles
-                                            tmp_diff_orient = abs(circulardiff(tmp0(:,1),tmp0(:,2),360));
-                                            % check if this solved anything
-                                            if all(tmp_diff_orient>params.stim.dot.min_ang_distance_dot)
-                                                % if it did, update indices in current list and master list
-                                                curr_master_trial_idx(same_cue_idx,2) = curr_master_trial_idx(new_order,2);
-                                                curr_master_im_nr(same_cue_idx,2)     = curr_master_im_nr(new_order,2);
-                                                curr_orient = tmp0;
-                                                diff_orient = tmp_diff_orient;
+                                        else
+                                            % no need to worry, so we will update the orientation info
+                                            curr_master_trial_idx = [curr_master_trial_idx(new_order(:,1),1),curr_master_trial_idx(new_order(:,2),2)];
+                                            curr_master_im_nr     = [curr_master_im_nr(new_order(:,1),1),curr_master_im_nr(new_order(:,2),2)];
+                                            curr_indices          = [curr_indices(new_order(:,1),1),curr_indices(new_order(:,2),2)];
+                                            curr_orient           = [curr_orient(new_order(:,1),1),curr_orient(new_order(:,2),2)];
+                                            curr_stim2_orient     = [curr_stim2_orient(new_order(:,1),1),curr_stim2_orient(new_order(:,2),2)];
+                                            diff_orient           = abs(circulardiff(curr_orient(dot_idx,1),curr_orient(dot_idx,2),360));
+                                            curr_stim2_class      = [curr_stim2_class(new_order(:,1),1), curr_stim2_class(new_order(:,2),2)];
+                                            dot_idx2              = find(sum(curr_stim2_class==3,2)==2);
+%                                             if allow_uneven_cues && exist('extra_shuffle','var') && ~isempty(extra_shuffle)
+%                                                 extra_shuffle(1,curr_indices(:,1)) = extra_shuffle(1,curr_indices(:,1));
+%                                                 extra_shuffle(2,curr_indices(:,1)) = extra_shuffle(2,curr_indices(:,2));
+%                                             end
+                                            if ~isempty(dot_idx2)
+                                                diff_orient2      = abs(circulardiff(curr_stim2_orient(dot_idx2,1),curr_stim2_orient(dot_idx2,2),360));
                                             end
                                         end
+                                    elseif strcmp(task_class_name_to_shuffle,{'scc'})
+                                        curr_master_trial_idx = [curr_master_trial_idx(new_order(:,1),1),curr_master_trial_idx(new_order(:,2),2)];
+                                    	curr_master_im_nr     = [curr_master_im_nr(new_order(:,1),1),curr_master_im_nr(new_order(:,2),2)];
+                                        curr_indices          = [curr_indices(new_order(:,1),1),curr_indices(new_order(:,2),2)];
+                                        curr_orient           = [curr_orient(new_order(:,1),1),curr_orient(new_order(:,2),2)];
+                                        diff_orient           = abs(circulardiff(curr_orient(dot_idx,1),curr_orient(dot_idx,2),360));
+                                        diff_orient2          = [];
+                                    else
+                                        error('wtf')
                                     end
+                                    
+                                elseif swap_ok == -1 % -1 = swap is needed, but doesn't work 
+                                    % do nothing
                                 end
                             end
+                                                        
                             % If difference between dots is less than we allow, we reset
                             % dot_ok flag to false. If angles are ok, then we leave the
                             % state of the dot_ok as set above.
-                            if any(diff_orient<=params.stim.dot.min_ang_distance_dot)
+                            if any(diff_orient<=params.stim.dot.min_ang_distance_dot) || any(diff_orient2<=params.stim.dot.min_ang_distance_dot)
                                 dot_ok = false;
                             else
                                 dot_ok = true;
                             end
-                        elseif ~isempty(dot_idx) && any(diff_orient>params.stim.dot.min_ang_distance_dot)
-                            dot_ok = true;
-                        elseif isempty(dot_idx)
+                            
+                            % if stim1 is fine, but stim 2 is not
+                        elseif ~allow_uneven_cues && ...
+                                ((isempty(dot_idx) || (~isempty(dot_idx) && any(diff_orient > params.stim.dot.min_ang_distance_dot))) && ...
+                                (~isempty(dot_idx2) && any(diff_orient2<=params.stim.dot.min_ang_distance_dot)))
+                            
+                            % if we have more than two double dot trials, see if we can swap them
+                            if length(dot_idx2) > 1
+                                [new_order2,swap_ok2] = vcd_doubleDotAngleCheck(params.stim.dot.min_ang_distance_dot, dot_idx2, curr_stim2_orient, curr_cues);
+                                
+                                if swap_ok2 == 1
+                                    % check what reordering would do to stim1
+                                    tmp_curr_stimclass = [curr_stimclass(new_order2(:,1),1), curr_stimclass(new_order2(:,2),2)];
+                                    tmp_dot_idx        = find(sum(tmp_curr_stimclass==3,2)==2);
+                                    tmp_diff_orient    = [curr_orient(new_order2(:,1),1), curr_orient(new_order2(:,2),2)];
+                                    tmp_curr_cues      = curr_cues;
+                                    assert(all(isequal(tmp_curr_cues,curr_cues(new_order2(:,2)))));
+                                    
+                                    % check if stim1 is ok with reordering
+                                    [~, swap_ok1] = vcd_doubleDotAngleCheck(params.stim.dot.min_ang_distance_dot, tmp_dot_idx, tmp_diff_orient, tmp_curr_cues);
+                                    if swap_ok1==0 % update is ok
+                                        curr_master_trial_idx = [curr_master_trial_idx(new_order2(:,1),1), curr_master_trial_idx(new_order2(:,2),2)];
+                                        curr_master_im_nr     = [curr_master_im_nr(new_order2(:,1),1), curr_master_im_nr(new_order2(:,2),2)]; 
+                                        curr_indices          = [curr_indices(new_order2(:,1),1), curr_indices(new_order2(:,2),2)];
+                                        curr_orient           = tmp_diff_orient;
+                                        curr_stim2_orient     = [curr_stim2_orient(new_order2(:,1),1), curr_stim2_orient(new_order2(:,2),2)];
+                                        dot_idx               = tmp_dot_idx;
+                                        diff_orient           = abs(circulardiff(curr_orient(dot_idx,1),curr_orient(dot_idx,2),360));
+                                        diff_orient2          = abs(circulardiff(curr_stim2_orient(dot_idx2,1),curr_stim2_orient(dot_idx2,2),360));
+%                                         if allow_uneven_cues && exist('extra_shuffle','var') && ~isempty(extra_shuffle)
+%                                             extra_shuffle(1,curr_indices(:,1)) = extra_shuffle(1,curr_indices(:,1));
+%                                             extra_shuffle(2,curr_indices(:,1)) = extra_shuffle(2,curr_indices(:,2));
+%                                         end
+                                    else
+                                        % do nothing
+                                    end
+                                end
+                            end
+                            
+                            
+                            % If difference between dots is less than we allow, we reset
+                            % dot_ok flag to false. If angles are ok, then we leave the
+                            % state of the dot_ok as set above.
+                            if (isempty(dot_idx) || (~isempty(dot_idx) && any(diff_orient > params.stim.dot.min_ang_distance_dot))) && ...
+                                (~isempty(dot_idx2) && any(diff_orient2<=params.stim.dot.min_ang_distance_dot))
+                                dot_ok = false;
+                            else
+                                dot_ok = true;
+                            end
+                            
+                        elseif ~isempty(dot_idx) && isempty(dot_idx2) % if stim 1 has single dots and stim 2 has no single dots
+                            if any(diff_orient > params.stim.dot.min_ang_distance_dot) % single dots angles are not too close
+                                dot_ok = true;
+                            elseif any(diff_orient < params.stim.dot.min_ang_distance_dot) % single dots angles are too close
+                                dot_ok = false;
+                            else
+                                error('wtf')
+                            end
+                        elseif isempty(dot_idx) && ~isempty(dot_idx2) % if stim 1 has no single dots and stim 2 has single dots
+                            if any(diff_orient2 > params.stim.dot.min_ang_distance_dot) % stim 2 single dots angles are not too close
+                                dot_ok = true;
+                            elseif any(diff_orient2 < params.stim.dot.min_ang_distance_dot) % stim 2 single dots angles are too close
+                                dot_ok = false;
+                            else
+                                error('wtf')
+                            end
+                        elseif ~isempty(dot_idx) && ~isempty(dot_idx2) % if stim 1 and stim 2 have single dots
+                            if any(diff_orient > params.stim.dot.min_ang_distance_dot) && any(diff_orient2 > params.stim.dot.min_ang_distance_dot) % both not too close
+                                dot_ok = true;
+                            elseif any(diff_orient < params.stim.dot.min_ang_distance_dot) && any(diff_orient2 < params.stim.dot.min_ang_distance_dot) % both too close
+                                dot_ok = false;
+                            elseif any(diff_orient > params.stim.dot.min_ang_distance_dot) && any(diff_orient2 < params.stim.dot.min_ang_distance_dot) % stim2 too close
+                                dot_ok = false;
+                            elseif any(diff_orient < params.stim.dot.min_ang_distance_dot) && any(diff_orient2 > params.stim.dot.min_ang_distance_dot) % stim1 too close
+                                dot_ok = false;
+                            else
+                                error('wtf')
+                            end
+                        elseif isempty(dot_idx) && isempty(dot_idx2) % if stim 1 nor stim 2 has no single dots
                             dot_ok = true;
                         else
                             error('wtf')
@@ -535,14 +683,15 @@ elseif ~isempty(cued_stim_loc)
                     else
                         dot_ok = false;
                     end
-
+                
                     % if dots aren't too close, we are happy
                     if dot_ok
                         block_ok(counter)     = 1;
                         ok_shuffled_cued      = cat(1,ok_shuffled_cued,     curr_cues');
+                        ok_indices            = cat(1,ok_indices,           curr_indices);
                         ok_master_trial_list  = cat(1,ok_master_trial_list, curr_master_trial_idx);
                         ok_im_nr              = cat(1,ok_im_nr,             curr_master_im_nr);
-                        
+                        assert(isequal(ok_master_trial_list, [master_trial_shuffled(ok_indices(:,1),1),master_trial_shuffled(ok_indices(:,2),2)]))
                     elseif strcmp(session_type, 'MRI') && ~params.is_wide && ... % if this is a deep MRI session
                             length(block_ok)==1 && dot_ok && ... % and we have one block left, with no single dot location issues
                             sum(n1==0) <=1 % and this trial order is only excluded because we lack one stimulus class
@@ -552,16 +701,17 @@ elseif ~isempty(cued_stim_loc)
                         ok_shuffled_cued      = cat(1,ok_shuffled_cued,     curr_cues');
                         ok_master_trial_list  = cat(1,ok_master_trial_list, curr_master_trial_idx);
                         ok_im_nr              = cat(1,ok_im_nr,             curr_master_im_nr);
-                        
+                        assert(isequal(ok_master_trial_list, [master_trial_shuffled(ok_indices(:,1),1),master_trial_shuffled(ok_indices(:,2),2)]))
                     % if we have button press and/or single dot location
                     % issues, we note the block and reshuffle them later
                     elseif ~dot_ok
                         block_ok(counter)        = 0;
-                        not_ok_shuffle_vec       = cat(1,not_ok_shuffle_vec,shuffle_vec(curr_indices));
-                        not_ok_indices           = cat(1,not_ok_indices,curr_indices');
-                        not_ok_shuffled_cued     = cat(1,not_ok_shuffled_cued, curr_cues');
+                        not_ok_shuffle_vec       = cat(1,not_ok_shuffle_vec,       shuffle_vec(curr_indices(:,1)));
+                        not_ok_indices           = cat(1,not_ok_indices,           curr_indices);
+                        not_ok_shuffled_cued     = cat(1,not_ok_shuffled_cued,     curr_cues');
                         not_ok_master_trial_list = cat(1,not_ok_master_trial_list, curr_master_trial_idx);
                         not_ok_im_nr             = cat(1,not_ok_im_nr,             curr_master_im_nr);
+                        assert(isequal(not_ok_master_trial_list, [master_trial_shuffled(not_ok_indices(:,1),1),master_trial_shuffled(not_ok_indices(:,2),2)]))
                     else
                         error('wtf')
                     end
@@ -570,7 +720,7 @@ elseif ~isempty(cued_stim_loc)
                 end
                 
                 % accumulate indices that are ok
-                stored_shuffled_cued_side = cat(1,stored_shuffled_cued_side, ok_shuffled_cued);
+                stored_shuffled_cued_side  = cat(1,stored_shuffled_cued_side, ok_shuffled_cued);
                 stored_master_trial        = cat(1,stored_master_trial, ok_master_trial_list);
                 stored_master_im_nr        = cat(1,stored_master_im_nr, ok_im_nr);
 
@@ -583,15 +733,17 @@ elseif ~isempty(cued_stim_loc)
                     if sum(block_ok)==0
                         % if none of the blocks adhere by our constraints, we
                         % call them "no_progress_attempts". We try to shuffle
-                        % 25 (behavior/wide) or 50 (deep) more times to see if that solves anything,
+                        % 500 (behavior/wide-scc) or 1000 (deep-ltm) more times to see if that solves anything,
                         % otherwise we start over
                         no_progress_attempts = no_progress_attempts + 1;
                         
                         % for debug purposes: print nr of blocks left to shuffle, and distribution of stimulus classes
-                        fprintf('\n%02d - %s',length(block_ok), num2str(histcounts(shuffled_responses,1:5)));  
+                        fprintf('\n%02d - %s',length(block_ok), num2str(histcounts(shuffled_responses,1:5)));
                         if no_progress_attempts == max_no_progress_attempts || ...
-                                length(unique(shuffled_responses(not_ok_indices)))<length(stim_class_nrs) || ... % if we miss one stimulus class (we will never be able to reach a solution)
-                                any(histcounts(shuffled_responses(not_ok_indices),[1:(length(stim_class_nrs)+1)]) < length(block_ok)) % if we can't allocate at least one stimulus from 3 stimulus classes per block (we will never be able to reach a solution)
+                                (strcmp(task_class_name_to_shuffle,{'scc'}) && length(unique(shuffled_responses(not_ok_indices(:,1))))<length(stim_class_nrs)) || ... % if we miss one stimulus class (we will never be able to reach a solution)
+                                (strcmp(task_class_name_to_shuffle,{'scc'}) && any(histcounts(shuffled_responses(not_ok_indices(:,1)),[1:(length(stim_class_nrs)+1)]) < length(block_ok))) || ...  % if we can't allocate at least one stimulus from 3 stimulus classes per block (we will never be able to reach a solution)
+                                (strcmp(task_class_name_to_shuffle,{'ltm'}) && length(block_ok)>3 && length(unique(shuffled_responses(not_ok_indices(:,1))))<2) % if we have more than 3 blocks, and they are from the same stimulus class, we start over.
+                                 
                             
                             % if we can't further optimize then we restart shuffling
                             correct_response = [stimclass_left_cued,stimclass_right_cued];
@@ -606,37 +758,107 @@ elseif ~isempty(cued_stim_loc)
                             stored_master_im_nr       = [];
                             no_progress_attempts      = 0;
                             
+                            if strcmp(task_class_name_to_shuffle,{'ltm'})
+                                stim2_orient     = [master_table.stim2_orient_dir(combined_trial_shuffleAB(:,1),1), master_table.stim2_orient_dir(combined_trial_shuffleAB(:,2),2)];
+                                stim2_class      = [vcd('stimtostimclassnumber',master_table.stim2_im_nr(combined_trial_shuffleAB(:,1),1));vcd('stimtostimclassnumber',master_table.stim2_im_nr(combined_trial_shuffleAB(:,2),2))]';
+                                allow_uneven_cues = false;
+                                extra_shuffle    = [];
+                            end
+                            
                             % shuffle order of left/right cued
                             shuffle_vec = [shuffle_concat(1:(length(correct_response)/2),1); ...
                                 shuffle_concat((1+(length(correct_response)/2)):length(correct_response),1)]; % N trials
                             
                         else
+                            if allow_uneven_cues
+                                % Sort back to [1,2,1,2,.. spatial cues]
+                                [~,ix0] = sort(extra_shuffle(1,:)); % there are no ok_indices, so we don't have to worry about differences in length
+                                not_ok_indices = [not_ok_indices(ix0,1),not_ok_indices(ix0,2)];
+                                if ~ignore_uneven_cues
+                                    assert(isequal(cued_side_shuffled(ix0),repmat([1,2],1,length(ix0)/2)));
+                                else
+                                    fprintf('')
+                                end
+                                % reorder list to original order
+                                not_ok_master_trial_list = [not_ok_master_trial_list(not_ok_indices(:,1),1),not_ok_master_trial_list(not_ok_indices(:,2),2)];
+                                not_ok_im_nr             = [not_ok_im_nr(not_ok_indices(:,1),1),not_ok_im_nr(not_ok_indices(:,2),2)];
+                                allow_uneven_cues        = true; % do NOT reset flag.
+                                extra_shuffle            = [];
+                            end
+                            
                             % otherwise we update list of trials that need to be reshuffled
-                            cued_side        = cued_side_shuffled(not_ok_indices);
-                            correct_response = shuffled_responses(not_ok_indices);
+                            cued_side        = cued_side_shuffled(not_ok_indices(:,1));
+                            correct_response = shuffled_responses(not_ok_indices(:,1));
                             block_start      = block_start(1:sum(block_ok==0));
-                            stimclass_both   = stim_both_sides_shuffled(not_ok_indices,:);
-                            stim_orient      = stim_orient_shuffled(not_ok_indices,:);
-                            master_trial     = master_trial_shuffled(not_ok_indices,:);
-                            master_im_nr     = master_im_nr_shuffled(not_ok_indices,:);
+                            stimclass_both   = [stim_both_sides_shuffled(not_ok_indices(:,1),1),stim_both_sides_shuffled(not_ok_indices(:,2),2)];
+                            stim_orient      = [stim_orient_shuffled(not_ok_indices(:,1),1),stim_orient_shuffled(not_ok_indices(:,2),2)];
+                            master_trial     = [master_trial_shuffled(not_ok_indices(:,1),1),master_trial_shuffled(not_ok_indices(:,2),2)];
+                            master_im_nr     = [master_im_nr_shuffled(not_ok_indices(:,1),1),master_im_nr_shuffled(not_ok_indices(:,2),2)];
+
                             assert(isequal(master_trial,not_ok_master_trial_list))
                             assert(isequal(master_im_nr,not_ok_im_nr))
                             
                             % shuffle order of left/right cued
                             shuffle_vec = [shuffle_concat(1:2:length(correct_response),1); ...
                                 shuffle_concat(2:2:length(correct_response),1)]; % N trials
+                            
+                            if strcmp(task_class_name_to_shuffle,{'ltm'})
+                                stim2_orient     = [stim2_orient_shuffled(not_ok_indices(:,1),1),stim2_orient_shuffled(not_ok_indices(:,2),2)];
+                                stim2_class      = [stim2_class_shuffled(not_ok_indices(:,1),1),stim2_class_shuffled(not_ok_indices(:,2),2)];
+                                
+                                % if we have 4 or fewer blocks to shuffle,
+                                % we will allow for uneven left/right
+                                % spatial cues.
+                                if length(block_ok) <= 3
+                                    allow_uneven_cues = true;
+                                    if ~ignore_uneven_cues % after the first time of introducing unbalanced spatial cues, we need to ignore this every following shuffle, until we reset.
+                                        ignore_uneven_cues = true;
+                                    end
+                                else
+                                    allow_uneven_cues = false;
+                                    ignore_uneven_cues = false;
+                                end
+                            end
+                            
+                            
                         end
                     else
+                        if allow_uneven_cues
+                            % Sort back to [1,2,1,2,.. spatial cues]
+                            extra_shuffle0 = extra_shuffle; % make a copy
+                            extra_shuffle0(:,ok_indices(:,1)) = NaN; % remove ok indices
+                            [~,ix01]  = sort(extra_shuffle0(1,~isnan(extra_shuffle0(1,:))));
+                            [~,ix02]  = sort(extra_shuffle0(2,~isnan(extra_shuffle0(2,:))));
+                            xi        = NaN(2,size(extra_shuffle0,2));
+                            xi(1,~isnan(extra_shuffle0(1,:))) = ix01;
+                            xi(2,~isnan(extra_shuffle0(1,:))) = ix02;
+                            xi = xi';
+                            not_ok_indices0 = not_ok_indices; % make a copy (ok indices are already removed)
+                            not_ok_indices = cat(2,not_ok_indices0(xi(~isnan(xi(:,1)),1),1),not_ok_indices0(xi(~isnan(xi(:,2)),2),2));
+                            
+                            % reorder list to original order
+                            not_ok_master_trial_list = [not_ok_master_trial_list(xi(~isnan(xi(:,1)),1),1),not_ok_master_trial_list(xi(~isnan(xi(:,2)),2),2)];
+                            not_ok_im_nr             = [not_ok_im_nr(xi(~isnan(xi(:,1)),1),1),not_ok_im_nr(xi(~isnan(xi(:,2)),2),2)];
+                            allow_uneven_cues        = false; % reset flag.
+                            extra_shuffle            = [];
+                            clear extra_shuffle0 not_ok_indices0 xi xi01 xi02
+                        end
+                            
                         % otherwise we update list of trials that need to be reshuffled
-                        cued_side        = cued_side_shuffled(not_ok_indices);
-                        correct_response = shuffled_responses(not_ok_indices);
+                        cued_side        = cued_side_shuffled(not_ok_indices(:,1));
+                        correct_response = shuffled_responses(not_ok_indices(:,1));
                         block_start      = block_start(1:sum(block_ok==0));
-                        stimclass_both   = stim_both_sides_shuffled(not_ok_indices,:);
-                        stim_orient      = stim_orient_shuffled(not_ok_indices,:);
-                        master_trial     = master_trial_shuffled(not_ok_indices,:);
-                        master_im_nr     = master_im_nr_shuffled(not_ok_indices,:);
+                        stimclass_both   = [stim_both_sides_shuffled(not_ok_indices(:,1),1),stim_both_sides_shuffled(not_ok_indices(:,2),2)];
+                        stim_orient      = [stim_orient_shuffled(not_ok_indices(:,1),1),stim_orient_shuffled(not_ok_indices(:,2),2)]; 
+                        master_trial     = [master_trial_shuffled(not_ok_indices(:,1),1),master_trial_shuffled(not_ok_indices(:,2),2)];
+                        master_im_nr     = [master_im_nr_shuffled(not_ok_indices(:,1),1),master_im_nr_shuffled(not_ok_indices(:,2),2)];
                         assert(isequal(master_trial,not_ok_master_trial_list))
                         assert(isequal(master_im_nr,not_ok_im_nr))
+                        
+                        if strcmp(task_class_name_to_shuffle,{'ltm'})
+                            stim2_orient = [stim2_orient_shuffled(not_ok_indices(:,1),1),stim2_orient_shuffled(not_ok_indices(:,2),2)];
+                            stim2_class  = [stim2_class_shuffled(not_ok_indices(:,1),1),stim2_class_shuffled(not_ok_indices(:,2),2)];
+                        end
                         
                         % shuffle order of left/right cued
                         shuffle_vec = [shuffle_concat(1:2:length(correct_response),1); ...
@@ -644,8 +866,9 @@ elseif ~isempty(cued_stim_loc)
                     end
                 end
                 if attempt > max_attempts_shuffle2
-                    warning('\n[%s]: Can''t reach a solution for across trial shuffle! Will run the same code again.',mfilename)
-                    restart_shuffle = true;
+                    clc; warning('\n[%s]: Can''t reach a solution for across trial shuffle! Will run the same code again.',mfilename)
+                    restart_shuffle    = true; 
+                    ignore_uneven_cues = false;
                     break;
                 end
                 
@@ -654,7 +877,7 @@ elseif ~isempty(cued_stim_loc)
                 end
             end
             if ~restart_shuffle
-                fprintf('Done!\n');
+                clc; fprintf('Done!\n');
             
                 % if block checks are completed, check is we have the
                 % expected distribution of stimulus classes across all blocks
@@ -668,10 +891,21 @@ elseif ~isempty(cued_stim_loc)
                 right_stimclass_updated_stim_nr = vcd('stimtostimclassnumber',stored_master_im_nr(:,2));
                 stimclass_from_stim_nr          = [left_stimclass_updated_stim_nr; right_stimclass_updated_stim_nr]';
                 correct_response                = [stimclass_from_stim_nr(stored_shuffled_cued_side==1,1);stimclass_from_stim_nr(stored_shuffled_cued_side==2,2)];
-                cued_side                       = repmat([1,2], 1, length(correct_response)/2);
+                cued_side                       = stored_shuffled_cued_side;
                 n2 = histcounts(correct_response,[stim_class_nrs, stim_class_nrs(end)+1]); % check stim class across all blocks.
-                assert(isequal(n2,abs_stim_class_chance * (length(correct_response)/nr_of_trials_per_block)))
-                assert(isequal(stored_shuffled_cued_side, repmat([1;2],size(stored_shuffled_cued_side,1)/2,1)))
+                if strcmp(task_class_name_to_shuffle,{'scc'})
+                    assert(isequal(n2,abs_stim_class_chance * (length(correct_response)/nr_of_trials_per_block)))
+                    assert(isequal(stored_shuffled_cued_side, repmat([1;2],size(stored_shuffled_cued_side,1)/2,1)))
+                elseif strcmp(task_class_name_to_shuffle,{'ltm'})
+                    expected_distribution = abs_stim_class_chance * (length(correct_response)/nr_of_trials_per_block);
+                    assert(min(n2) >= min(expected_distribution))
+                    assert(max(n2) <= (max(expected_distribution)+1)); % +1 to account for rounding errors
+                    
+                    assert(sum(stored_shuffled_cued_side == repmat([1;2],size(stored_shuffled_cued_side,1)/2,1)) >=  size(stored_shuffled_cued_side,1)-(3*nr_of_trials_per_block))
+                else
+                    error('wtf')
+                end
+                
                 assert(isequal(sort(stimclass_from_stim_nr(:))', sort(vcd('stimtostimclassnumber',combined_img_nr_shuffleAB(:)))))
 
                 combined_trial_shuffleAB3  = stored_master_trial;
@@ -683,7 +917,7 @@ elseif ~isempty(cued_stim_loc)
         
             if strcmp(task_class_name_to_shuffle,{'ltm'})
                 if exist('sub_shuffle_center','var')
-                    assert(isequal(size(sub_shuffle_center,1), (length(params.stim.ns.unique_im_nrs_specialcore)*unique_trial_repeats(5,strcmp(task_class_name_to_shuffle,params.exp.taskclassnames)))))
+                    assert(isequal(size(sub_shuffle_center,1), 2*(length(params.stim.ns.unique_im_nrs_specialcore)*unique_trial_repeats(5,strcmp(task_class_name_to_shuffle,params.exp.taskclassnames)))))
                     % add column of nans to match two column structure for left/right
                     % matrix
                     sub_shuffle_center2 = cat(2,sub_shuffle_center,NaN(size(sub_shuffle_center)));
@@ -796,7 +1030,7 @@ elseif ~isempty(cued_stim_loc)
                     assert(all(master_table.stim_nr_right(sub_leftright_catch_shuffle(:))==0));
                     assert(all(im_nr_leftright_catch_shuffle(:)==0));
                     assert(isequal(cued_leftright_catch_shuffle, repmat([1,1,;2,2],length(sub_left_catch_shuffled),1)));
-
+                    
                     % distribute catch trials across all scc or ltm trials
                     combined_trial_shuffleABC0   = NaN(size(combined_trial_shuffleABC,1)+size(sub_leftright_catch_shuffle,1),2);
                     combined_cueloc_shuffleABC0  = NaN(1,size(combined_trial_shuffleABC,1)+size(sub_leftright_catch_shuffle,2));
@@ -839,7 +1073,7 @@ elseif ~isempty(cued_stim_loc)
     for xx = 1:size(master_table(1,:),2); col_widths(xx) = size(table2array(master_table(1,xx)),2); end
     colNames = master_table.Properties.VariableNames;
     double_width_cols = find(col_widths==2);
-    
+    uneven_cue_count = 0;
     for ii = 1:size(combined_trial_shuffleABC,1)
         
         % Get left/center stimulus of this trial
@@ -858,7 +1092,20 @@ elseif ~isempty(cued_stim_loc)
         end
         
         % check cuing & stim nr
-        assert(isequal(new_trial_l.is_cued, combined_cueloc_shuffleABC(ii)));
+        if strcmp(task_class_name_to_shuffle,{'scc'})
+            assert(isequal(new_trial_l.is_cued, combined_cueloc_shuffleABC(ii)));
+        elseif strcmp(task_class_name_to_shuffle,{'ltm'})
+            if (isequal(new_trial_l.is_cued, combined_cueloc_shuffleABC(ii)))
+                % we cool
+            else
+                uneven_cue_count = uneven_cue_count+1;
+            end
+        end
+        
+        if uneven_cue_count > (3*nr_of_trials_per_block)
+            error('too many trials with uneven spatial cues')
+        end
+            
         assert(isequal(new_trial_l.stim_nr_left, combined_im_nr_shuffleABC(ii,1)));
         
         % Get right stimulus of this trial if there is one
