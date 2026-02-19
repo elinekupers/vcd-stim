@@ -24,9 +24,13 @@ unique_cond_nrs_with_catch = unique(condition_master.condition_nr,'rows','stable
 repeat_nr = NaN(size(condition_master,1),2);
 for uc = 1:size(unique_cond_nrs_with_catch,1)
     if any(isnan(unique_cond_nrs_with_catch(uc,:)))
-        assert(find(isnan(unique_cond_nrs_with_catch(uc,:)))==2)
-        ai = find(ismember(condition_master.condition_nr(:,1),unique_cond_nrs_with_catch(uc,1)));
-        assert(isequalwithequalnans(condition_master.condition_nr(ai,2), nan(length(ai),1)))
+        if all(isnan(unique_cond_nrs_with_catch(uc,:))) % catch trial
+            assert(find(isnan(unique_cond_nrs_with_catch(uc,:)))==2)
+            ai = find(ismember(condition_master.condition_nr(:,1),unique_cond_nrs_with_catch(uc,1)));
+            assert(isequalwithequalnans(condition_master.condition_nr(ai,2), nan(length(ai),1)))
+        else
+            ai = find(sum(ismember(condition_master.condition_nr,unique_cond_nrs_with_catch(uc,:)),2)==1); % IMG trials (one side is set to NaN)
+        end
     else
         ai = find(sum(ismember(condition_master.condition_nr,unique_cond_nrs_with_catch(uc,:)),2)==2);
     end
