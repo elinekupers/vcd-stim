@@ -1046,7 +1046,11 @@ for ii = 1:2:length(requested_info)
                     for ff = 1:length(fn)
                         if strcmp(fn{ff},'condition_name')
                             tmp_condname0 = tmp_info.(fn{ff});
-                            tmp_condname1 = strsplit(tmp_condname0{1},'-');
+                            if ismember(stim_info.stim_loc,[1,2])
+                                tmp_condname1 = strsplit(tmp_condname0{stim_info.stim_loc},'-');
+                            elseif stim_info.stim_loc==3
+                                tmp_condname1 = strsplit(tmp_condname0{1},'-');
+                            end
                             tmp_condname2 = [tmp_condname1{1} '-'  tmp_condname1{2} '-' tmp_condname1{3}];
                             tmp_idx = ~cellfun(@isempty, regexp(all_condition_names,[tmp_condname2 '\w*']));
                             stim_info.(fn{ff}) = cat(2,all_condition_names(tmp_idx));
