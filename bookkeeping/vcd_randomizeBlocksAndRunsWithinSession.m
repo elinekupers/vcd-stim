@@ -744,11 +744,11 @@ for ses = 1:length(unique_sessions)
                                     warning('\n[%s]: SKIPPING SESSION 46B FOR NOW for stimulus repeats!',mfilename);
                                 elseif any(ismember(A,3)) && length(trial_order)<=4
                                     [A1, A2] = vcd_findGlobalTrialNrToSwap(condition_master,condition_master0,trial_order);
-                                    error('\n[%s]: !!!! There is a block with too many stimulus repeats for center/left stim!!!! Consider swapping global trial number %d with %d',mfilename, A1, A2);
+                                    error('\n[%s]: !!!! There is a block with too many stimulus repeats for center/left stim!!!! Consider swapping global trial number %d with %d (session_type = %d',mfilename, A1, A2, st);
                                 elseif sum(B>0) && length(trial_order)<=4
                                     if any(ismember(A,3)) || any(ismember(B,3))
                                         [A1, A2] = vcd_findGlobalTrialNrToSwap(condition_master,condition_master0,trial_order);
-                                        error('\n[%s]: !!!! There is a block with too many stimulus repeats for right stim!!!! Consider swapping global trial number %d with %d',mfilename, A1, A2);
+                                        error('\n[%s]: !!!! There is a block with too many stimulus repeats for right stim!!!! Consider swapping global trial number %d with %d (session_type = %d)',mfilename, A1, A2, st);
                                     end
                                 end
                             end
