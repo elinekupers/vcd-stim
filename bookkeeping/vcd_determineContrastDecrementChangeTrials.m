@@ -97,7 +97,7 @@ for st = unique(condition_master.session_type)'
         bonus_idx = randsample(unique_stim_class(ismember(unique_stim_class,[1:4])),remainder);
         min_nr_cd_trials_per_stimclass(bonus_idx)=min_nr_cd_trials_per_stimclass(bonus_idx)+1;
     else
-        min_nr_cd_trials_per_stimclass(ismember(unique_stim_class,[1:4])) = cd_l_r/sum(ismember(unique_stim_class,[1:4]));
+        min_nr_cd_trials_per_stimclass(unique_stim_class(unique_stim_class<5)) = cd_l_r/sum(ismember(unique_stim_class,[1:4]));
     end
     assert(isequal(sum(min_nr_cd_trials_per_stimclass),sum(expected_nr_cd_trials_per_cue)))
     assert(isequal(sum(expected_nr_cd_trials_per_cue),expected_nr_cd_trials));
