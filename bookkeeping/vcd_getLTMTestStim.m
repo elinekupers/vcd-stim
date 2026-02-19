@@ -316,10 +316,10 @@ else % classic stim
                 % find other classic test stimuli from the
                 % diferent stimulus class as test stim (B), and
                 % nor reference stim (a), and same stim location (left or right)
-                nonlures0 = params.stim.all_ltm_pairs(~ismember(params.stim.all_ltm_pairs_stim_class(:,1),[xx(3:4)',5]) & ismember(ltm_all_stim_loc(:,2),jj)); % exclude scenes
+                nonlures0 = params.stim.all_ltm_pairs(~ismember(params.stim.all_ltm_pairs_stim_class(:,2),[xx(3:4)',5]) & ismember(ltm_all_stim_loc(:,2),jj),2); % exclude scenes
                 
                 % remove the probe stim stimulus from the nonlures list.
-                nonlures1 = setdiff(nonlures0,xx(3));
+                nonlures1 = setdiff(nonlures0,xx([1,2]));
                 
                 % add to nonlures list
                 nonlures(jj,ii,:) = nonlures1(randperm(length(nonlures1),length(nonlures1))); % shuffle non-lure trial order
@@ -444,7 +444,7 @@ else % classic stim
         
         % Catch trials
         if cond_table0.is_catch(tt)==1
-            assert(all(reshape(isnan(squeeze(tmp_sc_nr(:,tt,:))),1,[])))
+            assert(all(reshape(isnan(squeeze(tmp_sc_nr(:,tt,:))),1,[]))); % tmp_sc_nr dims: 2 stim loc (1=left,2=right) x 16 trials x 4 cols: [#A #B stimclassA stimclassB]
             stim2_nr = [NaN, NaN]; is_lure = [NaN, NaN]; stim2_match = [NaN NaN];
             
         elseif cond_table0.is_cued(tt) == 1 % left stim cued
@@ -456,7 +456,7 @@ else % classic stim
                 assert(isequal(cond_table0.stim_nr_left(tt),squeeze(tmp_sc_nr(1,tt,1)))); % check if stim1 (A) matches condition table
                 
                 % left stim (cued)
-                stim2_nr(1) = squeeze(tmp_sc_nr(1,tt,2));
+                stim2_nr(1) = squeeze(tmp_sc_nr(1,tt,2)); % 1=left x trial tt x #B
                 is_lure(1)  = 0;
                 stim2_match(1) = 1;
                 % if it is an incorrect ltm trial..
