@@ -309,9 +309,9 @@ if load_params
     if ~isfield(params,'is_demo'), params.is_demo = false; end
     if ~isfield(params,'is_wide'), params.is_wide = false; end
     if strcmp(env_type, 'MRI')
-        fname = sprintf('condition_master_%s%s%s_%s*.mat', choose(params.is_wide,'wide_','deep_'), choose(params.is_demo,'demo_',''), params.disp.name,env_type);
+        fname = sprintf('condition_master_%s%s%s*.mat', choose(params.is_wide,'wide_','deep_'), choose(params.is_demo,'demo_',''), params.disp.name);
     else
-        fname = sprintf('condition_master_%s%s_%s*.mat', choose(params.is_demo,'demo_',''), params.disp.name,env_type);
+        fname = sprintf('condition_master_%s%s*.mat', choose(params.is_demo,'demo_',''), params.disp.name);
     end
     d = dir(fullfile(vcd_rootPath,'workspaces','info',fname));
     fprintf('\n[%s]: Found %d condition_master .mat file(s)\n',mfilename,length(d));
@@ -684,7 +684,7 @@ else % Recreate conditions and blocks and trials
         saveDir = fullfile(vcd_rootPath,'workspaces','info');
         if ~exist(saveDir,'dir'), mkdir(saveDir); end
         if strcmp(env_type,'MRI')
-            fname = sprintf('condition_master_%s%s%s_%s.mat',choose(params.is_wide,'wide_','deep_'), choose(params.is_demo,'demo_',''),params.disp.name,datestr(now,30));
+            fname = sprintf('condition_master_%s%s%s_%s.mat',choose(params.is_wide,'wide_','deep2_'), choose(params.is_demo,'demo_',''),params.disp.name,datestr(now,30));
         else
             fname = sprintf('condition_master_%s%s_%s.mat',choose(params.is_demo,'demo_',''),params.disp.name,datestr(now,30));
         end
@@ -721,8 +721,13 @@ else % Recreate conditions and blocks and trials
         %         if mod(sum(condition_master.is_catch == 1 & ismember(condition_master.is_cued,[1,2])),2)==0
         %             assert(isequal(sum(condition_master.is_cued==1 & condition_master.is_catch==0),sum(condition_master.is_cued==2 & condition_master.is_catch==0)))
         %         else
-        assert(ismember(sum(condition_master.is_cued==1),sum(condition_master.is_cued==2)+[-2:2]))
-        assert(ismember(sum(condition_master.is_cued==2),sum(condition_master.is_cued==1)+[-2:2]))
+        if params.is_wide
+            assert(ismember(sum(condition_master.is_cued==1),sum(condition_master.is_cued==2)+[-2:2]))
+            assert(ismember(sum(condition_master.is_cued==2),sum(condition_master.is_cued==1)+[-2:2]))
+        else
+            assert(ismember(sum(condition_master.is_cued==1),sum(condition_master.is_cued==2)+[-12:12])) % ltm slop
+            assert(ismember(sum(condition_master.is_cued==2),sum(condition_master.is_cued==1)+[-12:12])) % ltm slop
+        end
         %         end
     end
     
@@ -780,7 +785,7 @@ else % Recreate conditions and blocks and trials
                 end
                 
                 if strcmp(env_type,'MRI') && params.is_wide == 0 && st == 2
-                    colsL = tmp.stim_nr_left(strcmp(tmp.stim_class_name(:,1), params.exp.stimclassnames{ii})); % exclude SCC/LTM, we deal with those trials separately
+                    colsL = tmp.stim_nr_left(strcmp(tmp.stim_class_name(:,1), params.exp.stimclassnames{ii})); 
                     
                     if st == 2
                         unique_im_from_table(ii) = length(unique([colsL;colsL_wideB])); % this should be 24 for GBR or RDK, 16 for DOT/OBJ
@@ -798,6 +803,7 @@ else % Recreate conditions and blocks and trials
                 end
                 empirical_nr_of_trials = size(tmp,1);
                 if st == 2
+                    N_catch = expected_nr_of_trials*0.2;
                     if ~(abs(floor(empirical_nr_of_trials)-expected_nr_of_trials)<= N_catch)
                         warning('[%s]: Mismatch between expected and empirical nr of NS blocks. YOU SHOULD DOUBLE CHECK!! that this is due to LTM mix of stimulus classes.', mfilename)
                     end
@@ -888,8 +894,8 @@ else % Recreate conditions and blocks and trials
                             colsLR_ltm = [];
                         else
                             % Deep has SCC an LTM
-                            colsL = tmp.stim_nr_left(~ismember(tmp.task_class,[3,6]) & strcmp(tmp.stim_class_name(:,1), params.exp.stimclassnames{ii})); % exclude SCC/LTM, we deal with those trials separately
-                            colsR = tmp.stim_nr_right(~ismember(tmp.task_class,[3,6]) & strcmp(tmp.stim_class_name(:,2), params.exp.stimclassnames{ii})); % exclude SCC/LTM, we deal with those trials separately
+                            colsL = tmp.stim_nr_left(~ismember(tmp.task_class,[3,6,7]) & strcmp(tmp.stim_class_name(:,1), params.exp.stimclassnames{ii})); % exclude SCC/LTM/IMG, we deal with those trials separately
+                            colsR = tmp.stim_nr_right(~ismember(tmp.task_class,[3,6,7]) & strcmp(tmp.stim_class_name(:,2), params.exp.stimclassnames{ii})); % exclude SCC/LTM/IMG, we deal with those trials separately
                             colsLR = [colsL(:),colsR(:)]; % if this fails, then we don't have equal left and right stimulus numbers for classic stimuli
                             if st == 2
                                 unique_im_from_table(ii) = length(unique([colsLR;colsLR_wideB])); % this should be 24 for GBR or RDK, 16 for DOT/OBJ
@@ -902,6 +908,8 @@ else % Recreate conditions and blocks and trials
                                 tmp.stim_nr_right(tmp.task_class ==3 & strcmp(tmp.stim_class_name(:,2), params.exp.stimclassnames{ii}))];
                             colsLR_ltm = [tmp.stim_nr_left(tmp.task_class ==6 & strcmp(tmp.stim_class_name(:,1), params.exp.stimclassnames{ii})); ... % deal with ltm trials
                                 tmp.stim_nr_right(tmp.task_class ==6 & strcmp(tmp.stim_class_name(:,2), params.exp.stimclassnames{ii}))];
+                            colsLR_img = [tmp.stim_nr_left(tmp.task_class ==7 & strcmp(tmp.stim_class_name(:,1), params.exp.stimclassnames{ii})); ... % deal with ltm trials
+                                tmp.stim_nr_right(tmp.task_class ==7 & strcmp(tmp.stim_class_name(:,2), params.exp.stimclassnames{ii}))];
                         end
                         
                         % Calculate the expected nr of trials from the params.exp.mri.ses_blocks table.
@@ -914,7 +922,7 @@ else % Recreate conditions and blocks and trials
                         if params.is_wide
                             empirical_nr_of_trials = ceil(sum([size(colsLR,1),size(unique(colsLR_scc),1)/2, size(unique(colsLR_ltm),1)/2])); % for GBR/RDK/DOT/OBJ: sum regular trials, scc trials (OBJ: we treat objectcatch trials as regular trials)
                         else
-                            empirical_nr_of_trials = ceil(sum([size(colsLR,1),size(colsLR_scc,1), size(colsLR_ltm,1)])); % for GBR/RDK/DOT/OBJ: sum regular trials, scc trials (OBJ: we treat objectcatch trials as regular trials)
+                            empirical_nr_of_trials = ceil(sum([size(colsLR,1),size(colsLR_scc,1), size(colsLR_ltm,1), size(colsLR_img,1)])); % for GBR/RDK/DOT/OBJ: sum regular trials, scc trials (OBJ: we treat objectcatch trials as regular trials)
 
                             if ii == 4 % add object catch trials
                                 empirical_nr_of_trials = empirical_nr_of_trials + size(tmp_catch,1);
@@ -922,7 +930,7 @@ else % Recreate conditions and blocks and trials
                         end
                         if st==2
                             if ~(abs(floor(empirical_nr_of_trials)-expected_nr_of_trials)<=(scc_tolerance(st)+ltm_tolerance(st))) % we allow for x trials difference per stim class due to imbalanced nr of trials for SCC
-                                warning('[%s]: there is a difference of %d between the number empirical and expected trials for version B!', mfilename, abs(floor(empirical_nr_of_trials)-expected_nr_of_trials))
+                                warning('[%s]: %s: there is a difference of %d between the number empirical and expected trials for version B!', mfilename, params.exp.stimclassnames{ii}, abs(floor(empirical_nr_of_trials)-expected_nr_of_trials))
                             end
                         else
                             assert(abs(floor(empirical_nr_of_trials)-expected_nr_of_trials)<=(scc_tolerance(st)+ltm_tolerance(st))); % we allow for x trials difference per stim class due to imbalanced nr of trials for SCC
