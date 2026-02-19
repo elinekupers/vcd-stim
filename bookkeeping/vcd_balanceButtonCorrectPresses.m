@@ -260,7 +260,8 @@ for ses = session_nrs
                                                 cued_conds       = condition_master.is_cued(ti(order(potential_trials(1:nr_trials))));
 
                                                 hc = histcounts(cued_conds(1:nr_trials),[1:4]);
-                                                if hc(1)==hc(2)
+                                                block_tmp = length(order)/4;
+                                                if diff([hc(1),hc(2)])<=4 % we allow for some inequalities in cuing
                                                     break;
                                                 end
                                             end
@@ -320,7 +321,11 @@ for ses = session_nrs
                                                 bb_ok(bb) = 1;
                                             elseif all(ismember(cued_conds(bbi),[1,2]))
                                                 cued_counts = histcounts(cued_conds(bbi), [1:3]); % histcount(x,[1:3]) corresponds to bins = [0,1,2]
-                                                if diff(cued_counts) == max_diff_leftright_cueing
+                                                if tc == 6
+                                                    if diff(cued_counts) <=2
+                                                        bb_ok(bb) = 1;
+                                                    end
+                                                elseif diff(cued_counts) == max_diff_leftright_cueing
                                                     bb_ok(bb) = 1;
                                                 end
                                             end
@@ -347,8 +352,6 @@ for ses = session_nrs
                                             end
                                         end
                                         if (sum(stim_nr_repeats(:))/2) == nr_blocks && sum(bb_ok) == nr_blocks
-                                            break;
-                                        elseif tc == 6
                                             break;
                                         else
                                             reshuffle_me = true;
@@ -517,7 +520,7 @@ for ses = session_nrs
                                             reshuffle_me = true;
                                         end
                                         
-                                    elseif ismember(curr_sc,99) || ismember(curr_tc,3) % scc-all
+                                    elseif ismember(curr_sc,99) && ismember(curr_tc,3) % scc-all
                                         % Check if we sample all core images across trials
                                         stmclass0 = condition_master.stim_class_name(st_idx,:);
                                         stmclass0 = stmclass0(~catch_idx,:);
@@ -544,57 +547,47 @@ for ses = session_nrs
                                             reshuffle_me = true;
                                         end
                                         
-                                    elseif ismember(curr_sc,99) || ismember(curr_tc,6) % LTM-all
+                                    elseif ismember(curr_sc,99) && ismember(curr_tc,6) % LTM-all
                                         
-                                        % Check 1: did we equally sample
-                                        % match/nonmatch
-                                        cued0     = condition_master.is_cued(st_idx);
-                                        cued0     = cued0(~catch_idx);
-                                        if all(cued0==3) % ns stim
-                                            stmcat0 = condition_master.super_cat(st_idx,:);
-                                            stmcat0 = stmcat0(~catch_idx,:);
-                                            [~,stm_cued_i] = ismember(stmcat0, params.stim.ns.super_cat);
-                                            n1 = histcounts(stm_cued_i,[1:6]); % histcount(x,[1:n]) corresponds to bins = [0,1,..,n-1] n = 5 super cat
-                                        else
-                                            stmclass0 = condition_master.stim_class_name(st_idx,:);
-                                            stmclass0 = stmclass0(~catch_idx,:);
-                                            stmclass0_cued = [stmclass0(cued0==1,1);stmclass0(cued0==2,2)];
-                                            [~,stm_cued_i] = ismember(stmclass0_cued,params.exp.stimclassnames([1,3,2,4])); 
-                                            n1 = histcounts(stm_cued_i,[1:5]); % histcount(x,[1:n]) corresponds to bins = [0,1,..,n-1] n = 4 stim cat
-                                        end
-
+                                        % Check 1: did we equally sample stimulus classses
+                                        cued0_ns       = condition_master.is_cued(st_idx);
+                                        % ns stim
+                                        cued1_ns       = (~catch_idx & cued0_ns==3);
+                                        stmcat0        = condition_master.super_cat_name(st_idx(cued1_ns),:);
+                                        assert(all(cellfun(@isnan, stmcat0(:,2))))
+                                        [~,stm_cued_i] = ismember(stmcat0(:,1), params.stim.ns.super_cat);
+                                        n1_ns          = histcounts(stm_cued_i,[1:6]); % histcount(x,[1:n]) corresponds to bins = [0,1,..,n-1] n = 5 super cat
+                                        
+                                        % classic stim
+                                        cued0_clsc  = condition_master.is_cued(st_idx);
+                                        cued1_clsc  = (~catch_idx & ismember(cued0_clsc,[1,2]));
+                                        stmclass0   = condition_master.stim_class_name(st_idx(cued1_clsc),:);
+                                        [~,stm_cued_i] = ismember(stmclass0,params.exp.stimclassnames([1,3,2,4]));
+                                        stmclass0_cued = [stm_cued_i(cued0_clsc(cued1_clsc)==1,1);stm_cued_i(cued0_clsc(cued1_clsc)==2,2)];
+                                        n1_clsc = histcounts(stmclass0_cued,[1:5]); % histcount(x,[1:n]) corresponds to bins = [0,1,..,n-1] n = 4 stim cat
+                                        
                                         % check distribution of stim class
-                                        if isequal(sort(n1),[1 1 1 1]) || isequal(sort(n1),[0 0 2 2])
-                                            reshuffle_me = false;
-                                            break % hurray
-                                        elseif trial_to_condition_ratio == 1 && sum(catch_idx) > 0
-                                            % if we sampled all unique conditions AND have catch trials,
-                                            % then we will likely never reach a solution unless we allow for a small difference in response distribution.
-                                            if (all(diff(n)<=sum(catch_idx))) % if difference caused by catch trials, we don't reshuffle
-                                                reshuffle_me = false;
-                                                break;
-                                            else
-                                                reshuffle_me = true;
-                                            end
+                                        if min(n1_ns)==0
+                                            tmp = abs(diff([repmat(max(n1_ns),1,length(n1_ns));n1_ns]));
                                         else
-                                            reshuffle_me = true;
+                                            tmp = n1_ns/min(n1_ns);
                                         end
-                                        
-                                        % check 2: Do we have balanced button presses
-                                        if (all(diff(n)==0)) % check if we have balanced button presses
+                                        n1_ns_ok     = all(tmp<3); % can't have a ratio that is more than 3:1 
+                                        if min(n1_clsc)==0
+                                            tmp = abs(diff([repmat(max(n1_clsc),1,length(n1_clsc));n1_clsc]));
+                                        else
+                                            tmp = n1_clsc/min(n1_clsc);
+                                        end
+                                        n1_clsc_ok   = all(tmp<3); % can't have a ratio that is more than 3:1
+                                        clear tmp
+                                        % + check 2: Do we have balanced button presses
+                                        if (diff(n)==0) && n1_ns_ok && n1_clsc_ok 
                                             reshuffle_me = false;
                                             break % hurray
                                         elseif trial_to_condition_ratio == 1 && sum(catch_idx) > 0
                                             % if we sampled all unique conditions AND have catch trials,
                                             % then we will likely never reach a solution unless we allow for a small difference in response distribution.
-                                            if (all(diff(n)<=sum(catch_idx))) % if difference caused by catch trials, we don't reshuffle
-                                                reshuffle_me = false;
-                                                break;
-                                            else
-                                                reshuffle_me = true;
-                                            end
-                                        elseif sum(catch_idx) > 0
-                                            if (all(diff(n)<=sum(catch_idx))) % if difference caused by catch trials, we don't reshuffle
+                                            if diff(n)<=sum(catch_idx) && n1_ns_ok && n1_clsc_ok % if difference caused by catch trials, we don't reshuffle
                                                 reshuffle_me = false;
                                                 break;
                                             else
@@ -640,10 +633,10 @@ for ses = session_nrs
                             allocated_trials(ti(potential_trials(1:nr_trials))) = 1;
                             
                             % Check if any stimulus numbers are the same
-                            if curr_tc==2
+                            if curr_tc==2 || curr_tc==7 % CD or IMG tasks
                                 assert(isequalwithequalnans(condition_master.stim_nr_left(st_idx,:),condition_master.stim_nr_left(ti(potential_trials(1:nr_trials)),:)))
                                 assert(isequalwithequalnans(condition_master.stim_nr_right(st_idx,:),condition_master.stim_nr_right(ti(potential_trials(1:nr_trials)),:)))
-                            else
+                            else  
                                 assert(isequal(condition_master.stim_nr_left(st_idx,:),condition_master.stim_nr_left(ti(potential_trials(1:nr_trials)),:)))
                                 if curr_sc~=5 && (curr_sc~=99 && curr_tc~=6)
                                     assert(isequal(condition_master.stim_nr_right(st_idx,:),condition_master.stim_nr_right(ti(potential_trials(1:nr_trials)),:)))
