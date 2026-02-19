@@ -161,6 +161,15 @@ for ses = 1:size(all_sessions,3)
                                     idx = ((condition_master.stim_class==99) & (condition_master.task_class==tc) & (condition_master.stim_class_unique_block_nr == ltm_bb + find(curr_blocks==curr_blocks(ii))));
                                     condition_master.crossing_name(idx) = {sprintf('%s-all',params.exp.taskclassnames{tc})};
                                     stim_class_tmp_name = 'ALL';
+                                elseif strcmp(params.exp.taskclassnames{tc},'IMG')
+                                    %                                     % We can't sort on stim class nr for LTM either (they are all defined as 99)
+                                    %                                     idx = ((condition_master.stim_class==99) & (condition_master.task_class==tc) & (condition_master.stim_class_unique_block_nr == ltm_bb + find(curr_blocks==curr_blocks(ii))));
+                                    %                                     condition_master.crossing_name(idx) = {sprintf('%s-all',params.exp.taskclassnames{tc})};
+                                    %                                     stim_class_tmp_name = 'ALL';
+                                    idx = ((condition_master.stim_class==sc) & (condition_master.task_class==tc) & (condition_master.stim_class_unique_block_nr == curr_blocks(ii)));
+                                    condition_master.crossing_name(idx) = {sprintf('%s-%s',params.exp.taskclassnames{tc}, params.exp.stimclassnames{sc})};
+                                    stim_class_tmp_name = stim_class_abbr{sc};
+
                                 else
                                     idx = ((condition_master.stim_class==sc) & (condition_master.task_class==tc) & (condition_master.stim_class_unique_block_nr == curr_blocks(ii)));
                                     condition_master.crossing_name(idx) = {sprintf('%s-%s',params.exp.taskclassnames{tc}, params.exp.stimclassnames{sc})};
@@ -335,8 +344,13 @@ for ses = 1:size(all_sessions,3)
                                             
                                             % Left-side NON-object catch trials
                                         elseif isnan(condition_master.is_objectcatch(sub_idx(tt))) || condition_master.is_objectcatch(sub_idx(tt))==0
-                                            cue_label = {sprintf('%s %04d L CUED %s',stim_class_tmp_name,condition_master.stim_nr_left(sub_idx(tt)),task_class_abbr{tc}), ...
-                                                sprintf('%s %04d R UNCUED %s',stim_class_tmp_name,condition_master.stim_nr_right(sub_idx(tt)),task_class_abbr{tc})};
+                                            
+                                            if strcmp(task_class_abbr{tc},'IMG')
+                                                cue_label = {sprintf('%s %04d L CUED %s',stim_class_tmp_name,condition_master.stim_nr_left(sub_idx(tt)),task_class_abbr{tc}), NaN};
+                                            else
+                                                cue_label = {sprintf('%s %04d L CUED %s',stim_class_tmp_name,condition_master.stim_nr_left(sub_idx(tt)),task_class_abbr{tc}), ...
+                                                    sprintf('%s %04d R UNCUED %s',stim_class_tmp_name,condition_master.stim_nr_right(sub_idx(tt)),task_class_abbr{tc})};
+                                            end
                                         else
                                             error('[%s]: Can''t tell what type of trial this is..',mfilename)
                                         end
@@ -357,8 +371,12 @@ for ses = 1:size(all_sessions,3)
                                             
                                             % Right-side NON-object catch trials
                                         elseif isnan(condition_master.is_objectcatch(sub_idx(tt)))  || condition_master.is_objectcatch(sub_idx(tt))==0
-                                            cue_label = {sprintf('%s %04d L UNCUED %s',stim_class_tmp_name,condition_master.stim_nr_left(sub_idx(tt)),task_class_abbr{tc}),...
-                                            sprintf('%s %04d R CUED %s',stim_class_tmp_name,condition_master.stim_nr_right(sub_idx(tt)),task_class_abbr{tc})};
+                                            if strcmp(task_class_abbr{tc},'IMG')
+                                                cue_label = {NaN, sprintf('%s %04d R CUED %s',stim_class_tmp_name,condition_master.stim_nr_right(sub_idx(tt)),task_class_abbr{tc})};
+                                            else
+                                                cue_label = {sprintf('%s %04d L UNCUED %s',stim_class_tmp_name,condition_master.stim_nr_left(sub_idx(tt)),task_class_abbr{tc}),...
+                                                             sprintf('%s %04d R CUED %s',stim_class_tmp_name,condition_master.stim_nr_right(sub_idx(tt)),task_class_abbr{tc})};
+                                            end
                                         else
                                             error('[%s]: Can''t tell what type of trial this is..',mfilename)
                                         end
@@ -388,9 +406,20 @@ for ses = 1:size(all_sessions,3)
                                             if condition_master.stim_nr_left(sub_idx(tt)) == 0 && condition_master.is_catch(sub_idx(tt)) == 1
                                                 condition_master.condition_name(sub_idx(tt),cl) = {NaN};
                                                 condition_master.condition_nr(sub_idx(tt),cl) = NaN;
+                                            elseif condition_master.stim_nr_right(sub_idx(tt)) == 0 && condition_master.is_catch(sub_idx(tt)) == 1
+                                                condition_master.condition_name(sub_idx(tt),cl) = {NaN};
+                                                condition_master.condition_nr(sub_idx(tt),cl) = NaN;
+                                                
+                                            elseif strcmp(task_class_abbr{tc},'IMG') 
+                                                if isnan(choose(cl==1, condition_master.stim_nr_left(sub_idx(tt)), condition_master.stim_nr_right(sub_idx(tt)))) ... % other side should contain a special core stim nr
+                                                    condition_master.condition_name(sub_idx(tt),cl) = {NaN};
+                                                    condition_master.condition_nr(sub_idx(tt),cl) = NaN;
+                                                else
+                                                    error('wtf')
+                                                end
                                             elseif cl==2 && ...
                                                     ( (strcmp(stim_class_tmp_name,'ALL') && ismember(condition_master.stim_nr_left(sub_idx(tt)),params.stim.ns.unique_im_nrs_specialcore)) ...
-                                                    || (strcmp(stim_class_tmp_name,'NS') && ismember(condition_master.stim_nr_left(sub_idx(tt)),params.stim.ns.unique_im_nrs_core)) ) ...
+                                                    || (strcmp(stim_class_tmp_name,'NS') && ismember(condition_master.stim_nr_left(sub_idx(tt)),params.stim.ns.unique_im_nrs_core)) )
                                                     
                                                 condition_master.condition_name(sub_idx(tt),cl) = {NaN};
                                                 condition_master.condition_nr(sub_idx(tt),cl) = NaN;
