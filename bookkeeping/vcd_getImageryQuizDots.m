@@ -471,8 +471,8 @@ switch stimClass
             end
 
             % record dot location
-            quiz_dot_xypos_pix(tt,1:length(params.stim.dot.imagery_quiz_images),1,:) = round([x1 y1] + (params.stim.dot.imagery_sz_deg*params.disp.ppd)); % quiz dot 1, [x,y] in pixels where 0 = upper left pixel; (rounded to nearest pixel)
-            quiz_dot_xypos_pix(tt,1:length(params.stim.dot.imagery_quiz_images),2,:) = round([x2 y2] + (params.stim.dot.imagery_sz_deg*params.disp.ppd)); % quiz dot 2, [x,y] in pixels where 0 = upper left pixel; (rounded to nearest pixel)
+            quiz_dot_xypos_pix(tt,1:length(params.stim.dot.imagery_quiz_images),1,:) = round([x1 y1]); % quiz dot 1, [x,y] center location in pixels; (rounded to nearest pixel)
+            quiz_dot_xypos_pix(tt,1:length(params.stim.dot.imagery_quiz_images),2,:) = round([x2 y2]); % quiz dot 2, [x,y] center location in pixels; (rounded to nearest pixel)
             
             [th1,rho1] = cart2pol(x1,y1);
             [th2,rho2] = cart2pol(x2,y2);
