@@ -309,7 +309,7 @@ else
     d = dir(fullfile(vcd_rootPath, 'workspaces', 'info', 'imagery_quiz_dot_info*.mat'));
     if ~isempty(d)
         a = load(fullfile(d(end).folder,d(end).name));
-        img_quiz_dots = a.all_quiz_dots; clear a;
+        img_quiz_dots = a.img_quiz_dots; clear a;
     else
         img_quiz_dots = [];
         warning('[%s]: Can''t find imagery quiz dot info. Please run img_quiz_dots = vcd_getImageryQuizDots(params, true, false)',mfilename);
