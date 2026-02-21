@@ -7,7 +7,8 @@ function [data,getoutearly,run_frames,run_table] = vcd_showStimulus(...
     run_table, ...
     introscript, ...
     taskscript, ...
-    deviceNr)
+    deviceNr, ...
+    img_vec)
 
 %% PTB functionality notes:
 % Inputs to DrawTexture: 
@@ -524,17 +525,39 @@ while 1
             Screen('DrawTexture',win,task_tex{framecnt},[], task_rect{framecnt}, 0, [], 1, framecolor{framecnt});
             
         case {94, 95} % stim IDs
-            % stim.im is a cell with dims: frames x 2, where each cell has a uint8 image (1:l, 2:r)
-            sides = length(run_frames.im_IDs(framecnt,~isnan(run_frames.im_IDs(framecnt,:))));
-            if  sides == 1 % Make and draw one stimulus texture
-                stim_texture = Screen('MakeTexture',win, stim.im{run_frames.im_IDs(framecnt,sides),sides});
-                Screen('DrawTexture',win,stim_texture,[], stim.rects{run_frames.im_IDs(framecnt,sides),sides}, 0,[],1, 255*ones(1,3));
-                Screen('Close',stim_texture); stim_texture = [];
-            elseif sides == 2  % Make and draw two stimulus textures
-                stim_textures(1) = Screen('MakeTexture',win, stim.im{run_frames.im_IDs(framecnt,1),1});
-                stim_textures(2) = Screen('MakeTexture',win, stim.im{run_frames.im_IDs(framecnt,2),2});
-                Screen('DrawTextures',win,stim_textures',[], catcell(1,stim.rects(run_frames.im_IDs(framecnt,1),:))', [0;0],[], [1;1], 255*ones(2,3)');
-                Screen('Close',stim_textures); stim_textures = [];
+            sides = find(~isnan(run_frames.im_IDs(framecnt,:)));
+            if length(sides) == 1
+                if ndims(stim.im{run_frames.im_IDs(framecnt,1),1})==2 % IMG trial: Make and draw two quiz dots stimuli 
+                    % stim.im is a cell with dims: frames x 2, where each cell has two uint8 images: y-pix, x-pix, 3(+1), 2 (c,c)
+                    stim_textures(1) = Screen('MakeTexture',win, stim.im{run_frames.im_IDs(framecnt,1),1}(:,:,:,1));
+                    stim_textures(2) = Screen('MakeTexture',win, stim.im{run_frames.im_IDs(framecnt,2),2}(:,:,:,2));
+                    stim_rects       = catcell(1,stim.rects(run_frames.im_IDs(framecnt,1),:))';
+                    Screen('DrawTextures',win,stim_textures',[], stim_rects, zeros(size(stim_rects,1),1),[], ones(length(stim_textures),1), 255*ones(length(stim_textures),3)');
+                    Screen('Close',stim_textures); stim_textures = [];
+                else
+                    % stim.im is a cell with dims: frames x 2, where each cell has a uint8 image (1:l, 2:r)
+                    stim_texture = Screen('MakeTexture',win, stim.im{run_frames.im_IDs(framecnt,sides),sides});
+                    Screen('DrawTexture',win,stim_texture,[], stim.rects{run_frames.im_IDs(framecnt,sides),sides}(img_vec{framecnt},:)', 0,[],1, 255*ones(1,3));
+                    Screen('Close',stim_texture); stim_texture = [];
+                end
+            elseif length(sides) == 2  % Make and draw two stimulus textures
+                if ndims(stim.im{run_frames.im_IDs(framecnt,1),1})==4 % Make and draw one stimulus texture 
+                    % IMG trial: Make and draw 4 stimulus textures
+                    % stim.im is a cell with dims: frames x 4, where each cell has two uint8 images: y-pix, x-pix, 3(+1), 4 (l,l,r,r)
+                    stim_textures(1) = Screen('MakeTexture',win, stim.im{run_frames.im_IDs(framecnt,1),1}(:,:,:,1));
+                    stim_textures(2) = Screen('MakeTexture',win, stim.im{run_frames.im_IDs(framecnt,2),2}(:,:,:,2));
+                    stim_textures(3) = Screen('MakeTexture',win, stim.im{run_frames.im_IDs(framecnt,1),1}(:,:,:,1));
+                    stim_textures(4) = Screen('MakeTexture',win, stim.im{run_frames.im_IDs(framecnt,2),2}(:,:,:,2));
+                    stim_rects       = catcell(1,stim.rects(run_frames.im_IDs(framecnt,1),:))';
+                    Screen('DrawTextures',win,stim_textures',[], stim_rects, zeros(size(stim_rects,1),1),[], ones(length(stim_textures),1), 255*ones(length(stim_textures),3)');
+                    Screen('Close',stim_textures); stim_textures = [];
+                else
+                    stim_textures(1) = Screen('MakeTexture',win, stim.im{run_frames.im_IDs(framecnt,1),1});
+                    stim_textures(2) = Screen('MakeTexture',win, stim.im{run_frames.im_IDs(framecnt,2),2});
+                    stim_rects       = catcell(1,stim.rects(run_frames.im_IDs(framecnt,1),:))';
+                    Screen('DrawTextures',win,stim_textures',[], stim_rects(img_vec{framecnt},:), zeros(length(stim_textures),1),[], ones(length(stim_textures),1), 255*ones(length(stim_textures),3)');
+                    Screen('Close',stim_textures); stim_textures = [];
+                end
             end
 
             % Draw fix dot on top
