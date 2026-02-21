@@ -323,7 +323,7 @@ else % if not, then we look user pointed to a timetable_file
             all_images = struct();
         end
 
-        [images, masks, all_images, img_quiz_dot_coords] = vcd_getImageOrderSingleRun(params, ...
+        [images, masks, all_images, img_quiz_dot_coords, run_frames] = vcd_getImageOrderSingleRun(params, ...
             run_table, run_frames, params.subj_nr, params.ses_nr, params.ses_type, params.run_nr, params.env_type, ...
             'all_images', all_images, 'savestim', params.savestim);
         
@@ -334,7 +334,7 @@ else % if not, then we look user pointed to a timetable_file
         stim.eye   = cat(4, all_images.eye.sac_im, all_images.eye.pupil_im_black, all_images.eye.pupil_im_white);
         stim.img_quiz_dot_coords = img_quiz_dot_coords;
 
-        clear images masks
+        clear images masks img_quiz_dot_coords
     end
     
 end
@@ -410,7 +410,7 @@ if ~exist('scan','var') || ~isfield(scan, 'rects') || isempty(scan.rects)
 
     % Check which stimulus sides (left/right) are empty or not for each run
     % time frame.
-    stim_frames = (~cellfun(@isempty, stim.im));
+    stim_frames = ~cellfun(@isempty, stim.im);
     
     % Now loop over stimuli
     for nn = 1:size(stim.im,1)
@@ -503,7 +503,7 @@ if ~exist('scan','var') || ~isfield(scan, 'rects') || isempty(scan.rects)
                             centers{nn,side} = [tmp_coords(:,1) + params.stim.rdk.x0_pix(side), ...
                                                 tmp_coords(:,2) + params.stim.rdk.y0_pix(side)];
                         elseif ismember(run_frames.frame_im_nr(nn,side),params.stim.dot.unique_im_nrs_img_test)
-                            centers{nn,side} = tmp_coords(:,1); % already relative to iso-eccen circle
+                            centers{nn,side} = tmp_coords; % already relative to iso-eccen circle
                         elseif ismember(run_frames.frame_im_nr(nn,side),params.stim.obj.unique_im_nrs_img_test)
                             centers{nn,side} = [tmp_coords(:,1) + params.stim.obj.x0_pix(side), ...
                                                 tmp_coords(:,2) + params.stim.obj.y0_pix(side)];
@@ -528,14 +528,8 @@ if ~exist('scan','var') || ~isfield(scan, 'rects') || isempty(scan.rects)
                                                 
                     else % ADD IMAGE ID, copy size/im_ID/center if we deal with static stim.
                         
-                        % If it is a IMG trial
-                        if ismember(run_frames.crossingIDs(nn), find(~cellfun(@isempty, regexp(params.exp.crossingnames, 'img*'))))
-                            
-                            im_IDs(nn,side) = nn;
-                            apsize{nn,side} = [size(stim.im{nn,side},2), size(stim.im{nn,side},1)]; % stim2 = height x width of image prompt = 700x700, should only be left side // OR small dot
-                            
                         % If we have RDKs, then we have a new image every time frame so we can just use the counter
-                        elseif ismember(run_frames.frame_im_nr(nn,side), [params.stim.rdk.unique_im_nrs_core,params.stim.rdk.unique_im_nrs_wm_test])
+                        if ismember(run_frames.frame_im_nr(nn,side), [params.stim.rdk.unique_im_nrs_core,params.stim.rdk.unique_im_nrs_wm_test])
                             
                             % Add image ID
                             im_IDs(nn,side) = nn;
@@ -568,8 +562,12 @@ if ~exist('scan','var') || ~isfield(scan, 'rects') || isempty(scan.rects)
                         % centers and aperture size for upcoming frames
                         elseif isnan(im_IDs(nn-1,side))
                             im_IDs(nn:(nn+params.stim.stimdur_frames-1),side)  = nn;
-                            centers(nn:(nn+params.stim.stimdur_frames-1),side) = mat2cell(centers{im_IDs(nn,side),side},1,2);
-                            apsize(nn:(nn+params.stim.stimdur_frames-1),side)  = mat2cell([size(stim.im{im_IDs(nn,side),side},2), size(stim.im{im_IDs(nn,side),side},1)],1,2);
+                            centers(nn:(nn+params.stim.stimdur_frames-1),side) = mat2cell(centers{im_IDs(nn,side),side},size(centers{im_IDs(nn,side),side},1),size(centers{im_IDs(nn,side),side},2));
+                            if ismember(run_frames.frame_im_nr(nn,side),params.stim.all_img_test_im_nrs)
+                                apsize(nn:(nn+params.stim.stimdur_frames-1),side)  = mat2cell( repmat([size(stim.im{im_IDs(nn,side),side},2), size(stim.im{im_IDs(nn,side),side},1)],2,1), 2, 2);
+                            else
+                                apsize(nn:(nn+params.stim.stimdur_frames-1),side)  = mat2cell( [size(stim.im{im_IDs(nn,side),side},2), size(stim.im{im_IDs(nn,side),side},1)], 1, 2);
+                            end
                         end
                     end
                     
@@ -604,6 +602,7 @@ else % assume both sides exist (classic stim classes are [1,2,3,4,99])
     nSides = [1,2]; % if we happen to have classic stimulus blocks.. then both columns of stim.centers and stim.size will contain info
 end
 
+img_vec = cell(size(stim.centers,1),1);
 for side = nSides
     % Find the non-empty center and size cells for each stimulus side
     nonemptycenters   = ~cellfun(@isempty, stim.centers(:,side));
@@ -616,24 +615,43 @@ for side = nSides
     
     if any(run_table.task_class==7) % IMG trials (two stim centers per side)
         % We deal with a 3D array
-        centers_mat    = NaN(size(centers_shortlist,1),2,2);
+        centers_mat  = NaN(size(centers_shortlist,1),2,2);
         size_mat     = NaN(size(apsize_shortlist,1),2,2);
         
-        sz = NaN(size(apsize_shortlist,1),2);
-        for ii = 1:size(centers_shortlist)
-            sz(ii,:) = size(centers_shortlist{ii});
+        sz_long = cell2mat(cellfun(@(x) size(x,1), stim.centers(:,side),'UniformOutput',0));
+        sz_short = cell2mat(cellfun(@(x) size(x,1), centers_shortlist,'UniformOutput',0));
+              
+        if side==1
+            img_vec(sz_long==2) = repmat({[1;2]}, sum((sz_long==2)),1); % IMG trials   left:[1, 2]
+            img_vec(sz_long==1) = repmat({[1]}, sum((sz_long==1)),1);   % Other trials left:[1, NaN]
+        elseif side==2
+            img_vec(sz_long==2) = cellfun(@(x,y) cat(1,x,y),  img_vec(sz_long==2), repmat({[3;4]}, sum((sz_long==2)),1),'UniformOutput',0); % IMG trials   right:[3;4]
             
-            if isequal(sz(ii,:),[2 2])
-                centers_mat(ii,:,1) = centers_shortlist{ii}(1,:);
-                centers_mat(ii,:,2) = centers_shortlist{ii}(2,:);
-                
-                size_mat(ii,:,1) = apsize_shortlist{ii};
-                size_mat(ii,:,2) = apsize_shortlist{ii};
-            else
-                centers_mat(ii,:,1) = centers_shortlist{ii}(1,:);
-                size_mat(ii,:,1) = apsize_shortlist{ii};
-            end
+            idx0 = find(sz_long==1); 
+            has_noleft_stim = cellfun(@isempty, img_vec(idx0));
+            has_left_stim   = ~cellfun(@isempty, img_vec(idx0));
+            img_vec(idx0(has_noleft_stim)) = repmat({[1]}, sum(has_noleft_stim),1);   % Other trials left:[1, NaN]
+            img_vec(idx0(has_left_stim))   = cellfun(@(x,y) cat(1,x,y), img_vec(idx0(has_left_stim)), repmat({[3]}, sum(has_left_stim),1),'UniformOutput',0); % Other trials right:[3]
         end
+            
+        % Set up 3D matrices to calculate PTB Destination Rects
+        cmat_tmp0 = cell2mat(centers_shortlist(sz_short==2));
+        cmat_tmp1 = cat(3,cmat_tmp0(1:2:end,:),cmat_tmp0(2:2:end,:));
+        centers_mat(sz_short==2,:,:) = cmat_tmp1;
+        
+        cmat_tmp1 = cell2mat(centers_shortlist(sz_short==1));
+        centers_mat(sz_short==1,:,1) = cmat_tmp1;
+        
+        smat_tmp0 = cell2mat(apsize_shortlist(sz_short==2));
+        smat_tmp1 = cat(3,smat_tmp0(1:2:end,:),smat_tmp0(2:2:end,:));
+        size_mat(sz_short==2,:,:) = smat_tmp1;
+        
+        smat_tmp1 = cell2mat(apsize_shortlist(sz_short==1));
+        size_mat(sz_short==1,:,1) = smat_tmp1;
+        
+        clear cmat_tmp0 cmat_tmp0 smat_tmp0 smat_tmp1 sz_short sz_long
+
+         
         % create two destination matrices (one for left/one for right
         % imagery test dot per left/right stim location)
         destination_mat1 = [centers_mat(:,1,1) - size_mat(:,1,1)./2, ... x1 top-left-x
@@ -664,7 +682,6 @@ for side = nSides
         
         % Combine matrices: For Non-IMG trials, second row contains NaN(1,4)
         rects_mat = cellfun(@(x,y) cat(1,x,y), rects_mat1,rects_mat2,'UniformOutput',false);
-
     else
         % We deal with a 2D array
         centers_mat       = cell2mat(centers_shortlist);
@@ -685,10 +702,19 @@ for side = nSides
             zeros(size(size_mat,1),1), zeros(size(size_mat,1),1), size_mat(:,1), size_mat(:,2), ...
             destination_mat(:,1), destination_mat(:,2),destination_mat(:,3), destination_mat(:,4), ...
             'UniformOutput', false);
+        
+        idx = find(nonemptycenters);
+        if side == 1
+            img_vec(idx) = repmat({[1]}, [size(idx,1),1]);
+        elseif side == 2
+            img_vec(idx,:) = cellfun(@(x,y) cat(2,x,y), img_vec(idx), repmat({[2]}, [size(idx,1),1]),'UniformOutput',0);
+        end
     end
     % Insert the "rects" into the struct
     stim.rects(nonemptycenters,side) = rects_mat;
 end
+
+
 % Clear some memory
 clear centers_shortlist apsize_shortlist nonemptycenters ...
         centers_mat size_mat destination_mat rects_mat nSides side
@@ -783,7 +809,8 @@ if ~params.wantdatabypass
       run_table, ...
       introscript, ...
       taskscript, ...
-      params.deviceNr);
+      params.deviceNr, ...
+      img_vec);
 
 else % or just generate the files + dummy data
 
