@@ -247,13 +247,13 @@ for ii = 1:length(stim_row)
 
                 if ~isfield(all_images,'img_quiz_dot') || ~isfield(all_images.img_quiz_dot, (stimClass)) || isempty(all_images.img_quiz_dot.(stimClass))
                     d = dir(sprintf('%s*.mat', params.stim.img.stimfile));
-                    a = load(fullfile(d(end).folder,d(end).name), 'all_quiz_dots');
-                    all_images.img_quiz_dot.(stimClass) = a.all_quiz_dots.(stimClass).xy_coords_pix; %  nr special core stim x 20 examples (10 yes/10 no) x 2 dots x 2 coords (x & y)
+                    a = load(fullfile(d(end).folder,d(end).name), 'img_quiz_dots');
+                    all_images.img_quiz_dot.(stimClass) = a.img_quiz_dots.(stimClass).xy_coords_pix; %  nr special core stim x 20 examples (10 yes/10 no) x 2 dots x 2 coords (x & y)
                     
                     % add quiz dot image & mask
                     if ~isfield(all_images.img_quiz_dot,'im') || isempty(all_images.img_quiz_dot.im)
-                        all_images.img_quiz_dot.im   = a.all_quiz_dots.im;
-                        all_images.img_quiz_dot.mask = a.all_quiz_dots.mask;
+                        all_images.img_quiz_dot.im   = a.img_quiz_dots.im;
+                        all_images.img_quiz_dot.mask = a.img_quiz_dots.mask;
                     end
                     clear a d;
                 end
