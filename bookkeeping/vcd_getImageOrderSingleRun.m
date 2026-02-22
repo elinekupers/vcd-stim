@@ -706,7 +706,15 @@ for ii = 1:length(stim_row)
                         % Non-IMG trial
                         run_images{curr_frames(1),side} = all_images.dot;
                         run_alpha_masks{curr_frames(1),side} = all_images.alpha.dot;
-
+                    
+                    elseif strcmp(run_table.event_name(stim_row(ii)),'stim2') && run_table.is_catch(stim_row(ii)) == 0 ...
+                            && ~strcmp(run_table.task_class_name(stim_row(ii)),'img')
+                        
+                        % LTM or WM trial
+                        run_images{curr_frames(1),side} = all_images.dot;
+                        run_alpha_masks{curr_frames(1),side} = all_images.alpha.dot;
+                        
+                        
                     elseif strcmp(run_table.event_name(stim_row(ii)),'stim1') && run_table.is_catch(stim_row(ii)) == 0 ...
                             && strcmp(run_table.task_class_name(stim_row(ii)),'img')
                         
