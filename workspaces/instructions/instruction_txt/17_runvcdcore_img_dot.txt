@@ -1,6 +1,1 @@
-####Imagery task - Single dots
-Imagine the prompted single dot for entire delay period.
-Do test dots straddle the imagined dot?
-
-1-INDEX  = YES
-2-MIDDLE = NO
+Imagery task - Single dots

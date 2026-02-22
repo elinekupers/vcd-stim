@@ -1,6 +1,1 @@
-###Imagery task - Objects
-Imagine the prompted object for entire delay period.
-Are both dots within imagined object?
-
-1-INDEX  = YES
-2-MIDDLE = NO
+Imagery task - Objects
