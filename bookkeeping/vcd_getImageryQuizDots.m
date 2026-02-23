@@ -227,14 +227,14 @@ switch stimClass
             angles = NaN(length(params.stim.(stimClass).imagery_quiz_images),1);
 
             % add stimulus tilt orientation
-            angles(params.stim.gabor.imagery_quiz_images==1,1) = orient_deg(tt); % in deg, og tilt
+            angles(params.stim.(stimClass).imagery_quiz_images==1,1) = orient_deg(tt); % in deg, og tilt
             
             % add mismatched quiz dot angles from stimulus tilt orientation
             % (randomly sample angles from a predefined list WITHOUT replacement)
-            angles(params.stim.gabor.imagery_quiz_images==2,1) = mod(orient_deg(tt) + datasample(all_no_angles,n_mismatch,'Replace',false),360);
+            angles(params.stim.(stimClass).imagery_quiz_images==2,1) = mod(orient_deg(tt) + datasample(all_no_angles,n_mismatch,'Replace',false),360);
 
             quiz_dot_orient_deg(tt,:,:) = [angles, angles+180]; % special core stim nr x 20 quiz dot test images x 2 dot angles
-            quiz_dot_overlap(tt,:)      = params.stim.gabor.imagery_quiz_images'; % aligned with orientation/motion direction (1) or not (2)
+            quiz_dot_overlap(tt,:)      = params.stim.(stimClass).imagery_quiz_images'; % aligned with orientation/motion direction (1) or not (2)
             
             % get xy-pos for imagined special core dot
             [x00,y00] = pol2cart(ones(1,2).*deg2rad(orient_deg(tt)-90),(params.stim.(stimClass).img_sz_pix/2).*[-1 1]); % note -90 to align 0 deg with 12 o'clock
