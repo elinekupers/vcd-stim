@@ -6,11 +6,11 @@ function ltmPairs = vcd_pairUniqueImagesLTM(params, varargin)
 % 
 % Probability of subjects seeing a correct associated pair is 0.5.
 %
-% This function will take the 47 special core VCD stimuli for each stimulus
+% This function will take the 46 special core VCD stimuli for each stimulus
 % class (what we call image A), and pair them to a non-special core
 % stimulus (image B). Special core stimuli are used to create 23 pairs:
 % * 32 classic special core stimuli are involved in 16 pairs amongst themselves
-% * 15 NS special core stimuli are involved in 7 pairs amongst themselves (I guess leave one out??)
+% * 14 NS special core stimuli are involved in 7 pairs amongst themselves.
 %
 % Pairing constraints: 
 % * A and B pairings are unique. We will not reuse A's or B's.
@@ -35,7 +35,7 @@ function ltmPairs = vcd_pairUniqueImagesLTM(params, varargin)
 %  [update_info_file] : [optional] (logical) update the csv info file (true) or not (false)? default = false
 %
 % OUTPUT:
-% * ltmPairs    : (double) 47 x 2 matrix where the first column is the
+% * ltmPairs    : (double) 46 x 2 matrix where the first column is the
 %                 unique special core stimulus number for A. The second 
 %                 column is the unique special core stimulus number for B.
 %
