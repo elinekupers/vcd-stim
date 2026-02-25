@@ -355,6 +355,8 @@ else
     %  EyelinkDoDriftCorrection(el); % No drift correction.
     % other ways of drawing things in EL:     Eyelink('Command','draw_box %d %d %d %d %d',xPos-boundary,yPos-boundary,xPos+boundary,yPos+boundary,colorFrm);
     
+    Eyelink('command','elcl_pupil_select_size = 4,140,5,140,30,20000'); % Set pupil size threshold to avoid loosing small pupils.
+    
     % what events (columns) are recorded in EDF:
     Eyelink('command','file_event_filter = LEFT,RIGHT,FIXATION,SACCADE,BLINK,MESSAGE,BUTTON');
     % what samples (columns) are recorded in EDF:
