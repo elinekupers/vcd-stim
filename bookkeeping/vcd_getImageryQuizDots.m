@@ -1,9 +1,9 @@
-function all_quiz_dots = vcd_getImageryQuizDots(params, varargin)
+function img_quiz_dots = vcd_getImageryQuizDots(params, varargin)
 % Function to create uint8 quiz dot images, quiz dot locations, and load
 % text prompts to probe subject's mental image of special core Gabors,
 % RDKs, dot, objects, or naturalistic scenes.
 %
-%  all_quiz_dots = vcd_getImageryQuizDots(params, [update_info_file], [verbose])
+%  img_quiz_dots = vcd_getImageryQuizDots(params, [update_info_file], [verbose])
 %
 % Purpose:
 %   Create 20 specific quiz dot images that are called after the
@@ -97,7 +97,7 @@ function all_quiz_dots = vcd_getImageryQuizDots(params, varargin)
 % params.disp = vcd_getDisplayParams('7TAS_BOLDSCREEN32');
 % params.exp  = vcd_getSessionParams('disp_name','7TAS_BOLDSCREEN32');
 % params.stim = vcd_getStimParams('disp_name','7TAS_BOLDSCREEN32');
-% all_quiz_dots = vcd_getImageryQuizDots(params, false, true);
+% all_quiz_dots = vcd_getImageryQuizDots(params, true, true);
 
 % Check inputs
 if nargin == 1
@@ -114,7 +114,7 @@ else
 end
 
 % Create output struct
-all_quiz_dots = struct();
+img_quiz_dots = struct();
 
 %%%%%% CREATE DOT IMAGE %%%%%%
 
@@ -147,8 +147,8 @@ mask(mask==1) = 255;            % everything inside the alpha mask us visible, o
 mask          = uint8(mask);    % convert double to uint8
 assert(isequal(unique(mask(:))',uint8([0, 255])));
 
-all_quiz_dots.im    = quiz_dot;
-all_quiz_dots.mask  = mask;
+img_quiz_dots.im    = quiz_dot;
+img_quiz_dots.mask  = mask;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -161,8 +161,8 @@ for sc = 1:length(params.exp.stimclassnames)
     quiz_dot_overlap    = [];  % (8 or 14) nr of special core stim  x 20 quiz dot images (1 = yes, 2 = no);
     stimClass = params.exp.stimclassnames{sc};
     
-    all_quiz_dots.(stimClass).special_core_stim_nr  = params.stim.(stimClass).unique_im_nrs_specialcore';
-    all_quiz_dots.(stimClass).quiz_dot_stim_nr      = reshape(params.stim.(stimClass).unique_im_nrs_img_test, [], length(all_quiz_dots.(stimClass).special_core_stim_nr))'; % nr special core stim x 20 quiz dot image
+    img_quiz_dots.(stimClass).special_core_stim_nr  = params.stim.(stimClass).unique_im_nrs_specialcore';
+    img_quiz_dots.(stimClass).quiz_dot_stim_nr      = reshape(params.stim.(stimClass).unique_im_nrs_img_test, [], length(img_quiz_dots.(stimClass).special_core_stim_nr))'; % nr special core stim x 20 quiz dot image
     
     n_match    = sum(params.stim.(stimClass).imagery_quiz_images==1); % quiz dots overlap (1) or not (2)
     n_mismatch = sum(params.stim.(stimClass).imagery_quiz_images==2);
@@ -227,14 +227,14 @@ switch stimClass
             angles = NaN(length(params.stim.(stimClass).imagery_quiz_images),1);
 
             % add stimulus tilt orientation
-            angles(params.stim.gabor.imagery_quiz_images==1,1) = orient_deg(tt); % in deg, og tilt
+            angles(params.stim.(stimClass).imagery_quiz_images==1,1) = orient_deg(tt); % in deg, og tilt
             
             % add mismatched quiz dot angles from stimulus tilt orientation
             % (randomly sample angles from a predefined list WITHOUT replacement)
-            angles(params.stim.gabor.imagery_quiz_images==2,1) = mod(orient_deg(tt) + datasample(all_no_angles,n_mismatch,'Replace',false),360);
+            angles(params.stim.(stimClass).imagery_quiz_images==2,1) = mod(orient_deg(tt) + datasample(all_no_angles,n_mismatch,'Replace',false),360);
 
             quiz_dot_orient_deg(tt,:,:) = [angles, angles+180]; % special core stim nr x 20 quiz dot test images x 2 dot angles
-            quiz_dot_overlap(tt,:)      = params.stim.gabor.imagery_quiz_images'; % aligned with orientation/motion direction (1) or not (2)
+            quiz_dot_overlap(tt,:)      = params.stim.(stimClass).imagery_quiz_images'; % aligned with orientation/motion direction (1) or not (2)
             
             % get xy-pos for imagined special core dot
             [x00,y00] = pol2cart(ones(1,2).*deg2rad(orient_deg(tt)-90),(params.stim.(stimClass).img_sz_pix/2).*[-1 1]); % note -90 to align 0 deg with 12 o'clock
@@ -285,8 +285,8 @@ switch stimClass
                     end
                 end
 
-                quiz_dot_xypos_pix(tt,qq,1,:) = round([x1 y1] + params.stim.(stimClass).imagery_sz_pix/2); % quiz dot 1, [x,y] in pixels where 0 = upper left pixel - round to nearest pixel
-                quiz_dot_xypos_pix(tt,qq,2,:) = round([x2 y2] + params.stim.(stimClass).imagery_sz_pix/2); % quiz dot 2, [x,y] in pixels where 0 = upper left pixel - round to nearest pixel
+                quiz_dot_xypos_pix(tt,qq,1,:) = round([x1 y1]); % quiz dot 1, [x,y] in pixels centered on 0, round to nearest pixel
+                quiz_dot_xypos_pix(tt,qq,2,:) = round([x2 y2]); % quiz dot 2, [x,y] in pixels centered on 0, round to nearest pixel
                 
                 [th1,rho1] = cart2pol(x1,y1);
                 [th2,rho2] = cart2pol(x2,y2);
@@ -295,12 +295,12 @@ switch stimClass
                 
                 % Add quiz image properties to info file
                 if update_info_file
-                    idx = find(a.info.unique_im==all_quiz_dots.(stimClass).special_core_stim_nr(tt));
+                    idx = find(a.info.unique_im==img_quiz_dots.(stimClass).special_core_stim_nr(tt));
                     assert(a.info.is_specialcore(idx)==1)
                     tmp_info = a.info(idx,:); % copy stim info
                     
                     % update unique image nr
-                    tmp_info.unique_im = all_quiz_dots.(stimClass).quiz_dot_stim_nr(tt,qq);
+                    tmp_info.unique_im = img_quiz_dots.(stimClass).quiz_dot_stim_nr(tt,qq);
                     
                     tmp_info.img_quiz_dots_overlap = quiz_dot_overlap(tt,qq);
                     tmp_info.img_quiz_dot1_x_pix = quiz_dot_xypos_pix(tt,qq,1,1);
@@ -313,7 +313,7 @@ switch stimClass
                     tmp_info.img_quiz_dot2_y_deg = quiz_dot_xypos_deg(tt,qq,2,2);
                     tmp_info.img_quiz_dot1_orient_deg = quiz_dot_orient_deg(tt,qq,1);
                     tmp_info.img_quiz_dot2_orient_deg = quiz_dot_orient_deg(tt,qq,2);
-                    tmp_info.img_quiz_dot_specialcore_stim_nr = all_quiz_dots.(stimClass).special_core_stim_nr(tt);
+                    tmp_info.img_quiz_dot_specialcore_stim_nr = img_quiz_dots.(stimClass).special_core_stim_nr(tt);
                     tmp_info.img_quiz_dot_filename            = {NaN};
                     
                     q_info = cat(1,q_info,tmp_info);
@@ -362,7 +362,7 @@ switch stimClass
             elseif orient_deg(tt) < 180 && orient_deg(tt) > 0 % right hemifield
                 all_angles = 0:dt:180;
             end
-            quiz_dot_overlap(tt,:) = params.stim.(stimClass).imagery_quiz_images;
+            quiz_dot_overlap(tt,:) = params.stim.dot.imagery_quiz_images;
             
             % Define straddling angles of two quiz dots (absolute angles in deg)
             minmax_angle_yes_ccw  = orient_deg(tt) - params.stim.dot.imagery_minmax_anglemismatch; % no mod(X,360) --> angles beyond 360 and less than 0 will be removed in the next line
@@ -443,10 +443,10 @@ switch stimClass
             angles = NaN(length(params.stim.dot.imagery_quiz_images),2);
             
             % add 10 randomly sampled left/right quiz dot locations that straddle the core imagined dot
-            angles(params.stim.gabor.imagery_quiz_images==1,:) = yes_angles; % in deg, 0 deg = 12 o'clock
+            angles(params.stim.dot.imagery_quiz_images==1,:) = yes_angles; % in deg, 0 deg = 12 o'clock
             
             % add 10 randomly sampled left/right quiz dot locations that do NOT straddle the core imagined dot
-            angles(params.stim.gabor.imagery_quiz_images==2,:) = no_angles; % in deg, 0 deg = 12 o'clock
+            angles(params.stim.dot.imagery_quiz_images==2,:) = no_angles; % in deg, 0 deg = 12 o'clock
             
             % record angles
             quiz_dot_orient_deg(tt,:,:) = round(angles); % in deg, location on iso-eccentric circle. dims: nr special core stim x 20 quiz dot stim x 2 dots
@@ -481,12 +481,12 @@ switch stimClass
             
             % Add quiz image properties to info file
             if update_info_file
-                idx = find(a.info.unique_im==all_quiz_dots.(stimClass).special_core_stim_nr(tt));
+                idx = find(a.info.unique_im==img_quiz_dots.(stimClass).special_core_stim_nr(tt));
                 assert(a.info.is_specialcore(idx)==1)
                 tmp_info = repmat(a.info(idx,:), length(params.stim.dot.imagery_quiz_images), 1); % copy stim info
                 
                 % update unique image nr
-                tmp_info.unique_im(1:length(params.stim.dot.imagery_quiz_images)) = all_quiz_dots.(stimClass).quiz_dot_stim_nr(tt,:);
+                tmp_info.unique_im(1:length(params.stim.dot.imagery_quiz_images)) = img_quiz_dots.(stimClass).quiz_dot_stim_nr(tt,:);
                 
                 tmp_info.img_quiz_dots_overlap(1:length(params.stim.dot.imagery_quiz_images)) = quiz_dot_overlap(tt,:)';
                 tmp_info.img_quiz_dot1_x_pix(1:length(params.stim.dot.imagery_quiz_images)) = quiz_dot_xypos_pix(tt,:,1,1)';
@@ -499,7 +499,7 @@ switch stimClass
                 tmp_info.img_quiz_dot2_y_deg(1:length(params.stim.dot.imagery_quiz_images)) = quiz_dot_xypos_deg(tt,:,2,2)';
                 tmp_info.img_quiz_dot1_orient_deg(1:length(params.stim.dot.imagery_quiz_images)) = quiz_dot_orient_deg(tt,:,1)';
                 tmp_info.img_quiz_dot2_orient_deg(1:length(params.stim.dot.imagery_quiz_images)) = quiz_dot_orient_deg(tt,:,2)';
-                tmp_info.img_quiz_dot_specialcore_stim_nr(1:length(params.stim.dot.imagery_quiz_images)) = repmat(all_quiz_dots.(stimClass).special_core_stim_nr(tt),length(params.stim.dot.imagery_quiz_images),1);
+                tmp_info.img_quiz_dot_specialcore_stim_nr(1:length(params.stim.dot.imagery_quiz_images)) = repmat(img_quiz_dots.(stimClass).special_core_stim_nr(tt),length(params.stim.dot.imagery_quiz_images),1);
                 tmp_info.img_quiz_dot_filename(1:length(params.stim.dot.imagery_quiz_images))            = repmat({NaN},length(params.stim.dot.imagery_quiz_images),1);
                 q_info = cat(1,q_info,tmp_info);
             end
@@ -516,7 +516,7 @@ switch stimClass
         
         if strcmp(stimClass,'ns')
             [filenames, unique_im_nrs] = vcd_getNSfilenames;
-            img_filenames = filenames(ismember(unique_im_nrs, params.stim.ns.unique_im_nrs_img_test));
+            img_filenames = filenames(ismember(unique_im_nrs, params.stim.(stimClass).unique_im_nrs_img_test));
         end
         
         d = dir(params.stim.(stimClass).imagery_raw_dot_folder);
@@ -544,6 +544,9 @@ switch stimClass
                 im3 = (im2 > 255/2);  % dots are 0 on background 1
                 
                 if strcmp(stimClass,'ns') % resize image from OG resolution (425 x 425 pixels) to 7TAS resolution matching 8.4 x 8.4 deg (741 x 741 pixels)
+                    if size(im3,1) && (size(im3,1) == size(im3,2))
+                        im3 = im3(1:425, 1:425,:); % crop if photoshop editing added a single row/column of pixels.
+                    end
                     im3_rz = imresize(im3,params.stim.ns.dres);
                     
                     % check for clipping
@@ -596,12 +599,12 @@ switch stimClass
                 
                 % Add quiz image properties to info file
                 if update_info_file
-                    idx = find(a.info.unique_im==all_quiz_dots.(stimClass).special_core_stim_nr(tt));
+                    idx = find(a.info.unique_im==img_quiz_dots.(stimClass).special_core_stim_nr(tt));
                     assert(a.info.is_specialcore(idx)==1)
                     tmp_info = a.info(idx,:); % copy stim info
                     
                     % update unique image nr
-                    tmp_info.unique_im = all_quiz_dots.(stimClass).quiz_dot_stim_nr(tt,qq);
+                    tmp_info.unique_im = img_quiz_dots.(stimClass).quiz_dot_stim_nr(tt,qq);
                     
                     tmp_info.img_quiz_dots_overlap = quiz_dot_overlap(tt,qq);
                     tmp_info.img_quiz_dot1_x_pix = quiz_dot_xypos_pix(tt,qq,1,1);
@@ -614,7 +617,7 @@ switch stimClass
                     tmp_info.img_quiz_dot2_y_deg = quiz_dot_xypos_deg(tt,qq,2,2);
                     tmp_info.img_quiz_dot1_orient_deg = quiz_dot_orient_deg(tt,qq,1);
                     tmp_info.img_quiz_dot2_orient_deg = quiz_dot_orient_deg(tt,qq,2);
-                    tmp_info.img_quiz_dot_specialcore_stim_nr = all_quiz_dots.(stimClass).special_core_stim_nr(tt);
+                    tmp_info.img_quiz_dot_specialcore_stim_nr = img_quiz_dots.(stimClass).special_core_stim_nr(tt);
                     if strcmp(stimClass,'ns')
                         tmp_info.img_quiz_dot_filename            = {img_filenames(qq + ((tt-1)*20))};
                     else
@@ -630,17 +633,17 @@ switch stimClass
 end
     
 
-all_quiz_dots.(stimClass).xy_coords_pix       = quiz_dot_xypos_pix;
-all_quiz_dots.(stimClass).xy_coords_deg       = quiz_dot_xypos_deg;
-all_quiz_dots.(stimClass).quiz_dot_orient_deg = quiz_dot_orient_deg;
-all_quiz_dots.(stimClass).quiz_dot_overlap    = quiz_dot_overlap;
+img_quiz_dots.(stimClass).xy_coords_pix       = quiz_dot_xypos_pix;
+img_quiz_dots.(stimClass).xy_coords_deg       = quiz_dot_xypos_deg;
+img_quiz_dots.(stimClass).quiz_dot_orient_deg = quiz_dot_orient_deg;
+img_quiz_dots.(stimClass).quiz_dot_overlap    = quiz_dot_overlap;
 
 if update_info_file
     % Concatenate new columns to old info table
     info = q_info([],:);
     info(1:size(a.info,1),1:size(a.info,2))     = a.info;
     info{:,(size(a.info,2)+1):(size(info,2)-1)} = NaN; % replace zeros with NaNs
-    info{:, end} = repmat({NaN},size(info,1),1);
+    info{:, size(info,2)} = NaN(size(info,1),1);
     info = cat(1,info, q_info);
     
     % Store images and info table into a new file
@@ -657,7 +660,7 @@ end
 % Store images and info table into a new file
 fprintf('[%s]: Storing imagery quiz dot info..\n',mfilename)
 fname = fullfile(fileparts(params.stim.gabor.infofile), sprintf('imagery_quiz_dot_info_%s.mat',datestr(now,30)));
-save(fname,'all_quiz_dots');
+save(fname,'img_quiz_dots');
 
 
 
