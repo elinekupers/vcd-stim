@@ -6,7 +6,7 @@ function [filenames, unique_im_nrs] = vcd_getNSfilenames()
 %
 % 81-110 are 30 core images (the same as params.stim.ns.unique_im_nrs_core)
 % 303:422 are 120 wm test images (the same as params.stim.ns.unique_im_nrs_wm_test)
-% 1362:1421 are 120 novel ltm lure images (the same as params.stim.ns.unique_im_nrs_ltm_lures)
+% 1362:1421 are 120 novel ltm lure images (the same as params.stim.ns.unique_im_nrs_novel_ltm_lures)
 % 
 % There are 270 "raw" scene files (e.g., "shared0005_nsd03147.png")
 % where "nsdXXXX" indicates the overall NSD scene number, and 
@@ -35,7 +35,7 @@ function [filenames, unique_im_nrs] = vcd_getNSfilenames()
 
 % Define unique_im_nrs (get from those defined in vcd_getStimParams OBJ field)
 stim = vcd_getStimParams('load_params',false,'store_params',false, 'verbose',false);
-unique_im_nrs = cat(2,stim.ns.unique_im_nrs_core, stim.ns.unique_im_nrs_wm_test, stim.ns.unique_im_nrs_ltm_lures, stim.ns.unique_im_nrs_img_test)'; % [81:110, 303:422, 1362:1421]'
+unique_im_nrs = cat(2,stim.ns.unique_im_nrs_core, stim.ns.unique_im_nrs_wm_test, stim.ns.unique_im_nrs_novel_ltm_lures, stim.ns.unique_im_nrs_img_test)'; % [81:110, 303:422, 1362:1421]'
 
 % {'XXX_easy_remove','XXX_hard_remove','XXX_hard_add','XXX_easy_add'} are
 % the same as those defined by stim.ns.change_im_name, and  correspond to
