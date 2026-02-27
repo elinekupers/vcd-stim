@@ -639,12 +639,17 @@ img_quiz_dots.(stimClass).quiz_dot_orient_deg = quiz_dot_orient_deg;
 img_quiz_dots.(stimClass).quiz_dot_overlap    = quiz_dot_overlap;
 
 if update_info_file
+    ltm_cols = ismember(a.info.Properties.VariableNames, {'ltm_paired_stim', 'ltm_paired_stim_class_i','is_lure'});
+    img_cols = ~cellfun(@isempty, regexp(a.info.Properties.VariableNames, 'img_*'));
+    img_rows = ismember(a.info.unique_im,sort(params.stim.(stimClass).imagery_quiz_dot_stim_nr(:)));
+    img_cols_idx    = find(img_cols);
+    img_filename_idx = img_cols_idx(end);
     % Concatenate new columns to old info table
     info = q_info([],:);
-    info(1:size(a.info,1),1:size(a.info,2))     = a.info;
-    info{:,(size(a.info,2)+1):(size(info,2)-1)} = NaN; % replace zeros with NaNs
-    info{:, size(info,2)} = NaN(size(info,1),1);
+    info(~img_rows,~img_cols) = a.info(~img_rows,~img_cols);
     info = cat(1,info, q_info);
+    info{~img_rows,setdiff(img_cols_idx,img_filename_idx)} = NaN; % replace zeros with NaNs
+    info{~img_rows, img_filename_idx} = repmat({NaN},sum(~img_rows),1);
     
     % Store images and info table into a new file
     fprintf('[%s]:Storing updated info table and csv file..\n',mfilename)
