@@ -531,11 +531,21 @@ if ~exist('scan','var') || ~isfield(scan, 'rects') || isempty(scan.rects)
                         % If we have RDKs, then we have a new image every time frame so we can just use the counter
                         if ismember(run_frames.frame_im_nr(nn,side), [params.stim.rdk.unique_im_nrs_core,params.stim.rdk.unique_im_nrs_wm_test])
                             
-                            % Add image ID
-                            im_IDs(nn,side) = nn;
-                            
-                            % apsize 1: image width -- second dim (pixels), apsize 2: image height -- first dim (pixels)
-                            apsize{nn,side} = [size(stim.im{nn,side},2), size(stim.im{nn,side},1)];
+                            if ismember(run_frames.crossingIDs(nn), find(~cellfun(@isempty, regexp(params.exp.crossingnames, 'img*'))))
+                                im_IDs(nn:(nn+params.stim.stimdur_frames-1),side)  = nn;
+                                centers(nn:(nn+params.stim.stimdur_frames-1),side) = mat2cell(centers{im_IDs(nn,side),side},size(centers{im_IDs(nn,side),side},1),size(centers{im_IDs(nn,side),side},2));
+                                if ismember(run_frames.frame_im_nr(nn,side),params.stim.all_img_test_im_nrs)
+                                    apsize(nn:(nn+params.stim.stimdur_frames-1),side)  = mat2cell( repmat([size(stim.im{im_IDs(nn,side),side},2), size(stim.im{im_IDs(nn,side),side},1)],2,1), 2, 2);
+                                else
+                                    apsize(nn:(nn+params.stim.stimdur_frames-1),side)  = mat2cell( [size(stim.im{im_IDs(nn,side),side},2), size(stim.im{im_IDs(nn,side),side},1)], 1, 2);
+                                end
+                            else
+                                % Add image ID
+                                im_IDs(nn,side) = nn;
+                                
+                                % apsize 1: image width -- second dim (pixels), apsize 2: image height -- first dim (pixels)
+                                apsize{nn,side} = [size(stim.im{nn,side},2), size(stim.im{nn,side},1)];
+                            end
                             
                         % if we deal with CD tasks..
                         elseif ismember(run_frames.crossingIDs(nn),find(~cellfun(@isempty, regexp(params.exp.crossingnames,'cd-*'))))
