@@ -265,7 +265,7 @@ for ii = 1:length(stim_row)
                 
                 % We need to have a stim number for vivid rating image
                 if strcmp(run_table.event_name(stim_row(ii)),'stim2') && any(isnan(run_frames.frame_im_nr(curr_frames,side)))
-                   run_frames.frame_im_nr(curr_frames,side) = [9999, Nan];
+                   run_frames.frame_im_nr(curr_frames(1),side) = [9999]; % insert 9999 for vivid rating image
                 end
             end
             
