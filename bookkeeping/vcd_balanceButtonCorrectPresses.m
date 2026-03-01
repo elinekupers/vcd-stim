@@ -375,18 +375,23 @@ for ses = session_nrs
                                     
                                     % if so, then set the number of expected button presses
                                     % **** !!! careful this is hardcoded stuff !!! *****
-                                    if ismember(curr_tc,[2,4,5,6,7]) % cd, pc, wm, ltm, img have 2 response options
+                                    if ismember(curr_tc,[2,4,5,6]) % cd, pc, wm, ltm have 2 response options
                                         nr_responses = 2;
                                     elseif ismember(curr_tc,[3,8,10]) % scc, what, how have 4 response options
                                         nr_responses = 4;
-                                    elseif ismember(curr_tc,[9]) % where has 3 response options
+                                    elseif ismember(curr_tc,9) % where has 3 response options
                                         nr_responses = 3;
+                                    elseif ismember(curr_tc,7) % IMG has no responses
+                                        nr_responses = NaN;
                                     end
                                     
                                     resp = condition_master.correct_response(st_idx);
                                     resp = resp(~catch_idx);
-                                    n = histcounts(resp,1:(nr_responses+1)); % histcount(x,[1:n]) corresponds to bins = [0,1,..,n-1]
-                                    
+                                    if isnan(nr_responses)
+                                        n = histcounts(resp);
+                                    else
+                                        n = histcounts(resp,1:(nr_responses+1)); % histcount(x,[1:n]) corresponds to bins = [0,1,..,n-1]
+                                    end
                                     % For WHAT/HOW tasks we go by category info, because we combine
                                     % object and foods into one button press..
                                     if ismember(curr_sc,[4,5]) && ismember(curr_tc,8) % **** !!! careful this is hardcoded stuff !!! *****
@@ -596,11 +601,19 @@ for ses = session_nrs
                                         else
                                             reshuffle_me = true;
                                         end
-
+                                        
+                                    elseif ismember(curr_tc,7)
+                                        if (all(diff(n)==0)) % check if we have balanced button presses
+                                            reshuffle_me = false;
+                                            break % hurray
+                                        else
+                                            error('[%s]: There should be no correct response for IMG?!',mfilename);
+                                        end
+                                        
                                     elseif all(n==0) && curr_tc~=2 && ~ismember(curr_tc,[8,9,10])
                                         error('[%s]: No correct responses found?!',mfilename);
                                         
-                                    else % FIX (curr_tc==1), CD (curr_tc==2), IMG (curr_tc==7)
+                                    else % FIX (curr_tc==1), CD (curr_tc==2)
                                         if (all(diff(n)==0)) % check if we have balanced button presses
                                             reshuffle_me = false;
                                             break % hurray
