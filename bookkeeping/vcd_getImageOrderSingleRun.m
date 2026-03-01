@@ -1,9 +1,9 @@
-function [run_images, run_alpha_masks, all_images, img_quiz_dot_coords, run_frames] = vcd_getImageOrderSingleRun(params, ...
+function [run_images, run_alpha_masks, all_images, run_frames] = vcd_getImageOrderSingleRun(params, ...
     time_table_master, all_run_frames, subj_nr, ses_nr, ses_type, run_nr, env_type, varargin)
 % VCD function to load uint8 stimuli, alpha transparency masks, and
 % corresponding image nrs for each trial
 %
-%   [run_images, run_alpha_masks, all_images, img_quiz_dot_coords, run_frames] =
+%   [run_images, run_alpha_masks, all_images, run_frames] =
 %   vcd_getImageOrderSingleRun( ...
 %       params, time_table_master, subj_nr, ses_nr, ses_type, run_nr, env_type, ...
 %       ['all_images', <all_images>],['verbose', <verbose>],...
@@ -123,9 +123,27 @@ if ~isfield(all_images,'instr') || isempty(all_images.instr)
         if ismatrix(a1)
             a1 = repmat(a1,[1 1 3]);
         end
+        
         all_images.instr(:,:,:,aa) = a1;
         all_images.info.instr(aa)  = {d(aa).name};
         all_images.alpha.instr(aa) = NaN;
+    end
+    
+    % Put LTM-NS at the end
+    if any(~cellfun(@isempty, regexp(all_images.info.instr,'06b_*'))) 
+        ns_idx = find(~cellfun(@isempty, regexp(all_images.info.instr,'06b_*')));
+        ns_img = all_images.instr(:,:,:,ns_idx);
+        ns_instr = all_images.info.instr(ns_idx);
+        ns_alpha = all_images.alpha.instr(ns_idx);
+        
+        % Remove from current index
+        all_images.instr(:,:,:,ns_idx) = [];
+        all_images.info.instr(ns_idx) = [];
+        all_images.alpha.instr(ns_idx) = [];
+        
+        all_images.instr(:,:,:,end+1) = ns_img;
+        all_images.info.instr(end+1) = ns_instr;
+        all_images.alpha.instr(end+1) = ns_alpha;
     end
 end
 
@@ -135,8 +153,8 @@ if ~isfield(all_images,'img') || isempty(all_images.img)
 
     d = dir(fullfile(params.instrfolder,'img_image_prompts', '*.png'));
     
-    %  instr_im: 4D array: [x,y, 3, nr_crossings]
-    all_images.img = uint8(zeros(700,700,3,length(params.stim.all_specialcore_im_nrs)));
+    %  instr_im: 4D array: [x,y, 3, nr_crossings + 1 for vivid rating prompt]
+    all_images.img = uint8(zeros(700,700,3,length(params.stim.all_specialcore_im_nrs)+1)); 
     
     for aa = 1:length(d)
         a1 = imread(fullfile(d(aa).folder,d(aa).name));
@@ -190,7 +208,6 @@ run_frames = all_run_frames((all_run_frames.session_nr==ses_nr ...
 %% Predefine cell arrays for stimuli
 run_images          = cell(size(run_frames.frame_im_nr)); % time frames x stim loc (1:left and 2:right side stimuli)
 run_alpha_masks     = run_images;
-img_quiz_dot_coords = run_images;
 
 % Get stimulus rows in time table                
 stim_row    = find(ismember(run_table.event_id, [params.exp.block.stim_epoch1_ID, params.exp.block.stim_epoch2_ID, ...
@@ -240,26 +257,15 @@ for ii = 1:length(stim_row)
             taskClass = run_table.task_class_name{stim_row(ii)};
             
             if strcmp(taskClass,'img')
-                % Load quiz dot xy-coordinates and pixel image for IMG crossings
+                
                 if all(isnan(stimClass))
                     stimClass = run_table.stim_class_name{stim_row(ii),setdiff([1,2],side)};
                 end
 
-                if ~isfield(all_images,'img_quiz_dot') || ~isfield(all_images.img_quiz_dot, (stimClass)) || isempty(all_images.img_quiz_dot.(stimClass))
-                    d = dir(sprintf('%s*.mat', params.stim.img.stimfile));
-                    a = load(fullfile(d(end).folder,d(end).name), 'img_quiz_dots');
-                    all_images.img_quiz_dot.(stimClass) = a.img_quiz_dots.(stimClass).xy_coords_pix; %  nr special core stim x 20 examples (10 yes/10 no) x 2 dots x 2 coords (x & y)
-                    
-                    % add quiz dot image & mask
-                    if ~isfield(all_images.img_quiz_dot,'im') || isempty(all_images.img_quiz_dot.im)
-                        all_images.img_quiz_dot.im   = a.img_quiz_dots.im;
-                        all_images.img_quiz_dot.mask = a.img_quiz_dots.mask;
-                    end
-                    clear a d;
-                end
-                % ensure we keep imagery quiz dot image number
+                
+                % We need to have a stim number for vivid rating image
                 if strcmp(run_table.event_name(stim_row(ii)),'stim2') && any(isnan(run_frames.frame_im_nr(curr_frames,side)))
-                   run_frames.frame_im_nr(curr_frames,side) = repmat(run_table.stim2_im_nr((stim_row(ii)),side),length(curr_frames),1);
+                   run_frames.frame_im_nr(curr_frames,side) = [9999, Nan];
                 end
             end
             
@@ -369,18 +375,11 @@ for ii = 1:length(stim_row)
                         
                         delta_deg = run_table.stim2_delta(stim_row(ii),side);
                         
-                        if any(strcmp(all_images.info.gabor.Properties.VariableNames, 'img_quiz_dot_specialcore_stim_nr'))
-                            idx0 = find( (all_images.info.gabor.orient_deg == (run_table.orient_dir(stim_row(ii),side))) & ...
-                                (all_images.info.gabor.phase_deg==run_table.gbr_phase(stim_row(ii),side)) & ...
-                                (all_images.info.gabor.contrast==max(params.stim.gabor.contrast)) & ...
-                                (all_images.info.gabor.delta_deg==delta_deg) & ...
-                                isnan(all_images.info.gabor.img_quiz_dots_overlap) );
-                        else
-                            idx0 = find( (all_images.info.gabor.orient_deg == (run_table.orient_dir(stim_row(ii),side))) & ...
-                                (all_images.info.gabor.phase_deg==run_table.gbr_phase(stim_row(ii),side)) & ...
-                                (all_images.info.gabor.contrast==max(params.stim.gabor.contrast)) & ...
-                                (all_images.info.gabor.delta_deg==delta_deg) );
-                        end
+                        idx0 = find( (all_images.info.gabor.orient_deg == (run_table.orient_dir(stim_row(ii),side))) & ...
+                            (all_images.info.gabor.phase_deg==run_table.gbr_phase(stim_row(ii),side)) & ...
+                            (all_images.info.gabor.contrast==max(params.stim.gabor.contrast)) & ...
+                            (all_images.info.gabor.delta_deg==delta_deg) );
+                        
                         ori_idx      = all_images.info.gabor.orient_i(idx0);
                         con_idx      = max(all_images.info.gabor.contrast_i); % we only use highest contrast for gabor wm test im
                         test_im      = all_images.info.gabor.unique_im(idx0);
@@ -399,18 +398,11 @@ for ii = 1:length(stim_row)
                     elseif strcmp(run_table.event_name(stim_row(ii)),'stim2') && strcmp(run_table.task_class_name(stim_row(ii)),'ltm') ...
                             && run_table.is_catch(stim_row(ii)) == 0 && ismember(run_table.stim2_im_nr(stim_row(ii),side),params.stim.gabor.unique_im_nrs_specialcore)
                         
-                        if any(strcmp(all_images.info.gabor.Properties.VariableNames, 'img_quiz_dot_specialcore_stim_nr'))
-                            idx0 = find( (all_images.info.gabor.orient_deg == (run_table.stim2_orient_dir(stim_row(ii),side))) & ...
-                                         (all_images.info.gabor.contrast==max(params.stim.gabor.contrast)) & ...
-                                         (all_images.info.gabor.delta_deg==0)  & ...
-                                         (all_images.info.gabor.is_specialcore==1) & ...
-                                         isnan(all_images.info.gabor.img_quiz_dots_overlap) );
-                        else
-                            idx0 = find( (all_images.info.gabor.orient_deg == (run_table.stim2_orient_dir(stim_row(ii),side))) & ...
-                                         (all_images.info.gabor.contrast==max(params.stim.gabor.contrast)) & ...
-                                         (all_images.info.gabor.delta_deg==0)  & ...
-                                         (all_images.info.gabor.is_specialcore==1) );
-                        end
+                        idx0 = find( (all_images.info.gabor.orient_deg == (run_table.stim2_orient_dir(stim_row(ii),side))) & ...
+                            (all_images.info.gabor.contrast==max(params.stim.gabor.contrast)) & ...
+                            (all_images.info.gabor.delta_deg==0)  & ...
+                            (all_images.info.gabor.is_specialcore==1) );
+                        
                         ori_idx      = all_images.info.gabor.orient_i(idx0);
                         con_idx      = max(all_images.info.gabor.contrast_i); % we only use highest contrast for gabor ltm test im
                                                 
@@ -421,52 +413,10 @@ for ii = 1:length(stim_row)
                             && run_table.is_catch(stim_row(ii)) == 0
                         
                         if ~isnan(run_table.condition_nr(stim_row(ii),side))
-                            % special core stimulus nr index
-                            if side == 1 
-                                corresponding_im = run_table.stim_nr_left(stim_row(ii));
-                            elseif side == 2
-                                corresponding_im = run_table.stim_nr_right(stim_row(ii));
-                            end
-                            spc_idx = find(corresponding_im==params.stim.gabor.imagery_quiz_dot_specialcore_stim_nr); % special core stimulus nr index
-                            
-                            % get quiz dot image nr
-                            idx0 = find( (all_images.info.gabor.img_quiz_dot_specialcore_stim_nr == corresponding_im) & ...
-                                (all_images.info.gabor.orient_deg == (run_table.orient_dir(stim_row(ii),side))) & ...
-                                (all_images.info.gabor.phase_deg == run_table.gbr_phase(stim_row(ii),side)) & ...
-                                (all_images.info.gabor.contrast == max(params.stim.gabor.contrast)) & ...
-                                (all_images.info.gabor.delta_deg== 0) & ...
-                                (all_images.info.gabor.img_quiz_dots_overlap == run_table.stim2_delta(stim_row(ii),side)) & ...
-                                (all_images.info.gabor.unique_im == unique_im) );
-                        else
-                            % we don't have access to core stimulus number and we have to infer
-                            spc_idx0 = ismember(params.stim.gabor.imagery_quiz_dot_stim_nr,run_table.stim2_im_nr(stim_row(ii),side));
-                            spc_idx = find(sum(spc_idx0,2));
-                            corresponding_im = params.stim.gabor.imagery_quiz_dot_specialcore_stim_nr(spc_idx);
-                            
-                            % get quiz dot image nr idx
-                            idx0 = find( (all_images.info.gabor.img_quiz_dot_specialcore_stim_nr == corresponding_im) & ...
-                                (all_images.info.gabor.orient_deg == (all_images.info.gabor.orient_deg(all_images.info.gabor.unique_im==corresponding_im))) & ...
-                                (all_images.info.gabor.phase_deg == all_images.info.gabor.phase_deg(all_images.info.gabor.unique_im==corresponding_im)) & ...
-                                (all_images.info.gabor.contrast == max(params.stim.gabor.contrast)) & ...
-                                (all_images.info.gabor.delta_deg== 0) & ...
-                                (all_images.info.gabor.img_quiz_dots_overlap == run_table.stim2_delta(stim_row(ii),side)) & ...
-                                (all_images.info.gabor.unique_im == unique_im) );
+                            run_images{curr_frames(1),side} = all_images.img_prompt(:,:,:,end); % 700x700x3 pixels "How vivid?" text image
+                            % no run_alpha_masks
                         end
-                        tst_nrs = params.stim.gabor.imagery_quiz_dot_stim_nr(spc_idx,:);                 % quiz dot image test nrs for this special core stimulus
-                        assert(ismember(unique_im,tst_nrs));                                             % check if they match the stim2 image nr
-                        test_im = all_images.info.gabor.unique_im(idx0);
-                        assert(isequal(test_im,run_table.stim2_im_nr(stim_row(ii),side)))
-                        
-                        % store coordinates
-                        img_quiz_dot_coords{curr_frames(1),side} = squeeze(all_images.img_quiz_dot.gabor(spc_idx,tst_nrs == unique_im,:,:)); % 2 dots per side (rows) x 2 coords (x and y)
-                        assert(isequal([all_images.info.gabor.img_quiz_dot1_x_pix(idx0), all_images.info.gabor.img_quiz_dot1_y_pix(idx0)], ...
-                            squeeze(all_images.img_quiz_dot.gabor(spc_idx,tst_nrs == unique_im, 1, [1,2]))')) % 8 special core x 20 yes/no x dot nr x quiz dot x-pos x quiz dot y-pos
-                        assert(isequal([all_images.info.gabor.img_quiz_dot2_x_pix(idx0), all_images.info.gabor.img_quiz_dot2_y_pix(idx0)], ...
-                            squeeze(all_images.img_quiz_dot.gabor(spc_idx,tst_nrs == test_im, 2, [1,2]))')) % 8 special core x 20 yes/no x dot nr x quiz dot x-pos x quiz dot y-pos
-                        
-                        run_images{curr_frames(1),side}      = repmat(all_images.img_quiz_dot.im,[1 1 1 2]); % we need two quiz dots per side
-                        run_alpha_masks{curr_frames(1),side} = repmat(all_images.img_quiz_dot.mask,[1 1 1 2]); % we need two quiz dots per side
-                        assert(any(ismember(run_table.correct_response(stim_row(ii)),[1,2])))  % 1 = yes dots overlap // 2 = no dots overlap               
+                        assert(isnan(run_table.correct_response(stim_row(ii))))  % no objective correct response
                         
                     elseif run_table.is_catch(stim_row(ii)) == 1
                         % catch trial
@@ -626,61 +576,11 @@ for ii = 1:length(stim_row)
                     elseif strcmp(run_table.event_name(stim_row(ii)),'stim2') && strcmp(run_table.task_class_name(stim_row(ii)),'img') ...
                             && run_table.is_catch(stim_row(ii)) == 0
                         
-                        if ~isfield(all_images, 'info') || ~isfield(all_images.info, 'rdk') || isempty(all_images.info.rdk)
-                            
-                            % RDKs: Get full info array
-                            d = dir(sprintf('%s*.csv', params.stim.rdk.infofile));
-                            a = readtable(fullfile(d(end).folder,d(end).name)); 
-                            all_images.info.rdk  = a;
-                            clear a d;
-                        end
-                        
                         if ~isnan(run_table.condition_nr(stim_row(ii),side))
-                            % special core stimulus nr index
-                            if side == 1 
-                                corresponding_im = run_table.stim_nr_left(stim_row(ii));
-                            elseif side == 2
-                                corresponding_im = run_table.stim_nr_right(stim_row(ii));
-                            end
-                            spc_idx = find(corresponding_im==params.stim.rdk.imagery_quiz_dot_specialcore_stim_nr); % special core stimulus nr index
-                            
-                            % get quiz dot image nr idx
-                            idx0 = find( all_images.info.rdk.img_quiz_dot_specialcore_stim_nr == corresponding_im & ...
-                                (all_images.info.rdk.dot_motdir_deg == (run_table.orient_dir(stim_row(ii),side))) & ...
-                                (all_images.info.rdk.dot_coh == run_table.rdk_coherence(stim_row(ii),side)) & ...
-                                (all_images.info.rdk.rel_motdir_deg==0) & ...
-                                (all_images.info.rdk.img_quiz_dots_overlap == run_table.stim2_delta(stim_row(ii),side)) & ...
-                                (all_images.info.rdk.unique_im == unique_im) );
-                            
-                        else
-                            % we don't have access to core stimulus number and we have to infer
-                            spc_idx0 = ismember(params.stim.rdk.imagery_quiz_dot_stim_nr,run_table.stim2_im_nr(stim_row(ii),side));
-                            spc_idx = find(sum(spc_idx0,2));
-                            corresponding_im = params.stim.rdk.imagery_quiz_dot_specialcore_stim_nr(spc_idx);
-                            
-                            % get quiz dot image nr idx
-                            idx0 = find( all_images.info.rdk.img_quiz_dot_specialcore_stim_nr == corresponding_im & ...
-                                (all_images.info.rdk.dot_motdir_deg == all_images.info.rdk.dot_motdir_deg(all_images.info.rdk.unique_im==corresponding_im)) & ...
-                                (all_images.info.rdk.dot_coh == all_images.info.rdk.dot_coh(all_images.info.rdk.unique_im==corresponding_im)) & ...
-                                (all_images.info.rdk.rel_motdir_deg==0) & ...
-                                (all_images.info.rdk.img_quiz_dots_overlap == run_table.stim2_delta(stim_row(ii),side)) & ...
-                                (all_images.info.rdk.unique_im == unique_im) );
+                            run_images{curr_frames(1),side} = all_images.img_prompt(:,:,:,end); % 700x700x3 pixels "How vivid?" text image
+                            % no run_alpha_masks
                         end
-                        tst_nrs = params.stim.rdk.imagery_quiz_dot_stim_nr(spc_idx,:);                   % quiz dot image test nrs for this special core stimulus
-                        assert(ismember(unique_im,tst_nrs));                                             % check if they match the stim2 image nr
-                        test_im = all_images.info.rdk.unique_im(idx0);
-                        assert(isequal(test_im,run_table.stim2_im_nr(stim_row(ii),side)))
-                        
-                        % store coordinates
-                        img_quiz_dot_coords{curr_frames(1),side} = squeeze(all_images.img_quiz_dot.rdk(spc_idx,tst_nrs == unique_im,:,:)); % 2 dots per side (rows) x 2 coords (x and y)
-                        assert(isequal([all_images.info.rdk.img_quiz_dot1_x_pix(idx0), all_images.info.rdk.img_quiz_dot1_y_pix(idx0)], ...
-                            squeeze(all_images.img_quiz_dot.rdk(spc_idx,tst_nrs == unique_im, 1, [1,2]))')) % 8 special core x 20 yes/no x dot nr x quiz dot x-pos x quiz dot y-pos
-                        assert(isequal([all_images.info.rdk.img_quiz_dot2_x_pix(idx0), all_images.info.rdk.img_quiz_dot2_y_pix(idx0)], ...
-                            squeeze(all_images.img_quiz_dot.rdk(spc_idx,tst_nrs == test_im, 2, [1,2]))')) % 8 special core x 20 yes/no x dot nr x quiz dot x-pos x quiz dot y-pos
-                        
-                        run_images{curr_frames(1),side}      = repmat(all_images.img_quiz_dot.im,[1 1 1 2]);
-                        run_alpha_masks{curr_frames(1),side} = repmat(all_images.img_quiz_dot.mask,[1 1 1 2]);
-                        assert(any(ismember(run_table.correct_response(stim_row(ii)),[1,2])))  % 1 = yes dots overlap // 2 = no dots overlap
+                        assert(isnan(run_table.correct_response(stim_row(ii))))  % no objective correct response
 
                         
                     elseif run_table.is_catch(stim_row(ii)) == 1
@@ -727,49 +627,10 @@ for ii = 1:length(stim_row)
                             && strcmp(run_table.task_class_name(stim_row(ii)),'img')
                                 
                         if ~isnan(run_table.condition_nr(stim_row(ii),side))
-                            % special core stimulus nr index
-                            if side == 1 
-                                corresponding_im = run_table.stim_nr_left(stim_row(ii));
-                            elseif side == 2
-                                corresponding_im = run_table.stim_nr_right(stim_row(ii));
-                            end
-                            spc_idx = find(corresponding_im==params.stim.dot.imagery_quiz_dot_specialcore_stim_nr); % special core stimulus nr index
-                            
-                            % get quiz dot image nr idx
-                            idx0 = find( all_images.info.dot.img_quiz_dot_specialcore_stim_nr == corresponding_im & ...
-                                (all_images.info.dot.angle_deg == (run_table.orient_dir(stim_row(ii),side))) & ...
-                                (all_images.info.dot.delta_deg==0) & ...
-                                (all_images.info.dot.img_quiz_dots_overlap == run_table.stim2_delta(stim_row(ii),side)) & ...
-                                (all_images.info.dot.unique_im == unique_im));
-                        else
-                            % we don't have access to core stimulus number
-                            % and we have to infer
-                            spc_idx0 = ismember(params.stim.dot.imagery_quiz_dot_stim_nr,run_table.stim2_im_nr(stim_row(ii),side));
-                            spc_idx = find(sum(spc_idx0,2));
-                            corresponding_im = params.stim.dot.imagery_quiz_dot_specialcore_stim_nr(spc_idx);
-                            
-                            % get quiz dot image nr idx
-                            idx0 = find( all_images.info.dot.img_quiz_dot_specialcore_stim_nr == corresponding_im & ...
-                                (all_images.info.dot.angle_deg == all_images.info.dot.angle_deg(all_images.info.dot.unique_im==corresponding_im)) & ...
-                                (all_images.info.dot.delta_deg==0) & ...
-                                (all_images.info.dot.img_quiz_dots_overlap == run_table.stim2_delta(stim_row(ii),side)) & ...
-                                (all_images.info.dot.unique_im == unique_im));
+                            run_images{curr_frames(1),side} = all_images.img_prompt(:,:,:,end); % 700x700x3 pixels "How vivid?" text image
+                            % no run_alpha_masks
                         end
-                        tst_nrs = params.stim.dot.imagery_quiz_dot_stim_nr(spc_idx,:);                   % quiz dot image test nrs for this special core stimulus
-                        assert(ismember(unique_im,tst_nrs));                                             % check if they match the stim2 image nr
-                        test_im = all_images.info.dot.unique_im(idx0);
-                        assert(isequal(test_im,run_table.stim2_im_nr(stim_row(ii),side)))
-                        
-                        % store coordinates
-                        img_quiz_dot_coords{curr_frames(1),side} = squeeze(all_images.img_quiz_dot.dot(spc_idx,tst_nrs == unique_im,:,:)); % 2 dots per side (rows) x 2 coords (x and y)
-                        assert(isequal([all_images.info.dot.img_quiz_dot1_x_pix(idx0), all_images.info.dot.img_quiz_dot1_y_pix(idx0)], ...
-                            squeeze(all_images.img_quiz_dot.dot(spc_idx,tst_nrs == unique_im, 1, [1,2]))')) % 8 special core x 20 yes/no x dot nr x quiz dot x-pos x quiz dot y-pos
-                        assert(isequal([all_images.info.dot.img_quiz_dot2_x_pix(idx0), all_images.info.dot.img_quiz_dot2_y_pix(idx0)], ...
-                            squeeze(all_images.img_quiz_dot.dot(spc_idx,tst_nrs == test_im, 2, [1,2]))')) % 8 special core x 20 yes/no x dot nr x quiz dot x-pos x quiz dot y-pos
-                        
-                        run_images{curr_frames(1),side}      = repmat(all_images.img_quiz_dot.im,[1 1 1 2]);
-                        run_alpha_masks{curr_frames(1),side} = repmat(all_images.img_quiz_dot.mask,[1 1 1 2]);
-                        assert(any(ismember(run_table.correct_response(stim_row(ii)),[1,2])))  % 1 = yes dots overlap // 2 = no dots overlap
+                        assert(isnan(run_table.correct_response(stim_row(ii))))  % no objective correct response
                           
                     elseif run_table.is_catch(stim_row(ii)) == 1
                         % catch trial
@@ -795,22 +656,12 @@ for ii = 1:length(stim_row)
                     if strcmp(run_table.event_name(stim_row(ii)),'stim1') && run_table.is_catch(stim_row(ii)) == 0 ...
                             && (run_table.is_objectcatch(stim_row(ii)) == 0 || isnan(run_table.is_objectcatch(stim_row(ii)))) ...
                             && ~strcmp(run_table.task_class_name(stim_row(ii)),'img')
-                       
-                        if any(strcmp(all_images.info.obj.Properties.VariableNames, 'img_quiz_dot_specialcore_stim_nr'))
-                            idx = find( (all_images.info.obj.super_cat == run_table.super_cat(stim_row(ii),side)) & ...
-                                (all_images.info.obj.basic_cat == run_table.basic_cat(stim_row(ii),side)) & ...
-                                (all_images.info.obj.sub_cat == run_table.sub_cat(stim_row(ii),side)) & ...
-                                (all_images.info.obj.abs_rot == run_table.orient_dir(stim_row(ii),side)) & ...
-                                isnan(all_images.info.obj.img_quiz_dot_specialcore_stim_nr) & ...
-                                all_images.info.obj.is_objectcatch==0 );
-                        else
-                            idx = find( (all_images.info.obj.super_cat == run_table.super_cat(stim_row(ii),side)) & ...
-                                (all_images.info.obj.basic_cat == run_table.basic_cat(stim_row(ii),side)) & ...
-                                (all_images.info.obj.sub_cat == run_table.sub_cat(stim_row(ii),side)) & ...
-                                (all_images.info.obj.abs_rot == run_table.orient_dir(stim_row(ii),side)) & ...
-                                all_images.info.obj.is_objectcatch==0);
-                        end
-                        
+
+                        idx = find( (all_images.info.obj.super_cat == run_table.super_cat(stim_row(ii),side)) & ...
+                            (all_images.info.obj.basic_cat == run_table.basic_cat(stim_row(ii),side)) & ...
+                            (all_images.info.obj.sub_cat == run_table.sub_cat(stim_row(ii),side)) & ...
+                            (all_images.info.obj.abs_rot == run_table.orient_dir(stim_row(ii),side)) & ...
+                            all_images.info.obj.is_objectcatch==0);
                         
                         obj_super = all_images.info.obj.super_cat_name(idx);
                         obj_basic = all_images.info.obj.basic_cat_name(idx);
@@ -839,20 +690,20 @@ for ii = 1:length(stim_row)
                     elseif strcmp(run_table.event_name(stim_row(ii)),'stim1') && run_table.is_catch(stim_row(ii)) == 0 ...
                             && run_table.is_objectcatch(stim_row(ii)) == 1 && ~strcmp(run_table.task_class_name(stim_row(ii)),'img')
                             
-                            if any(strcmp(all_images.info.obj.Properties.VariableNames, 'img_quiz_dot_specialcore_stim_nr'))
-                                idx = find( (all_images.info.obj.super_cat == run_table.super_cat(stim_row(ii),side)) & ...
-                                    (all_images.info.obj.basic_cat == run_table.basic_cat(stim_row(ii),side)) & ...
-                                    (all_images.info.obj.sub_cat == run_table.sub_cat(stim_row(ii),side)) & ...
-                                    (all_images.info.obj.abs_rot == run_table.orient_dir(stim_row(ii),side)) & ...
-                                    (all_images.info.obj.rel_rot == 0) & ...
-                                    isnan(all_images.info.obj.img_quiz_dot_specialcore_stim_nr) );
-                            else
+%                             if any(strcmp(all_images.info.obj.Properties.VariableNames, 'img_quiz_dot_specialcore_stim_nr'))
+%                                 idx = find( (all_images.info.obj.super_cat == run_table.super_cat(stim_row(ii),side)) & ...
+%                                     (all_images.info.obj.basic_cat == run_table.basic_cat(stim_row(ii),side)) & ...
+%                                     (all_images.info.obj.sub_cat == run_table.sub_cat(stim_row(ii),side)) & ...
+%                                     (all_images.info.obj.abs_rot == run_table.orient_dir(stim_row(ii),side)) & ...
+%                                     (all_images.info.obj.rel_rot == 0) & ...
+%                                     isnan(all_images.info.obj.img_quiz_dot_specialcore_stim_nr) );
+%                             else
                                 idx = find( (all_images.info.obj.super_cat == run_table.super_cat(stim_row(ii),side)) & ...
                                     (all_images.info.obj.basic_cat == run_table.basic_cat(stim_row(ii),side)) & ...
                                     (all_images.info.obj.sub_cat == run_table.sub_cat(stim_row(ii),side)) & ...
                                     (all_images.info.obj.abs_rot == run_table.orient_dir(stim_row(ii),side)) & ...
                                     (all_images.info.obj.rel_rot == 0));
-                            end
+%                             end
                             obj_super = all_images.info.obj.super_cat_name(idx);
                             obj_basic = all_images.info.obj.basic_cat_name(idx);
                             obj_sub   = all_images.info.obj.sub_cat_name(idx);
@@ -902,18 +753,11 @@ for ii = 1:length(stim_row)
                             corresponding_unique_im = run_table.stim_nr_right(stim_row(ii))==params.stim.obj.unique_im_nrs_core;
                         end
                         % check if stim idx matches
-                        if any(strcmp(all_images.info.obj.Properties.VariableNames, 'img_quiz_dot_specialcore_stim_nr'))
-                            idx = find( (all_images.info.obj.super_cat == run_table.super_cat(stim_row(ii),side)) & ...
-                                (all_images.info.obj.basic_cat == run_table.basic_cat(stim_row(ii),side)) & ...
-                                (all_images.info.obj.sub_cat == run_table.sub_cat(stim_row(ii),side)) & ...
-                                (all_images.info.obj.abs_rot == ref_dir) & ...
-                                isnan(all_images.info.obj.img_quiz_dot_specialcore_stim_nr) );
-                        else
-                            idx = find( (all_images.info.obj.super_cat == run_table.super_cat(stim_row(ii),side)) & ...
-                                (all_images.info.obj.basic_cat == run_table.basic_cat(stim_row(ii),side)) & ...
-                                (all_images.info.obj.sub_cat == run_table.sub_cat(stim_row(ii),side)) & ...
-                                (all_images.info.obj.abs_rot == ref_dir) );
-                        end
+                        idx = find( (all_images.info.obj.super_cat == run_table.super_cat(stim_row(ii),side)) & ...
+                            (all_images.info.obj.basic_cat == run_table.basic_cat(stim_row(ii),side)) & ...
+                            (all_images.info.obj.sub_cat == run_table.sub_cat(stim_row(ii),side)) & ...
+                            (all_images.info.obj.abs_rot == ref_dir) );
+
                         test_im         = run_table.stim2_im_nr(stim_row(ii),side);
                         delta_idx0      = find(delta==params.stim.obj.delta_from_ref) +1; % add one because 5th dimension index delta = [0,1,2,3,4] 
                         assert(strcmp(run_table.sub_cat_name(stim_row(ii),side), all_images.info.obj.sub_cat_name(idx)));
@@ -934,14 +778,8 @@ for ii = 1:length(stim_row)
                         corresponding_unique_im = run_table.stim2_im_nr(stim_row(ii),side);
                        
                         % check if stim idx matches
-                        if any(strcmp(all_images.info.obj.Properties.VariableNames, 'img_quiz_dot_specialcore_stim_nr'))
-                            idx = find( (all_images.info.obj.unique_im==corresponding_unique_im) & ...
-                                        (all_images.info.obj.abs_rot == ref_dir) & ...
-                                        isnan(all_images.info.obj.img_quiz_dot_specialcore_stim_nr) );
-                        else
-                            idx = find( (all_images.info.obj.unique_im==corresponding_unique_im) & ...
-                                        (all_images.info.obj.abs_rot == ref_dir));
-                        end
+                        idx = find( (all_images.info.obj.unique_im==corresponding_unique_im) & ...
+                            (all_images.info.obj.abs_rot == ref_dir));
                         
                         run_images{curr_frames(1),side}      = all_images.obj(:,:,:,idx,1);
                         run_alpha_masks{curr_frames(1),side} = all_images.alpha.obj(:,:,idx,1);
@@ -950,56 +788,10 @@ for ii = 1:length(stim_row)
                             && run_table.is_catch(stim_row(ii)) == 0 && (run_table.is_objectcatch(stim_row(ii)) == 0 || isnan(run_table.is_objectcatch(stim_row(ii))))
                         
                         if ~isnan(run_table.condition_nr(stim_row(ii),side))
-                            % special core stimulus nr index
-                            if side == 1 
-                                corresponding_im = run_table.stim_nr_left(stim_row(ii));
-                            elseif side == 2
-                                corresponding_im = run_table.stim_nr_right(stim_row(ii));
-                            end
-                            spc_idx = find(corresponding_im==params.stim.obj.imagery_quiz_dot_specialcore_stim_nr); % special core stimulus nr index
-                            
-                            % get quiz dot image nr idx
-                            idx0 = find( all_images.info.obj.img_quiz_dot_specialcore_stim_nr == corresponding_im & ...
-                                (all_images.info.obj.base_rot == run_table.orient_dir(stim_row(ii),side)) & ...
-                                (all_images.info.obj.super_cat == run_table.super_cat(stim_row(ii),side)) & ...
-                                (all_images.info.obj.basic_cat == run_table.basic_cat(stim_row(ii),side)) & ...
-                                (all_images.info.obj.sub_cat == run_table.sub_cat(stim_row(ii),side)) & ...
-                                (all_images.info.obj.rel_rot==0) & ...
-                                (all_images.info.obj.img_quiz_dots_overlap == run_table.stim2_delta(stim_row(ii),side)) & ...
-                                (all_images.info.obj.unique_im == unique_im) );
-   
-                        else
-                            % we don't have access to core stimulus number and we have to infer
-                            spc_idx0 = ismember(params.stim.obj.imagery_quiz_dot_stim_nr,run_table.stim2_im_nr(stim_row(ii),side));
-                            spc_idx = find(sum(spc_idx0,2));
-                            corresponding_im = params.stim.obj.imagery_quiz_dot_specialcore_stim_nr(spc_idx);
-                            
-                            % get quiz dot image nr idx
-                            idx0 = find( all_images.info.obj.img_quiz_dot_specialcore_stim_nr == corresponding_im & ...
-                                (all_images.info.obj.base_rot == all_images.info.obj.base_rot(all_images.info.obj.unique_im==corresponding_im)) & ...
-                                (all_images.info.obj.super_cat == all_images.info.obj.super_cat(all_images.info.obj.unique_im==corresponding_im)) & ...
-                                (all_images.info.obj.basic_cat == all_images.info.obj.basic_cat(all_images.info.obj.unique_im==corresponding_im)) & ...
-                                (all_images.info.obj.sub_cat == all_images.info.obj.sub_cat(all_images.info.obj.unique_im==corresponding_im)) & ...
-                                (all_images.info.obj.rel_rot==0) & ...
-                                (all_images.info.obj.img_quiz_dots_overlap == run_table.stim2_delta(stim_row(ii),side)) & ...
-                                (all_images.info.obj.unique_im == unique_im) );
+                            run_images{curr_frames(1),side} = all_images.img_prompt(:,:,:,end); % 700x700x3 pixels "How vivid?" text image
+                            % no run_alpha_masks
                         end
-                                                
-                        tst_nrs = params.stim.obj.imagery_quiz_dot_stim_nr(spc_idx,:);                   % quiz dot image test nrs for this special core stimulus
-                        assert(ismember(unique_im,tst_nrs));                                             % check if they match the stim2 image nr
-                        test_im = all_images.info.obj.unique_im(idx0);
-                        assert(isequal(test_im,run_table.stim2_im_nr(stim_row(ii),side)))
-                        
-                        % store coordinates
-                        img_quiz_dot_coords{curr_frames(1),side} = squeeze(all_images.img_quiz_dot.obj(spc_idx,tst_nrs == unique_im,:,:)); % 2 dots per side (rows) x 2 coords (x and y)
-                        assert(isequal([all_images.info.obj.img_quiz_dot1_x_pix(idx0), all_images.info.obj.img_quiz_dot1_y_pix(idx0)], ...
-                            squeeze(all_images.img_quiz_dot.obj(spc_idx,tst_nrs == unique_im, 1, [1,2]))')) % 8 special core x 20 yes/no x dot nr x quiz dot x-pos x quiz dot y-pos
-                        assert(isequal([all_images.info.obj.img_quiz_dot2_x_pix(idx0), all_images.info.obj.img_quiz_dot2_y_pix(idx0)], ...
-                            squeeze(all_images.img_quiz_dot.obj(spc_idx,tst_nrs == test_im, 2, [1,2]))')) % 8 special core x 20 yes/no x dot nr x quiz dot x-pos x quiz dot y-pos
-                        
-                        run_images{curr_frames(1),side}      = repmat(all_images.img_quiz_dot.im,[1 1 1 2]);
-                        run_alpha_masks{curr_frames(1),side} = repmat(all_images.img_quiz_dot.mask,[1 1 1 2]);
-                        assert(any(ismember(run_table.correct_response(stim_row(ii)),[1,2])))  % 1 = yes dots overlap // 2 = no dots overlap               
+                        assert(isnan(run_table.correct_response(stim_row(ii))))  % no objective correct response        
 
                     elseif run_table.is_catch(stim_row(ii)) == 1
                         run_images{curr_frames,side}      = uint8(zeros(1,1,1));
@@ -1031,18 +823,10 @@ for ii = 1:length(stim_row)
                     if strcmp(run_table.event_name(stim_row(ii)),'stim1') && run_table.is_catch(stim_row(ii)) == 0 ...
                             && ~strcmp(run_table.task_class_name(stim_row(ii)),'img')
                         
-                        if any(strcmp(all_images.info.ns.Properties.VariableNames, 'img_quiz_dot_specialcore_stim_nr'))
-                            idx0 = (all_images.info.ns.super_cat == run_table.super_cat(stim_row(ii),1) & ...
-                                (all_images.info.ns.basic_cat == run_table.basic_cat(stim_row(ii),1) ) & ...
-                                (all_images.info.ns.sub_cat == run_table.sub_cat(stim_row(ii),1)) & ...
-                                (ismember(all_images.info.ns.unique_im, params.stim.ns.unique_im_nrs_core)) & ...
-                                isnan(all_images.info.ns.img_quiz_dot_specialcore_stim_nr) );
-                        else
-                            idx0 = (all_images.info.ns.super_cat == run_table.super_cat(stim_row(ii),1) & ...
-                                (all_images.info.ns.basic_cat == run_table.basic_cat(stim_row(ii),1) ) & ...
-                                (all_images.info.ns.sub_cat == run_table.sub_cat(stim_row(ii),1)) & ...
-                                (ismember(all_images.info.ns.unique_im, params.stim.ns.unique_im_nrs_core)));
-                        end
+                        idx0 = (all_images.info.ns.super_cat == run_table.super_cat(stim_row(ii),1) & ...
+                            (all_images.info.ns.basic_cat == run_table.basic_cat(stim_row(ii),1) ) & ...
+                            (all_images.info.ns.sub_cat == run_table.sub_cat(stim_row(ii),1)) & ...
+                            (ismember(all_images.info.ns.unique_im, params.stim.ns.unique_im_nrs_core)));
                         
                         obj_super = all_images.info.ns.super_cat(idx0);
                         obj_basic = all_images.info.ns.basic_cat(idx0);
@@ -1088,14 +872,8 @@ for ii = 1:length(stim_row)
 
                         corresponding_unique_im = run_table.stim2_im_nr(stim_row(ii),1);
                         
-                        if any(strcmp(all_images.info.ns.Properties.VariableNames, 'img_quiz_dot_specialcore_stim_nr'))
-                            idx0 = (all_images.info.ns.unique_im==corresponding_unique_im) & ...
-                                   (ismember(all_images.info.ns.unique_im, params.stim.ns.unique_im_nrs_specialcore)) & ...
-                                    isnan(all_images.info.ns.img_quiz_dot_specialcore_stim_nr);
-                        else
-                            idx0 = (all_images.info.ns.unique_im==corresponding_unique_im) & ...
-                                   ismember(all_images.info.ns.unique_im, params.stim.ns.unique_im_nrs_specialcore);
-                        end
+                        idx0 = (all_images.info.ns.unique_im==corresponding_unique_im) & ...
+                            ismember(all_images.info.ns.unique_im, params.stim.ns.unique_im_nrs_specialcore);
                         
                         i4 = all_images.info.ns.super_cat(idx0);
                         i5 = all_images.info.ns.basic_cat(idx0);
@@ -1112,31 +890,11 @@ for ii = 1:length(stim_row)
                     elseif strcmp(run_table.event_name(stim_row(ii)),'stim2') && strcmp(run_table.task_class_name(stim_row(ii)),'img') ...
                             && run_table.is_catch(stim_row(ii)) == 0
                         
-                        spc_idx = find(run_table.stim_nr_left(stim_row(ii))==params.stim.ns.imagery_quiz_dot_specialcore_stim_nr); % special core stimulus nr index (17-24)
-                        tst_nrs = params.stim.ns.imagery_quiz_dot_stim_nr(spc_idx,:);                   % quiz dot image test nrs for this special core stimulus
-                        assert(ismember(unique_im,tst_nrs));                                            % check if they match the stim2 image nr
-                        
-                        % get quiz dot image nr
-                        idx0 = find( all_images.info.ns.img_quiz_dot_specialcore_stim_nr == run_table.stim_nr_left(stim_row(ii)) & ...
-                            (all_images.info.ns.super_cat == run_table.super_cat(stim_row(ii),1)) & ...
-                            (all_images.info.ns.basic_cat == run_table.basic_cat(stim_row(ii),1)) & ...
-                            (all_images.info.ns.sub_cat == run_table.sub_cat(stim_row(ii),1)) & ...
-                            (all_images.info.ns.img_quiz_dots_overlap == run_table.stim2_delta(stim_row(ii),1)) & ...
-                            (all_images.info.ns.unique_im == unique_im));
-                        
-                        test_im = all_images.info.ns.unique_im(idx0);
-                        assert(isequal(test_im,run_table.stim2_im_nr(stim_row(ii),1)))
-                        
-                        % store coordinates
-                        img_quiz_dot_coords{curr_frames(1),1} = squeeze(all_images.img_quiz_dot.ns(spc_idx,tst_nrs == unique_im,:,:)); % 2 dots per side (row1 = dot1, row2= dot2) x 2 coords (x and y)
-                        assert(isequal([all_images.info.ns.img_quiz_dot1_x_pix(idx0), all_images.info.ns.img_quiz_dot1_y_pix(idx0)], ...
-                                        squeeze(all_images.img_quiz_dot.ns(spc_idx,tst_nrs == unique_im, 1, [1,2]))')) % 8 special core x 20 yes/no x dot nr x quiz dot x-pos x quiz dot y-pos
-                        assert(isequal([all_images.info.ns.img_quiz_dot2_x_pix(idx0), all_images.info.ns.img_quiz_dot2_y_pix(idx0)], ...
-                                        squeeze(all_images.img_quiz_dot.ns(spc_idx,tst_nrs == test_im, 2, [1,2]))')) % 8 special core x 20 yes/no x dot nr x quiz dot x-pos x quiz dot y-pos
-
-                        run_images{curr_frames(1),1}      = repmat(all_images.img_quiz_dot.im,[1 1 1 2]);
-                        run_alpha_masks{curr_frames(1),1} = repmat(all_images.img_quiz_dot.mask,[1 1 1 2]);
-                        assert(any(ismember(run_table.correct_response(stim_row(ii)),[1,2])))  % 1 = yes dots overlap // 2 = no dots overlap
+                        if ~isnan(run_table.condition_nr(stim_row(ii),side))
+                            run_images{curr_frames(1),side} = all_images.img_prompt(:,:,:,end); % 700x700x3 pixels "How vivid?" text image
+                            % no run_alpha_masks
+                        end
+                        assert(isnan(run_table.correct_response(stim_row(ii))))  % no objective correct response
                         
                         
                     elseif run_table.is_catch(stim_row(ii)) == 1
