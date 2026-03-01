@@ -140,25 +140,14 @@ switch block_name
         end
 
     case {'img_all','img-gabor','img-rdk', 'img-dot','img-obj','img-ns'}
-        % Imagery task - Gabors
-        % Imagine the prompted Gabor for entire delay period.
-        % Do test dots align with imagined tilt?
+        % Imagery task - ALL STIM CLASSES
+        % How vivid was your mental image?
         % 
-        % 1-INDEX  = YES
-        % 2-MIDDLE = NO
-        if table_row.is_cued <= 2
-            idx = table_row.is_cued;
-        else
-            idx = 1; % center scene stimulus
-        end
-        is_match = table_row.stim2_delta(idx);
-        if is_match == 2 % not a match
-            button_response = 2; % NO
-        elseif is_match == 1 % a match
-            button_response = 1; % YES
-        else
-            error('[%s]: Ill-defined button response for %s!',mfilename,block_name)
-        end
+        % 1-INDEX  = FAIL
+        % 2-MIDDLE = WEAK
+        % 3-RING   = MODERATE
+        % 4-PINKY  = STRONG
+        button_response = NaN; % there is no objective correct answer
         
     case {'pc-rdk'   }
         % Motion direction task - Moving dots
