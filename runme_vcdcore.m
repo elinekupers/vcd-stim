@@ -255,11 +255,16 @@ elseif strcmp(params.env_type,'MRI')
         assert(isequal(params.ses_nr,1))
         assert(ismember(params.ses_type, [1,2]));
     elseif params.is_wide == 0
-        assert(ismember(params.ses_nr, [1:46]))
-        if params.ses_nr==46 % only last deep session has A/B versions
-            assert(ismember(params.ses_type, [1,2]))
+        if params.is_demo
+            assert(ismember(params.ses_nr, [1:8]))
+            assert(ismember(params.ses_type, [1,2]));
         else
-            if ~isequal(params.ses_type,1), error('[%s]: Session type for Session number %d can only be A(=1)',mfilename, params.ses_nr); end
+            assert(ismember(params.ses_nr, [1:46]))
+            if params.ses_nr==46 % only last deep session has A/B versions
+                assert(ismember(params.ses_type, [1,2]))
+            else
+                if ~isequal(params.ses_type,1), error('[%s]: Session type for Session number %d can only be A(=1)',mfilename, params.ses_nr); end
+            end
         end
     end
     assert(params.run_nr>=1 && params.run_nr<=10);
