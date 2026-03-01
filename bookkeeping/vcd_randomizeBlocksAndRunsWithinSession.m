@@ -741,10 +741,10 @@ for ses = 1:length(unique_sessions)
                                 if all(condition_master0.session_nr(trial_order)==46 & condition_master0.session_type(trial_order) == 2 & condition_master0.task_class(trial_order)==5)
                                     trial_order_not_ok = false;
                                     restart_shuffle = false;
-                                    warning('\n[%s]: SKIPPING SESSION 46B FOR NOW for stimulus repeats!',mfilename);
+                                    warning('\n[%s]: SKIPPING SESSION 46B for checking stimulus repeats in WM task class, as there are too few trials to swap.',mfilename);
                                 elseif any(ismember(A,3)) && length(trial_order)<=4
                                     [A1, A2] = vcd_findGlobalTrialNrToSwap(condition_master,condition_master0,trial_order);
-                                    error('\n[%s]: !!!! There is a block with too many stimulus repeats for center/left stim!!!! Consider swapping global trial number %d with %d (session_type = %d',mfilename, A1, A2, st);
+                                    error('\n[%s]: !!!! There is a block with too many stimulus repeats for center/left stim!!!! Consider swapping global trial number %d with %d (session_type = %d)',mfilename, A1, A2, st);
                                 elseif sum(B>0) && length(trial_order)<=4
                                     if any(ismember(A,3)) || any(ismember(B,3))
                                         [A1, A2] = vcd_findGlobalTrialNrToSwap(condition_master,condition_master0,trial_order);
