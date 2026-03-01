@@ -82,12 +82,15 @@ function results = vcdbehavioralanalysis(filename,wantverbose,blockswap);
 %             this is the number of milliseconds between stimulus onset and the contrast
 %             decrement. in all other cases, this is NaN. the rationale for this output
 %             is that more appropriate reaction times can be calculated given this output.
-%   correct_response - 1 through 4 indicating the correct response
+%   correct_response - 1 through 4 indicating the correct response. For IMG task, this is NaN
+%                      since all buttons count as a correct response.
 %   change_mind - 0/1 indicating whether the subject pressed more than one unique button.
 %                 in the case of FIX dot change events, subjects are not allowed to change
 %                 their mind, and change_mind is set to NaN.
 %   button_pressed - 1 through 4 indicating the official button pressed by the subject
-%   is_correct - 0/1 indicating whether the subject got the right answer
+%   is_correct - 0/1 indicating whether the subject got the right answer. Note that for IMG task,
+%                pressing any of the four buttons counts as getting it right (and not pressing
+%                a button counts as wrong).
 %   rt - reaction time in milliseconds (time between stimulus onset time and button press time)
 %
 %   * In the case of catch trials for non-FIX tasks, all of the following are set to NaN
@@ -127,6 +130,10 @@ function results = vcdbehavioralanalysis(filename,wantverbose,blockswap);
 % - The initial dot color is not treated as a change event.
 %
 % History:
+% - 2026/03/01 - implement modifications to support the imagery task. specifically,
+%                the correct_response is expected to be NaN. pressing any of the
+%                buttons counts as a correct response. failing to press a button
+%                counts as an incorrect response.
 % - 2025/09/19 - allow 'trigger' to be a valid trigger key event
 % - 2025/08/15 - add <stim1onset_start> and <stim2onset_start>
 % - 2025/08/11 - add <wantverbose>, <blockswap>
@@ -160,6 +167,9 @@ a1 = load(filename);
 
 % get full condition list
 acn = vcd_getConditionNames;  % 1 x N cell vector of official condition labels
+
+% do sanity check that we know which crossings are imagery task
+assert(all(1==cellfun(@(x) regexp(x,'img-'),vcd('crossingnames',[7 12 17 22 29]))));  % these constants are used below
 
 % initialize results
 clear results;
@@ -561,7 +571,7 @@ while 1
     else
       results.trialinfo.cdonset(rii)        = 1000*(timeframes(temp+1) - stimonset);  % milliseconds from stim onset to cd onset
     end
-    results.trialinfo.correct_response(rii) = a1.run_table.correct_response(ii);  % NOTE: catch trials should be NaN
+    results.trialinfo.correct_response(rii) = a1.run_table.correct_response(ii);  % NOTE: catch trials should be NaN, IMG task will be NaN
 
     % if this is a catch trial
     if results.trialinfo.is_catch(rii) == 1
@@ -637,7 +647,12 @@ while 1
         
         % record
         results.trialinfo.button_pressed(rii) = str2double(thekey);
-        results.trialinfo.is_correct(rii) = double((results.trialinfo.button_pressed(rii) == a1.run_table.correct_response(ii)));
+        if isnan(a1.run_table.correct_response(ii))  % This should happen ONLY in the IMG task case
+          assert(ismember(results.trialinfo.crossing_nr(rii),[7 12 17 22 29]));  % check that we are in an imagery crossing
+          results.trialinfo.is_correct(rii) = 1;  % at least one button pressed, so we are automatically correct
+        else
+          results.trialinfo.is_correct(rii) = double((results.trialinfo.button_pressed(rii) == a1.run_table.correct_response(ii)));
+        end
         results.trialinfo.rt(rii) = (timeofpress - stimonset) * 1000;  % RT in ms
 
       end
