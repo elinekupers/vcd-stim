@@ -26,7 +26,6 @@ function outputs = vcd(varargin)
 %  *  'conditionnametonumber',     {'condition_name'}                       -- example input: {'OBJ-0065-L-UNCUED-WHAT'} -> output: 'gabor'
 %  *  'allwmteststimulusnumbers',  [stimclass_number], {'stimclass_name'}, [], or {} -- example: [1] or {'gabor'} -> output: 'gabor'
 %  *  'allltmteststimulusnumbers', [stimclass_number], {'stimclass_name'}, [], or {} -- example: [5] or {'ns'} -> output: 'gabor'
-%  *  'allimgteststimulusnumbers', [stimclass_number], {'stimclass_name'}, [], or {} -- example: [4] or {'obj'} -> output: 'gabor'
 %
 %
 % Note that 'fullinfo', 'stimulusnumberstonames', and
@@ -287,13 +286,6 @@ function outputs = vcd(varargin)
 %                           'ns'. Output is a vector of integers,
 %                           preserving the order specified by the user's
 %                           input(s).
-% 'allltmtestimages'      : Provide all (non-core) stimulus number(s) of 
-%                           test images used in IMG-[stimclass] crossings.
-%                           Input names should be lower case and any of the
-%                           stimulus class names:'gabor','rdk','dot','obj',
-%                           'ns'. Output is a vector of integers,
-%                           preserving the order specified by the user's
-%                           input(s).
 % 'fullinfo'              : Provide all info (data dump) for a given 
 %                           stimulus number. Input should be an integral
 %                           number between 1-1550.
@@ -456,18 +448,13 @@ all_wm_test_im_stimclassnumbers    = ...
     cat(2, ones(1, numel(stim.gabor.unique_im_nrs_wm_test)), 2*ones(1, numel(stim.rdk.unique_im_nrs_wm_test)), ...
     3*ones(1, numel(stim.dot.unique_im_nrs_wm_test)), 4*ones(1, numel(stim.obj.unique_im_nrs_wm_test)), ...
     5*ones(1, numel(stim.ns.unique_im_nrs_wm_test)));
-all_img_test_im_stimclassnumbers   = ...
-    cat(2, ones(1, numel(stim.gabor.unique_im_nrs_img_test)), 2*ones(1, numel(stim.rdk.unique_im_nrs_img_test)), ...
-    3*ones(1, numel(stim.dot.unique_im_nrs_img_test)), 4*ones(1, numel(stim.obj.unique_im_nrs_img_test)), ...
-    5*ones(1, numel(stim.ns.unique_im_nrs_img_test)));
 all_ltm_lure_im_stimclassnumbers    = 5*ones(1, numel(stim.ns.unique_im_nrs_novel_ltm_lures));
 all_objectcatch_im_stimclassnumbers = 4*ones(1, numel(stim.obj.unique_im_nrs_objcatch));
-all_im_stimclassnumbers            = cat(2,all_core_im_stimclassnumbers,all_wm_test_im_stimclassnumbers,all_img_test_im_stimclassnumbers,all_objectcatch_im_stimclassnumbers);
+all_im_stimclassnumbers            = cat(2,all_core_im_stimclassnumbers,all_wm_test_im_stimclassnumbers,all_objectcatch_im_stimclassnumbers);
 
 % Stimulus class names
 all_core_im_stimclassnames         = exp.stimclassnames(all_core_im_stimclassnumbers);
 all_wm_test_im_stimclassnames      = exp.stimclassnames(all_wm_test_im_stimclassnumbers);
-all_img_test_im_stimclassnames     = exp.stimclassnames(all_img_test_im_stimclassnumbers);
 all_ltm_lure_im_stimclassnames     = exp.stimclassnames(all_ltm_lure_im_stimclassnumbers);
 all_objectcatch_im_stimclassnames  = exp.stimclassnames(all_objectcatch_im_stimclassnumbers);
 all_im_stimclassnames              = exp.stimclassnames(all_im_stimclassnumbers);
@@ -622,9 +609,9 @@ for ii = 1:2:length(requested_info)
                 out = [];
                 for sc = 1:length(stimclassname)
                     if strcmp(stimclassname{sc},'ns')
-                        out = cat(2, out, stim.ns.unique_im_nrs_core, stim.ns.unique_im_nrs_wm_test, stim.ns.unique_im_nrs_img_test,stim.ns.unique_im_nrs_ltm_lures);
+                        out = cat(2, out, stim.ns.unique_im_nrs_core, stim.ns.unique_im_nrs_wm_test, stim.ns.unique_im_nrs_ltm_lures);
                     else
-                        out = cat(2, out, stim.(stimclassname{sc}).unique_im_nrs_core, stim.(stimclassname{sc}).unique_im_nrs_wm_test, stim.(stimclassname{sc}).unique_im_nrs_img_test);
+                        out = cat(2, out, stim.(stimclassname{sc}).unique_im_nrs_core, stim.(stimclassname{sc}).unique_im_nrs_wm_test);
                     end
                 end
             end
@@ -912,28 +899,6 @@ for ii = 1:2:length(requested_info)
                     end
                 end
             end
-            
-        case 'allimgteststimulusnumbers'      
-            % provide all (non-core) stimulus number(s) of test images used in IMG-[stimclass] crossings 
-            if isempty(info_val) % provide all wm test image nrs (1-110), if user doesn't specifiy stimulus class
-                out = stim.all_img_test_im_nrs;
-            else
-                if isnumeric(info_val) % if user provides stim class number
-                    [~,idx] = ismember(info_val,1:length(exp.stimclassnames),'legacy');
-                    stimclassname = exp.stimclassnames(idx);
-                elseif ischar(info_val) % if user provides stim class name
-                    stimclassname = {info_val};
-                elseif iscell(info_val)  % if user provides multiple stim class names
-                    stimclassname = info_val(:);
-                end
-                
-                out = [];
-                for sc = 1:length(stimclassname)
-                    if isfield(stim.(stimclassname{sc}), 'unique_im_nrs_img_test')
-                        out = cat(2, out, stim.(stimclassname{sc}).unique_im_nrs_img_test);
-                    end
-                end
-            end
 
         case 'fullinfo'              
             % provide all info (data dump) for given stimulus number (1-1421)
@@ -980,7 +945,7 @@ for ii = 1:2:length(requested_info)
                         assert(isequal(stim_nr(nn),vcd_info.condition_master.stim_nr_left(idx)))
                         assert(~isempty(regexp(vcd_info.condition_master.condition_name{idx,1},'\w+-[LC]-\w+')))
                     end
-                % if we deal with a test image (i.e., wm test, img test, or ltm lure)
+                % if we deal with a test image (i.e., wm test, or ltm lure)
                 elseif ismember(stim_nr(nn), stim.all_test_im_nrs)
                     % find unique stim number for left test image 
                     [~,idx] = ismember(stim_nr(nn),vcd_info.condition_master.stim2_im_nr(:,1),'legacy');
@@ -1028,7 +993,7 @@ for ii = 1:2:length(requested_info)
                     
                     % Check if we deal with a NS..
                     if any(ismember(stim_info.stim_nr,[stim.ns.unique_im_nrs_core, ...
-                                stim.ns.unique_im_nrs_wm_test,stim.ns.unique_im_nrs_novel_ltm_lures, stim.ns.unique_im_nrs_img_test])) ...
+                                stim.ns.unique_im_nrs_wm_test,stim.ns.unique_im_nrs_novel_ltm_lures])) ...
                                 || (~isempty(stim_info.stim_class) && stim_info.stim_class == 5)
                         stim_info.stim_loc = 3;
                         stim_info.stim_loc_name = 'center';
