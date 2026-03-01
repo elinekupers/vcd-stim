@@ -196,9 +196,6 @@ if params.loadstimfromrunfile
         if isfield(a1.instr_im,'instr_img')
             all_images.instr_img = a1.instr_img;
         end
-        if isfield(a1,'img_quiz_dot_coords')
-            stim.img_quiz_dot_coords = a1.img_quiz_dot_coords;
-        end
     else
         error('[%s]: Can''t find file with run_images!!',mfilename)
     end
@@ -323,7 +320,7 @@ else % if not, then we look user pointed to a timetable_file
             all_images = struct();
         end
 
-        [images, masks, all_images, img_quiz_dot_coords, run_frames] = vcd_getImageOrderSingleRun(params, ...
+        [images, masks, all_images, run_frames] = vcd_getImageOrderSingleRun(params, ...
             run_table, run_frames, params.subj_nr, params.ses_nr, params.ses_type, params.run_nr, params.env_type, ...
             'all_images', all_images, 'savestim', params.savestim);
         
@@ -332,9 +329,8 @@ else % if not, then we look user pointed to a timetable_file
         stim.im    = images;
         stim.masks = masks;
         stim.eye   = cat(4, all_images.eye.sac_im, all_images.eye.pupil_im_black, all_images.eye.pupil_im_white);
-        stim.img_quiz_dot_coords = img_quiz_dot_coords;
 
-        clear images masks img_quiz_dot_coords
+        clear images masks
     end
     
 end
@@ -491,28 +487,11 @@ if ~exist('scan','var') || ~isfield(scan, 'rects') || isempty(scan.rects)
                         else
                             centers{nn,side} = [params.stim.ns.x0_pix + params.stim.xc, params.stim.ns.y0_pix + params.stim.yc];
                         end
-                    % If it is a imagery quiz dot image
-                    elseif ismember(run_frames.frame_im_nr(nn,side),params.stim.all_img_test_im_nrs)
-                        tmp_coords = [stim.img_quiz_dot_coords{nn,side}(:,1) + params.stim.xc, ... rows are dots, cols are x,y
-                                      stim.img_quiz_dot_coords{nn,side}(:,2) + params.stim.yc];
-                        
-                        if ismember(run_frames.frame_im_nr(nn,side),params.stim.gabor.unique_im_nrs_img_test)
-                            centers{nn,side} = [tmp_coords(:,1) + params.stim.gabor.x0_pix(side), ...
-                                                tmp_coords(:,2) + params.stim.gabor.y0_pix(side)];
-                        elseif ismember(run_frames.frame_im_nr(nn,side),params.stim.rdk.unique_im_nrs_img_test)
-                            centers{nn,side} = [tmp_coords(:,1) + params.stim.rdk.x0_pix(side), ...
-                                                tmp_coords(:,2) + params.stim.rdk.y0_pix(side)];
-                        elseif ismember(run_frames.frame_im_nr(nn,side),params.stim.dot.unique_im_nrs_img_test)
-                            centers{nn,side} = tmp_coords; % already relative to iso-eccen circle
-                        elseif ismember(run_frames.frame_im_nr(nn,side),params.stim.obj.unique_im_nrs_img_test)
-                            centers{nn,side} = [tmp_coords(:,1) + params.stim.obj.x0_pix(side), ...
-                                                tmp_coords(:,2) + params.stim.obj.y0_pix(side)];
-                        elseif ismember(run_frames.frame_im_nr(nn,side),params.stim.ns.unique_im_nrs_img_test)
-                            centers{nn,side} = [tmp_coords(:,1) + params.stim.ns.x0_pix(side), ...
-                                                tmp_coords(:,2) + params.stim.ns.y0_pix(side)];
-                        else
-                            error('wtf')
-                        end
+                    
+                    % if it is a IMG vividness rating text prompt
+                    elseif run_frames.frame_im_nr(nn,side) == 9999
+                        assert(ismember(run_frames.crossingIDs(nn), find(~cellfun(@isempty, regexp(params.exp.crossingnames, 'img*')))))
+                        centers{nn,side} = [params.stim.xc,params.stim.yc]; % centered
                         
                     % If it is a catch trial
                     elseif isnan(run_frames.frame_im_nr(nn,side)) || (run_frames.frame_im_nr(nn,side)==0)
@@ -534,11 +513,7 @@ if ~exist('scan','var') || ~isfield(scan, 'rects') || isempty(scan.rects)
                             if ismember(run_frames.crossingIDs(nn), find(~cellfun(@isempty, regexp(params.exp.crossingnames, 'img*'))))
                                 im_IDs(nn:(nn+params.stim.stimdur_frames-1),side)  = nn;
                                 centers(nn:(nn+params.stim.stimdur_frames-1),side) = mat2cell(centers{im_IDs(nn,side),side},size(centers{im_IDs(nn,side),side},1),size(centers{im_IDs(nn,side),side},2));
-                                if ismember(run_frames.frame_im_nr(nn,side),params.stim.all_img_test_im_nrs)
-                                    apsize(nn:(nn+params.stim.stimdur_frames-1),side)  = mat2cell( repmat([size(stim.im{im_IDs(nn,side),side},2), size(stim.im{im_IDs(nn,side),side},1)],2,1), 2, 2);
-                                else
-                                    apsize(nn:(nn+params.stim.stimdur_frames-1),side)  = mat2cell( [size(stim.im{im_IDs(nn,side),side},2), size(stim.im{im_IDs(nn,side),side},1)], 1, 2);
-                                end
+                                apsize(nn:(nn+params.stim.stimdur_frames-1),side)  = mat2cell( [size(stim.im{im_IDs(nn,side),side},2), size(stim.im{im_IDs(nn,side),side},1)], 1, 2);
                             else
                                 % Add image ID
                                 im_IDs(nn,side) = nn;
@@ -573,11 +548,7 @@ if ~exist('scan','var') || ~isfield(scan, 'rects') || isempty(scan.rects)
                         elseif isnan(im_IDs(nn-1,side))
                             im_IDs(nn:(nn+params.stim.stimdur_frames-1),side)  = nn;
                             centers(nn:(nn+params.stim.stimdur_frames-1),side) = mat2cell(centers{im_IDs(nn,side),side},size(centers{im_IDs(nn,side),side},1),size(centers{im_IDs(nn,side),side},2));
-                            if ismember(run_frames.frame_im_nr(nn,side),params.stim.all_img_test_im_nrs)
-                                apsize(nn:(nn+params.stim.stimdur_frames-1),side)  = mat2cell( repmat([size(stim.im{im_IDs(nn,side),side},2), size(stim.im{im_IDs(nn,side),side},1)],2,1), 2, 2);
-                            else
-                                apsize(nn:(nn+params.stim.stimdur_frames-1),side)  = mat2cell( [size(stim.im{im_IDs(nn,side),side},2), size(stim.im{im_IDs(nn,side),side},1)], 1, 2);
-                            end
+                            apsize(nn:(nn+params.stim.stimdur_frames-1),side)  = mat2cell( [size(stim.im{im_IDs(nn,side),side},2), size(stim.im{im_IDs(nn,side),side},1)], 1, 2);
                         end
                     end
                     
@@ -623,103 +594,34 @@ for side = nSides
     centers_shortlist = stim.centers(nonemptycenters,side);
     apsize_shortlist  = stim.apsize(nonemptycenters,side);
     
-    if any(run_table.task_class==7) % IMG trials (two stim centers per side)
-        % We deal with a 3D array
-        centers_mat  = NaN(size(centers_shortlist,1),2,2);
-        size_mat     = NaN(size(apsize_shortlist,1),2,2);
-        
-        sz_long = cell2mat(cellfun(@(x) size(x,1), stim.centers(:,side),'UniformOutput',0));
-        sz_short = cell2mat(cellfun(@(x) size(x,1), centers_shortlist,'UniformOutput',0));
-              
-        if side==1
-            img_vec(sz_long==2) = repmat({[1;2]}, sum((sz_long==2)),1); % IMG trials   left:[1, 2]
-            img_vec(sz_long==1) = repmat({[1]}, sum((sz_long==1)),1);   % Other trials left:[1, NaN]
-        elseif side==2
-            img_vec(sz_long==2) = cellfun(@(x,y) cat(1,x,y),  img_vec(sz_long==2), repmat({[3;4]}, sum((sz_long==2)),1),'UniformOutput',0); % IMG trials   right:[3;4]
-            
-            idx0 = find(sz_long==1); 
-            has_noleft_stim = cellfun(@isempty, img_vec(idx0));
-            has_left_stim   = ~cellfun(@isempty, img_vec(idx0));
-            img_vec(idx0(has_noleft_stim)) = repmat({[1]}, sum(has_noleft_stim),1);   % Other trials left:[1, NaN]
-            img_vec(idx0(has_left_stim))   = cellfun(@(x,y) cat(1,x,y), img_vec(idx0(has_left_stim)), repmat({[3]}, sum(has_left_stim),1),'UniformOutput',0); % Other trials right:[3]
-        end
-            
-        % Set up 3D matrices to calculate PTB Destination Rects
-        cmat_tmp0 = cell2mat(centers_shortlist(sz_short==2));
-        cmat_tmp1 = cat(3,cmat_tmp0(1:2:end,:),cmat_tmp0(2:2:end,:));
-        centers_mat(sz_short==2,:,:) = cmat_tmp1;
-        
-        cmat_tmp1 = cell2mat(centers_shortlist(sz_short==1));
-        centers_mat(sz_short==1,:,1) = cmat_tmp1;
-        
-        smat_tmp0 = cell2mat(apsize_shortlist(sz_short==2));
-        smat_tmp1 = cat(3,smat_tmp0(1:2:end,:),smat_tmp0(2:2:end,:));
-        size_mat(sz_short==2,:,:) = smat_tmp1;
-        
-        smat_tmp1 = cell2mat(apsize_shortlist(sz_short==1));
-        size_mat(sz_short==1,:,1) = smat_tmp1;
-        
-        clear cmat_tmp0 cmat_tmp0 smat_tmp0 smat_tmp1 sz_short sz_long
 
-         
-        % create two destination matrices (one for left/one for right
-        % imagery test dot per left/right stim location)
-        destination_mat1 = [centers_mat(:,1,1) - size_mat(:,1,1)./2, ... x1 top-left-x
-                            centers_mat(:,2,1) - size_mat(:,2,1)./2, ... y1 top-left-y
-                            centers_mat(:,1,1) + size_mat(:,1,1)./2, ... x2 bottom-right-x
-                            centers_mat(:,2,1) + size_mat(:,2,1)./2];  % y2 bottom-right-y
-        destination_mat2 = [centers_mat(:,1,2) - size_mat(:,1,2)./2, ... x1 top-left-x
-                            centers_mat(:,2,2) - size_mat(:,2,2)./2, ... y1 top-left-y
-                            centers_mat(:,1,2) + size_mat(:,1,2)./2, ... x2 bottom-right-x
-                            centers_mat(:,2,2) + size_mat(:,2,2)./2];  % y2 bottom-right-y
-        
-        % Create stimulus "rects" for PTB.
-        % CenterRect cannot handle empty cells or NaNs or multiple
-        % stim/destination rects (hence we use arrayfun)
-        % Inputs to CenterRect are two [1x4] vectors:
-        % * stimsize        = [0, 0, width, height] in pixels
-        % * destinationRect = [top-left-x, top-left-y, bottom-right-x, bottom-right-y] pixel location of the stimulus
-        rects_mat1       = arrayfun(@(stim_x1,stim_y1,stim_x2,stim_y2,dest_x1,dest_y1,dest_x2,dest_y2) ...
-            CenterRect([stim_x1,stim_y1,stim_x2,stim_y2],[dest_x1,dest_y1,dest_x2,dest_y2]), ...
-            zeros(size(size_mat,1),1), zeros(size(size_mat,1),1), size_mat(:,1), size_mat(:,2), ...
-            destination_mat1(:,1), destination_mat1(:,2),destination_mat1(:,3), destination_mat1(:,4), ...
-            'UniformOutput', false);
-        rects_mat2       = arrayfun(@(stim_x1,stim_y1,stim_x2,stim_y2,dest_x1,dest_y1,dest_x2,dest_y2) ...
-            CenterRect([stim_x1,stim_y1,stim_x2,stim_y2],[dest_x1,dest_y1,dest_x2,dest_y2]), ...
-            zeros(size(size_mat,1),1), zeros(size(size_mat,1),1), size_mat(:,1), size_mat(:,2), ...
-            destination_mat2(:,1), destination_mat2(:,2),destination_mat2(:,3), destination_mat2(:,4), ...
-            'UniformOutput', false);
-        
-        % Combine matrices: For Non-IMG trials, second row contains NaN(1,4)
-        rects_mat = cellfun(@(x,y) cat(1,x,y), rects_mat1,rects_mat2,'UniformOutput',false);
-    else
-        % We deal with a 2D array
-        centers_mat       = cell2mat(centers_shortlist);
-        size_mat          = cell2mat(apsize_shortlist);
-        destination_mat = [centers_mat(:,1) - size_mat(:,1)./2, ... x1 top-left-x
-            centers_mat(:,2) - size_mat(:,2)./2, ... y1 top-left-y
-            centers_mat(:,1) + size_mat(:,1)./2, ... x2 bottom-right-x
-            centers_mat(:,2) + size_mat(:,2)./2];  % y2 bottom-right-y
-        
-        % Create stimulus "rects" for PTB.
-        % CenterRect cannot handle empty cells or NaNs or multiple
-        % stim/destination rects (hence we use arrayfun)
-        % Inputs to CenterRect are two [1x4] vectors:
-        % * stimsize        = [0, 0, width, height] in pixels
-        % * destinationRect = [top-left-x, top-left-y, bottom-right-x, bottom-right-y] pixel location of the stimulus
-        rects_mat       = arrayfun(@(stim_x1,stim_y1,stim_x2,stim_y2,dest_x1,dest_y1,dest_x2,dest_y2) ...
-            CenterRect([stim_x1,stim_y1,stim_x2,stim_y2],[dest_x1,dest_y1,dest_x2,dest_y2]), ...
-            zeros(size(size_mat,1),1), zeros(size(size_mat,1),1), size_mat(:,1), size_mat(:,2), ...
-            destination_mat(:,1), destination_mat(:,2),destination_mat(:,3), destination_mat(:,4), ...
-            'UniformOutput', false);
-        
-        idx = find(nonemptycenters);
-        if side == 1
-            img_vec(idx) = repmat({[1]}, [size(idx,1),1]);
-        elseif side == 2
-            img_vec(idx,:) = cellfun(@(x,y) cat(2,x,y), img_vec(idx), repmat({[2]}, [size(idx,1),1]),'UniformOutput',0);
-        end
-    end
+    % We deal with a 2D array
+    centers_mat       = cell2mat(centers_shortlist);
+    size_mat          = cell2mat(apsize_shortlist);
+    destination_mat = [centers_mat(:,1) - size_mat(:,1)./2, ... x1 top-left-x
+        centers_mat(:,2) - size_mat(:,2)./2, ... y1 top-left-y
+        centers_mat(:,1) + size_mat(:,1)./2, ... x2 bottom-right-x
+        centers_mat(:,2) + size_mat(:,2)./2];  % y2 bottom-right-y
+    
+    % Create stimulus "rects" for PTB.
+    % CenterRect cannot handle empty cells or NaNs or multiple
+    % stim/destination rects (hence we use arrayfun)
+    % Inputs to CenterRect are two [1x4] vectors:
+    % * stimsize        = [0, 0, width, height] in pixels
+    % * destinationRect = [top-left-x, top-left-y, bottom-right-x, bottom-right-y] pixel location of the stimulus
+    rects_mat       = arrayfun(@(stim_x1,stim_y1,stim_x2,stim_y2,dest_x1,dest_y1,dest_x2,dest_y2) ...
+        CenterRect([stim_x1,stim_y1,stim_x2,stim_y2],[dest_x1,dest_y1,dest_x2,dest_y2]), ...
+        zeros(size(size_mat,1),1), zeros(size(size_mat,1),1), size_mat(:,1), size_mat(:,2), ...
+        destination_mat(:,1), destination_mat(:,2),destination_mat(:,3), destination_mat(:,4), ...
+        'UniformOutput', false);
+    
+%     idx = find(nonemptycenters);
+%     if side == 1
+%         img_vec(idx) = repmat({[1]}, [size(idx,1),1]);
+%     elseif side == 2
+%         img_vec(idx,:) = cellfun(@(x,y) cat(2,x,y), img_vec(idx), repmat({[2]}, [size(idx,1),1]),'UniformOutput',0);
+%     end
+    
     % Insert the "rects" into the struct
     stim.rects(nonemptycenters,side) = rects_mat;
 end
@@ -747,17 +649,34 @@ taskNames = params.exp.crossingnames(taskIDs);
 
 % Now load the task instructions from file.
 taskscript = struct();
-taskscript.im   = cell(1,length(taskIDs));
-taskscript.rect = cell(1,length(taskIDs));
+if any(taskIDs==6)
+    taskscript.im   = cell(1,length(taskIDs)+1); % LTM is split in (a) classic and (b) NS instruction image
+    taskscript.rect = cell(1,length(taskIDs)+1); 
+else
+    taskscript.im   = cell(1,length(taskIDs));
+    taskscript.rect = cell(1,length(taskIDs));
+end
+
 for nn = 1:length(taskIDs)
-    
-    % load in instruction image
-    taskscript.im{nn}   = all_images.instr(:,:,:,taskIDs(nn)+1);  % +1 because introtext is first image
-    taskscript.rect{nn} = CenterRect([0 0 size(taskscript.im{nn},1) size(taskscript.im{nn},2)], [0 0 params.disp.w_pix,params.disp.h_pix]);
     
     % Check we got the right file
     taskName = strrep(taskNames{nn},'-','_');
-    assert(isequal(all_images.info.instr{taskIDs(nn)+1}, sprintf('%02d_runvcdcore_%s.png', taskIDs(nn),taskName))); % +1 because introtext is first image
+    
+    if taskIDs(nn)==6 % LTM
+        % load in instruction image
+        taskscript.im{nn}                 = all_images.instr(:,:,:,taskIDs(nn)+1);  % +1 because introtext is first image
+        taskscript.im{length(taskIDs)+1}  = all_images.instr(:,:,:,end);  % NS-LTM
+        assert(isequal(all_images.info.instr{taskIDs(nn)+1}, sprintf('%02da_runvcdcore_ltm_classic.png', taskIDs(nn))) && ... ); % +1 because introtext is first image
+                isequal(all_images.info.instr{end}, sprintf('%02db_runvcdcore_ltm_ns.png', taskIDs(nn)))); % end = LTM-NS
+            
+        taskscript.rect{nn} = CenterRect([0 0 size(taskscript.im{nn},1) size(taskscript.im{nn},2)], [0 0 params.disp.w_pix,params.disp.h_pix]);
+        taskscript.rect{end} = CenterRect([0 0 size(taskscript.im{length(taskIDs)+1},1) size(taskscript.im{end},2)], [0 0 params.disp.w_pix,params.disp.h_pix]); 
+    else
+        % load in instruction image
+        taskscript.im{nn}   = all_images.instr(:,:,:,taskIDs(nn)+1);  % +1 because introtext is first image
+        taskscript.rect{nn} = CenterRect([0 0 size(taskscript.im{nn},1) size(taskscript.im{nn},2)], [0 0 params.disp.w_pix,params.disp.h_pix]);
+        assert(isequal(all_images.info.instr{taskIDs(nn)+1}, sprintf('%02d_runvcdcore_%s.png', taskIDs(nn),taskName))); % +1 because introtext is first image
+    end
 end
 
 % Clear some memory
@@ -819,8 +738,7 @@ if ~params.wantdatabypass
       run_table, ...
       introscript, ...
       taskscript, ...
-      params.deviceNr, ...
-      img_vec);
+      params.deviceNr);
 
 else % or just generate the files + dummy data
 
