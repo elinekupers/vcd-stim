@@ -215,8 +215,13 @@ for nn = 1:size(run_frames.frame_event_nr,1)
 
         case 90 % task_cue_ID
             % Get instructions from png file
-            task_tex{nn}   = alltasktex{run_frames.crossingIDs(nn)==unique_crossingIDs};
-            task_rect{nn}  = taskscript.rect{run_frames.crossingIDs(nn)==unique_crossingIDs};
+            if run_frames.crossingIDs(nn)==6 && run_frames.is_cued(nn)==3 % LTM-NS
+                task_tex{nn}   = alltasktex{end};
+                task_rect{nn}  = taskscript.rect{end};
+            else % LTM-Classic and other crossings
+                task_tex{nn}   = alltasktex{run_frames.crossingIDs(nn)==unique_crossingIDs};
+                task_rect{nn}  = taskscript.rect{run_frames.crossingIDs(nn)==unique_crossingIDs};
+            end
             framecolor{nn} = 255*ones(1,3);
         
         % Draw background with eyetracking target
