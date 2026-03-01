@@ -147,7 +147,7 @@ if ~isfield(all_images,'instr') || isempty(all_images.instr)
     end
 end
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%% QUIZ DOT PROMPT IM %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%% IMAGERY PROMPT IM %%%%%%%%%%%%%%%%%%%%%%%%%%%%
 if ~isfield(all_images,'img') || isempty(all_images.img)
     if verbose; fprintf('[%s]: Loading imagery text prompt images..\n',mfilename); end
 
