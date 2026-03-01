@@ -37,7 +37,7 @@ function cond_master = vcd_createConditionMaster(params, cond_table, env_type)
 %   gabors orientations x 3 contrast levels) x number of unique cuing
 %   scenarios (i.e., being cued or not cued).
 %
-% For Gabor/RDK/Dot/Complex Objects crossed with each task (i.e., fix/
+% For Gabor/RDK/Dot/Objects crossed with each task (i.e., fix/
 % cd/scc/pc/wm/ltm/img/what/how), each unique  image will have a fixed
 % stimulus location (either left or right from fixation) and will be cued
 % or uncued. This results in conds_master with dims N rows x M cols.
@@ -292,102 +292,11 @@ if nr_reps > 0
                      conds_single_rep_merged.is_lure           = NaN(size(conds_single_rep_merged,1),2);  
                 
                 elseif strcmp(taskClass{:},'img')
-                    % Add IMG text prompt and quiz dots
-                    n_quiz_images       = length(unique(params.stim.gabor.imagery_quiz_images)); % 2 types: overlap or not.
-                    noncatch_trials_idx = conds_single_rep_merged.is_catch==0;
-                    shuffle_delta       = [shuffle_concat(1:n_quiz_images, (size(conds_single_rep_merged(noncatch_trials_idx,:),1)/n_quiz_images)); ... % 1 = overlap, 2 = no overlap
-                                            shuffle_concat(1:n_quiz_images, (size(conds_single_rep_merged(noncatch_trials_idx,:),1)/n_quiz_images))]'; % 50/50 chance of seeing 1 or 2
-                    
-                    % create yes/no overlap vector:
-                    % 1=yes overlap, 2=no overlap (50% chance)
-                    % col 1 = left stim, col 2 = right stim
-                    % left/right stim is not yoked.
-                    img_vec                        = NaN(size(conds_single_rep_merged,1),2);
-                    img_vec(noncatch_trials_idx,:) = shuffle_delta;
-                    idx_l                          = NaN(size(conds_single_rep_merged,1),1);
-                    idx_r                          = NaN(size(conds_single_rep_merged,1),1);
-
-                    % find unique IMG test stim nrs that correspond to the special core stim nr in stim1                  
-                    [~,idx_l_tmp]   = ismember(conds_single_rep_merged.stim_nr_left(noncatch_trials_idx),params.stim.gabor.unique_im_nrs_specialcore);
-                    [~,idx_r_tmp]   = ismember(conds_single_rep_merged.stim_nr_right(noncatch_trials_idx),params.stim.gabor.unique_im_nrs_specialcore);
-                    idx_img     = params.stim.gabor.imagery_quiz_dot_stim_nr; % 8x20 matrix:8 special core stim x 20 (10 yes + 10 no overlap) test images per unique image 
-                    idx_img_yes = idx_img(:,params.stim.gabor.imagery_quiz_images==1); % nr stim x 10 yes overlap test images per unique image
-                    idx_img_no  = idx_img(:,params.stim.gabor.imagery_quiz_images==2); % nr stim x 10 no overlap test images per unique image
-                    assert(all(ismember(unique(params.stim.gabor.unique_im_nrs_specialcore([idx_l_tmp(idx_l_tmp>0);idx_r_tmp(idx_r_tmp>0)])), params.stim.gabor.imagery_quiz_dot_specialcore_stim_nr)))
-                    assert(isequal(size(idx_img_yes),size(idx_img_no)));
-                    
-                    idx_l(noncatch_trials_idx) = idx_l_tmp; clear idx_l_tmp
-                    idx_r(noncatch_trials_idx) = idx_r_tmp; clear idx_r_tmp
-                    
-                    % To avoid that the table becomes massive, we provide
-                    % one number that tells us something about two quiz dots:
-                    % we populate the stim2_orient column with the "orientation" 
-                    % of the imagery quiz dots test images, which is the
-                    % the orientation of the line connecting the two
-                    % imagery quiz dots dots, relative to 0 deg = 12 o'clock. 
-                    % if quiz dots "overlap" they have the same orientation
-                    % as the gabor tilt.
-                    ori_img_yes = params.stim.gabor.imagery_quiz_dot_orient_deg(:,params.stim.gabor.imagery_quiz_images==1,:); % 8 orientations x 10 yes overlap quiz images x 2 dots
-                    ori_img_no  = params.stim.gabor.imagery_quiz_dot_orient_deg(:,params.stim.gabor.imagery_quiz_images==2,:); % 8 orientations x 10 no overlap quiz images x 2 dots
-                    
-                    assert(isequal(sum(circulardiff(ori_img_yes(:,:,1),ori_img_yes(:,:,2),180),'all'),0)); % dots fall on a line
-                    assert(isequal(sum(circulardiff(ori_img_no(:,:,1),ori_img_no(:,:,2),180),'all'),0)); % dots fall on a line
-                    
-                    qz_im           = NaN(size(img_vec)); % note: with catch trials
-                    ori_dir         = NaN(size(img_vec)); % note: with catch trials
-                    yes_trial_idx_l = false(size(img_vec,1),1);
-                    no_trial_idx_l  = false(size(img_vec,1),1);
-                    yes_trial_idx_r = false(size(img_vec,1),1); 
-                    no_trial_idx_r  = false(size(img_vec,1),1);  
-                    
-                    % convert to 4 logical vectors, for l/r stim x yes/no overlap
-                    yes_trial_idx_l(img_vec(:,1)==1,1)=true; % Quiz dots overlap (1=yes) or not (2=no) left
-                    no_trial_idx_l(img_vec(:,1)==2,1)=true; % Quiz dots overlap (1=yes) or not (2=no) left 
-                    yes_trial_idx_r(img_vec(:,2)==1,1)=true; % Quiz dots overlap (1=yes) or not (2=no) right 
-                    no_trial_idx_r(img_vec(:,2)==2,1)=true; % Quiz dots overlap (1=yes) or not (2=no) right
-                    
-                    % randomly sample from the 10 exemplar quiz dot images (WITHOUT replacement)
-                    randomly_selected_yes_test_images_l  = shuffle_concat(1:size(idx_img_yes,2),2);  % left stim yes 
-                    randomly_selected_no_test_images_l   = shuffle_concat(1:size(idx_img_no,2),2); % left stim no 
-                    randomly_selected_yes_test_images_r  = shuffle_concat(1:size(idx_img_yes,2),2); % right stim yes 
-                    randomly_selected_no_test_images_r   = shuffle_concat(1:size(idx_img_no,2),2); % right stim no
-                    
-                    yes_counter = 1; no_counter = 1;
-                    for ll = 1:length(idx_l) % loop over unique images on the left
-                        if isnan(idx_l(ll)) || idx_l(ll) > 0
-                            
-                            if yes_trial_idx_l(ll)==1
-                                qz_im(ll,1)   = idx_img_yes(idx_l(ll),randomly_selected_yes_test_images_l(yes_counter));
-                                ori_dir(ll,1) = NaN; % squeeze(ori_img_yes(idx_l(ll),randomly_selected_yes_test_images_l(yes_counter),1)); % angle in deg for dot 1 and 2 (0 deg = 12 o'clock) -- note left is second angle
-                                yes_counter   = yes_counter+1;
-                            elseif no_trial_idx_l(ll)==1
-                                qz_im(ll,1)   = idx_img_no(idx_l(ll),randomly_selected_no_test_images_l(no_counter));
-                                ori_dir(ll,1) = NaN; % squeeze(ori_img_no(idx_l(ll),randomly_selected_no_test_images_l(no_counter),1)); % angle in deg for dot 1 and 2 (0 deg = 12 o'clock) -- note left is second angle
-                                no_counter    = no_counter+1;
-                            elseif isnan(img_vec(ll,1)) % catch trial
-                                qz_im(ll,1)   = 0;
-                                ori_dir(ll,1) = NaN;
-                            else
-                                error('[%s]: Imagery test image must be "yes" or "no".',mfilename);
-                            end
-                            
-                            
-                            if yes_trial_idx_r(ll)==1
-                                qz_im(ll,2)   = idx_img_yes(idx_r(ll),randomly_selected_yes_test_images_r(yes_counter));
-                                ori_dir(ll,2) = NaN; % squeeze(ori_img_yes(idx_l(ll),randomly_selected_yes_test_images_l(yes_counter),1)); % angle in deg for dot 1 and 2 (0 deg = 12 o'clock) -- note left is second angle
-                                yes_counter   = yes_counter+1;
-                            elseif no_trial_idx_r(ll)==1
-                                qz_im(ll,2)   = idx_img_no(idx_r(ll),randomly_selected_no_test_images_r(no_counter));
-                                ori_dir(ll,2) = NaN; % squeeze(ori_img_no(idx_l(ll),randomly_selected_no_test_images_l(no_counter),1)); % angle in deg for dot 1 and 2 (0 deg = 12 o'clock) -- note left is second angle
-                                no_counter    = no_counter+1;
-                            elseif isnan(img_vec(ll,2)) % catch trial
-                                qz_im(ll,2)   = 0;
-                                ori_dir(ll,2) = NaN;
-                            else
-                                error('[%s]: Imagery test image must be "yes" or "no".',mfilename);
-                            end
-                            
-                            
+  
+                    for ll = 1:size(conds_single_rep_merged,1) % loop over unique images 
+                        if conds_single_rep_merged.is_catch(ll)==1
+                            % do nothing
+                        else   
                             if conds_single_rep_merged.is_cued(ll)==1
                                 % remove uncued right side from table
                                 conds_single_rep_merged.stim_nr_right(ll) = NaN;
@@ -410,25 +319,11 @@ if nr_reps > 0
                         end
                     end
 
-                    % all aligned quiz dots should match the tilt of the gabor shown in stim1
-                    %assert(all(isequal(ori_dir(yes_trial_idx_l,1),conds_single_rep_merged.orient_dir(yes_trial_idx_l,1)))); % left side
-                    %assert(all(ismember(ori_dir(yes_trial_idx_r,2),conds_single_rep_merged.orient_dir(yes_trial_idx_r,2)))); % right side
-                    
-                    % assert(length(unique(qz_im(:)))==length(qz_im(:)))
-                    assert(all(ismember(qz_im(yes_trial_idx_l & conds_single_rep_merged.is_cued==1,1),idx_img_yes))); % check if yes quiz dots image nr matches for left stim
-                    assert(all(ismember(qz_im(no_trial_idx_l & conds_single_rep_merged.is_cued==1,1),idx_img_no))); % check if no quiz dots image nr matches for left stim
-                    assert(all(ismember(qz_im(yes_trial_idx_r & conds_single_rep_merged.is_cued==2,2),idx_img_yes))); % check if yes quiz dots image nr matches for right stim
-                    assert(all(ismember(qz_im(no_trial_idx_r & conds_single_rep_merged.is_cued==2,2),idx_img_no))); % check if no quiz dots image nr matches for right stim
-                    
-                    assert(isequal(sum(img_vec(:,1)==1),sum(img_vec(:,1)==2))); % right stim side: equal yes/no overlap?
-                    assert(isequal(sum(img_vec(:,2)==1),sum(img_vec(:,2)==2))); % left stim side: equal yes/no overlap?
-                    
                     % fill in vectors & condition table
-                    conds_single_rep_merged.stim2_delta      = img_vec; % yes (1) /no (2) dots are aligned
-                    conds_single_rep_merged.stim2_im_nr      = qz_im;   % unique img quiz dot stim number
-                    conds_single_rep_merged.stim2_orient_dir = ori_dir; % orientation of dots
-                    
-                    % NO lures in IMG, set to NaN
+                    % NO stim2 info or lures in IMG, set to NaN
+                    conds_single_rep_merged.stim2_delta      = NaN(size(conds_single_rep_merged,1),2);
+                    conds_single_rep_merged.stim2_im_nr      = NaN(size(conds_single_rep_merged,1),2);
+                    conds_single_rep_merged.stim2_orient_dir = NaN(size(conds_single_rep_merged,1),2);
                     conds_single_rep_merged.is_lure          = NaN(size(conds_single_rep_merged,1),2);
                     
                 % Add LTM pairs
@@ -751,102 +646,11 @@ if nr_reps > 0
 
                 % Add IMG text prompt and quiz dots
                 elseif strcmp(taskClass{:},'img')
-                    % Add IMG text prompt and quiz dots
-                    n_quiz_images       = length(unique(params.stim.rdk.imagery_quiz_images)); % 2 types: overlap or not.
-                    noncatch_trials_idx = conds_single_rep_merged.is_catch==0;
-                    shuffle_delta       = [shuffle_concat(1:n_quiz_images, (size(conds_single_rep_merged(noncatch_trials_idx,:),1)/n_quiz_images)); ... % 1 = overlap, 2 = no overlap
-                                            shuffle_concat(1:n_quiz_images, (size(conds_single_rep_merged(noncatch_trials_idx,:),1)/n_quiz_images))]'; % 50/50 chance of seeing 1 or 2
-                    
-                    % create yes/no overlap vector:
-                    % 1=yes overlap, 2=no overlap (50% chance)
-                    % col 1 = left stim, col 2 = right stim
-                    % left/right stim is not yoked.
-                    img_vec                        = NaN(size(conds_single_rep_merged,1),2);
-                    img_vec(noncatch_trials_idx,:) = shuffle_delta;
-                    idx_l                          = NaN(size(conds_single_rep_merged,1),1);
-                    idx_r                          = NaN(size(conds_single_rep_merged,1),1);
-                    
-                    % find unique IMG test stim nrs that correspond to the special core stim nr in stim1                  
-                    [~,idx_l_tmp]   = ismember(conds_single_rep_merged.stim_nr_left(noncatch_trials_idx),params.stim.rdk.unique_im_nrs_specialcore);
-                    [~,idx_r_tmp]   = ismember(conds_single_rep_merged.stim_nr_right(noncatch_trials_idx),params.stim.rdk.unique_im_nrs_specialcore);
-                    idx_img     = params.stim.rdk.imagery_quiz_dot_stim_nr; % 8x20 matrix:8 special core stim x 20 (10 yes + 10 no overlap) test images per unique image 
-                    idx_img_yes = idx_img(:,params.stim.rdk.imagery_quiz_images==1); % nr stim x 10 yes overlap test images per unique image
-                    idx_img_no  = idx_img(:,params.stim.rdk.imagery_quiz_images==2); % nr stim x 10 no overlap test images per unique image
-                    assert(all(ismember(unique(params.stim.rdk.unique_im_nrs_specialcore([idx_l_tmp(idx_l_tmp>0);idx_r_tmp(idx_r_tmp>0)])), params.stim.rdk.imagery_quiz_dot_specialcore_stim_nr)))
-                    assert(isequal(size(idx_img_yes),size(idx_img_no)));
-                    
-                    idx_l(noncatch_trials_idx) = idx_l_tmp; clear idx_l_tmp
-                    idx_r(noncatch_trials_idx) = idx_r_tmp; clear idx_r_tmp
-                    
-                    % To avoid that the table becomes massive, we provide
-                    % one number that tells us something about two quiz dots:
-                    % we populate the stim2_orient column with the "orientation" 
-                    % of the imagery quiz dots test images, which is the
-                    % the orientation of the line connecting the two
-                    % imagery quiz dots dots, relative to 0 deg = 12 o'clock. 
-                    % if quiz dots "overlap" they have the same orientation
-                    % as the rdk motion direction.
-                    ori_img_yes = params.stim.rdk.imagery_quiz_dot_orient_deg(:,params.stim.rdk.imagery_quiz_images==1,:); % 8 orientations x 10 yes overlap quiz images x 2 dots
-                    ori_img_no  = params.stim.rdk.imagery_quiz_dot_orient_deg(:,params.stim.rdk.imagery_quiz_images==2,:); % 8 orientations x 10 no overlap quiz images x 2 dots
-                    
-                    assert(isequal(sum(circulardiff(ori_img_yes(:,:,1),ori_img_yes(:,:,2),180),'all'),0)); % dots fall on a line
-                    assert(isequal(sum(circulardiff(ori_img_no(:,:,1),ori_img_no(:,:,2),180),'all'),0)); % dots fall on a line
-                    
-                    qz_im           = NaN(size(img_vec)); % note: with catch trials
-                    ori_dir         = NaN(size(img_vec)); % note: with catch trials
-                    yes_trial_idx_l = false(size(img_vec,1),1);
-                    no_trial_idx_l  = false(size(img_vec,1),1);
-                    yes_trial_idx_r = false(size(img_vec,1),1); 
-                    no_trial_idx_r  = false(size(img_vec,1),1);
-                    
-                    % convert to 4 logical vectors, for l/r stim x yes/no overlap
-                    yes_trial_idx_l(img_vec(:,1)==1)=true; % Quiz dots overlap (1=yes) or not (2=no) left
-                    no_trial_idx_l(img_vec(:,1)==2)=true; % Quiz dots overlap (1=yes) or not (2=no) left
-                    yes_trial_idx_r(img_vec(:,2)==1)=true; % Quiz dots overlap (1=yes) or not (2=no) right 
-                    no_trial_idx_r(img_vec(:,2)==2)=true; % Quiz dots overlap (1=yes) or not (2=no) right
-                    
-                    % randomly sample from the 10 exemplar quiz dot images (WITHOUT replacement)
-                    randomly_selected_yes_test_images_l  = shuffle_concat(1:size(idx_img_yes,2),2);  % left stim yes 
-                    randomly_selected_no_test_images_l   = shuffle_concat(1:size(idx_img_no,2),2); % left stim no 
-                    randomly_selected_yes_test_images_r  = shuffle_concat(1:size(idx_img_yes,2),2); % right stim yes 
-                    randomly_selected_no_test_images_r   = shuffle_concat(1:size(idx_img_no,2),2); % right stim no
-                    
-                    yes_counter = 1; no_counter = 1;
-                    for ll = 1:length(idx_l) % loop over unique images on the left
-                        if isnan(idx_l(ll)) || idx_l(ll) > 0
-                            
-                            if yes_trial_idx_l(ll)==1
-                                qz_im(ll,1)   = idx_img_yes(idx_l(ll),randomly_selected_yes_test_images_l(yes_counter));
-                                ori_dir(ll,1) = NaN; % squeeze(ori_img_yes(idx_l(ll),randomly_selected_yes_test_images_l(yes_counter),1)); % angle in deg for dot 1 and 2 (0 deg = 12 o'clock) -- note left is second angle
-                                yes_counter   = yes_counter+1;
-                            elseif no_trial_idx_l(ll)==1
-                                qz_im(ll,1)   = idx_img_no(idx_l(ll),randomly_selected_no_test_images_l(no_counter));
-                                ori_dir(ll,1) = NaN; % squeeze(ori_img_no(idx_l(ll),randomly_selected_no_test_images_l(no_counter),1)); % angle in deg for dot 1 and 2 (0 deg = 12 o'clock) -- note left is second angle
-                                no_counter    = no_counter+1;
-                            elseif isnan(img_vec(ll,1)) % catch trial
-                                qz_im(ll,1)   = 0;
-                                ori_dir(ll,1) = NaN;
-                            else
-                                error('[%s]: Imagery test image must be "yes" or "no".',mfilename);
-                            end
-                            
-                            
-                            if yes_trial_idx_r(ll)==1
-                                qz_im(ll,2)   = idx_img_yes(idx_r(ll),randomly_selected_yes_test_images_r(yes_counter));
-                                ori_dir(ll,2) = NaN; % squeeze(ori_img_yes(idx_l(ll),randomly_selected_yes_test_images_l(yes_counter),1)); % angle in deg for dot 1 and 2 (0 deg = 12 o'clock) -- note left is second angle
-                                yes_counter   = yes_counter+1;
-                            elseif no_trial_idx_r(ll)==1
-                                qz_im(ll,2)   = idx_img_no(idx_r(ll),randomly_selected_no_test_images_r(no_counter));
-                                ori_dir(ll,2) = NaN; % squeeze(ori_img_no(idx_l(ll),randomly_selected_no_test_images_l(no_counter),1)); % angle in deg for dot 1 and 2 (0 deg = 12 o'clock) -- note left is second angle
-                                no_counter    = no_counter+1;
-                            elseif isnan(img_vec(ll,2)) % catch trial
-                                qz_im(ll,2)   = 0;
-                                ori_dir(ll,2) = NaN;
-                            else
-                                error('[%s]: Imagery test image must be "yes" or "no".',mfilename);
-                            end
-                            
-                            
+                    for ll = 1:size(conds_single_rep_merged,1)
+                        
+                        if conds_single_rep_merged.is_catch(ll) == 1
+                            % do nothing
+                        else
                             if conds_single_rep_merged.is_cued(ll)==1
                                 % remove uncued right side from table
                                 conds_single_rep_merged.stim_nr_right(ll) = NaN;
@@ -856,38 +660,25 @@ if nr_reps > 0
                                 conds_single_rep_merged.rdk_coherence(ll,2) = NaN;
                                 conds_single_rep_merged.is_special_core(ll,2) = NaN;
                             elseif conds_single_rep_merged.is_cued(ll)==2
-                                 % remove uncued left side from table
-                                 conds_single_rep_merged.stim_nr_left(ll) = NaN;
-                                 conds_single_rep_merged.stim_class_name(ll,1) = {NaN};
-                                 conds_single_rep_merged.orient_dir(ll,1) = NaN;
-                                 conds_single_rep_merged.contrast(ll,1) = NaN;
-                                 conds_single_rep_merged.rdk_coherence(ll,1) = NaN;
-                                 conds_single_rep_merged.is_special_core(ll,1) = NaN;
+                                % remove uncued left side from table
+                                conds_single_rep_merged.stim_nr_left(ll) = NaN;
+                                conds_single_rep_merged.stim_class_name(ll,1) = {NaN};
+                                conds_single_rep_merged.orient_dir(ll,1) = NaN;
+                                conds_single_rep_merged.contrast(ll,1) = NaN;
+                                conds_single_rep_merged.rdk_coherence(ll,1) = NaN;
+                                conds_single_rep_merged.is_special_core(ll,1) = NaN;
                             else
                                 error('wtf')
                             end
                         end
                     end
-%   
-                    % all aligned quiz dots should match the tilt of the rdk motion direction shown in stim1
-                    %assert(all(isequal(ori_dir(yes_trial_idx_l,1),conds_single_rep_merged.orient_dir(yes_trial_idx_l,1)))); % left side
-                    %assert(all(ismember(ori_dir(yes_trial_idx_r,2),conds_single_rep_merged.orient_dir(yes_trial_idx_r,2)))); % right side
-
-                    % assert(length(unique(qz_im(:)))==length(qz_im(:)))
-                    assert(all(ismember(qz_im(yes_trial_idx_l  & conds_single_rep_merged.is_cued==1,1),idx_img_yes))); % check if yes quiz dots image nr matches for left stim
-                    assert(all(ismember(qz_im(no_trial_idx_l & conds_single_rep_merged.is_cued==1,1),idx_img_no))); % check if no quiz dots image nr matches for left stim
-                    assert(all(ismember(qz_im(yes_trial_idx_r & conds_single_rep_merged.is_cued==2,2),idx_img_yes))); % check if yes quiz dots image nr matches for right stim
-                    assert(all(ismember(qz_im(no_trial_idx_r & conds_single_rep_merged.is_cued==2,2),idx_img_no))); % check if no quiz dots image nr matches for right stim
                     
-                    assert(isequal(sum(img_vec(:,1)==1),sum(img_vec(:,1)==2))); % right stim side: equal yes/no overlap?
-                    assert(isequal(sum(img_vec(:,2)==1),sum(img_vec(:,2)==2))); % left stim side: equal yes/no overlap?
-                    
+            
                     % fill in vectors & condition table
-                    conds_single_rep_merged.stim2_delta      = img_vec; % yes (1) /no (2) dots are aligned
-                    conds_single_rep_merged.stim2_im_nr      = qz_im;   % unique img quiz dot stim number
-                    conds_single_rep_merged.stim2_orient_dir = ori_dir; % orientation of dots
-                    
-                    % NO lures in IMG, set to NaN
+                    % NO stim2 info or lures in IMG, set to NaN
+                    conds_single_rep_merged.stim2_delta      = NaN(size(conds_single_rep_merged,1),2);
+                    conds_single_rep_merged.stim2_im_nr      = NaN(size(conds_single_rep_merged,1),2);
+                    conds_single_rep_merged.stim2_orient_dir = NaN(size(conds_single_rep_merged,1),2);
                     conds_single_rep_merged.is_lure          = NaN(size(conds_single_rep_merged,1),2);
 
                 % Add ltm pair.
@@ -1219,173 +1010,38 @@ if nr_reps > 0
 
                 % Add IMG text prompt and quiz dots
                 elseif strcmp(taskClass{:},'img')
-                    % Add IMG text prompt and quiz dots
-                    n_quiz_images       = length(unique(params.stim.dot.imagery_quiz_images)); % 2 types: straddle single dot or not.
-                    noncatch_trials_idx = conds_single_rep_merged.is_catch==0;
-                    shuffle_delta       = [shuffle_concat(1:n_quiz_images, (size(conds_single_rep_merged(noncatch_trials_idx,:),1)/n_quiz_images)); ... % 1 = straddle, 2 = both are left or right from single dot
-                                            shuffle_concat(1:n_quiz_images, (size(conds_single_rep_merged(noncatch_trials_idx,:),1)/n_quiz_images))]'; % 50/50 chance of seeing 1 or 2
-                    
-                    % create yes/no overlap vector:
-                    % 1=yes straddle, 2=no straddle (50% chance)
-                    % col 1 = left stim, col 2 = right stim
-                    % left/right stim is not yoked.
-                    img_vec                        = NaN(size(conds_single_rep_merged,1),2);
-                    img_vec(noncatch_trials_idx,:) = shuffle_delta;
-                    idx_l                          = NaN(size(conds_single_rep_merged,1),1);
-                    idx_r                          = NaN(size(conds_single_rep_merged,1),1);
-                    
-                    % find unique IMG test stim nrs that correspond to the special core stim nr in stim1                  
-                    [~,idx_l_tmp]   = ismember(conds_single_rep_merged.stim_nr_left(noncatch_trials_idx),params.stim.dot.unique_im_nrs_specialcore);
-                    [~,idx_r_tmp]   = ismember(conds_single_rep_merged.stim_nr_right(noncatch_trials_idx),params.stim.dot.unique_im_nrs_specialcore);
-                    idx_img     = params.stim.dot.imagery_quiz_dot_stim_nr; % 8x20 matrix:8 special core stim x 20 (10 yes + 10 no overlap) test images per unique image 
-                    idx_img_yes = idx_img(:,params.stim.dot.imagery_quiz_images==1); % nr stim x 10 yes overlap test images per unique image
-                    idx_img_no  = idx_img(:,params.stim.dot.imagery_quiz_images==2); % nr stim x 10 no overlap test images per unique image
-                    assert(all(ismember(unique(params.stim.dot.unique_im_nrs_specialcore([idx_l_tmp(idx_l_tmp>0);idx_r_tmp(idx_r_tmp>0)])), params.stim.dot.imagery_quiz_dot_specialcore_stim_nr)))
-                    assert(isequal(size(idx_img_yes),size(idx_img_no)));
-                    
-                    idx_l(noncatch_trials_idx) = idx_l_tmp; clear idx_l_tmp
-                    idx_r(noncatch_trials_idx) = idx_r_tmp; clear idx_r_tmp
-                    
-                    % To avoid that the table becomes massive, we provide
-                    % one number that tells us something about two quiz dots:
-                    % we populate the stim2_orient column with the orientation
-                    % of the imagery quiz dots test images, which is the
-                    % the orientation 1 imagery quiz dots (?) relative to 0 deg = 12 o'clock. 
-                    % if quiz dots "straddle" they are left and right of the single dot location.
-                    ori_img_yes = params.stim.dot.imagery_quiz_dot_orient_deg(:,params.stim.rdk.imagery_quiz_images==1,:); % 8 locations x 10 yes straddle quiz images x 2 dots
-                    ori_img_no  = params.stim.dot.imagery_quiz_dot_orient_deg(:,params.stim.rdk.imagery_quiz_images==2,:); % 8 locations x 10 no straddle quiz images x 2 dots
-                    
-                    assert(all(reshape(ori_img_yes(1:4,:,:),1,[]) > 180)); % left quiz dots locations fall within 180 and 360 deg
-                    assert(all(reshape(ori_img_no(5:end,:,:),1,[]) < 180)); % right quiz dots locations fall within 0 and 180 deg
-                    
-                    
-                    yes_trial_idx_l = false(size(img_vec,1),1);
-                    no_trial_idx_l  = false(size(img_vec,1),1);
-                    yes_trial_idx_r = false(size(img_vec,1),1); 
-                    no_trial_idx_r  = false(size(img_vec,1),1);
-                    
-                    % convert to 4 logical vectors, for l/r stim x yes/no overlap
-                    yes_trial_idx_l(img_vec(:,1)==1)=true; % Quiz dots straddle (1=yes) or not (2=no) left
-                    no_trial_idx_l(img_vec(:,1)==2)=true; % Quiz dots straddle (1=yes) or not (2=no) left
-                    yes_trial_idx_r(img_vec(:,2)==1)=true; % Quiz dots straddle (1=yes) or not (2=no) right 
-                    no_trial_idx_r(img_vec(:,2)==2)=true; % Quiz dots straddle (1=yes) or not (2=no) right
-                    
-                    while 1
+
+                    for ll = 1:size(conds_single_rep_merged,1)
                         
-                        qz_im           = NaN(size(img_vec)); % note: with catch trials
-                        ori_dir         = NaN(size(img_vec)); % note: with catch trials
-                        
-                        % randomly sample from the 10 exemplar quiz dot images (WITHOUT replacement)
-                        randomly_selected_yes_test_images_l  = shuffle_concat(1:size(idx_img_yes,2),2);  % left stim yes
-                        randomly_selected_no_test_images_l   = shuffle_concat(1:size(idx_img_no,2),2); % left stim no
-                        randomly_selected_yes_test_images_r  = shuffle_concat(1:size(idx_img_yes,2),2); % right stim yes
-                        randomly_selected_no_test_images_r   = shuffle_concat(1:size(idx_img_no,2),2); % right stim no
-                        
-                        tmp_ori = NaN(size(ori_img_yes,1),2,2);
-                        
-                        yes_counter = 1; no_counter = 1;
-                        for ll = 1:length(idx_l) % loop over unique images on the left
-                            if isnan(idx_l(ll)) || idx_l(ll) > 0
-                                
-                                if yes_trial_idx_l(ll)==1
-                                    qz_im(ll,1)   = idx_img_yes(idx_l(ll),randomly_selected_yes_test_images_l(yes_counter));
-                                    tmp_ori(ll,1,:) = squeeze(ori_img_yes(idx_l(ll),randomly_selected_yes_test_images_l(yes_counter),:)); % store both dot locations to check if quiz dots are too close.
-                                    ori_dir(ll,1) = NaN; % rad2deg(circ_mean(squeeze(deg2rad(ori_img_yes(idx_l(ll),randomly_selected_yes_test_images_l(yes_counter),:))),[],1)); % average angle in deg of dot 1 and 2 (0 deg = 12 o'clock) -- note left col using first angle
-                                    yes_counter   = yes_counter+1;
-                                elseif no_trial_idx_l(ll)==1
-                                    qz_im(ll,1)   = idx_img_no(idx_l(ll),randomly_selected_no_test_images_l(no_counter));
-                                    tmp_ori(ll,1,:) = squeeze(ori_img_no(idx_l(ll),randomly_selected_no_test_images_l(no_counter),:)); % store both dot locations to check if quiz dots are too close.
-                                    ori_dir(ll,1) = NaN; % rad2deg(circ_mean(squeeze(deg2rad(ori_img_no(idx_l(ll),randomly_selected_no_test_images_l(no_counter),:))),[],1)); % average angle in deg of dot 1 and 2 (0 deg = 12 o'clock) -- note left col, using first angle
-                                    no_counter    = no_counter+1;
-                                elseif isnan(img_vec(ll,1)) % catch trial
-                                    qz_im(ll,1)   = 0;
-                                    tmp_ori(ll,1,:) = NaN;
-                                    ori_dir(ll,1) = NaN;
-                                else
-                                    error('[%s]: Imagery test image must be "yes" or "no".',mfilename);
-                                end
-                                
-                                
-                                if yes_trial_idx_r(ll)==1
-                                    qz_im(ll,2)   = idx_img_yes(idx_r(ll),randomly_selected_yes_test_images_r(yes_counter));
-                                    tmp_ori(ll,2,:) = squeeze(ori_img_yes(idx_r(ll),randomly_selected_yes_test_images_r(yes_counter),:)); % store both dot locations to check if quiz dots are too close.
-                                    ori_dir(ll,2) = NaN; % rad2deg(circ_mean(squeeze(deg2rad(ori_img_yes(idx_r(ll),randomly_selected_yes_test_images_r(yes_counter),:))),[],1)); % angle in deg for dot 1 and 2 (0 deg = 12 o'clock) -- note right side, using first angle
-                                    yes_counter   = yes_counter+1;
-                                elseif no_trial_idx_r(ll)==1
-                                    qz_im(ll,2)   = idx_img_no(idx_r(ll),randomly_selected_no_test_images_r(no_counter));
-                                    tmp_ori(ll,2,:) = squeeze(ori_img_no(idx_r(ll),randomly_selected_no_test_images_r(no_counter),:)); % store both dot locations to check if quiz dots are too close.
-                                    ori_dir(ll,2) = NaN; % rad2deg(circ_mean(squeeze(deg2rad(ori_img_no(idx_r(ll),randomly_selected_no_test_images_r(no_counter),:))),[],1)); % angle in deg for dot 1 and 2 (0 deg = 12 o'clock) -- note right side, using first angle
-                                    no_counter    = no_counter+1;
-                                elseif isnan(img_vec(ll,2)) % catch trial
-                                    qz_im(ll,2)   = 0;
-                                    tmp_ori(ll,2,:) = NaN;
-                                    ori_dir(ll,2) = NaN;
-                                else
-                                    error('[%s]: Imagery test image must be "yes" or "no".',mfilename);
-                                end
-                                
-                                
-                                if conds_single_rep_merged.is_cued(ll)==1
-                                    % remove uncued right side from table
-                                    conds_single_rep_merged.stim_nr_right(ll) = NaN;
-                                    conds_single_rep_merged.stim_class_name(ll,2) = {NaN};
-                                    conds_single_rep_merged.orient_dir(ll,2) = NaN;
-                                    conds_single_rep_merged.contrast(ll,2) = NaN;
-                                    conds_single_rep_merged.is_special_core(ll,2) = NaN;
-                                elseif conds_single_rep_merged.is_cued(ll)==2
-                                    % remove uncued left side from table
-                                    conds_single_rep_merged.stim_nr_left(ll) = NaN;
-                                    conds_single_rep_merged.stim_class_name(ll,1) = {NaN};
-                                    conds_single_rep_merged.orient_dir(ll,1) = NaN;
-                                    conds_single_rep_merged.contrast(ll,1) = NaN;
-                                    conds_single_rep_merged.is_special_core(ll,1) = NaN;
-                                else
-                                    error('wtf')
-                                end
+                        if conds_single_rep_merged.is_catch(ll) == 1
+                            % do nothing
+                        else
+                            if conds_single_rep_merged.is_cued(ll)==1
+                                % remove uncued right side from table
+                                conds_single_rep_merged.stim_nr_right(ll) = NaN;
+                                conds_single_rep_merged.stim_class_name(ll,2) = {NaN};
+                                conds_single_rep_merged.orient_dir(ll,2) = NaN;
+                                conds_single_rep_merged.contrast(ll,2) = NaN;
+                                conds_single_rep_merged.is_special_core(ll,2) = NaN;
+                            elseif conds_single_rep_merged.is_cued(ll)==2
+                                % remove uncued left side from table
+                                conds_single_rep_merged.stim_nr_left(ll) = NaN;
+                                conds_single_rep_merged.stim_class_name(ll,1) = {NaN};
+                                conds_single_rep_merged.orient_dir(ll,1) = NaN;
+                                conds_single_rep_merged.contrast(ll,1) = NaN;
+                                conds_single_rep_merged.is_special_core(ll,1) = NaN;
+                            else
+                                error('wtf')
                             end
                         end
-                   
-                        % calculate absolute angle of stim 2 (test stim), apply circular wrap 
-                        upper_left = max(squeeze(tmp_ori(:,1,:)),[],2); % quiz dot angle closests to upper vertical meridian.
-                        lower_left = min(squeeze(tmp_ori(:,1,:)),[],2); % quiz dot angle closests to lower vertical meridian.
-                        
-                        lower_right = max(squeeze(tmp_ori(:,2,:)),[],2); % quiz dot angle closests to lower vertical meridian.
-                        upper_right = min(squeeze(tmp_ori(:,2,:)),[],2); % quiz dot angle closests to upper vertical meridian.
-
-                        abs_angle_upper = abs(circulardiff(upper_left,upper_right,360));
-                        abs_angle_lower = abs(circulardiff(lower_left,lower_right,360));
-
-                        % Ensure that absolute angles of left and right test stimuli don't overlap. 
-                        % Any combination of two dot test stimuli that are
-                        % less than 70 degrees apart are considered too close.
-                        dot_too_close_upper = abs_angle_upper <= params.stim.dot.min_ang_distance_test_stim;
-                        dot_too_close_lower = abs_angle_lower <= params.stim.dot.min_ang_distance_test_stim;
-                        
-                        dot_too_close = cat(2,dot_too_close_upper,dot_too_close_lower);
-                        
-                        if sum(dot_too_close, 'all')==0
-                            break;
-                        end 
                     end
-%                     % all aligned quiz dots should match the angle shown in stim1
-%                     assert(all(isequal(ori_dir(yes_trial_idx_l,1),conds_single_rep_merged.orient_dir(yes_trial_idx_l,1)))); % left side
-%                     assert(all(ismember(ori_dir(yes_trial_idx_r,2),conds_single_rep_merged.orient_dir(yes_trial_idx_r,2)))); % right side
 
-                    % assert(length(qz_im(~isnan(qz_im)))==length(qz_im))
-                    assert(all(ismember(qz_im(yes_trial_idx_l & conds_single_rep_merged.is_cued==1,1),idx_img_yes))); % check if yes quiz dots image nr matches for left stim
-                    assert(all(ismember(qz_im(no_trial_idx_l & conds_single_rep_merged.is_cued==1,1),idx_img_no))); % check if no quiz dots image nr matches for left stim
-                    assert(all(ismember(qz_im(yes_trial_idx_r & conds_single_rep_merged.is_cued==2,2),idx_img_yes))); % check if yes quiz dots image nr matches for right stim
-                    assert(all(ismember(qz_im(no_trial_idx_r & conds_single_rep_merged.is_cued==2,2),idx_img_no))); % check if no quiz dots image nr matches for right stim
-                    
-                    assert(isequal(sum(img_vec(:,1)==1),sum(img_vec(:,1)==2))); % right stim side: equal yes/no overlap?
-                    assert(isequal(sum(img_vec(:,2)==1),sum(img_vec(:,2)==2))); % left stim side: equal yes/no overlap?
-                    
+                    % calculate absolute angle of stim 2 (test stim), apply circular wrap
                     % fill in vectors & condition table
-                    conds_single_rep_merged.stim2_delta      = img_vec; % yes (1) /no (2) dots are aligned
-                    conds_single_rep_merged.stim2_im_nr      = qz_im;   % unique img quiz dot stim number
-                    conds_single_rep_merged.stim2_orient_dir = ori_dir; % angle of dot locations
-                    
-                    % NO lures in IMG, set to NaN
+                    % NO stim2 info or lures in IMG, set to NaN
+                    conds_single_rep_merged.stim2_delta      = NaN(size(conds_single_rep_merged,1),2);
+                    conds_single_rep_merged.stim2_im_nr      = NaN(size(conds_single_rep_merged,1),2);
+                    conds_single_rep_merged.stim2_orient_dir = NaN(size(conds_single_rep_merged,1),2);
                     conds_single_rep_merged.is_lure          = NaN(size(conds_single_rep_merged,1),2);
 
                     
@@ -1740,100 +1396,10 @@ if nr_reps > 0
 
                 % Add IMG text prompt and quiz dots
                 elseif strcmp(taskClass{:},'img')
-                    % Add IMG text prompt and quiz dots
-                    n_quiz_images       = length(unique(params.stim.obj.imagery_quiz_images)); % 2 types: overlap or not.
-                    noncatch_trials_idx = conds_single_rep_merged.is_catch==0;
-                    shuffle_delta       = [shuffle_concat(1:n_quiz_images, (size(conds_single_rep_merged(noncatch_trials_idx,:),1)/n_quiz_images)); ... % 1 = overlap, 2 = no overlap
-                                            shuffle_concat(1:n_quiz_images, (size(conds_single_rep_merged(noncatch_trials_idx,:),1)/n_quiz_images))]'; % 50/50 chance of seeing 1 or 2
-                    
-                    % create yes/no overlap vector:
-                    % 1=yes overlap, 2=no overlap (50% chance)
-                    % col 1 = left stim, col 2 = right stim
-                    % left/right stim is not yoked.
-                    img_vec                        = NaN(size(conds_single_rep_merged,1),2);
-                    img_vec(noncatch_trials_idx,:) = shuffle_delta;
-                    idx_l                          = NaN(size(conds_single_rep_merged,1),1);
-                    idx_r                          = NaN(size(conds_single_rep_merged,1),1);
-                    
-                    % find unique IMG test stim nrs that correspond to the special core stim nr in stim1                  
-                    [~,idx_l_tmp]   = ismember(conds_single_rep_merged.stim_nr_left(noncatch_trials_idx),params.stim.obj.unique_im_nrs_specialcore);
-                    [~,idx_r_tmp]   = ismember(conds_single_rep_merged.stim_nr_right(noncatch_trials_idx),params.stim.obj.unique_im_nrs_specialcore);
-                    idx_img     = params.stim.obj.imagery_quiz_dot_stim_nr; % 8x20 matrix:8 special core stim x 20 (10 yes + 10 no overlap) test images per unique image 
-                    idx_img_yes = idx_img(:,params.stim.obj.imagery_quiz_images==1); % nr stim x 10 yes overlap test images per unique image
-                    idx_img_no  = idx_img(:,params.stim.obj.imagery_quiz_images==2); % nr stim x 10 no overlap test images per unique image
-                    assert(all(ismember(unique(params.stim.obj.unique_im_nrs_specialcore([idx_l_tmp(idx_l_tmp>0);idx_r_tmp(idx_r_tmp>0)])), params.stim.obj.imagery_quiz_dot_specialcore_stim_nr)))
-                    assert(isequal(size(idx_img_yes),size(idx_img_no)));
-                    
-                    idx_l(noncatch_trials_idx) = idx_l_tmp; clear idx_l_tmp
-                    idx_r(noncatch_trials_idx) = idx_r_tmp; clear idx_r_tmp
-                    
-                    % To avoid that the table becomes massive, we provide
-                    % one number that tells us something about two quiz dots:
-                    % we populate the stim2_orient column with the "orientation" 
-                    % of the imagery quiz dots test images, which is the
-                    % the orientation of the line connecting the two
-                    % imagery quiz dots dots, relative to 0 deg = 12 o'clock. 
-                    % when quiz dots overlap, their location is within the 
-                    % outline of the object.
-                    ori_img_yes = params.stim.obj.imagery_quiz_dot_orient_deg(:,params.stim.obj.imagery_quiz_images==1,:); % 8 locations x 10 yes overlap quiz images x 2 dots
-                    ori_img_no  = params.stim.obj.imagery_quiz_dot_orient_deg(:,params.stim.obj.imagery_quiz_images==2,:); % 8 locations x 10 no overlap quiz images x 2 dots
-                    
-                    
-                    qz_im           = NaN(size(img_vec)); % note: with catch trials
-                    ori_dir         = NaN(size(img_vec)); % note: with catch trials
-                    yes_trial_idx_l = false(size(img_vec,1),1);
-                    no_trial_idx_l  = false(size(img_vec,1),1);
-                    yes_trial_idx_r = false(size(img_vec,1),1); 
-                    no_trial_idx_r  = false(size(img_vec,1),1);
-                    
-                    % convert to 4 logical vectors, for l/r stim x yes/no overlap
-                    yes_trial_idx_l(img_vec(:,1)==1)=true; % Quiz dots overlap (1=yes) or not (2=no) left
-                    no_trial_idx_l(img_vec(:,1)==2)=true; % Quiz dots overlap (1=yes) or not (2=no) left
-                    yes_trial_idx_r(img_vec(:,2)==1)=true; % Quiz dots overlap (1=yes) or not (2=no) right 
-                    no_trial_idx_r(img_vec(:,2)==2)=true; % Quiz dots overlap (1=yes) or not (2=no) right
-                    
-                    % randomly sample from the 10 exemplar quiz dot images (WITHOUT replacement)
-                    randomly_selected_yes_test_images_l  = shuffle_concat(1:size(idx_img_yes,2),2);  % left stim yes 
-                    randomly_selected_no_test_images_l   = shuffle_concat(1:size(idx_img_no,2),2); % left stim no 
-                    randomly_selected_yes_test_images_r  = shuffle_concat(1:size(idx_img_yes,2),2); % right stim yes 
-                    randomly_selected_no_test_images_r   = shuffle_concat(1:size(idx_img_no,2),2); % right stim no
-                    
-                    yes_counter = 1; no_counter = 1;
-                    for ll = 1:length(idx_l) % loop over unique images on the left
-                        if isnan(idx_l(ll)) || idx_l(ll) > 0
-                            
-                            if yes_trial_idx_l(ll)==1
-                                qz_im(ll,1)   = idx_img_yes(idx_l(ll),randomly_selected_yes_test_images_l(yes_counter));
-                                ori_dir(ll,1) = NaN; % squeeze(ori_img_yes(idx_l(ll),randomly_selected_yes_test_images_l(yes_counter),1)); % angle in deg for dot 1 and 2 (0 deg = 12 o'clock) -- note left is second angle
-                                yes_counter   = yes_counter+1;
-                            elseif no_trial_idx_l(ll)==1
-                                qz_im(ll,1)   = idx_img_no(idx_l(ll),randomly_selected_no_test_images_l(no_counter));
-                                ori_dir(ll,1) = NaN; % squeeze(ori_img_no(idx_l(ll),randomly_selected_no_test_images_l(no_counter),1)); % angle in deg for dot 1 and 2 (0 deg = 12 o'clock) -- note left is second angle
-                                no_counter    = no_counter+1;
-                            elseif isnan(img_vec(ll,1)) % catch trial
-                                qz_im(ll,1)   = 0;
-                                ori_dir(ll,1) = NaN;
-                            else
-                                error('[%s]: Imagery test image must be "yes" or "no".',mfilename);
-                            end
-                            
-                            
-                            if yes_trial_idx_r(ll)==1
-                                qz_im(ll,2)   = idx_img_yes(idx_r(ll),randomly_selected_yes_test_images_r(yes_counter));
-                                ori_dir(ll,2) = NaN; % squeeze(ori_img_yes(idx_l(ll),randomly_selected_yes_test_images_l(yes_counter),1)); % angle in deg for dot 1 and 2 (0 deg = 12 o'clock) -- note left is second angle
-                                yes_counter   = yes_counter+1;
-                            elseif no_trial_idx_r(ll)==1
-                                qz_im(ll,2)   = idx_img_no(idx_r(ll),randomly_selected_no_test_images_r(no_counter));
-                                ori_dir(ll,2) = NaN; % squeeze(ori_img_no(idx_l(ll),randomly_selected_no_test_images_l(no_counter),1)); % angle in deg for dot 1 and 2 (0 deg = 12 o'clock) -- note left is second angle
-                                no_counter    = no_counter+1;
-                            elseif isnan(img_vec(ll,2)) % catch trial
-                                qz_im(ll,2)   = 0;
-                                ori_dir(ll,2) = NaN;
-                            else
-                                error('[%s]: Imagery test image must be "yes" or "no".',mfilename);
-                            end
-                            
-                            
+                    for ll = 1:size(conds_single_rep_merged,1)
+                        if conds_single_rep_merged.is_catch(ll)==1
+                            % do nothing
+                        else
                             if conds_single_rep_merged.is_cued(ll)==1
                                 % remove uncued right side from table
                                 conds_single_rep_merged.stim_nr_right(ll) = NaN;
@@ -1870,23 +1436,14 @@ if nr_reps > 0
                         end
                     end
 
-
-%                     assert(length(unique(qz_im(:)))==length(qz_im(:)))
-                    assert(all(ismember(qz_im(yes_trial_idx_l & conds_single_rep_merged.is_cued==1,1),idx_img_yes))); % check if yes quiz dots image nr matches for left stim
-                    assert(all(ismember(qz_im(no_trial_idx_l & conds_single_rep_merged.is_cued==1,1),idx_img_no))); % check if no quiz dots image nr matches for left stim
-                    assert(all(ismember(qz_im(yes_trial_idx_r & conds_single_rep_merged.is_cued==2,2),idx_img_yes))); % check if yes quiz dots image nr matches for right stim
-                    assert(all(ismember(qz_im(no_trial_idx_r & conds_single_rep_merged.is_cued==2,2),idx_img_no))); % check if no quiz dots image nr matches for right stim
-                    
-                    assert(isequal(sum(img_vec(:,1)==1),sum(img_vec(:,1)==2))); % right stim side: equal yes/no overlap?
-                    assert(isequal(sum(img_vec(:,2)==1),sum(img_vec(:,2)==2))); % left stim side: equal yes/no overlap?
-                    
+                    % calculate absolute angle of stim 2 (test stim), apply circular wrap
                     % fill in vectors & condition table
-                    conds_single_rep_merged.stim2_delta      = img_vec; % yes (1) /no (2) dots are aligned
-                    conds_single_rep_merged.stim2_im_nr      = qz_im;   % unique img quiz dot stim number
-                    conds_single_rep_merged.stim2_orient_dir = ori_dir; % angle of line connecting two quiz dot locations
-                    
-                    % NO lures in IMG, set to NaN
+                    % NO stim2 info or lures in IMG, set to NaN
+                    conds_single_rep_merged.stim2_delta      = NaN(size(conds_single_rep_merged,1),2);
+                    conds_single_rep_merged.stim2_im_nr      = NaN(size(conds_single_rep_merged,1),2);
+                    conds_single_rep_merged.stim2_orient_dir = NaN(size(conds_single_rep_merged,1),2);
                     conds_single_rep_merged.is_lure          = NaN(size(conds_single_rep_merged,1),2);
+
                 
                     % Add ltm pair.
                 elseif strcmp(taskClass{:},'ltm')
@@ -2216,177 +1773,14 @@ if nr_reps > 0
 
                 % take subset of IMG trials, add text prompt and quiz dots loc
                 elseif strcmp(taskClass{:},'img')
-                    n_quiz_images       = length(unique(params.stim.ns.imagery_quiz_images));
-                    noncatch_trials_idx = conds_master_single_rep2.is_catch==0;
-                    shuffle_delta       = shuffle_concat(1:n_quiz_images, (size(conds_master_single_rep2(noncatch_trials_idx,:),1)/n_quiz_images))';
-                    
-                    % create yes/no overlap vector:
-                    % 1=yes overlap, 2=no overlap (50% chance)
-                    % col 1 = left stim, col 2 = right stim
-                    % left/right stim is not yoked.
-                    img_vec                        = NaN(size(conds_master_single_rep2,1),1);
-                    img_vec(noncatch_trials_idx,:) = shuffle_delta;
-                    
-                    % find unique IMG test stim nrs that correspond to the special core stim nr in stim1
-                    idx_c     = NaN(size(conds_master_single_rep2,1),1); % <--- 14 trials x 1
-                    [~,idx_c_tmp] = ismember(conds_master_single_rep2.stim_nr_left(noncatch_trials_idx),params.stim.ns.unique_im_nrs_specialcore); % central image only
-                    idx_img   = reshape(params.stim.ns.unique_im_nrs_img_test,length(params.stim.ns.imagery_quiz_images),[])'; % 20x15 matrix: 10 yes + 10 no overlap test images for each of the 15 special core images
-                    idx_img_yes = idx_img(:,params.stim.ns.imagery_quiz_images==1); % Quiz dots overlap (1=yes) or not (2=no)
-                    idx_img_no  = idx_img(:,params.stim.ns.imagery_quiz_images==2); % Quiz dots overlap (1=yes) or not (2=no)
-                    
-                    assert(isequal(size(idx_img_yes),size(idx_img_no)))
-                    assert(all(ismember(unique(params.stim.ns.unique_im_nrs_specialcore(idx_c_tmp)), params.stim.ns.imagery_quiz_dot_specialcore_stim_nr)))
-                    
-                    idx_c(noncatch_trials_idx==1) = idx_c_tmp; clear idx_c_tmp
-                    
-                    % To avoid that the table becomes massive, we provide
-                    % one number that tells us something about two quiz dots:
-                    % we populate the stim2_orient column with the "orientation" 
-                    % of the imagery quiz dots test images, which is the
-                    % the orientation of the line connecting the two
-                    % imagery quiz dots dots, relative to 0 deg = 12 o'clock. 
-                    % when quiz dots overlap, their location is within the 
-                    % outline of the object in the scene.
-                    ori_img_yes = params.stim.ns.imagery_quiz_dot_orient_deg(:,params.stim.ns.imagery_quiz_images==1,1,:); % 8 locations x 10 yes overlap quiz images x 2 dots
-                    ori_img_no  = params.stim.ns.imagery_quiz_dot_orient_deg(:,params.stim.ns.imagery_quiz_images==2,1,:); % 8 locations x 10 no overlap quiz images x 2 dots
-                    
-                    
-                    qz_im           = NaN(size(img_vec)); % note: with catch trials
-                    ori_dir         = NaN(size(img_vec)); % note: with catch trials
-                    yes_trial_idx_c = false(size(img_vec,1),1);
-                    no_trial_idx_c  = false(size(img_vec,1),1);
-                    
-                    
-                    % convert to 4 logical vectors, for l/r stim x yes/no overlap
-                    yes_trial_idx_c(img_vec(:,1)==1)=true; % Quiz dots overlap (1=yes) or not (2=no) 
-                    no_trial_idx_c(img_vec(:,1)==2)=true; % Quiz dots overlap (1=yes) or not (2=no) 
-                    
-                    % randomly sample from the 10 exemplar quiz dot images (WITHOUT replacement)
-                    randomly_selected_yes_test_images_c  = randsample(size(idx_img_yes,2),sum(yes_trial_idx_c), false);  % left stim yes 
-                    randomly_selected_no_test_images_c   = randsample(size(idx_img_no,2),sum(no_trial_idx_c), false); % left stim no 
-                    
-                    yes_counter = 1; no_counter = 1;
-                    for ll = 1:length(idx_c) % loop over unique images on the left
-                        if yes_trial_idx_c(ll)==1
-                            qz_im(ll)   = idx_img_yes(idx_c(ll),randomly_selected_yes_test_images_c(yes_counter));
-                            ori_dir(ll) = NaN; % squeeze(ori_img_yes(idx_c(ll),randomly_selected_yes_test_images_c(yes_counter),1)); % angle in deg for dot 1 and 2 (0 deg = 12 o'clock) -- note left col using first angle
-                            yes_counter   = yes_counter+1;
-                        elseif no_trial_idx_c(ll)==1
-                            qz_im(ll)   = idx_img_no(idx_c(ll),randomly_selected_no_test_images_c(no_counter));
-                            ori_dir(ll) = NaN; % squeeze(ori_img_no(idx_c(ll),randomly_selected_no_test_images_c(no_counter),1)); % angle in deg for dot 1 and 2 (0 deg = 12 o'clock) -- note left col, using first angle
-                            no_counter    = no_counter+1;
-                        elseif isnan(img_vec(ll))
-                            qz_im(ll)   = 0;
-                            ori_dir(ll) = NaN;
-                        else
-                            error('[%s]: Imagery test image must be "yes" or "no".',mfilename);
-                        end
-                    end
-                    
-                    assert(length(unique(qz_im(:)))==length(qz_im(:)))
-                    assert(all(ismember(qz_im(yes_trial_idx_c,1),idx_img_yes))); % check if yes quiz dots image nr matches for central stim
-                    assert(all(ismember(qz_im(no_trial_idx_c,1),idx_img_no))); % check if no quiz dots image nr matches for central stim                    
-                    assert(isequal(sum(img_vec(:,1)==1),sum(img_vec(:,1)==2))); % equal yes/no overlap?
+                    % no need to remove uncued stimulus, because there is
+                    % only one image that is neutrally cued.
                     
                     % fill in vectors & condition table
                     conds_master_single_rep2.stim2_im_nr      = NaN(size(conds_master_single_rep2,1),2);
                     conds_master_single_rep2.stim2_orient_dir = NaN(size(conds_master_single_rep2,1),2);
                     conds_master_single_rep2.stim2_delta      = NaN(size(conds_master_single_rep2,1),2);
-                    
-                    conds_master_single_rep2.stim2_delta(:,1)      = img_vec; % yes (1) /no (2) dots are aligned
-                    conds_master_single_rep2.stim2_im_nr(:,1)      = qz_im;   % unique img quiz dot stim number
-                    conds_master_single_rep2.stim2_orient_dir(:,1) = ori_dir; % angle of line connecting two quiz dot locations
-                    
-                    % NO lures in IMG, set to NaN
                     conds_master_single_rep2.is_lure          = NaN(size(conds_master_single_rep2,1),2);          
-
-                
-                elseif strcmp(taskClass{:},'img')
-                    % take subset of IMG trials, add text prompt and quiz dots loc
-                    n_quiz_images       = length(unique(params.stim.ns.imagery_quiz_images));
-                    noncatch_trials_idx = conds_master_single_rep2.is_catch==0;
-                    shuffle_delta       = shuffle_concat(1:n_quiz_images, (size(conds_master_single_rep2(noncatch_trials_idx,:),1)/n_quiz_images))';
-                    
-                    % create yes/no overlap vector:
-                    % 1=yes overlap, 2=no overlap (50% chance)
-                    % col 1 = left stim, col 2 = right stim
-                    % left/right stim is not yoked.
-                    img_vec                        = NaN(size(conds_master_single_rep2,1),1);
-                    img_vec(noncatch_trials_idx,:) = shuffle_delta;
-                    
-                    % find unique IMG test stim nrs that correspond to the special core stim nr in stim1
-                    idx_c     = NaN(size(conds_master_single_rep2,1),1); % <--- EK start here! (what should dim be here? 10 or 14?)
-                    [~,idx_c_tmp] = ismember(conds_master_single_rep2.stim_nr_left(noncatch_trials_idx),params.stim.ns.unique_im_nrs_specialcore); % central image only
-                    idx_img   = reshape(params.stim.ns.unique_im_nrs_img_test,length(params.stim.ns.imagery_quiz_images),[])'; % 20x15 matrix: 10 yes + 10 no overlap test images for each of the 15 special core images
-                    idx_img_yes = idx_img(:,params.stim.ns.imagery_quiz_images==1); % Quiz dots overlap (1=yes) or not (2=no)
-                    idx_img_no  = idx_img(:,params.stim.ns.imagery_quiz_images==2); % Quiz dots overlap (1=yes) or not (2=no)
-                    
-                    assert(isequal(size(idx_img_yes),size(idx_img_no)))
-                    assert(all(ismember(unique(params.stim.ns.unique_im_nrs_specialcore(idx_c_tmp)), params.stim.ns.imagery_quiz_dot_specialcore_stim_nr)))
-                    
-                    idx_c(noncatch_trials_idx==1) = idx_c_tmp; clear idx_c_tmp
-                    
-                    % To avoid that the table becomes massive, we provide
-                    % one number that tells us something about two quiz dots:
-                    % we populate the stim2_orient column with the "orientation" 
-                    % of the imagery quiz dots test images, which is the
-                    % the orientation of the line connecting the two
-                    % imagery quiz dots dots, relative to 0 deg = 12 o'clock. 
-                    % when quiz dots overlap, their location is within the 
-                    % outline of the object in the scene.
-                    ori_img_yes = params.stim.ns.imagery_quiz_dot_orient_deg(:,params.stim.ns.imagery_quiz_images==1,1,:); % 8 locations x 10 yes overlap quiz images x 2 dots
-                    ori_img_no  = params.stim.ns.imagery_quiz_dot_orient_deg(:,params.stim.ns.imagery_quiz_images==2,1,:); % 8 locations x 10 no overlap quiz images x 2 dots
-                    
-                    
-                    qz_im           = NaN(size(img_vec)); % note: with catch trials
-                    ori_dir         = NaN(size(img_vec)); % note: with catch trials
-                    yes_trial_idx_c = false(size(img_vec,1),1);
-                    no_trial_idx_c  = false(size(img_vec,1),1);
-                    
-                    
-                    % convert to 4 logical vectors, for l/r stim x yes/no overlap
-                    yes_trial_idx_c(img_vec(:,1)==1)=true; % Quiz dots overlap (1=yes) or not (2=no) 
-                    no_trial_idx_c(img_vec(:,1)==2)=true; % Quiz dots overlap (1=yes) or not (2=no) 
-                    
-                    % randomly sample from the 10 exemplar quiz dot images (WITHOUT replacement)
-                    randomly_selected_yes_test_images_c  = randsample(size(idx_img_yes,2),sum(yes_trial_idx_c), false);  % left stim yes 
-                    randomly_selected_no_test_images_c   = randsample(size(idx_img_no,2),sum(no_trial_idx_c), false); % left stim no 
-                    
-                    yes_counter = 1; no_counter = 1;
-                    for ll = 1:length(idx_c) % loop over unique images on the left
-                        if yes_trial_idx_c(ll)==1
-                            qz_im(ll)   = idx_img_yes(idx_c(ll),randomly_selected_yes_test_images_c(yes_counter));
-                            ori_dir(ll) = squeeze(ori_img_yes(idx_c(ll),randomly_selected_yes_test_images_c(yes_counter),1)); % angle in deg for dot 1 and 2 (0 deg = 12 o'clock) -- note left col using first angle
-                            yes_counter   = yes_counter+1;
-                        elseif no_trial_idx_c(ll)==1
-                            qz_im(ll)   = idx_img_no(idx_c(ll),randomly_selected_no_test_images_c(no_counter));
-                            ori_dir(ll) = squeeze(ori_img_no(idx_c(ll),randomly_selected_no_test_images_c(no_counter),1)); % angle in deg for dot 1 and 2 (0 deg = 12 o'clock) -- note left col, using first angle
-                            no_counter    = no_counter+1;
-                        elseif isnan(img_vec(ll))
-                            qz_im(ll)   = 0;
-                            ori_dir(ll) = NaN;
-                        else
-                            error('[%s]: Imagery test image must be "yes" or "no".',mfilename);
-                        end
-                    end
-                    
-                    assert(length(qz_im(~isnan(qz_im)))==length(qz_im))
-                    assert(all(ismember(qz_im(yes_trial_idx_c,1),idx_img_yes))); % check if yes quiz dots image nr matches for central stim
-                    assert(all(ismember(qz_im(no_trial_idx_c,1),idx_img_no))); % check if no quiz dots image nr matches for central stim                    
-                    assert(isequal(sum(img_vec(:,1)==1),sum(img_vec(:,1)==2))); % equal yes/no overlap?
-                    
-                    % fill in vectors & condition table
-                    conds_master_single_rep2.stim2_im_nr      = NaN(size(conds_master_single_rep2,1),2);
-                    conds_master_single_rep2.stim2_orient_dir = NaN(size(conds_master_single_rep2,1),2);
-                    conds_master_single_rep2.stim2_delta      = NaN(size(conds_master_single_rep2,1),2);
-                    
-                    conds_master_single_rep2.stim2_delta(:,1)      = img_vec; % yes (1) /no (2) dots are aligned
-                    conds_master_single_rep2.stim2_im_nr(:,1)      = qz_im;   % unique img quiz dot stim number
-                    conds_master_single_rep2.stim2_orient_dir(:,1) = ori_dir; % angle of line connecting two quiz dot locations
-                    
-                    % NO lures in IMG, set to NaN
-                    conds_master_single_rep2.is_lure          = NaN(size(conds_master_single_rep2,1),2);          
-
                     
                 elseif strcmp(taskClass{:},'ltm') % Add ltm pair.
                     
