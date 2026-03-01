@@ -139,7 +139,12 @@ unique_crossingIDs(ismember(unique_crossingIDs,[999,0])) = [];
 % Make textures for task instruction images once
 alltasktex = {};
 for p = 1:length(unique_crossingIDs)
-    alltasktex{p} = Screen('MakeTexture', win, taskscript.im{p});
+    if unique_crossingIDs(p) == 6
+        alltasktex{p} = Screen('MakeTexture', win, taskscript.im{p});
+        alltasktex{length(unique_crossingIDs)+1} = Screen('MakeTexture', win, taskscript.im{end});
+    else
+        alltasktex{p} = Screen('MakeTexture', win, taskscript.im{p});
+    end
 end
 
 % Make textures for eyetracking block images once
