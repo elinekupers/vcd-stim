@@ -9,9 +9,8 @@ all_images = struct;
 [data,all_images] = runme_vcdcore(SUBJECTID, 1, SESSTYPE, RUNNUMBER, '7TAS_BOLDSCREEN32', ...
   'is_wide',true,'wanteyetracking', true, 'all_images', all_images, 'exp_env', 1);
 
-%% Official vcddeep08-46 experiment (SUBJECTID is an integer up to 3 digits, RUNNUMBER is 1-10)
+%% Official vcddeep08-45 experiment (SUBJECTID is an integer up to 3 digits, RUNNUMBER is 1-10)
 % For SESNR 8-45 --> SESSTYPE MUST BE 1, where 1=A
-% For SESNR 46 --> SESSTYPE is 1 or 2 where 1=A, 2=B
 % Flag 'is_wide' = false by default.
 % 
 % To prepare a time table file for a subject (you only need to do this once, 
@@ -26,7 +25,23 @@ all_images = struct;
 
 SUBJECTID = 999; % is an integer up to 3 digits
 SESNR     = 8; % integer between 8 through 46 (inclusive)
-SESSTYPE  = 1; % SES_NR 8-45 -> use 1=A, for SES_NR use 1=A or 2=B
+SESSTYPE  = 1; % SES_NR 8-45 -> ALWAYS use 1=A
+
+data_dir = fullfile(vcd_rootPath, 'data','MRI',sprintf('vcd_subj%03d',SUBJECTID));
+tt_file  = dir(fullfile(data_dir, sprintf('vcd_subj%03d_time_table_master_deep_7TAS_BOLDSCREEN32_2026*.mat',SUBJECTID))); % we will always use the latest time table file
+
+all_images = struct;
+for RUNNUMBER = 1:10
+    [data,all_images] = runme_vcdcore(SUBJECTID, SESNR, SESSTYPE, RUNNUMBER, '7TAS_BOLDSCREEN32', ...
+    'wanteyetracking', true, 'all_images', all_images, 'exp_env', 1, ...
+    'timetable_file',fullfile(tt_file(end).folder, tt_file(end).name));
+end
+
+%% For Official vcddeep46 --> SESSTYPE is 1 or 2 where 1=A, 2=B
+
+SUBJECTID = 999; % is an integer up to 3 digits
+SESNR     = 46; % integer between 8 through 46 (inclusive)
+SESSTYPE  = [];  % use 1=A or 2=B
 
 data_dir = fullfile(vcd_rootPath, 'data','MRI',sprintf('vcd_subj%03d',SUBJECTID));
 tt_file  = dir(fullfile(data_dir, sprintf('vcd_subj%03d_time_table_master_deep_7TAS_BOLDSCREEN32_2026*.mat',SUBJECTID))); % we will always use the latest time table file
