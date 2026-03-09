@@ -209,6 +209,11 @@ max_attempts     = 10000;
     run_dur_max,~, IBIs, ~, ~, ~, ~, nr_blocks_per_run,~,all_block_dur] = ...
     vcd_getSessionEnvironmentParams(params, env_type);
 
+if params.is_demo && ~params.is_wide
+    % DEEP DEMO PERCEPTION RUNS HAVE SHORTER (i.e., 4s) DELAY PERIODS
+    all_block_dur2 = all_block_dur(2)-(4*4);
+end
+
 % Get additional IBI duration (in case we deal with a short run)
 additional_IBIs = max(IBIs)-min(IBIs);
 
@@ -222,6 +227,14 @@ tic;
 %% Loop over sessions..
 for ses = 1:length(unique_sessions)
     for st = 1:size(session_types,2)
+        
+        if st==2 && params.is_demo && ~params.is_wide
+            % DEEP DEMO PERCEPTION RUNS HAVE SHORTER (i.e., 4s) DELAY PERIODS 
+            all_block_dur(2) = all_block_dur2;
+        else
+            all_block_dur(2) = all_block_dur(2);
+        end
+        
         if ~isnan(session_types(ses,st))
             
             restart_shuffle = true;
@@ -237,8 +250,12 @@ for ses = 1:length(unique_sessions)
                 ses_trialtype     = condition_master.trial_type(ses_idx);
                 ses_crossing_vec  = condition_master.crossing_nr(ses_idx);
                 assert(isequal(length(ses_trials),length(ses_blocks)))
-                if params.is_demo
+                if params.is_demo && params.is_wide
                     assert(isequal(1+sum(abs(diff(ses_crossing_vec))>0),numel(unique(ses_blocks))))
+                elseif params.is_demo && ~params.is_wide
+                    if unique(ses_crossing_vec)~=6
+                        assert(isequal(numel(unique(ses_crossing_vec)),5))
+                    end
                 end
                 % Get unique block nrs and associated trial types
                 [unique_blocks, block_start_idx] = unique(ses_blocks);
@@ -287,25 +304,52 @@ for ses = 1:length(unique_sessions)
                         trialtypes_shuffled      = cell(1,2);
                         bb_rnd                   = cell(1,2);
                         for ii = [1,2] % single, double
-                            % Create a indexing vector that randomizes the block order
-                            % of single-stim and double-stim blocks separately.
-                            bb_rnd{ii} = randperm(length(all_blocks{ii}),length(all_blocks{ii}));
                             
-                            % Apply the randomization vector to reorder blocks,
-                            % crossings, trial types accordingly..
-                            [~,jj] = ismember(all_blocks{ii}(bb_rnd{ii}),unique_blocks);
-                            block_start_idx_shuffled{ii} = block_start_idx(jj);
-                            crossings_shuffled{ii}       = crossings_unique_blocks(jj);
-                            trialtypes_shuffled{ii}      = unique_trialtypes(jj);
-                            
-                            % check if we have more than X crossings repeat
-                            % back to back (default is 10) which may happen by
-                            % chance. If so, we reshuffle blocks.
-                            repeat_blocks = sum(diff(block_start_idx_shuffled{ii})==0);
-                            if repeat_blocks > max_block_repeats
-                                reshuffle_me(ii) = true;
+                            if params.is_demo && ~params.is_wide
+                                if ii == 2
+                                    % only double stim blocks
+                                    bb_rnd{2} = randperm(length(all_blocks{2}),length(all_blocks{2}));
+                                    
+                                    % Apply the randomization vector to reorder blocks,
+                                    % crossings, trial types accordingly..
+                                    [~,jj] = ismember(all_blocks{2}(bb_rnd{2}),unique_blocks);
+                                    block_start_idx_shuffled{2} = block_start_idx(jj);
+                                    crossings_shuffled{2}       = crossings_unique_blocks(jj);
+                                    trialtypes_shuffled{2}      = unique_trialtypes(jj);
+                                    
+                                    % check if we have more than X crossings repeat
+                                    % back to back (default is 10) which may happen by
+                                    % chance. If so, we reshuffle blocks.
+                                    repeat_blocks = sum(diff(block_start_idx_shuffled{2})==0);
+                                    if repeat_blocks > max_block_repeats
+                                        reshuffle_me(2) = true;
+                                    else
+                                        reshuffle_me(2) = false;
+                                    end
+                                else
+                                    reshuffle_me(1) = false;
+                                end
                             else
-                                reshuffle_me(ii) = false;
+                                % Create a indexing vector that randomizes the block order
+                                % of single-stim and double-stim blocks separately.
+                                bb_rnd{ii} = randperm(length(all_blocks{ii}),length(all_blocks{ii}));
+                                
+                                % Apply the randomization vector to reorder blocks,
+                                % crossings, trial types accordingly..
+                                [~,jj] = ismember(all_blocks{ii}(bb_rnd{ii}),unique_blocks);
+                                block_start_idx_shuffled{ii} = block_start_idx(jj);
+                                crossings_shuffled{ii}       = crossings_unique_blocks(jj);
+                                trialtypes_shuffled{ii}      = unique_trialtypes(jj);
+                                
+                                % check if we have more than X crossings repeat
+                                % back to back (default is 10) which may happen by
+                                % chance. If so, we reshuffle blocks.
+                                repeat_blocks = sum(diff(block_start_idx_shuffled{ii})==0);
+                                if repeat_blocks > max_block_repeats
+                                    reshuffle_me(ii) = true;
+                                else
+                                    reshuffle_me(ii) = false;
+                                end
                             end
                         end
                         
@@ -356,6 +400,11 @@ for ses = 1:length(unique_sessions)
                                 bbi = setdiff([1,2],bbi);
                                 assert(~isnan(potential_block_idx(bbi)))
                             end
+                            
+                            if ~exist('ibi','var')
+                                % make sure we have an ibi duration
+                                ibi = min(IBIs);
+                            end 
                             
                             if (ibi + curr_run_dur + run_dur_min + max_run_deviation) < run_dur_max
                                 % if this run needs another block, then let's continue as usual
@@ -417,6 +466,11 @@ for ses = 1:length(unique_sessions)
                             
                             total_nr_blocks_left = length(trialtypes_shuffled0{2});
                             nr_incomplete_runs   = runs_to_fill-rr_cnt;
+                            
+                            if ~exist('ibi','var')
+                                % make sure we have an ibi duration
+                                ibi = min(IBIs);
+                            end 
                             
                             if (ibi + curr_run_dur + run_dur_min + max_run_deviation) < run_dur_max
                                 % if this run needs that block, then let's continue as usual
@@ -636,8 +690,14 @@ for ses = 1:length(unique_sessions)
                     
                     % if this is a demo, and there are not 7 blocks in one run, then start over
                     if runs_ok && params.is_demo
-                        if tmp_blocks_per_run ~= params.exp.session.demo.nr_blocks_per_run(ses,st)
-                            runs_ok = false;
+                        if ~params.is_wide % deep demos
+                            if tmp_blocks_per_run ~= params.exp.session.mri.demo.nr_blocks_per_run(ses,st)
+                                runs_ok = false;
+                            end
+                        else
+                            if tmp_blocks_per_run ~= params.exp.session.demo.nr_blocks_per_run(ses,st)
+                                runs_ok = false;
+                            end
                         end
                     end
                     
@@ -704,14 +764,18 @@ for ses = 1:length(unique_sessions)
                         glbl_block_cnt = glbl_block_cnt +1;
                         % What type of block are we dealing with
                         if run_trial_types(run_idx,bb_idx)==1
-                            if params.is_demo
+                            if params.is_demo && params.is_wide
                                 nr_trials = params.exp.block.demo.n_trials_single_epoch;
+                            elseif params.is_demo && ~params.is_wide
+                                nr_trials = params.exp.block.mri.demo.n_trials_single_epoch;
                             else
                                 nr_trials = params.exp.block.n_trials_single_epoch;
                             end
                         elseif run_trial_types(run_idx,bb_idx)==2
-                            if params.is_demo
+                            if params.is_demo && params.is_wide
                                 nr_trials = params.exp.block.demo.n_trials_double_epoch;
+                            elseif params.is_demo && ~params.is_wide
+                                nr_trials = params.exp.block.mri.demo.n_trials_double_epoch;
                             else
                                 nr_trials = params.exp.block.n_trials_double_epoch;
                             end
@@ -742,6 +806,10 @@ for ses = 1:length(unique_sessions)
                                     trial_order_not_ok = false;
                                     restart_shuffle = false;
                                     warning('\n[%s]: SKIPPING SESSION 46B for checking stimulus repeats in WM task class, as there are too few trials to swap.',mfilename);
+                                elseif ~params.is_wide && params.is_demo
+                                    trial_order_not_ok = false;
+                                    restart_shuffle = false;
+                                    warning('\n[%s]: SKIPPING SESSION %d%s for checking stimulus repeats.',mfilename,ses,choose(st==1,'A','B'));
                                 elseif any(ismember(A,3)) && length(trial_order)<=4
                                     [A1, A2] = vcd_findGlobalTrialNrToSwap(condition_master,condition_master0,trial_order);
                                     error('\n[%s]: !!!! There is a block with too many stimulus repeats for center/left stim!!!! Consider swapping global trial number %d with %d (session_type = %d)',mfilename, A1, A2, st);
@@ -854,11 +922,8 @@ if store_params
         saveDir = fullfile(vcd_rootPath,'data',env_type,subj_id);
     end
     if ~exist(saveDir,'dir'), mkdir(saveDir); end
-    if strcmp(env_type,  'MRI')
-        fname = sprintf('%scondition_master_%s%s%s_%s.mat',[subj_id '_'],choose(params.is_wide,'wide_','deep_'),choose(params.is_demo,'demo_',''),params.disp.name, datestr(now,30));
-    else
-        fname = sprintf('%scondition_master_%s%s_%s.mat',[subj_id '_'],choose(params.is_demo,'demo_',''),params.disp.name, datestr(now,30));
-    end
+    fname = sprintf('%scondition_master_%s%s%s_%s.mat',[subj_id '_'],choose(params.is_wide,'wide_','deep_'),choose(params.is_demo,'demo_',''),params.disp.name, datestr(now,30));
+    
     fprintf('\n[%s]: Storing shuffled condition master and randomization file here:\n',mfilename)
     fprintf('\t%s', fullfile(saveDir,fname))
     save(fullfile(saveDir,fname),'condition_master_shuffled','condition_master_shuffle_idx','session_block_matrix','session_crossing_matrix','randomization_params');
