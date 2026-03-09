@@ -96,8 +96,7 @@ function [time_table_master, all_run_frames] = vcd_createRunTimeTables(params, v
 %     {'super_cat_name'      } : (cell w str) same as super_cat but human readable
 %     {'basic_cat_name'      } : (cell w str) same as basic_cat but human readable
 %     {'sub_cat_name'        } : (cell w str) same as sub_cat but human readable
-%     {'is_in_img'           }
-%     {'stim2_delta'         } : (double) WM or IMG quiz image change. For
+%     {'stim2_delta'         } : (double) WM quiz image change. For
 %                                 example, for WM it is the difference from reference for gabor degrees tilt, rdk motion direction,
 %                                 dot angle, object facing direction, or
 %                                 type of change in scene.
@@ -145,11 +144,8 @@ end
 if load_params
     if ~isfield(params,'is_demo'), params.is_demo = false; end
     if ~isfield(params,'is_wide'), params.is_wide = false; end
-    if strcmp(env_type, 'MRI')
-        fname = sprintf('%s_time_table_master_%s%s%s*.mat',subj_id,choose(params.is_wide,'wide_','deep_'),choose(params.is_demo,'demo_',''),params.disp.name);
-    else
-        fname = sprintf('%s_time_table_master_%s%s*.mat',subj_id,choose(params.is_demo,'demo_',''),params.disp.name);
-    end
+    fname = sprintf('%s_time_table_master_%s%s%s*.mat',subj_id,choose(params.is_wide,'wide_','deep_'),choose(params.is_demo,'demo_',''),params.disp.name);
+    
     d = dir(fullfile(vcd_rootPath,'data', env_type, subj_id, fname));
     if isempty(d)
         error('[%s]: Can''t find time table file with subj_id: %s!\n', mfilename, subj_id)
@@ -167,11 +163,8 @@ else
     
     % check if trial struct is already defined and load it if needed
     if ~exist('condition_master','var') || isempty(condition_master)
-        if strcmp(env_type, 'MRI')
-            fname = sprintf('%s_condition_master_%s%s*%s*.mat',subj_id, choose(params.is_wide,'wide_','deep_'), choose(params.is_demo,'demo_',''),params.disp.name);
-        else
-            fname = sprintf('%s_time_table_master_%s%s*.mat',subj_id,choose(params.is_demo,'demo_',''),params.disp.name);
-        end
+        fname = sprintf('%s_time_table_master_%s%s*%s*.mat',subj_id, choose(params.is_wide,'wide_','deep_'), choose(params.is_demo,'demo_',''),params.disp.name);
+        
         % load trial info
         d = dir(fullfile(vcd_rootPath,'workspaces','data',env_type, subj_id, fname));
         
@@ -812,6 +805,14 @@ for ses = 1:size(all_sessions,3)
                                 time_table.global_run_nr(table_idx)     = curr_global_run_nr;
                                 time_table.global_block_nr(table_idx)   = curr_global_block_nr;
                                 time_table.global_trial_nr(table_idx)   = curr_global_trial_nr;
+                                
+                                % Shorten delay duration for DEEP DEMO
+                                % LTM/IMG learning/perception trials
+                                if params.is_demo && ~params.is_wide && st==2
+                                    time_table.event_dur(table_idx)         = params.exp.trial.delay_dur / 2; % 4-s instead of 8-s
+                                    time_table.event_end(table_idx)         = time_table.event_start(table_idx) + time_table.event_dur(table_idx);
+                                end
+                                
                                 time_table.is_objectcatch(table_idx)    = NaN;
                                 
                                 total_run_frames = time_table.event_end(table_idx);
@@ -1093,11 +1094,8 @@ if store_params
         saveDir = fullfile(vcd_rootPath,'data',env_type, subj_id);
     end
     if ~exist(saveDir,'dir'), mkdir(saveDir); end
-    if strcmp(env_type, 'MRI')
-        fname = sprintf('%stime_table_master_%s%s%s_%s.mat', [subj_id '_'], choose(params.is_wide,'wide_','deep_'), choose(params.is_demo,'demo_',''),params.disp.name, datestr(now,30));
-    else
-        fname = sprintf('%stime_table_master_%s%s_%s.mat', [subj_id '_'], choose(params.is_demo,'demo_',''),params.disp.name, datestr(now,30));
-    end
+    fname = sprintf('%stime_table_master_%s%s%s_%s.mat', [subj_id '_'], choose(params.is_wide,'wide_','deep_'), choose(params.is_demo,'demo_',''),params.disp.name, datestr(now,30));
+    
     fprintf('[%s]: Storing time table master for subject in:\n',mfilename)
     fprintf('\t%s\n',fullfile(saveDir,fname))
     save(fullfile(saveDir, fname), 'time_table_master','all_run_frames')
