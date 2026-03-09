@@ -63,11 +63,8 @@ if ~isempty(randomization_file_pth)
     if ~isfield(params,'is_wide'), params.is_wide = false; end
     
     subj_data_folder = fileparts(randomization_file_pth);
-    if strcmp(env_type,  'MRI')
-        fname = sprintf('%s_condition_master_wide_%s%s%s_%s_*.mat',subj_id,choose(params.is_wide,'wide_','deep_'), choose(params.is_demo,'demo_',''), params.disp.name);
-    else
-        fname = sprintf('%s_condition_master_wide_%s%s_%s_*.mat',subj_id,choose(params.is_demo,'demo_',''), params.disp.name);
-    end
+    fname = sprintf('%s_condition_master_wide_%s%s%s_%s_*.mat',subj_id,choose(params.is_wide,'wide_','deep_'), choose(params.is_demo,'demo_',''), params.disp.name);
+    
     a1 = load(fullfile(subj_data_folder,fname),'condition_master_shuffled');
     condition_master_shuffled   = a1.condition_master_shuffled;
 else
@@ -77,11 +74,8 @@ else
         if ~isfield(params,'is_wide'), params.is_wide = false; end
         
         % load condition master
-        if strcmp(env_type,  'MRI')
-            fname = sprintf('condition_master_%s%s%s*.mat',choose(params.is_wide,'wide_','deep_'),choose(params.is_demo,'demo_',''),params.disp.name);
-        else
-            fname = sprintf('condition_master_%s%s*.mat', choose(params.is_demo,'demo_',''), params.disp.name);
-        end
+        fname = sprintf('condition_master_%s%s%s*.mat',choose(params.is_wide,'wide_','deep_'),choose(params.is_demo,'demo_',''),params.disp.name);
+        
         d = dir(fullfile(vcd_rootPath,'workspaces','info',fname));
         if isempty(d)
             error('[%s]: Can''t find condition master .mat files! Please check or run vcd_createConditions.m\n', mfilename);
