@@ -155,23 +155,23 @@ else
     exp.session.mri.deep.n_runs_per_session(end,2)      = 10; 
     exp.session.mri.deep.baseline_sessions              = 1:6;              % Deep sessions dedicated to establish baseline, prior to introducing LTM/IMG
 
+    % DEEP DEMO runs
+    exp.session.mri.demo.session_nrs                        = 8;                   % 8 different demo runs
+    exp.session.mri.demo.session_types                      = repmat([1,2],8,1);   % 2 demo session type (no A/B)
+    exp.session.mri.demo.n_runs_per_session                 = repmat([10,10],8,1); % 10 runs for each of the 8 demo sessions/sessiontypes
+
+    
     % MORE GENERAL PARAMS
     exp.session.n_behavioral_sessions                   = unique(exp.session.behavior.session_nrs);
     exp.session.n_demo_sessions                         = unique(exp.session.demo.session_nrs);
+    exp.session.n_deep_demo_sessions                    = unique(exp.session.mri.demo.session_nrs);
     exp.session.n_deep_sessions                         = unique(exp.session.mri.deep.session_nrs);
     exp.session.n_wide_sessions                         = unique(exp.session.mri.wide.session_nrs);  
     exp.session.n_mri_sessions                          = [exp.session.n_wide_sessions,exp.session.n_deep_sessions];
    
 
     %% %%%% RUN %%%%
-    % total run time is 242 TRs or 363 s
-    
-    % general 
-%     exp.run.run_type1 = [7; 0]; % single-stim, double-stim blocks within a run
-%     exp.run.run_type2 = [4; 2]; % single-stim, double-stim blocks within a run
-%     exp.run.run_type3 = [1; 4]; % single-stim, double-stim blocks within a run
-%     exp.run.run_type4 = [0; 5]; % single-stim, double-stim blocks within a run
-   
+    % total run time is 237 TRs or 379.2 s
 
     % timing MRI
     exp.run.pre_blank_dur_MRI          = presentationrate_hz * 4.0;         % pre-run blank period: 4 seconds in number of presentation frames
@@ -182,13 +182,17 @@ else
     % timing BEHAVIOR
     exp.run.pre_blank_dur_BEHAVIOR     = presentationrate_hz * 4.0;         % pre-run blank period: 4 seconds in number of presentation frames
     exp.run.post_blank_dur_BEHAVIOR    = presentationrate_hz * 12.0;        % post-blank period: 4 seconds in number of presentation frames
-    exp.run.total_run_dur_BEHAVIOR     = presentationrate_hz * 376;       % TOTAL RUN DUR = 376 s or 22560 time frames
+    exp.run.total_run_dur_BEHAVIOR     = presentationrate_hz * 376;         % TOTAL RUN DUR = 376 s or 22560 time frames
 
    % timing DEMO
     exp.run.pre_blank_dur_DEMO     = presentationrate_hz * 4.0;             % pre-run blank period: 4 seconds in number of presentation frames
     exp.run.post_blank_dur_DEMO    = presentationrate_hz * 4.0;             % post-blank period: 4 seconds in number of presentation frames
     exp.run.total_run_dur_DEMO     = presentationrate_hz * 250;             % TOTAL RUN DUR = 250 s or 15,000 time frames
 
+   % timing DEEP DEMO
+    exp.run.pre_blank_dur_DEEP_DEMO     = presentationrate_hz * 4.0;       % pre-run blank period: 4 seconds in number of presentation frames
+    exp.run.post_blank_dur_DEEP_DEMO    = presentationrate_hz * 4.0;       % post-blank period: 4 seconds in number of presentation frames
+    exp.run.total_run_dur_DEEP_DEMO     = presentationrate_hz * 376;       % TOTAL RUN DUR = 376 s or 22560 time frames
 
     
     
@@ -247,12 +251,13 @@ else
     exp.run.min_run_dur_MRI        = exp.block.total_eyetracking_block_dur + exp.run.pre_blank_dur_MRI + exp.run.post_blank_dur_MRI;
     exp.run.min_run_dur_BEHAVIOR   = exp.block.total_eyetracking_block_dur + exp.run.pre_blank_dur_BEHAVIOR + exp.run.post_blank_dur_BEHAVIOR;
     exp.run.min_run_dur_DEMO       = exp.block.total_eyetracking_block_dur + exp.run.pre_blank_dur_DEMO + exp.run.post_blank_dur_DEMO;
+    exp.run.min_run_dur_DEEP_DEMO  = exp.block.total_eyetracking_block_dur + exp.run.pre_blank_dur_DEEP_DEMO + exp.run.post_blank_dur_DEEP_DEMO;
     
     % nr of presentation frames we actually spend doing the experiment
     exp.run.actual_task_dur_MRI      = exp.run.total_run_dur_MRI - exp.run.min_run_dur_MRI;
     exp.run.actual_task_dur_BEHAVIOR = exp.run.total_run_dur_BEHAVIOR - exp.run.min_run_dur_BEHAVIOR;
     exp.run.actual_task_dur_DEMO     = exp.run.total_run_dur_DEMO - exp.run.min_run_dur_DEMO;
-
+    exp.run.actual_task_dur_DEEP_DEMO = exp.run.total_run_dur_DEEP_DEMO - exp.run.min_run_dur_DEEP_DEMO;
     
     %% %%%% TRIAL PARAMS %%%%
     
@@ -289,7 +294,7 @@ else
     exp.trial.ITI_single_block        = presentationrate_hz .* [0, 0, 0.5, 0.5, 0.5, 1, 1]; % in units of [0,0,30,30,30,60,60,60] time frames (each time frame is 16.67 ms). Presentation code will shuffle these ITIs prior to allocation within a block
     exp.trial.ITI_double_block        = presentationrate_hz .* [0, 0.5, 1]; % in units of [0,30,60] time frames (each time frame is 16.67 ms). Presentation code will shuffle these ITIs prior to allocation within a block
     exp.trial.delay_dur               = presentationrate_hz * 8.0;          % 8.0 seconds x 16.67 ms = 240 frames
-    
+
     exp.trial.single_epoch_dur   = ...  % time frames
         sum([exp.trial.spatial_cue_dur, ... 
         exp.trial.pre_stim_blank_dur, ...
@@ -306,7 +311,7 @@ else
     
     assert( nearZero(mod(exp.trial.single_epoch_dur / 0.5*presentationrate_hz,1))); % ensure our durations are in 0.5 second time chunks
 
-    % DEMO RUNS HAVE HALF BLOCK SIZE, SO A SHORTER BLOCK DURATION
+    % BEHAVIORAL DEMO RUNS HAVE HALF BLOCK SIZE, SO A SHORTER BLOCK DURATION
     % we remove half the nr of trials per block (and corresponding ITIs)
     % single stim presentation blocks: 4 trials + ITI: 0, 0.5, or 1 s 
     % double stim presentation blocks: 2 trials + ITI: 0.5 s 
@@ -319,8 +324,16 @@ else
     exp.block.demo.total_single_epoch_dur = presentationrate_hz * 24.5;     % 24.5 seconds in number of presentation frames (excl. IBI)
     exp.block.demo.total_double_epoch_dur = presentationrate_hz * 32.5;     % 32.5 seconds in number of presentation frames (excl. IBI)
     
- 
+    % MRI IMG/LTM demo trials HAVE FULL BLOCK SIZE
+    exp.block.mri.demo.n_trials_single_epoch = exp.block.n_trials_single_epoch; % 8 blocks for both single
+    exp.block.mri.demo.n_trials_double_epoch = exp.block.n_trials_double_epoch; % 8 blocks for both double types
     
+    exp.trial.mri.demo.ITI_single_block        = presentationrate_hz .* [0, 0.5, 1]; % in units of [0,30,60] time frames (each time frame is 16.67 ms). Presentation code will shuffle these ITIs prior to allocation within a block
+    exp.trial.mri.demo.ITI_double_block        = presentationrate_hz .* [0, 0.5];    % in units of [0,30] time frames (each time frame is 16.67 ms). Presentation code will shuffle these ITIs prior to allocation within a block
+    
+    exp.block.mri.demo.total_single_epoch_dur  = presentationrate_hz * 44.5;     % 44.5 seconds in number of presentation frames (excl. IBI)
+    exp.block.mri.demo.total_double_epoch_dur  = presentationrate_hz * 60.5;     % 60.5 seconds in number of presentation frames (excl. IBI)
+
     
     %% In each run, we have manipulations that we prioritize to fully sample,
     % To make it easier to compare conditions (e.g., we want to sample
@@ -391,6 +404,8 @@ else
     exp.session.mri.deep.nr_blocks_per_run(1:45,:)   = repmat([7,NaN],45,1); % 7 blocks/run, one session types
     exp.session.mri.deep.nr_blocks_per_run(46,:)     = [7,7];                % 7 blocks/run, two session types
     
+    exp.session.mri.demo.nr_blocks_per_run           = repmat([5,5],8,2);    % 8 blocks/run, 8 sessions, 2 session types
+    
     % Catch trials:
     exp.session.mri.wide.add_catch_trials            = false;                % NO catch trials for wide MRI experiment
     exp.session.mri.deep.add_catch_trials            = true;                 % Catch trials for deep MRI experiment
@@ -439,6 +454,45 @@ else
                                                 0	0  0	0	 0	 0	 0	 1	 0	  0; % WHAT-OBJ
                                                 1	0  0	0    1	 0	 0	 0	 0	  1]; % FIX-NS, WM-NS, HOW-NS
 
+   % %%%% DEEP LTM/IMG TRAINING AND DEMOS %%%%
+                                            
+   % DEEP DEMO session 1A for LTM test (5 blocks)   fix cd  scc  pc  wm ltm img what where how
+   exp.session.mri.demo.ses_blocks(:,:,1,1) =     [ 0	0  0	0	 0	10   0	 0	 0	  0; % 
+                                                    0	0  0	0	 0	10	 0	 0	 0	  0; % 
+                                                    0	0  0	0	 0	10	 0	 0	 0	  0; % 
+                                                    0	0  0	0	 0	10	 0	 0	 0	  0; % 
+                                                    0	0  0    0    0	10	 0	 0	 0	  0]; % 
+   % DEEP DEMO session 2-4A for LTM test (5 blocks)
+   exp.session.mri.demo.ses_blocks(:,:,2,1)     = exp.session.mri.demo.ses_blocks(:,:,1,1);
+   exp.session.mri.demo.ses_blocks(:,:,3,1)     = exp.session.mri.demo.ses_blocks(:,:,1,1);
+   exp.session.mri.demo.ses_blocks(:,:,4,1)     = exp.session.mri.demo.ses_blocks(:,:,1,1);
+   
+   % Session type 4-7B = practice/learning
+   exp.session.mri.demo.ses_blocks(:,:,1,2)     = exp.session.mri.demo.ses_blocks(:,:,1,1);
+   exp.session.mri.demo.ses_blocks(:,:,2,2)     = exp.session.mri.demo.ses_blocks(:,:,1,1);
+   exp.session.mri.demo.ses_blocks(:,:,3,2)     = exp.session.mri.demo.ses_blocks(:,:,1,1);
+   exp.session.mri.demo.ses_blocks(:,:,4,2)     = exp.session.mri.demo.ses_blocks(:,:,1,1);
+   
+                                            
+   % DEMO session 8A for IMG test (5 blocks)   fix cd  scc  pc  wm ltm img what where how
+   exp.session.mri.demo.ses_blocks(:,:,5,1) = [ 0	0  0	0	 0	 0	10	 0	 0	  0; % 
+                                                0	0  0	0	 0	 0	10	 0	 0	  0; % 
+                                                0	0  0	0	 0	 0	10	 0	 0	  0; % 
+                                                0	0  0	0	 0	 0	10	 0	 0	  0; % 
+                                                0	0  0    0    0	 0	10	 0	 0	  0]; % 
+   % DEMO session 9-11A for IMG test (5 blocks)
+   exp.session.mri.demo.ses_blocks(:,:,6,1)    = exp.session.mri.demo.ses_blocks(:,:,5,1);
+   exp.session.mri.demo.ses_blocks(:,:,7,1)   = exp.session.mri.demo.ses_blocks(:,:,5,1);
+   exp.session.mri.demo.ses_blocks(:,:,8,1)   = exp.session.mri.demo.ses_blocks(:,:,5,1);
+    
+   % DEMO session 9-11B for IMG perception (5 blocks)
+   exp.session.mri.demo.ses_blocks(:,:,5,2)   = exp.session.mri.demo.ses_blocks(:,:,5,1);
+   exp.session.mri.demo.ses_blocks(:,:,6,2)   = exp.session.mri.demo.ses_blocks(:,:,5,1);
+   exp.session.mri.demo.ses_blocks(:,:,7,2)   = exp.session.mri.demo.ses_blocks(:,:,5,1);
+   exp.session.mri.demo.ses_blocks(:,:,8,2)   = exp.session.mri.demo.ses_blocks(:,:,5,1);
+
+                                            
+                                            
     % %%%% MRI SESSIONS %%%%
     % sessions WIDE 1A fix cd scc pc wm ltm img what where how
     exp.session.mri.wide.ses_blocks(:,:,1,1) = [1	1	0.5	3	6	0	0	0	0	0	; ...
@@ -773,6 +827,7 @@ else
    
     exp.n_unique_trial_repeats_behavior = ceil((exp.session.behavior.ses_blocks .*  exp.nr_trials_per_block)  ./  exp.nr_unique_trials_per_crossing);                                 
     exp.n_unique_trial_repeats_demo     = ceil((sum(sum(exp.session.demo.ses_blocks,3),4) .*  exp.nr_trials_per_block)  ./  exp.nr_unique_trials_per_crossing);
+    exp.n_unique_trial_repeats_deep_demo = ceil((sum(sum(exp.session.mri.demo.ses_blocks,3),4) .*  exp.nr_trials_per_block)  ./  exp.nr_unique_trials_per_crossing);
 
     % Define nr of catch trials
     if exp.session.mri.wide.add_catch_trials
