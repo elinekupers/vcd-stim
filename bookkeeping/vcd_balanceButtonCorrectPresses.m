@@ -75,9 +75,16 @@ if strcmp(env_type, 'MRI')
         total_catch_trials = params.exp.nr_catch_trials_deep;
     end
 elseif strcmp(env_type, 'BEHAVIOR')
-    total_catch_trials = zeros(5,10);
-    nr_unique_stim_repeat_single = 1;
-    nr_unique_stim_repeat_double = 1;
+	if params.is_wide
+    	total_catch_trials = zeros(5,10);
+    	nr_unique_stim_repeat_single = 1;
+    	nr_unique_stim_repeat_double = 1;
+	elseif ~params.is_wide && params.is_demo
+			total_catch_trials = zeros(5,10);
+			max_diff_leftright_cueing = 12;
+	else
+		error('wtf')
+	end
 end
 
 % Reset counters
@@ -190,10 +197,15 @@ for ses = session_nrs
                                 % shuffle order within 16/24/32 unique conditions if button presses are not equally distributed (or within constraints)
                                 while 1
                                     attempt = attempt +1;
+                                    
                                     if length(trials_to_be_allocated) < nr_unique_conds
                                         idx = trials_to_be_allocated;
                                     else
                                         idx = trials_to_be_allocated(1:nr_unique_conds);
+                                    end
+                                    
+                                    if length(idx) < nr_trials
+                                        idx = trials_to_be_allocated(1:nr_trials);  
                                     end
 
                                     if reshuffle_me
@@ -261,7 +273,7 @@ for ses = session_nrs
 
                                                 hc = histcounts(cued_conds(1:nr_trials),[1:4]);
                                                 block_tmp = length(order)/4;
-                                                if diff([hc(1),hc(2)])<=4 % we allow for some inequalities in cuing
+                                                if abs(diff([hc(1),hc(2)]))<=4 % we allow for some inequalities in cuing
                                                     break;
                                                 end
                                             end
