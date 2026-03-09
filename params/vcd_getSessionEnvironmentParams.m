@@ -38,22 +38,32 @@ if strcmp(env_type,'MRI')
         nr_blocks_per_run    = params.exp.session.mri.wide.nr_blocks_per_run;
         unique_trial_repeats = params.exp.n_unique_trial_repeats_wide;
         catch_trial_flag     = params.exp.session.mri.wide.add_catch_trials;
+        nr_session_types     = 2;
+        min_run_dur          = params.exp.run.min_run_dur_MRI;
+        total_run_dur        = params.exp.run.total_run_dur_MRI;
+        actual_task_run_dur  = params.exp.run.actual_task_dur_MRI;
+        IBI                  = params.exp.block.IBI_MRI;
+        preblank_run_dur     = params.exp.run.pre_blank_dur_MRI;
+        postblank_run_dur    = params.exp.run.post_blank_dur_MRI;
+        all_block_dur        = [params.exp.block.total_single_epoch_dur, params.exp.block.total_double_epoch_dur];
+       
     else % deep session
-        all_sessions         = params.exp.session.mri.deep.ses_blocks;
-        session_types        = params.exp.session.mri.deep.session_types;
-        n_runs_per_session   = params.exp.session.mri.deep.n_runs_per_session;
-        nr_blocks_per_run    = params.exp.session.mri.deep.nr_blocks_per_run;
-        unique_trial_repeats = params.exp.n_unique_trial_repeats_deep;
-        catch_trial_flag     = params.exp.session.mri.deep.add_catch_trials;
+            all_sessions         = params.exp.session.mri.deep.ses_blocks;
+            session_types        = params.exp.session.mri.deep.session_types;
+            n_runs_per_session   = params.exp.session.mri.deep.n_runs_per_session;
+            nr_blocks_per_run    = params.exp.session.mri.deep.nr_blocks_per_run;
+            unique_trial_repeats = params.exp.n_unique_trial_repeats_deep;
+            catch_trial_flag     = params.exp.session.mri.deep.add_catch_trials;
+            nr_session_types     = 2;
+            min_run_dur          = params.exp.run.min_run_dur_MRI;
+            total_run_dur        = params.exp.run.total_run_dur_MRI;
+            actual_task_run_dur  = params.exp.run.actual_task_dur_MRI;
+            IBI                  = params.exp.block.IBI_MRI;
+            preblank_run_dur     = params.exp.run.pre_blank_dur_MRI;
+            postblank_run_dur    = params.exp.run.post_blank_dur_MRI;
+            all_block_dur        = [params.exp.block.total_single_epoch_dur, params.exp.block.total_double_epoch_dur];
     end
-    nr_session_types     = 2;
-    min_run_dur          = params.exp.run.min_run_dur_MRI;
-    total_run_dur        = params.exp.run.total_run_dur_MRI;
-    actual_task_run_dur  = params.exp.run.actual_task_dur_MRI;
-    IBI                  = params.exp.block.IBI_MRI;
-    preblank_run_dur     = params.exp.run.pre_blank_dur_MRI;
-    postblank_run_dur    = params.exp.run.post_blank_dur_MRI;
-    all_block_dur        = [params.exp.block.total_single_epoch_dur, params.exp.block.total_double_epoch_dur];
+    
 
 elseif strcmp(env_type,'BEHAVIOR')
     
@@ -61,17 +71,34 @@ elseif strcmp(env_type,'BEHAVIOR')
     nr_session_types     = 1;
     IBI                  = params.exp.block.IBI_BEHAVIOR;
     if params.is_demo
-        all_sessions         = params.exp.session.demo.ses_blocks;
-        session_types        = params.exp.session.demo.session_types;
-        n_runs_per_session   = params.exp.session.demo.n_runs_per_session;
-        nr_blocks_per_run    = params.exp.session.demo.nr_blocks_per_run;
-        unique_trial_repeats = params.exp.n_unique_trial_repeats_demo;
-        min_run_dur          = params.exp.run.min_run_dur_DEMO;
-        total_run_dur        = params.exp.run.total_run_dur_DEMO;
-        actual_task_run_dur  = params.exp.run.actual_task_dur_DEMO;
-        preblank_run_dur     = params.exp.run.pre_blank_dur_DEMO;
-        postblank_run_dur    = params.exp.run.post_blank_dur_DEMO;
-        all_block_dur        = [params.exp.block.demo.total_single_epoch_dur, params.exp.block.demo.total_double_epoch_dur]; %  durations of [single, double]-stim block 
+        if params.is_wide
+            all_sessions         = params.exp.session.demo.ses_blocks;
+            session_types        = params.exp.session.demo.session_types;
+            n_runs_per_session   = params.exp.session.demo.n_runs_per_session;
+            nr_blocks_per_run    = params.exp.session.demo.nr_blocks_per_run;
+            unique_trial_repeats = params.exp.n_unique_trial_repeats_demo;
+            min_run_dur          = params.exp.run.min_run_dur_DEMO;
+            total_run_dur        = params.exp.run.total_run_dur_DEMO;
+            actual_task_run_dur  = params.exp.run.actual_task_dur_DEMO;
+            preblank_run_dur     = params.exp.run.pre_blank_dur_DEMO;
+            postblank_run_dur    = params.exp.run.post_blank_dur_DEMO;
+            all_block_dur        = [params.exp.block.demo.total_single_epoch_dur, params.exp.block.demo.total_double_epoch_dur]; %  durations of [single, double]-stim block
+        elseif ~params.is_wide
+            all_sessions         = params.exp.session.mri.demo.ses_blocks;
+            session_types        = params.exp.session.mri.demo.session_types; % should be 2
+            n_runs_per_session   = params.exp.session.mri.demo.n_runs_per_session;
+            nr_blocks_per_run    = params.exp.session.mri.demo.nr_blocks_per_run;
+            unique_trial_repeats = params.exp.n_unique_trial_repeats_deep_demo;
+            catch_trial_flag     = false;
+            nr_session_types     = 2;
+            min_run_dur          = params.exp.run.min_run_dur_DEEP_DEMO;
+            total_run_dur        = params.exp.run.total_run_dur_DEEP_DEMO;
+            actual_task_run_dur  = params.exp.run.actual_task_dur_DEEP_DEMO;
+            IBI                  = params.exp.block.IBI_BEHAVIOR;
+            preblank_run_dur     = params.exp.run.pre_blank_dur_DEEP_DEMO;
+            postblank_run_dur    = params.exp.run.post_blank_dur_DEEP_DEMO;
+            all_block_dur        = [params.exp.block.mri.demo.total_single_epoch_dur, params.exp.block.mri.demo.total_double_epoch_dur]; %  durations of [single, double]-stim block
+        end
     else
         all_sessions         = params.exp.session.behavior.ses_blocks;
         session_types        = params.exp.session.behavior.session_types;
