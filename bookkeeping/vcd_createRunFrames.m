@@ -383,7 +383,7 @@ for ses = 1:length(session_nrs)
                     % run_frames and what we would expect given the soa of the
                     % fixation circle
                     assert(isequal(sum(this_run.nr_fix_changes,'omitnan'), length(fix_update_sub)))
-                    if params.is_demo
+                    if params.is_demo && params.is_wide
                         expected_nr_fix_changes = (params.exp.block.demo.total_single_epoch_dur - params.exp.trial.task_cue_dur) / params.stim.fix.fixsoafun(); % subtract 4s task cue because there is no fixation circle
                     else
                         expected_nr_fix_changes = (params.exp.block.total_single_epoch_dur - params.exp.trial.task_cue_dur) / params.stim.fix.fixsoafun(); % subtract 4s task cue because there is no fixation circle
@@ -394,7 +394,7 @@ for ses = 1:length(session_nrs)
                 
                 % create empty table with the same columns if "all_run_frames" doesn't exist yet
                 if ~exist('all_run_frames','var')
-                    all_run_frames = run_frames([],:); 
+                    all_run_frames = run_frames([],:);
                 end
                 % Add this run's run_frames to larger all_run_frames
                 all_run_frames = cat(1,all_run_frames,run_frames);
