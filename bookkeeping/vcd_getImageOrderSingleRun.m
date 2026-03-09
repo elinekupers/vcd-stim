@@ -67,9 +67,12 @@ if strcmp(env_type, 'MRI')
         run_ok = ismember([1:params.exp.session.mri.deep.n_runs_per_session(ses_nr,ses_type)],run_nr); 
     end
 elseif strcmp(env_type, 'BEHAVIOR')
-    if params.is_demo
+    if params.is_demo && params.is_wide
         ses_ok = ismember([1:params.exp.session.n_demo_sessions],ses_nr); %#ok<*NBRAK>
         run_ok = ismember([1:params.exp.session.demo.n_runs_per_session(ses_nr,ses_type)],run_nr);
+    elseif params.is_demo && ~params.is_wide
+        ses_ok = ismember([1:params.exp.session.n_deep_demo_sessions],ses_nr); %#ok<*NBRAK>
+        run_ok = ismember([1:params.exp.session.mri.demo.n_runs_per_session(ses_nr,ses_type)],run_nr);
     else
         ses_ok = ismember([1:params.exp.session.n_behavioral_sessions],ses_nr);
         run_ok = ismember([1:params.exp.session.behavior.n_runs_per_session],run_nr);
@@ -221,7 +224,6 @@ if verbose; fprintf('[%s]: Insert stimuli for each trial into "run_frames"..\n',
 for ii = 1:length(stim_row)
     
     fprintf('.')
-    
     frame_counter = run_table.event_start(stim_row(ii))+1; % t=1 is 0, but we can't use 0 as index
     assert(run_frames.timing(frame_counter)==run_table.event_start(stim_row(ii)));
     
@@ -231,25 +233,31 @@ for ii = 1:length(stim_row)
     % Get stimulus image nrs
     if strcmp(run_table.task_class_name{stim_row(ii)},'img')
         if strcmp(run_table.event_name(stim_row(ii)),'stim1')
-            nsides = 2; % text prompt can be for left or right stim
+            nsides = [1,2]; % text prompt can be for left or right stim
         elseif strcmp(run_table.event_name(stim_row(ii)),'stim2')
             if strcmp(run_table.stim_class_name{stim_row(ii)},'ns')
                 nsides = 1;
             else
-                nsides = 2; % imagery classic stimulus classes always have left and right stim in stim2
+                nsides = [1,2]; % imagery classic stimulus classes always have left and right stim in stim2
             end
         end
     else
-        if isnan(run_table.stim_nr_right(stim_row(ii)))
+        if ~isnan(run_table.stim_nr_left(stim_row(ii))) && isnan(run_table.stim_nr_right(stim_row(ii))) % left only
             nsides = 1;
-        else
+        elseif ~isnan(run_table.stim_nr_right(stim_row(ii))) && isnan(run_table.stim_nr_left(stim_row(ii))) % right only
             nsides = 2;
+        elseif ~isnan(run_table.stim_nr_right(stim_row(ii))) && ~isnan(run_table.stim_nr_left(stim_row(ii))) % both sides
+            nsides = [1,2];
+        elseif isnan(run_table.stim_nr_right(stim_row(ii))) && isnan(run_table.stim_nr_left(stim_row(ii))) % no sides
+            nsides = 1; % to get to catch trial
+        else
+            error('wtf');
         end
     end
     
-    for side = 1:nsides
+    for side = nsides
         
-        if ~isempty(run_table.stim_class_name{stim_row(ii),side})
+        if ~isempty(run_table.stim_class_name{stim_row(ii),side}) || ~isnan(run_table.stim_class_name{stim_row(ii),side})
             % Get stimulus class name
             stimClass  = run_table.stim_class_name{stim_row(ii),side};
 
@@ -262,25 +270,47 @@ for ii = 1:length(stim_row)
                     stimClass = run_table.stim_class_name{stim_row(ii),setdiff([1,2],side)};
                 end
 
-                
                 % We need to have a stim number for vivid rating image
                 if strcmp(run_table.event_name(stim_row(ii)),'stim2') && any(isnan(run_frames.frame_im_nr(curr_frames,side)))
-                   run_frames.frame_im_nr(curr_frames(1),side) = [9999]; % insert 9999 for vivid rating image
+                    
+                    % If this is a "perception" IMG demo trial, we show the actual image during stim2.
+                    if run_table.session_type(stim_row(ii)) == 2 && params.is_demo==1 && ~params.is_wide
+                        if ~isnan(run_frames.frame_im_nr(curr_frames(1),side))
+                            assert(all(isequal(run_frames.frame_im_nr(curr_frames,side),run_table.stim2_im_nr(stim_row(ii),side)))); % insert actual stim instead of vivid rating image
+                        end
+                    else
+                        % If this is a "regular" IMG trial, we insert a temporary stim number for the vivid rating image (9999)
+                        run_frames.frame_im_nr(curr_frames,side) = [9999]; % insert 9999 for vivid rating image
+                    end
                 end
             end
             
             
             if strcmp(run_table.event_name(stim_row(ii)),'stim2') && strcmp(taskClass,'ltm') && run_table.is_catch(stim_row(ii)) == 0
-                % overwrite stimClass variable for ltm stim2 events
-                stimClass  = params.exp.stimclassnames{params.stim.all_ltm_pairs_stim_class(ismember(params.stim.all_ltm_pairs(:,2),run_table.stim2_im_nr(stim_row(ii),side)),2)}; 
+                % check stimClass variable for ltm stim2 events
+                if ~isnan(run_table.stim2_im_nr(stim_row(ii),side))
+                    stimClass  = params.exp.stimclassnames{params.stim.all_ltm_pairs_stim_class(ismember(params.stim.all_ltm_pairs(:,2),run_table.stim2_im_nr(stim_row(ii),side)),2)};
                 
-                % check stim location
-                if strcmp(stimClass, 'ns')
-                    stim_match = run_table.stim2_delta(stim_row(ii),1);
-                    assert(isequal(3, params.stim.all_ltm_pairs_stim_loc(ismember(params.stim.all_ltm_pairs(:,1),run_table.stim2_im_nr(stim_row(ii),1)))))
-                else
-                    stim_match = run_table.stim2_delta(stim_row(ii),side);
-                    assert(isequal(side, params.stim.all_ltm_pairs_stim_loc(ismember(params.stim.all_ltm_pairs(:,2),run_table.stim2_im_nr(stim_row(ii),side)))))
+                    % check stim location
+                    if strcmp(stimClass, 'ns')
+                        stim_match = run_table.stim2_delta(stim_row(ii),1);
+                        assert(isequal(3, params.stim.all_ltm_pairs_stim_loc(ismember(params.stim.all_ltm_pairs(:,1),run_table.stim2_im_nr(stim_row(ii),1)))))
+
+                        paired_stim_class = find(ismember( params.stim.ns.super_cat, params.stim.ns.ltm_cat(ismember(params.stim.ns.ltm_pairs(:,1),params.stim.ns.ltm_pairs(ismember(params.stim.ns.ltm_pairs(:,1),run_table.stim_nr_left(stim_row(ii))),2)))));
+
+                        if stim_match == 0
+                            if run_table.is_lure(stim_row(ii),side)==1
+                                assert(isequal( paired_stim_class, find(ismember( params.stim.ns.super_cat, params.stim.ns.ltm_cat(ismember(params.stim.ns.ltm_pairs(:,1),run_table.stim2_im_nr(stim_row(ii),1))))) ));
+                            else
+                                assert(~isequal( paired_stim_class, find(ismember( params.stim.ns.super_cat, params.stim.ns.ltm_cat(ismember(params.stim.ns.ltm_pairs(:,1),run_table.stim2_im_nr(stim_row(ii),1))))) ));
+                            end
+                        end
+                    else
+                        stim_match = run_table.stim2_delta(stim_row(ii),side);
+                        if ~isnan(stim_match)
+                            assert(isequal(side, params.stim.all_ltm_pairs_stim_loc(ismember(params.stim.all_ltm_pairs(:,2),run_table.stim2_im_nr(stim_row(ii),side)))))
+                        end
+                    end
                 end
                 
                 % check if cued stim pair matches correct response
