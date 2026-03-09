@@ -239,15 +239,18 @@ end
 % Can we actually run this experiment?
 assert(params.subj_nr>=0 && (params.subj_nr<=999));
 if strcmp(params.env_type,'BEHAVIOR')
-    params.is_wide  = false;
-    if params.is_demo
+    if params.is_demo && params.is_wide
         if params.run_nr~=1, error('[%s]: Run number can only be 1 for demo runs',mfilename); end
         if ~ismember(params.ses_nr,[1:3]), error('[%s]: Session number can only be 1, 3, or 3 for demo runs',mfilename); end
-    else
+        assert(isequal(params.ses_type,1));
+    elseif params.is_demo && ~params.is_wide % deep demo runs for LTM/IMG
+        assert(ismember(params.ses_nr, [1:8]))
+        assert(ismember(params.ses_type, [1,2]));
+    else % regular behavioral run
         assert(params.run_nr>=1 && params.run_nr<=15);
         assert(isequal(params.ses_nr,1));
+        assert(isequal(params.ses_type,1));
     end
-    assert(isequal(params.ses_type,1));
     
 elseif strcmp(params.env_type,'MRI')
     assert(params.ses_nr>=1 && params.ses_nr<=46);
@@ -255,17 +258,12 @@ elseif strcmp(params.env_type,'MRI')
         assert(isequal(params.ses_nr,1))
         assert(ismember(params.ses_type, [1,2]));
     elseif params.is_wide == 0
-        if params.is_demo
-            assert(ismember(params.ses_nr, [1:8]))
-            assert(ismember(params.ses_type, [1,2]));
-        else
-            assert(ismember(params.ses_nr, [1:46]))
-            if params.ses_nr==46 % only last deep session has A/B versions
-                assert(ismember(params.ses_type, [1,2]))
-            else
-                if ~isequal(params.ses_type,1), error('[%s]: Session type for Session number %d can only be A(=1)',mfilename, params.ses_nr); end
-            end
-        end
+		assert(ismember(params.ses_nr, [1:46]))
+		if params.ses_nr==46 % only last deep session has A/B versions
+			assert(ismember(params.ses_type, [1,2]))
+		else
+			if ~isequal(params.ses_type,1), error('[%s]: Session type for Session number %d can only be A(=1)',mfilename, params.ses_nr); end
+		end
     end
     assert(params.run_nr>=1 && params.run_nr<=10);
 end
@@ -290,11 +288,7 @@ if isempty(params.timetable_file)
        if strcmp(params.dispName,'CCNYU_VIEWPIXX3D')
            tempfiles = matchfiles(fullfile(tmp_timetable_dir,sprintf('vcd_subj%03d_time_table_master_%s%s*.mat',params.subj_nr, choose(params.is_demo,'demo_',''),'PPROOM_EIZOFLEXSCAN')));
        else
-           if strcmp(params.env_type, 'MRI')
-               tempfiles = matchfiles(fullfile(tmp_timetable_dir,sprintf('vcd_subj%03d_time_table_master_%s%s%s*.mat',params.subj_nr, choose(params.is_wide,'wide_','deep_'), choose(params.is_demo,'demo_',''),params.dispName)));
-           else
-               tempfiles = matchfiles(fullfile(tmp_timetable_dir,sprintf('vcd_subj%03d_time_table_master_%s%s*.mat',params.subj_nr, choose(params.is_demo,'demo_',''),params.dispName)));
-           end
+           tempfiles = matchfiles(fullfile(tmp_timetable_dir,sprintf('vcd_subj%03d_time_table_master_%s%s%s*.mat',params.subj_nr, choose(params.is_wide,'wide_','deep_'), choose(params.is_demo,'demo_',''),params.dispName)));
        end
        % If user doesn't want to generate a time table and we can't find any, end the run gracefully
        if isempty(tempfiles)
