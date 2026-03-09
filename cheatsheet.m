@@ -68,7 +68,19 @@ demo_session = 1; % can be 1, 2, or 3.
 all_images = struct;
 [data,all_images] = runme_vcdcore(999, demo_session, 1, 1, 'PPROOM_EIZOFLEXSCAN', ...
     'wanteyetracking', false, 'all_images',all_images, ...
-    'exp_env',2, 'is_demo', true);
+    'exp_env',2, 'is_demo', true, 'is_wide', true);
+
+%% Run DEEP demo
+% Demo Session 1-4 A = LTM-only REGULAR TEST runs (10 runs per session).
+% Demo Session 1-4 B = LTM-only STUDY trials (10 runs per session).
+% Demo Session 5-8 A = IMG-only REGULAR TEST runs (10 runs per session). 
+% Demo Session 5-8 B = IMG-only PERCEPTION runs (10 runs per session).
+demo_session = 1; % can be 1 through 8
+demo_session_type = 1; % can be 1 (A - regular) or 2 (B - LTM study/ IMG perception)
+all_images = struct;
+[data,all_images] = runme_vcdcore(999, demo_session, 1, 1, 'PPROOM_EIZOFLEXSCAN', ...
+    'wanteyetracking', false, 'all_images',all_images, ...
+    'exp_env',2, 'is_demo', true, 'is_wide', false);
 
 %% rerun behavioral performance analysis;
 subj_folder = 'vcd_subj999_ses01';
