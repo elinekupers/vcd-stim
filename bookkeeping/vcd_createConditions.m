@@ -308,11 +308,8 @@ end
 if load_params
     if ~isfield(params,'is_demo'), params.is_demo = false; end
     if ~isfield(params,'is_wide'), params.is_wide = false; end
-    if strcmp(env_type, 'MRI')
-        fname = sprintf('condition_master_%s%s%s*.mat', choose(params.is_wide,'wide_','deep_'), choose(params.is_demo,'demo_',''), params.disp.name);
-    else
-        fname = sprintf('condition_master_%s%s*.mat', choose(params.is_demo,'demo_',''), params.disp.name);
-    end
+    fname = sprintf('condition_master_%s%s%s*.mat', choose(params.is_wide,'wide_','deep_'), choose(params.is_demo,'demo_',''), params.disp.name);
+    
     d = dir(fullfile(vcd_rootPath,'workspaces','info',fname));
     fprintf('\n[%s]: Found %d condition_master .mat file(s)\n',mfilename,length(d));
     if ~isempty(d)
@@ -409,7 +406,11 @@ else % Recreate conditions and blocks and trials
             end
         elseif strcmp(env_type,'BEHAVIOR')
             if params.is_demo
-                task_crossings = find(params.exp.n_unique_trial_repeats_demo(bsc_idx,:)>0);
+            	if params.is_wide
+                	task_crossings = find(params.exp.n_unique_trial_repeats_demo(bsc_idx,:)>0);
+                else
+                    task_crossings = find( params.exp.n_unique_trial_repeats_deep_demo(bsc_idx,:)>0);
+                end
             else
                 task_crossings = find(params.exp.n_unique_trial_repeats_behavior(bsc_idx,:)>0);
             end
@@ -488,7 +489,7 @@ else % Recreate conditions and blocks and trials
         end
         condition_master = cat(1,condition_master,stim_table);
     end % stim idx
-    
+        
     % ---- Add object catch trials ----
     % How many trials are object catch given the 20% probility?
     pcobj_trial_idx = find(condition_master.stim_class == 4 & condition_master.task_class == 4 & condition_master.is_catch==0);
@@ -598,7 +599,7 @@ else % Recreate conditions and blocks and trials
     
     % ---- IMPORTANT STEP: Shuffle stimuli for SCC and LTM task ----
     condition_master = vcd_shuffleStimForTaskClass(params,  'scc', condition_master, params.exp.block.n_trials_single_epoch,env_type);
-    if strcmp(env_type,'MRI') && ~params.is_wide
+    if strcmp(env_type,'MRI') && ~params.is_wide || strcmp(env_type,'BEHAVIOR') && ~params.is_wide
         condition_master = vcd_shuffleStimForTaskClass(params,  'ltm', condition_master, params.exp.block.n_trials_double_epoch,env_type);
     end
     
@@ -632,8 +633,14 @@ else % Recreate conditions and blocks and trials
     scc_catch_trials    = condition_master.is_catch(scc_trials);
     nr_scc_catch_trials = sum(scc_catch_trials);
     if strcmp(env_type,'BEHAVIOR')
-        bb_bpress = reshape(condition_master.correct_response(scc_trials(~scc_catch_trials))',nr_scc_blocks,[]); % (nr blocks x trials )
-        expected_scc_trials = (params.exp.n_unique_trial_repeats_behavior(:,3).* params.exp.nr_unique_trials_per_crossing(:,3));
+    	if params.is_demo && ~params.is_wide
+            expected_scc_trials   = 0;
+            expected_catch_trials = 0;
+            bb_bpress = reshape(condition_master.correct_response(scc_trials(~scc_catch_trials))',nr_scc_blocks,[]); % (nr blocks x trials )
+		else
+        	bb_bpress = reshape(condition_master.correct_response(scc_trials(~scc_catch_trials))',nr_scc_blocks,[]); % (nr blocks x trials )
+        	expected_scc_trials = (params.exp.n_unique_trial_repeats_behavior(:,3).* params.exp.nr_unique_trials_per_crossing(:,3));
+    	end
     elseif strcmp(env_type,'MRI')
         bb_bpress     = reshape(condition_master.correct_response(scc_trials(~scc_catch_trials))',[],params.exp.block.n_trials_single_epoch); % (nr blocks x trials )
         if params.is_wide
@@ -641,16 +648,19 @@ else % Recreate conditions and blocks and trials
             expected_catch_trials = sum(params.exp.nr_catch_trials_wide(:,3),'omitnan');
         else
             expected_scc_trials   = params.exp.n_unique_trial_repeats_deep(:,3).*params.exp.nr_unique_trials_per_crossing(:,3);
-            expected_catch_trials = sum(params.exp.nr_catch_trials_deep(:,3), 'omitnan');
+        	expected_catch_trials = sum(params.exp.nr_catch_trials_deep(:,3), 'omitnan');
         end
     end
     bb_cued  = reshape(scc_cued0(~scc_catch_trials)', params.exp.block.n_trials_single_epoch, []); % (trials x nr blocks)
     n0 = histcounts(bb_bpress,[1:5]);  % 1=gabor, 2=dot, 3=rdk, 4=obj
     m0 = histcounts(bb_cued,[1:3]); % 1=left, 2=right, 3=neutral
     assert(isequal(m0(1),m0(2))); % assume equal left/right spatial cues
-    expected_scc_trials = expected_scc_trials([1,3,2,4])'; % remove nan for NS; swap single dot and RDK stim class to match response order for subject
-    assert(isequal(n0, expected_scc_trials))
-    
+    if ~params.is_demo
+        expected_scc_trials = expected_scc_trials([1,3,2,4])'; % remove nan for NS; swap single dot and RDK stim class to match response order for subject
+         assert(isequal(n0, expected_scc_trials))
+    end
+   
+   
     % Check unique trial nr
     assert(isequal(condition_master.unique_trial_nr(scc_trials),[1:length(condition_master.unique_trial_nr(scc_trials))]'));
     
@@ -660,8 +670,9 @@ else % Recreate conditions and blocks and trials
     condition_master.stim_class_unique_block_nr(scc_trials) = new_trial_nr;
 
     %% ---- bookkeeping: Check if button presses are balanced to the extent possible
-    condition_master = vcd_balanceButtonCorrectPresses(params, condition_master, env_type);
-
+    if ~params.is_demo
+        condition_master = vcd_balanceButtonCorrectPresses(params, condition_master, env_type);
+    end
     %% ---- IMPORTANT FUNCTION: Allocate trials to blocks all unique trials and repeats of trials.
     % !!WARNING!! There is a randomization component involved in creating the
     % conditions (i.e., order of trials allocated to a block). If you don't
@@ -669,25 +680,31 @@ else % Recreate conditions and blocks and trials
     % condition_master.
     condition_master = vcd_allocateBlocksToRuns(params,condition_master,env_type);
 
+    %% -- if DEEP LTM/IMG DEMO, insert stim2 for IMG perception and correct practice trials.
+    if strcmp(env_type, 'BEHAVIOR') && params.is_demo && ~params.is_wide
+        condition_master = vcd_createLTMIMGTrainingTrials(condition_master, params);
+    end
+    
     %% ---- IMPORTANT FUNCTION: Add contrast decrement
     % !!WARNING!! There is a randomization component involved in
     % determining the contrast decrement component!!
-    condition_master = vcd_determineContrastDecrementChangeTrials(params, condition_master);
-
+    if params.is_wide || (params.is_demo && params.is_wide) || (~params.is_demo && ~params.is_wide)
+        condition_master = vcd_determineContrastDecrementChangeTrials(params, condition_master);
+    end
     %% -- clean up condition master catch trials --
-    % set stimulus class name to NaN
+    % set stimulus class name and other stim category names to NaN
     condition_master.stim_class_name(condition_master.is_catch==1,:) = repmat({NaN,NaN}, sum(condition_master.is_catch==1),1);
+    condition_master.super_cat_name(condition_master.is_catch==1,:)  = repmat({NaN,NaN}, sum(condition_master.is_catch==1),1);
+    condition_master.basic_cat_name(condition_master.is_catch==1,:)  = repmat({NaN,NaN}, sum(condition_master.is_catch==1),1);
+    condition_master.sub_cat_name(condition_master.is_catch==1,:)    = repmat({NaN,NaN}, sum(condition_master.is_catch==1),1);
+    condition_master.affordance_name(condition_master.is_catch==1,:) = repmat({NaN,NaN}, sum(condition_master.is_catch==1),1);
     
     %% Store condition_master if requested
     if store_params
         fprintf('[%s]: Storing condition_master..\n',mfilename)
         saveDir = fullfile(vcd_rootPath,'workspaces','info');
         if ~exist(saveDir,'dir'), mkdir(saveDir); end
-        if strcmp(env_type,'MRI')
-            fname = sprintf('condition_master_%s%s%s_%s.mat',choose(params.is_wide,'wide_','deep2_'), choose(params.is_demo,'demo_',''),params.disp.name,datestr(now,30));
-        else
-            fname = sprintf('condition_master_%s%s_%s.mat',choose(params.is_demo,'demo_',''),params.disp.name,datestr(now,30));
-        end
+        fname = sprintf('condition_master_%s%s%s_%s.mat',choose(params.is_wide,'wide_','deep_'), choose(params.is_demo,'demo_',''),params.disp.name,datestr(now,30));
         save(fullfile(saveDir,fname),'condition_master','all_unique_im','all_cond')
     end
     
@@ -709,8 +726,10 @@ else % Recreate conditions and blocks and trials
             cm_wide = a.condition_master; clear a;
         end
     elseif strcmp(env_type,'BEHAVIOR')
-        if params.is_demo
+        if params.is_demo && params.is_wide
             assert(isequal(unique(condition_master.task_class)', find(any(params.exp.n_unique_trial_repeats_demo,1))))
+    	elseif params.is_demo && ~params.is_wide
+            assert(isequal(unique(condition_master.task_class)', find(any(params.exp.n_unique_trial_repeats_deep_demo,1))))
         else
             assert(isequal(unique(condition_master.task_class)', find(any(params.exp.n_unique_trial_repeats_behavior,1))))
         end
@@ -724,7 +743,7 @@ else % Recreate conditions and blocks and trials
         if params.is_wide
             assert(ismember(sum(condition_master.is_cued==1),sum(condition_master.is_cued==2)+[-2:2]))
             assert(ismember(sum(condition_master.is_cued==2),sum(condition_master.is_cued==1)+[-2:2]))
-        else
+        else % deep
             assert(ismember(sum(condition_master.is_cued==1),sum(condition_master.is_cued==2)+[-12:12])) % ltm slop
             assert(ismember(sum(condition_master.is_cued==2),sum(condition_master.is_cued==1)+[-12:12])) % ltm slop
         end
@@ -753,9 +772,9 @@ else % Recreate conditions and blocks and trials
         
         for ii = 1:length(params.exp.stimclassnames)
             
-            if strcmp(env_type,'MRI') && ~params.is_wide
-                scc_tolerance = 2*squeeze(sum(all_sessions(ii,3,:,:))); % max 2 per block session type A / 0 per block session type B // A: 104 / B: 0 blocks total
-                ltm_tolerance = 2*squeeze(sum(all_sessions(ii,6,:,:))); % max 1 per block sessoin type A / 2 per block session type B // A: 729 / B: 19 blocks total
+            if (strcmp(env_type,'MRI') && ~params.is_wide) || (strcmp(env_type,'BEHAVIOR') && ~params.is_wide && ~params.is_demo)
+                scc_tolerance = 2*squeeze(sum(all_sessions(ii,3,:,st))); % max 2 per block session type A / 0 per block session type B // A: 104 / B: 0 blocks total
+                ltm_tolerance = 2*squeeze(sum(all_sessions(ii,6,:,st))); % max 1 per block sessoin type A / 2 per block session type B // A: 729 / B: 19 blocks total
             end
 
             nr_ltm_blocks = sum(sum(squeeze(all_sessions(:,6,:,st))));
@@ -773,7 +792,7 @@ else % Recreate conditions and blocks and trials
                 if ~params.is_demo
                     if st == 1
                         assert(isequal(size(N,2), length(all_unique_im.(params.exp.stimclassnames{ii}).unique_im_nr)))
-                    elseif strcmp(env_type,'MRI') && params.is_wide == 0 && st == 2 % Deep has NS-LTM
+                    elseif strcmp(env_type,'MRI') && ~params.is_wide && st == 2 % Deep has NS-LTM
                         cm_wideB = cm_wide(cm_wide.session_type==st,:);
                         [N_wideB, ~] = histcounts(cm_wideB.stim_nr_left(strcmp(cm_wideB.stim_class_name(:,1), params.exp.stimclassnames{ii})),....
                             [params.stim.(params.exp.stimclassnames{ii}).unique_im_nrs_core, max(params.stim.(params.exp.stimclassnames{ii}).unique_im_nrs_core)+1]);
@@ -798,7 +817,7 @@ else % Recreate conditions and blocks and trials
                 
                 % Calculate the expected nr of trials from the params.exp.mri.ses_blocks table.
                 expected_nr_of_trials = sum(squeeze(sum(all_sessions(ii,:,:,st).*params.exp.nr_trials_per_block(ii,:))));
-                if params.is_demo
+                if params.is_demo && params.is_wide && strcmp(env_type,'BEHAVIOR')
                     expected_nr_of_trials = 0.5*expected_nr_of_trials; % demo has only half the nr of trials per block.
                 end
                 empirical_nr_of_trials = size(tmp,1);
@@ -814,9 +833,9 @@ else % Recreate conditions and blocks and trials
             else % classic stimuli: GBR/RDK/DOT/OBJ
                 if strcmp(env_type,'BEHAVIOR')
                     if ismember(ii,[1:3]) % if GBR/RDK/DOT
-                        tmp = condition_master(condition_master.is_catch==0 & isnan(condition_master.is_objectcatch) & any(strcmp(condition_master.stim_class_name, params.exp.stimclassnames{ii}),2),:);
+                        tmp = condition_master(condition_master.session_type==st & condition_master.is_catch==0 & isnan(condition_master.is_objectcatch) & any(strcmp(condition_master.stim_class_name, params.exp.stimclassnames{ii}),2),:);
                     elseif ii == 4 % OBJ
-                        tmp = condition_master(condition_master.is_catch==0 & condition_master.is_objectcatch==0 & any(strcmp(condition_master.stim_class_name, params.exp.stimclassnames{ii}),2),:);
+                        tmp = condition_master(condition_master.session_type==st & condition_master.is_catch==0 & condition_master.is_objectcatch==0 & any(strcmp(condition_master.stim_class_name, params.exp.stimclassnames{ii}),2),:);
                     end
                     % Get counts of stimulus numbers for left and right stimulus position.
                     [N, ~] = histcounts(cat(1,tmp.stim_nr_left(strcmp(tmp.stim_class_name(:,1), params.exp.stimclassnames{ii})),....
@@ -825,18 +844,32 @@ else % Recreate conditions and blocks and trials
                     if ~params.is_demo
                         assert(isequal(size(N,2), length(all_unique_im.(params.exp.stimclassnames{ii}).unique_im_nr)))
                     end
-                    colsL = tmp.stim_nr_left(tmp.task_class ~=3 & strcmp(tmp.stim_class_name(:,1), params.exp.stimclassnames{ii})); % exclude SCC, we deal with those trials separately
-                    colsR = tmp.stim_nr_right(tmp.task_class ~=3 & strcmp(tmp.stim_class_name(:,2), params.exp.stimclassnames{ii})); % exclude SCC, we deal with those trials separately
-                    colsLR = [colsL(:),colsR(:)]; % if this fails, then we don't have equal left and right stimulus numbers for classic stimuli
+                    if ~params.is_wide && params.is_demo
+                        colsL = tmp.stim_nr_left(~ismember(tmp.task_class,[3,6,7]) & strcmp(tmp.stim_class_name(:,1), params.exp.stimclassnames{ii})); % exclude SCC, we deal with those trials separately
+                        colsR = tmp.stim_nr_right(~ismember(tmp.task_class,[3,6,7]) & strcmp(tmp.stim_class_name(:,2), params.exp.stimclassnames{ii})); % exclude SCC, we deal with those trials separately
+                        colsLR = [colsL(:),colsR(:)]; % if this fails, then we don't have equal left and right stimulus numbers for classic stimuli
+                        colsLR = [colsL(:),colsR(:)]; % if this fails, then we don't have equal left and right stimulus numbers for classic stimuli
+                        
+                        colsLR_scc = [tmp.stim_nr_left(tmp.task_class ==3 & strcmp(tmp.stim_class_name(:,1), params.exp.stimclassnames{ii})); ... % deal with scc trials
+                            tmp.stim_nr_right(tmp.task_class ==3 & strcmp(tmp.stim_class_name(:,2), params.exp.stimclassnames{ii}))];
+                        colsLR_ltm = [tmp.stim_nr_left(tmp.task_class ==6 & strcmp(tmp.stim_class_name(:,1), params.exp.stimclassnames{ii})); ... % deal with ltm trials
+                            tmp.stim_nr_right(tmp.task_class ==6 & strcmp(tmp.stim_class_name(:,2), params.exp.stimclassnames{ii}))];
+                        colsLR_img = [tmp.stim_nr_left(tmp.task_class ==7 & strcmp(tmp.stim_class_name(:,1), params.exp.stimclassnames{ii})); ... % deal with ltm trials
+                            tmp.stim_nr_right(tmp.task_class ==7 & strcmp(tmp.stim_class_name(:,2), params.exp.stimclassnames{ii}))];
+                    else
+                        colsL = tmp.stim_nr_left(tmp.task_class ~=3 & strcmp(tmp.stim_class_name(:,1), params.exp.stimclassnames{ii})); % exclude SCC, we deal with those trials separately
+                        colsR = tmp.stim_nr_right(tmp.task_class ~=3 & strcmp(tmp.stim_class_name(:,2), params.exp.stimclassnames{ii})); % exclude SCC, we deal with those trials separately
+                        colsLR = [colsL(:),colsR(:)]; % if this fails, then we don't have equal left and right stimulus numbers for classic stimuli
+                        
+                        colsLR_scc = [tmp.stim_nr_left(tmp.task_class ==3 & strcmp(tmp.stim_class_name(:,1), params.exp.stimclassnames{ii})); ... % deal with scc trials
+                            tmp.stim_nr_right(tmp.task_class ==3 & strcmp(tmp.stim_class_name(:,2), params.exp.stimclassnames{ii}))];
+                    end
                     unique_im_from_table(ii) = length(unique(colsLR)); % this should be 24 for GBR or RDK, 16 for DOT/OBJ
                     
-                    colsLR_scc = [tmp.stim_nr_left(tmp.task_class ==3 & strcmp(tmp.stim_class_name(:,1), params.exp.stimclassnames{ii})); ... % deal with scc trials
-                        tmp.stim_nr_right(tmp.task_class ==3 & strcmp(tmp.stim_class_name(:,2), params.exp.stimclassnames{ii}))];
-                    
                     % Calculate the expected nr of trials from the params.exp.behavior.ses_blocks table.
-                    expected_nr_of_trials = sum(sum(all_sessions(ii,:,:,:).*params.exp.nr_trials_per_block(ii,:)));
+                    expected_nr_of_trials = sum(sum(all_sessions(ii,:,:,st).*params.exp.nr_trials_per_block(ii,:)));
                     
-                    if params.is_demo
+                    if params.is_demo && params.is_wide
                         expected_nr_of_trials = expected_nr_of_trials*0.5; % again: demo has half the trials per block
                     end
                     
@@ -868,7 +901,7 @@ else % Recreate conditions and blocks and trials
                         if ~params.is_demo
                             if st==1
                                 assert(isequal(sum(N>0), length(all_unique_im.(params.exp.stimclassnames{ii}).unique_im_nr)))
-                            elseif strcmp(env_type,'MRI') && params.is_wide == 0 && st == 2
+                            elseif strcmp(env_type,'MRI') && ~params.is_wide && st == 2
                                 cm_wideB = cm_wide(cm_wide.session_type==st,:);
                                 [N_wideB, ~] = histcounts(cat(1,cm_wideB.stim_nr_left(strcmp(cm_wideB.stim_class_name(:,1), params.exp.stimclassnames{ii})),....
                                     cm_wideB.stim_nr_right(strcmp(cm_wideB.stim_class_name(:,2), params.exp.stimclassnames{ii}))), [params.stim.(params.exp.stimclassnames{ii}).unique_im_nrs_core, max(params.stim.(params.exp.stimclassnames{ii}).unique_im_nrs_core)+1]);
@@ -916,10 +949,10 @@ else % Recreate conditions and blocks and trials
                         expected_nr_of_trials = sum(squeeze(sum(all_sessions(ii,[1,2,4:10],:,st).*params.exp.nr_trials_per_block(ii,[1,2,4:10])))) + ...
                             sum(all_sessions(ii,3,:,st)).*scc_probability(ii) + sum(all_sessions(ii,6,:,st)).*ltm_probability(ii);
                         
-                        if params.is_demo
+                        if params.is_demo && params.is_wide
                             expected_nr_of_trials = expected_nr_of_trials*0.5; % again: demo has half the trials per block
                         end
-                        if params.is_wide
+                        if ~params.is_demo && params.is_wide
                             empirical_nr_of_trials = ceil(sum([size(colsLR,1),size(unique(colsLR_scc),1)/2, size(unique(colsLR_ltm),1)/2])); % for GBR/RDK/DOT/OBJ: sum regular trials, scc trials (OBJ: we treat objectcatch trials as regular trials)
                         else
                             empirical_nr_of_trials = ceil(sum([size(colsLR,1),size(colsLR_scc,1), size(colsLR_ltm,1), size(colsLR_img,1)])); % for GBR/RDK/DOT/OBJ: sum regular trials, scc trials (OBJ: we treat objectcatch trials as regular trials)
