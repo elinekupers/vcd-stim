@@ -389,6 +389,31 @@ if nr_reps > 0
                             conds_single_rep_mergedB.stim_class_name{ii,1} = vcd('stimtostimclassname', tmp_nr_l);
                             conds_single_rep_mergedB.orient_dir(ii,1)      = tmp.orient_dir;
                             conds_single_rep_mergedB.contrast(ii,1)        = tmp.contrast;
+                                    
+                            % get stim class for stimB, and what we expect
+                            % if the trial shows a correct pair
+                            stimB                     = conds_single_rep_mergedB.stim2_im_nr(ii,1);
+                            stimB_stim_class          = params.stim.all_ltm_pairs_stim_class(ismember(params.stim.all_ltm_pairs(:,2),stimB),2);
+                            correct_paired_stim       = params.stim.all_ltm_pairs(ismember(params.stim.all_ltm_pairs(:,1),tmp_nr_l),2);
+                            correct_paired_stim_class = params.stim.all_ltm_pairs_stim_class(ismember(params.stim.all_ltm_pairs(:,2), correct_paired_stim),2); ... % get correct associated pair stim class
+                            cued_side                 = conds_single_rep_mergedB.is_cued(ii);
+                        
+                            % Check / correct lure if needed
+                            if cued_side == 1
+                                if conds_single_rep_mergedB.stim2_delta(ii,1)==0 % incorrect trial
+                                    assert(~isequal(stimB, correct_paired_stim))
+                                    if isequal( stimB_stim_class, correct_paired_stim_class)
+                                        conds_single_rep_mergedB.is_lure(ii,1) = 1;
+                                    else
+                                        conds_single_rep_mergedB.is_lure(ii,1) = 0;
+                                    end
+
+                                elseif conds_single_rep_mergedB.stim2_delta(ii,1)==1 % correct trial
+                                    conds_single_rep_mergedB.is_lure(ii,1) = 0;
+                                    assert(isequal( stimB_stim_class, correct_paired_stim_class))
+                                    assert(isequal( stimB, correct_paired_stim))
+                                end
+                            end
                             
                             if ismember(tmp_nr_l, params.stim.gabor.unique_im_nrs_core) % if gabor
                                 assert(isequal(tmp.stim_class,1))
@@ -417,12 +442,12 @@ if nr_reps > 0
                     for ii = 1:size(conds_single_rep_mergedB,1)
                         % Get stim nr for right stim loc
                         tmp_nr_r = conds_single_rep_mergedB.stim_nr_right(ii);
-                        
+
                         if isnan(tmp_nr_r) || (tmp_nr_r==0) % catch trials
                             % keep as "gabor"
                             % set stim1 nr to 0000 and stim2 nr to NaN
                             conds_single_rep_mergedB.stim_nr_right(ii)  = 0;
-                            conds_single_rep_mergedB.stim2_im_nr(ii,2) = NaN;
+                            conds_single_rep_mergedB.stim2_im_nr(ii,2)  = NaN;
                         else
                             % get stim info
                             tmp = vcd('fullinfo', tmp_nr_r);
@@ -431,6 +456,32 @@ if nr_reps > 0
                             conds_single_rep_mergedB.stim_class_name{ii,2} = vcd('stimtostimclassname', tmp_nr_r);
                             conds_single_rep_mergedB.orient_dir(ii,2)      = tmp.orient_dir; % update tilt/mot dir/facing dir info
                             conds_single_rep_mergedB.contrast(ii,2)        = tmp.contrast; % update contrast
+                            
+                            % get stim class for stimB, and what we expect
+                            % if the trial shows a correct pair
+                            stimB                     = conds_single_rep_mergedB.stim2_im_nr(ii,2);
+                            stimB_stim_class          = params.stim.all_ltm_pairs_stim_class(ismember(params.stim.all_ltm_pairs(:,2),stimB),2);
+                            correct_paired_stim       = params.stim.all_ltm_pairs(ismember(params.stim.all_ltm_pairs(:,1),tmp_nr_r),2);
+                            correct_paired_stim_class = params.stim.all_ltm_pairs_stim_class(ismember(params.stim.all_ltm_pairs(:,2), correct_paired_stim),2); ... % get correct associated pair stim class
+                            cued_side                 = conds_single_rep_mergedB.is_cued(ii);
+                        
+                            % Check / correct lure if needed
+                            if cued_side == 2
+                                if conds_single_rep_mergedB.stim2_delta(ii,2)==0 % incorrect trial
+                                    assert(~isequal(stimB, correct_paired_stim))
+                                    if isequal( stimB_stim_class, correct_paired_stim_class)
+                                        conds_single_rep_mergedB.is_lure(ii,2) = 1;
+                                    else
+                                        conds_single_rep_mergedB.is_lure(ii,2) = 0;
+                                    end
+
+                                elseif conds_single_rep_mergedB.stim2_delta(ii,2)==1 % correct trial
+                                    conds_single_rep_mergedB.is_lure(ii,2) = 0;
+                                    assert(isequal( stimB_stim_class, correct_paired_stim_class))
+                                    assert(isequal( stimB, correct_paired_stim))
+                                end
+                            end
+                            
                             if ismember(tmp_nr_r, params.stim.gabor.unique_im_nrs_core) % if gabor
                                 assert(isequal(tmp.stim_class,1))
                                 conds_single_rep_mergedB.gbr_phase(ii,2)  = tmp.gbr_phase;
@@ -727,7 +778,7 @@ if nr_reps > 0
                     for ii = 1:size(conds_single_rep_mergedB,1)
                         % Get stim nr for left stim loc
                         tmp_nr_l = conds_single_rep_mergedB.stim_nr_left(ii);
-                        
+
                         if isnan(tmp_nr_l) || (tmp_nr_l==0) % catch trials
                             % keep as "rdk"
                             assert(isequal(conds_single_rep_mergedB.is_catch(ii),1))
@@ -743,6 +794,31 @@ if nr_reps > 0
                             conds_single_rep_mergedB.rdk_coherence(ii,1)   = NaN; % set rdk coh to NaN (we'll add back when needed)
                             conds_single_rep_mergedB.contrast(ii,1)        = tmp.contrast; % add contrast
                             assert(isequal(tmp.stim_loc,1)); % must be left
+                            
+                            % get stim class for stimB, and what we expect
+                            % if the trial shows a correct pair
+                            stimB                     = conds_single_rep_mergedB.stim2_im_nr(ii,1);
+                            stimB_stim_class          = params.stim.all_ltm_pairs_stim_class(ismember(params.stim.all_ltm_pairs(:,2),stimB),2);
+                            correct_paired_stim       = params.stim.all_ltm_pairs(ismember(params.stim.all_ltm_pairs(:,1),tmp_nr_l),2);
+                            correct_paired_stim_class = params.stim.all_ltm_pairs_stim_class(ismember(params.stim.all_ltm_pairs(:,2), correct_paired_stim),2); ... % get correct associated pair stim class
+                            cued_side                 = conds_single_rep_mergedB.is_cued(ii);
+                        
+                            % Check / correct lure if needed
+                            if cued_side == 1
+                                if conds_single_rep_mergedB.stim2_delta(ii,1)==0 % incorrect trial
+                                    assert(~isequal(stimB, correct_paired_stim))
+                                    if isequal( stimB_stim_class, correct_paired_stim_class)
+                                        conds_single_rep_mergedB.is_lure(ii,1) = 1;
+                                    else
+                                        conds_single_rep_mergedB.is_lure(ii,1) = 0;
+                                    end
+                                    
+                                elseif conds_single_rep_mergedB.stim2_delta(ii,1)==1 % correct trial
+                                    conds_single_rep_mergedB.is_lure(ii,1) = 0;
+                                    assert(isequal( stimB_stim_class, correct_paired_stim_class))
+                                    assert(isequal( stimB, correct_paired_stim))
+                                end
+                            end
                             
                             if ismember(tmp_nr_l, params.stim.gabor.unique_im_nrs_core) % if gabor
                                 assert(isequal(tmp.stim_class,1)) % must be gabor
@@ -771,7 +847,7 @@ if nr_reps > 0
                     for ii = 1:size(conds_single_rep_mergedB,1)
                         % Get stim nr for right stim loc
                         tmp_nr_r = conds_single_rep_mergedB.stim_nr_right(ii);
-                        
+
                         if isnan(tmp_nr_r) || (tmp_nr_r==0) % catch trials
                             % keep as "rdk"
                             % set stim1 nr to 0000 and stim2 nr to NaN
@@ -784,7 +860,33 @@ if nr_reps > 0
                             conds_single_rep_mergedB.stim_class_name{ii,2} = vcd('stimtostimclassname', tmp_nr_r);
                             conds_single_rep_mergedB.orient_dir(ii,2)    = tmp.orient_dir;
                             conds_single_rep_mergedB.rdk_coherence(ii,2) = NaN; % set rdk coh to NaN
-                             conds_single_rep_mergedB.contrast(ii,2)  = tmp.contrast; % add contrast
+                            conds_single_rep_mergedB.contrast(ii,2)  = tmp.contrast; % add contrast
+                            
+                            % get stim class for stimB, and what we expect
+                            % if the trial shows a correct pair
+                            stimB                     = conds_single_rep_mergedB.stim2_im_nr(ii,2);
+                            stimB_stim_class          = params.stim.all_ltm_pairs_stim_class(ismember(params.stim.all_ltm_pairs(:,2),stimB),2);
+                            correct_paired_stim       = params.stim.all_ltm_pairs(ismember(params.stim.all_ltm_pairs(:,1),tmp_nr_r),2);
+                            correct_paired_stim_class = params.stim.all_ltm_pairs_stim_class(ismember(params.stim.all_ltm_pairs(:,2), correct_paired_stim),2); ... % get correct associated pair stim class
+                            cued_side                 = conds_single_rep_mergedB.is_cued(ii);
+                        
+                            % Check / correct lure if needed
+                            if cued_side == 2
+                                if conds_single_rep_mergedB.stim2_delta(ii,2)==0 % incorrect trial
+                                    assert(~isequal(stimB, correct_paired_stim)) % no match between stim2 and expected associated stim pair
+                                    if isequal( stimB_stim_class, correct_paired_stim_class)
+                                        conds_single_rep_mergedB.is_lure(ii,2) = 1; % if stim class matches that of the expected stim pair we call it a lure
+                                    else
+                                        conds_single_rep_mergedB.is_lure(ii,2) = 0;
+                                    end
+                                    
+                                elseif conds_single_rep_mergedB.stim2_delta(ii,2)==1 % correct trial
+                                    conds_single_rep_mergedB.is_lure(ii,2) = 0;
+                                    assert(isequal( stimB_stim_class, correct_paired_stim_class))
+                                    assert(isequal( stimB, correct_paired_stim))
+                                end
+                            end
+                             
                             if ismember(tmp_nr_r, params.stim.gabor.unique_im_nrs_core)  % if gabor
                                 assert(isequal(tmp.stim_class,1)) % must be gabor
                                 conds_single_rep_mergedB.gbr_phase(ii,2) = tmp.gbr_phase; % add gabor phase
@@ -1091,6 +1193,7 @@ if nr_reps > 0
                     for ii = 1:size(conds_single_rep_mergedB,1)
                         % Get stim nr for left loc
                         tmp_nr_l = conds_single_rep_mergedB.stim_nr_left(ii);
+
                         if isnan(tmp_nr_l) || (tmp_nr_l==0) % catch trials
                             % keep as "dot"
                             assert(isequal(conds_single_rep_mergedB.is_catch(ii),1))
@@ -1103,6 +1206,32 @@ if nr_reps > 0
                             % conds_single_rep_mergedB.orient_dir(ii,1) = tmp.orient_dir; % check orientation
                             assert(isequal(tmp.orient_dir,conds_single_rep_mergedB.orient_dir(ii,1))); 
                             assert(isequal(tmp.stim_loc, 1)); % must be left
+                            
+                            % get stim class for stimB, and what we expect
+                            % if the trial shows a correct pair
+                            stimB                     = conds_single_rep_mergedB.stim2_im_nr(ii,1);
+                            stimB_stim_class          = params.stim.all_ltm_pairs_stim_class(ismember(params.stim.all_ltm_pairs(:,2),stimB),2);
+                            correct_paired_stim       = params.stim.all_ltm_pairs(ismember(params.stim.all_ltm_pairs(:,1),tmp_nr_l),2);
+                            correct_paired_stim_class = params.stim.all_ltm_pairs_stim_class(ismember(params.stim.all_ltm_pairs(:,2), correct_paired_stim),2); ... % get correct associated pair stim class
+                            cued_side                 = conds_single_rep_mergedB.is_cued(ii);
+                        
+                            % Check / correct lure if needed
+                            if cued_side == 1
+                                if conds_single_rep_mergedB.stim2_delta(ii,1)==0 % incorrect trial
+                                    assert(~isequal(stimB, correct_paired_stim))
+                                    if isequal( stimB_stim_class, correct_paired_stim_class)
+                                        conds_single_rep_mergedB.is_lure(ii,1) = 1;
+                                    else
+                                        conds_single_rep_mergedB.is_lure(ii,1) = 0;
+                                    end
+                                    
+                                elseif conds_single_rep_mergedB.stim2_delta(ii,1)==1 % correct trial
+                                    conds_single_rep_mergedB.is_lure(ii,1) = 0;
+                                    assert(isequal( stimB_stim_class, correct_paired_stim_class))
+                                    assert(isequal( stimB, correct_paired_stim))
+                                end
+                            end
+                            
                             if ismember(tmp_nr_l, params.stim.gabor.unique_im_nrs_core) % if gabor
                                 conds_single_rep_mergedB.gbr_phase(ii,1) = tmp.gbr_phase; % add gabor phase
                                 conds_single_rep_mergedB.contrast(ii,1)  = tmp.contrast; % add gabor contrast (0.8)
@@ -1132,6 +1261,9 @@ if nr_reps > 0
                     for ii = 1:size(conds_single_rep_mergedB,1)
                         % Get stim nr for right loc
                         tmp_nr_r = conds_single_rep_mergedB.stim_nr_right(ii); 
+                        
+                        
+                        
                         if isnan(tmp_nr_r) || (tmp_nr_r==0) % catch trials
                             % keep as "dot"
                             assert(isequal(conds_single_rep_mergedB.is_catch(ii),1))
@@ -1143,6 +1275,32 @@ if nr_reps > 0
                             assert(isequal(tmp.stim_loc, 2)); % must be right
                             assert(isequal(tmp.orient_dir,conds_single_rep_mergedB.orient_dir(ii,2))); % check orientation
                             % conds_single_rep_mergedB.orient_dir(ii,2) = tmp.orient_dir; % check orientation
+                            
+                            % get stim class for stimB, and what we expect
+                            % if the trial shows a correct pair
+                            stimB                     = conds_single_rep_mergedB.stim2_im_nr(ii,2);
+                            stimB_stim_class          = params.stim.all_ltm_pairs_stim_class(ismember(params.stim.all_ltm_pairs(:,2),stimB),2);
+                            correct_paired_stim       = params.stim.all_ltm_pairs(ismember(params.stim.all_ltm_pairs(:,1),tmp_nr_r),2);
+                            correct_paired_stim_class = params.stim.all_ltm_pairs_stim_class(ismember(params.stim.all_ltm_pairs(:,2), correct_paired_stim),2); ... % get correct associated pair stim class
+                            cued_side                 = conds_single_rep_mergedB.is_cued(ii);
+                        
+                            % Check / correct lure if needed
+                            if cued_side == 2
+                                if conds_single_rep_mergedB.stim2_delta(ii,2)==0 % incorrect trial
+                                    assert(~isequal(stimB, correct_paired_stim))
+                                    if isequal( stimB_stim_class, correct_paired_stim_class)
+                                        conds_single_rep_mergedB.is_lure(ii,2) = 1;
+                                    else
+                                        conds_single_rep_mergedB.is_lure(ii,2) = 0;
+                                    end
+
+                                elseif conds_single_rep_mergedB.stim2_delta(ii,2)==1 % correct trial
+                                    conds_single_rep_mergedB.is_lure(ii,2) = 0;
+                                    assert(isequal( stimB_stim_class, correct_paired_stim_class))
+                                    assert(isequal( stimB, correct_paired_stim))
+                                end
+                            end
+                            
                             if ismember(tmp_nr_r, params.stim.gabor.unique_im_nrs_core) % if gabor
                                 conds_single_rep_mergedB.gbr_phase(ii,2) = tmp.gbr_phase; % add gabor phase
                                 conds_single_rep_mergedB.contrast(ii,2)  = tmp.contrast; % add gabor contrast (0.8)
@@ -1518,6 +1676,33 @@ if nr_reps > 0
                             conds_single_rep_mergedB.orient_dir(ii,1) = tmp.orient_dir; % update gabor tilt/rdk motion direction/dot angle
                             conds_single_rep_mergedB.contrast(ii,1)   = tmp.contrast; % add contrast
                             assert(isequal(tmp.stim_loc,1)); % must be left
+                            
+                            % get stim class for stimB, and what we expect
+                            % if the trial shows a correct pair
+                            stimB                     = conds_single_rep_mergedB.stim2_im_nr(ii,1);
+                            stimB_stim_class          = params.stim.all_ltm_pairs_stim_class(ismember(params.stim.all_ltm_pairs(:,2),stimB),2);
+                            correct_paired_stim       = params.stim.all_ltm_pairs(ismember(params.stim.all_ltm_pairs(:,1),tmp_nr_l),2);
+                            correct_paired_stim_class = params.stim.all_ltm_pairs_stim_class(ismember(params.stim.all_ltm_pairs(:,2), correct_paired_stim),2); ... % get correct associated pair stim class
+                            cued_side                 = conds_single_rep_mergedB.is_cued(ii);
+                        
+                            % Check / correct lure if needed
+                            if cued_side == 1
+                                if conds_single_rep_mergedB.stim2_delta(ii,1)==0 % incorrect trial
+                                    assert(~isequal(stimB, correct_paired_stim))
+                                    if isequal( stimB_stim_class, correct_paired_stim_class)
+                                        conds_single_rep_mergedB.is_lure(ii,1) = 1;
+                                    else
+                                        conds_single_rep_mergedB.is_lure(ii,1) = 0;
+                                    end
+                                    
+                                elseif conds_single_rep_mergedB.stim2_delta(ii,1)==1 % correct trial
+                                    conds_single_rep_mergedB.is_lure(ii,1) = 0;
+                                    assert(isequal( stimB_stim_class, correct_paired_stim_class))
+                                    assert(isequal( stimB, correct_paired_stim))
+                                end
+                            end
+                            
+                            % Check/update stim class info
                             if ismember(tmp_nr_l, params.stim.gabor.unique_im_nrs_core) % if gabor
                                 conds_single_rep_mergedB.gbr_phase(ii,1) = tmp.gbr_phase; % add gabor phase
                                 assert(isequal(tmp.stim_class,1)); % must be gabor
@@ -1567,6 +1752,32 @@ if nr_reps > 0
                             conds_single_rep_mergedB.orient_dir(ii,2) = tmp.orient_dir; % add gabor tilt/rdk mot dir/dot angle/obj facing direction
                             conds_single_rep_mergedB.contrast(ii,2)   = tmp.contrast; % add contrast info
                             assert(isequal(tmp.stim_loc,2)); % must be right
+                            
+                            % get stim class for stimB, and what we expect
+                            % if the trial shows a correct pair
+                            stimB                     = conds_single_rep_mergedB.stim2_im_nr(ii,2);
+                            stimB_stim_class          = params.stim.all_ltm_pairs_stim_class(ismember(params.stim.all_ltm_pairs(:,2),stimB),2);
+                            correct_paired_stim       = params.stim.all_ltm_pairs(ismember(params.stim.all_ltm_pairs(:,1),tmp_nr_r),2);
+                            correct_paired_stim_class = params.stim.all_ltm_pairs_stim_class(ismember(params.stim.all_ltm_pairs(:,2), correct_paired_stim),2); ... % get correct associated pair stim class
+                            cued_side                 = conds_single_rep_mergedB.is_cued(ii);
+                            
+                            % Check / correct lure if needed
+                            if cued_side == 2
+                                if conds_single_rep_mergedB.stim2_delta(ii,2)==0 % incorrect trial
+                                    assert(~isequal(stimB, correct_paired_stim))
+                                    if isequal( stimB_stim_class, correct_paired_stim_class)
+                                        conds_single_rep_mergedB.is_lure(ii,2) = 1;
+                                    else
+                                        conds_single_rep_mergedB.is_lure(ii,2) = 0;
+                                    end
+                                    
+                                elseif conds_single_rep_mergedB.stim2_delta(ii,2)==1 % correct trial
+                                    conds_single_rep_mergedB.is_lure(ii,2) = 0;
+                                    assert(isequal( stimB_stim_class, correct_paired_stim_class))
+                                    assert(isequal( stimB, correct_paired_stim))
+                                end
+                            end
+                            
                             if ismember(tmp_nr_r, params.stim.gabor.unique_im_nrs_core) % if gabor
                                     conds_single_rep_mergedB.gbr_phase(ii,2) = tmp.gbr_phase; % add phase info
                                     assert(isequal(tmp.stim_class,1)); % must be gabor
@@ -1817,6 +2028,7 @@ if nr_reps > 0
                     
                     % update scene category
                     for ii = 1:size(conds_single_rep_mergedB,1)
+
                         tmp_stim_c = conds_single_rep_mergedB.stim_nr_left(ii);
                         if isnan(tmp_stim_c) || (tmp_stim_c==0) % if catch trial
                             conds_single_rep_mergedB.stim_nr_left(ii)  = 0;
@@ -1834,6 +2046,28 @@ if nr_reps > 0
                             tmp = vcd('fullinfo', tmp_stim_c); % Get stim info
                             assert(isequal(tmp.stim_class,5)); % must be ns
                             assert(isequal(tmp.stim_loc,3)); % must be center
+                            
+                            % correct lure if needed
+                            stimB = conds_single_rep_mergedB.stim2_im_nr(ii,1);
+                            stimB_stim_class = find(ismember( params.stim.ns.super_cat, params.stim.ns.ltm_cat(ismember(params.stim.ns.ltm_pairs(:,1),stimB))));
+                            correct_paired_stim = params.stim.ns.ltm_pairs(ismember(params.stim.ns.ltm_pairs(:,1),tmp_stim_c),2);
+                            correct_paired_stim_class = find(ismember( params.stim.ns.super_cat, params.stim.ns.ltm_cat(ismember(params.stim.ns.ltm_pairs(:,1), ... % get correct associated pair super category
+                                correct_paired_stim)))); % correct associated pair number
+                            
+                            if conds_single_rep_mergedB.stim2_delta(ii,1)==0 % incorrect trial
+                                assert(~isequal(stimB, correct_paired_stim))
+                                if isequal( stimB_stim_class, correct_paired_stim_class)
+                                    conds_single_rep_mergedB.is_lure(ii,1) = 1;
+                                else
+                                    conds_single_rep_mergedB.is_lure(ii,1) = 0;
+                                end
+                                
+                            elseif conds_single_rep_mergedB.stim2_delta(ii,1)==1 % correct trial
+                                conds_single_rep_mergedB.is_lure(ii,1) = 0;
+                                assert(isequal( stimB_stim_class, correct_paired_stim_class))
+                                assert(isequal(stimB, correct_paired_stim))
+                            end
+                            
                             % update category info
                             conds_single_rep_mergedB.super_cat(ii,1)        = tmp.super_cat;
                             conds_single_rep_mergedB.basic_cat(ii,1)        = tmp.basic_cat;
@@ -1843,6 +2077,7 @@ if nr_reps > 0
                             conds_single_rep_mergedB.basic_cat_name(ii,1)   = tmp.basic_cat_name;
                             conds_single_rep_mergedB.sub_cat_name(ii,1)     = tmp.sub_cat_name;
                             conds_single_rep_mergedB.affordance_name(ii,1)  = tmp.affordance_name;
+                            
                         end
                     end
                     
