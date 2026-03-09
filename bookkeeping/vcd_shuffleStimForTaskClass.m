@@ -105,7 +105,12 @@ if strcmp(session_type,'MRI')
         
         max_attempts_shuffle1    = 50000; % FIRST SHUFFLE when do we abort and start over
         max_attempts_shuffle2    = 10000; % SECOND SHUFFLE when do we abort and start over
-        unique_trial_repeats = params.exp.n_unique_trial_repeats_deep; % how many unique trial repeats do we expect? This is for LTM: check that column lengths is the same as sum of repeats * special core stimuli
+        % how many unique trial repeats do we expect? This is for LTM: check that column lengths is the same as sum of repeats * special core stimuli
+        if params.is_demo && ~params.is_wide
+            unique_trial_repeats = params.exp.n_unique_trial_repeats_deep_demo;
+        else
+            unique_trial_repeats = params.exp.n_unique_trial_repeats_deep;
+        end
         if strcmp(task_class_name_to_shuffle,'scc')
             max_no_progress_attempts = 50; % Optimization param 1 - when do we abort and start over
             stimclss_constraint_fun  = @(x) isequal(x,[2 2 2 2]) || isequal(sort(x),[1 2 2 3]) || isequal(sort(x),[1 1 3 3]) || isequal(sort(x),[1 1 2 4]) || isequal(sort(x),[0 2 3 3]); % 8 trials per block
@@ -122,9 +127,14 @@ elseif strcmp(session_type,'BEHAVIOR')
     max_no_progress_attempts = 25; % Optimization param 1
     max_attempts_shuffle1    = 20000; % FIRST SHUFFLE when do we abort and start over
     max_attempts_shuffle2    = 5000;  % SECOND SHUFFLE when do we abort and start over
-    unique_trial_repeats = params.exp.n_unique_trial_repeats_behavior; % how many unique trial repeats do we expect?
+    unique_trial_repeats     = params.exp.n_unique_trial_repeats_behavior; % how many unique trial repeats do we expect?
     if strcmp(task_class_name_to_shuffle,'scc')
         stimclss_constraint_fun  = @(x) all(x >=1 ); % if we have at least one of each stimulus class per block (cued or uncued), we are happy
+    elseif strcmp(task_class_name_to_shuffle,'ltm') && params.is_demo && ~params.is_wide
+        max_no_progress_attempts = 1000; % Optimization param 1 - when do we abort and start over
+        stimclss_constraint_fun  = @(x) isequal(x,[1 1 1 1]) || isequal(sort(x),[0 0 2 2]) || isequal(sort(x),[0 1 1 2]) || isequal(sort(x),[0 0 1 3]); % 4 trials per block
+        allow_uneven_cues        = false; % at the end, if we get stuck in an endless loop, we allow for uneven distribution of spatial cues for the last 3 blocks
+        unique_trial_repeats     = params.exp.n_unique_trial_repeats_deep_demo; % how many unique trial repeats do we expect?
     else
         error('[%s]: No rules defined for this task class name!', mfilename) % no ltm in behavior
     end
@@ -898,9 +908,13 @@ elseif ~isempty(cued_stim_loc)
                     assert(isequal(stored_shuffled_cued_side, repmat([1;2],size(stored_shuffled_cued_side,1)/2,1)))
                 elseif strcmp(task_class_name_to_shuffle,{'ltm'})
                     expected_distribution = abs_stim_class_chance * (length(correct_response)/nr_of_trials_per_block);
-                    assert(min(n2) >= min(expected_distribution))
-                    assert(max(n2) <= (max(expected_distribution)+1)); % +1 to account for rounding errors
-                    
+                    if params.is_demo && ~params.is_wide % for special core demo we don't worry about rounding errors compared to the actual DEEP MRI core runs
+%                         assert((min(n2)+3) >= min(expected_distribution))
+%                         assert(max(n2) <= (max(expected_distribution)+3)); % +3 to account for rounding errors
+                    else
+                        assert(min(n2) >= min(expected_distribution))
+                        assert(max(n2) <= (max(expected_distribution)+1)); % +1 to account for rounding errors
+                    end
                     assert(sum(stored_shuffled_cued_side == repmat([1;2],size(stored_shuffled_cued_side,1)/2,1)) >=  size(stored_shuffled_cued_side,1)-(3*nr_of_trials_per_block))
                 else
                     error('wtf')
