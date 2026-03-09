@@ -65,10 +65,11 @@ cond_table0 = cond_table(noncatch_trials_idx,:);
 if all(cond_table0.stim_class==5) % NS
     
     % determine associated stimulus (B) paired with gabor special core stimulus (A)
-    [~,ltm_idx] = ismember(cond_table0.stim_nr_left,params.stim.ns.ltm_pairs(:,1));
-    ltm_pairs   = [cond_table0.stim_nr_left, params.stim.ns.ltm_pairs(ltm_idx,2)];
-    [~,ltm_idx_B] = ismember(params.stim.ns.ltm_pairs(ltm_idx,2),params.stim.ns.unique_im_nrs_specialcore);
-
+    [~,ltm_idx_A] = ismember(cond_table0.stim_nr_left,params.stim.ns.ltm_pairs(:,1));
+    correct_associated_stim_C = [cond_table0.stim_nr_left, params.stim.ns.ltm_pairs(ltm_idx_A,2)];
+    [~,ltm_idx_B] = ismember(params.stim.ns.ltm_pairs(ltm_idx_A,2),params.stim.ns.unique_im_nrs_specialcore);
+    assert(isequal(cond_table0.stim_nr_left,correct_associated_stim_C(:,1)))
+    
     % Determine the other, non-paired stimuli:
     % * Lures are incorrect test stimuli (B), in case of NS: from the same object super-category as the paired test stimulus.
     % For example, for a correct pair (A-B): NS cat1 (A) - NS house1 (B), the lure for NS cat1 (A) can be other NS with cats/girraffes (B)
@@ -77,7 +78,7 @@ if all(cond_table0.stim_class==5) % NS
     [~,ltm_idx_all] = ismember(cond_table0.stim_nr_left,params.stim.all_ltm_pairs(:,1));
     ltm_stimclass  = params.stim.all_ltm_pairs_stim_class(ltm_idx_all,:);
     [~,ltm_stimclass_all]  = ismember(params.stim.ns.ltm_cat, params.stim.ns.super_cat);
-    [~,ltm_supercatA]  = ismember(params.stim.ns.ltm_cat(ltm_idx), params.stim.ns.super_cat);
+    [~,ltm_supercatA]  = ismember(params.stim.ns.ltm_cat(ltm_idx_A), params.stim.ns.super_cat);
     [~,ltm_supercatB]  = ismember(params.stim.ns.ltm_cat(ltm_idx_B), params.stim.ns.super_cat);
     assert(isequal(ltm_supercatA,cond_table0.super_cat(:,1)))
     
@@ -85,19 +86,19 @@ if all(cond_table0.stim_class==5) % NS
     assert(all(ltm_stimclass(:,1)==5));
     
     tmp_sc_nr = NaN(size(cond_table0,1),4); % dims: N trials x 4 cols: [#A #B stimcatA stimcatB]
-    tmp_sc_nr(:,[1,2]) = ltm_pairs;
+    tmp_sc_nr(:,[1,2]) = correct_associated_stim_C;
     tmp_sc_nr(:,[3,4]) = [ltm_supercatA,ltm_supercatB];
     
     % Find special core stim that have the same super-class object category
     lures    = NaN(size(tmp_sc_nr,1), 3); % probe stim x 3 stim numbers
-    nonlures = NaN(size(tmp_sc_nr,1), 11); % probe stim x 11 stim numbers
+    nonlures = NaN(size(tmp_sc_nr,1), 9); % probe stim x 8 stim numbers
 
     for ii = 1:size(tmp_sc_nr,1) % loop over trials in condition table.
         
         if all(~isnan(tmp_sc_nr(ii,:)))
             
             % get paired test stimulus and stimulus class
-            xx = squeeze(tmp_sc_nr(ii,:));
+            xx = squeeze(tmp_sc_nr(ii,:)); % stim1 stim2 stim1_supercat stim2_supercat
             
             % find other NS test stimuli from the same super-class object categoriy as test stim (B)
             lures0 = params.stim.ns.ltm_pairs(ismember(ltm_stimclass_all, xx(4)),1);
@@ -109,13 +110,14 @@ if all(cond_table0.stim_class==5) % NS
             lures(ii,1:length(lures1)) = lures1(randperm(length(lures1),length(lures1))); % shuffle lure trial order
             
             % find other NS test stimuli from different super-class object categories than the test stim (B)
-            nonlures0 = params.stim.ns.ltm_pairs(~ismember(ltm_stimclass_all, xx(4)),1);
+            nonlures0 = params.stim.ns.ltm_pairs(~ismember(ltm_stimclass_all, [xx(3), xx(4)]),1);
             
             % remove the probe stim and test stim from the nonlures list.
             nonlures1 = setdiff(nonlures0,[xx(1),xx(2)]);
             
             % add to nonlures list (2D matrix: trial nr x nr of lures)
             nonlures(ii,1:length(nonlures1)) = nonlures1(randperm(length(nonlures1),length(nonlures1))); % shuffle non-lure trial order
+
         end
     end
     
@@ -248,6 +250,12 @@ if all(cond_table0.stim_class==5) % NS
     stim2_im_nr(noncatch_trials_idx,1)   = stim2_im_nr0;
     stim2_is_lure(noncatch_trials_idx,1) = stim2_is_lure0;
     stim2_is_match(noncatch_trials_idx,1) = stim2_is_match0;
+    
+    
+    cond_table0.stim2_im_nr(noncatch_trials_idx,:) = stim2_im_nr;
+    cond_table0.is_lure(noncatch_trials_idx,:)     = stim2_is_lure;
+    cond_table0.stim2_delta(noncatch_trials_idx,:) = stim2_is_match;
+    
     clear stim2_im_nr0 stim2_is_lure0 stim2_is_match0
     
 else % classic stim
@@ -256,10 +264,10 @@ else % classic stim
     curr_stim_class_name = unique(cond_table0.stim_class_name);
     
     % determine associated stimulus (B) paired with gabor special core stimulus (A)
-    [~,ltm_idx_l] = ismember(cond_table0.stim_nr_left,params.stim.(curr_stim_class_name{1}).ltm_pairs(:,1));
+    [~,ltm_idx_l] = ismember(cond_table0.stim_nr_left, params.stim.(curr_stim_class_name{1}).ltm_pairs(:,1));
     [~,ltm_idx_r] = ismember(cond_table0.stim_nr_right,params.stim.(curr_stim_class_name{1}).ltm_pairs(:,1));
-    ltm_pairs_l   = [cond_table0.stim_nr_left, params.stim.(curr_stim_class_name{1}).ltm_pairs(ltm_idx_l,2)];
-    ltm_pairs_r   = [cond_table0.stim_nr_right, params.stim.(curr_stim_class_name{1}).ltm_pairs(ltm_idx_r,2)];
+    correct_associated_stim_l   = [cond_table0.stim_nr_left, params.stim.(curr_stim_class_name{1}).ltm_pairs(ltm_idx_l,2)];
+    correct_associated_stim_r   = [cond_table0.stim_nr_right, params.stim.(curr_stim_class_name{1}).ltm_pairs(ltm_idx_r,2)];
     
     [~,ltm_idx_l_all] = ismember(cond_table0.stim_nr_left,params.stim.all_ltm_pairs(:,1));
     [~,ltm_idx_r_all] = ismember(cond_table0.stim_nr_right,params.stim.all_ltm_pairs(:,1));
@@ -271,6 +279,8 @@ else % classic stim
     tmp = vcd('fullinfo',params.stim.all_ltm_pairs(:,2));
     ltm_all_stim_loc(:,2) = cat(1,tmp(:).stim_loc);
     assert(all(ltm_all_stim_loc(:,1)==ltm_all_stim_loc(:,2)))
+    assert(all(ltm_all_stim_loc(ltm_idx_l_all)==1))
+    assert(all(ltm_all_stim_loc(ltm_idx_r_all)==2))
     
     % Determine the other, non-paired stimuli:
     % * Lures are incorrect test stimuli (B), from the same stimulus class as the paired test stimulus.
@@ -285,9 +295,9 @@ else % classic stim
     assert(all(ltm_stimclass_r(:,1)==curr_stim_class));
     
     tmp_sc_nr = NaN(2,size(cond_table0,1),4); % dims: 2 stim loc (1=left,2=right) x 16 trials x 4 cols: [#A #B stimclassA stimclassB]
-    tmp_sc_nr(1,:,[1,2]) = ltm_pairs_l;
+    tmp_sc_nr(1,:,[1,2]) = correct_associated_stim_l;
     tmp_sc_nr(1,:,[3,4]) = ltm_stimclass_l; % col 3 = all same stim class (gabors = 1, rdk = 2, dot = 3, obj = 4)
-    tmp_sc_nr(2,:,[1,2]) = ltm_pairs_r;
+    tmp_sc_nr(2,:,[1,2]) = correct_associated_stim_r;
     tmp_sc_nr(2,:,[3,4]) = ltm_stimclass_r; % col 3 = all same stim class (gabors = 1, rdk = 2, dot = 3, obj = 4)
     
     % Find special core stim that have the same stimulus
@@ -301,11 +311,11 @@ else % classic stim
             
             if all(~isnan(squeeze(tmp_sc_nr(jj,ii,:))))
                 % get paired test stimulus and stimulus class
-                xx = squeeze(tmp_sc_nr(jj,ii,:));
+                xx = squeeze(tmp_sc_nr(jj,ii,:))'; % stim1 stim2 stim1_class stim2_class
                 
                 % find other classic test stimuli from the same stimulus
                 % class as test stim (B) and same stim location (left or right)
-                lures0 = params.stim.all_ltm_pairs(ismember(params.stim.all_ltm_pairs_stim_class(:,1),xx(4)) & ismember(ltm_all_stim_loc(:,2),jj));
+                lures0 = params.stim.all_ltm_pairs(ismember(params.stim.all_ltm_pairs_stim_class(:,2),xx(4)) & ismember(ltm_all_stim_loc(:,2),jj),2);
                 
                 % remove the correct test stimulus from the lures list.
                 lures1 = setdiff(lures0,[xx(1),xx(2)]);
@@ -316,13 +326,13 @@ else % classic stim
                 % find other classic test stimuli from the
                 % diferent stimulus class as test stim (B), and
                 % nor reference stim (a), and same stim location (left or right)
-                nonlures0 = params.stim.all_ltm_pairs(~ismember(params.stim.all_ltm_pairs_stim_class(:,2),[xx(3:4)',5]) & ismember(ltm_all_stim_loc(:,2),jj),2); % exclude scenes
+                nonlures0 = params.stim.all_ltm_pairs(ismember(params.stim.all_ltm_pairs_stim_class(:,2),setdiff(1:5,[xx(3:4),5])) & ismember(ltm_all_stim_loc(:,2),jj),2); % exclude scenes
                 
                 % remove the probe stim stimulus from the nonlures list.
                 nonlures1 = setdiff(nonlures0,xx([1,2]));
                 
                 % add to nonlures list
-                nonlures(jj,ii,:) = nonlures1(randperm(length(nonlures1),length(nonlures1))); % shuffle non-lure trial order
+                nonlures(jj,ii,1:length(nonlures1)) = nonlures1(randperm(length(nonlures1),length(nonlures1))); % shuffle non-lure trial order
             end
         end
     end
@@ -588,6 +598,86 @@ else % classic stim
     stim2_im_nr(noncatch_trials_idx,:)    = stim2_im_nr0;
     stim2_is_lure(noncatch_trials_idx,:)  = stim2_is_lure0;
     stim2_is_match(noncatch_trials_idx,:) = stim2_is_match0;
+    
+    cond_table0.stim2_im_nr(noncatch_trials_idx,:) = stim2_im_nr;
+    cond_table0.is_lure(noncatch_trials_idx,:)     = stim2_is_lure;
+    cond_table0.stim2_delta(noncatch_trials_idx,:) = stim2_is_match;
+    
+    clear stim2_im_nr0 stim2_is_lure0 stim2_is_match0
+end
+
+
+for ii = 1:size(cond_table0,1)
+    
+    if strcmp(cond_table0.stim_class_name{ii,1}, 'ns')
+        nSides = 1;
+    else
+        nSides = [1,2];
+    end
+    
+    for side = nSides
+        % Do more checks
+        if strcmp(cond_table0.stim_class_name{ii,1}, 'ns')
+           
+            stim_match = cond_table0.stim2_delta(ii,1);
+            assert(isequal(3, params.stim.all_ltm_pairs_stim_loc(ismember(params.stim.all_ltm_pairs(:,1),cond_table0.stim2_im_nr(ii,1)))))
+        else
+            
+            stim_match = cond_table0.stim2_delta(ii,side);
+            assert(isequal(side, params.stim.all_ltm_pairs_stim_loc(ismember(params.stim.all_ltm_pairs(:,2),cond_table0.stim2_im_nr(ii,side)))))
+        end
+        
+        
+        % check if cued stim pair matches correct response
+        if ismember(cond_table0.is_cued(ii),[side,3])
+            assert(isequal( stim_match, stim2_is_match(ii,side))); % 1=yes, 2=no
+            if stim_match==1
+                if side == 1 % left stim
+                    assert(isequal(params.stim.all_ltm_pairs(ismember(params.stim.all_ltm_pairs(:,1),cond_table0.stim_nr_left(ii)),2), ...
+                        cond_table0.stim2_im_nr(ii,side)))
+                elseif side == 2 % right stim
+                    assert(isequal(params.stim.all_ltm_pairs(ismember(params.stim.all_ltm_pairs(:,1),cond_table0.stim_nr_right(ii)),2), ...
+                        cond_table0.stim2_im_nr(ii,side)))
+                end
+            else
+                if side == 1 % left stim
+                    assert(~isequal(params.stim.all_ltm_pairs(ismember(params.stim.all_ltm_pairs(:,1),cond_table0.stim_nr_left(ii)),2), ...
+                        cond_table0.stim2_im_nr(ii,side)))
+                elseif side == 2 % right stim
+                    assert(~isequal(params.stim.all_ltm_pairs(ismember(params.stim.all_ltm_pairs(:,1),cond_table0.stim_nr_right(ii)),2), ...
+                        cond_table0.stim2_im_nr(ii,side)))
+                end
+                % check if incorrect stim is lure, that expected stim class (same as paired stim) matches
+                if cond_table0.is_lure(ii,side)==1
+                    if strcmp(cond_table0.stim_class_name{ii,1}, 'ns')
+                        paired_stim_class = find(ismember( params.stim.ns.super_cat, params.stim.ns.ltm_cat(ismember(params.stim.ns.ltm_pairs(:,1),params.stim.ns.ltm_pairs(ismember(params.stim.ns.ltm_pairs(:,1),cond_table0.stim_nr_left(ii)),2)))));
+                        assert(isequal( paired_stim_class, find(ismember( params.stim.ns.super_cat, params.stim.ns.ltm_cat(ismember(params.stim.ns.ltm_pairs(:,1),cond_table0.stim2_im_nr(ii,1))))) ));
+                    else
+                        if side == 1 % left stim
+                            paired_stim_class = params.stim.all_ltm_pairs_stim_class(ismember(params.stim.all_ltm_pairs(:,1),cond_table0.stim_nr_left(ii)),2);
+                            assert(isequal( paired_stim_class, params.stim.all_ltm_pairs_stim_class(ismember(params.stim.all_ltm_pairs(:,2),cond_table0.stim2_im_nr(ii,side)),2) ));
+                        elseif side == 2 % right stim
+                            paired_stim_class = params.stim.all_ltm_pairs_stim_class(ismember(params.stim.all_ltm_pairs(:,1),cond_table0.stim_nr_right(ii)),2);
+                            assert(isequal( paired_stim_class, params.stim.all_ltm_pairs_stim_class(ismember(params.stim.all_ltm_pairs(:,2),cond_table0.stim2_im_nr(ii,side)),2) ));
+                        end
+                    end
+                elseif cond_table0.is_lure(ii,side)==0
+                    if strcmp(cond_table0.stim_class_name{ii,1}, 'ns')
+                        paired_stim_class = find(ismember( params.stim.ns.super_cat, params.stim.ns.ltm_cat(ismember(params.stim.ns.ltm_pairs(:,1),params.stim.ns.ltm_pairs(ismember(params.stim.ns.ltm_pairs(:,1),cond_table0.stim_nr_left(ii)),2)))));
+                        assert(~isequal( paired_stim_class, params.stim.ns.ltm_cat(ismember(params.stim.ns.ltm_pairs(:,2),cond_table0.stim2_im_nr(ii,1))) ));
+                    else
+                        if side == 1 % left stim
+                            paired_stim_class = params.stim.all_ltm_pairs_stim_class(ismember(params.stim.all_ltm_pairs(:,1),cond_table0.stim_nr_left(ii)),2);
+                            assert(~isequal( paired_stim_class, params.stim.all_ltm_pairs_stim_class(ismember(params.stim.all_ltm_pairs(:,2),cond_table0.stim2_im_nr(ii,side)),2) ));
+                        elseif side == 2 % right stim
+                            paired_stim_class = params.stim.all_ltm_pairs_stim_class(ismember(params.stim.all_ltm_pairs(:,1),cond_table0.stim_nr_right(ii)),2);
+                            assert(~isequal( paired_stim_class, params.stim.all_ltm_pairs_stim_class(ismember(params.stim.all_ltm_pairs(:,2),cond_table0.stim2_im_nr(ii,side)),2) ));
+                        end
+                    end
+                end
+            end
+        end
+    end
 end
 
 return
