@@ -10,7 +10,6 @@ if strcmp(env_type,'MRI')
     % Find which sessions have A and B versions:
     sessionB    = unique(condition_master.session_nr(condition_master.session_type == 2));
     nr_sessions = unique(condition_master.session_nr);
-    assert(length(sessionB)==1); 
     
     % check if they correspond to the session we expect to have a B version)
     if params.is_wide
@@ -19,6 +18,18 @@ if strcmp(env_type,'MRI')
     else
         assert(isequal(max(nr_sessions), find(~isnan(params.exp.session.mri.deep.session_types(:,2)))));
         assert(all(~isnan(params.exp.session.mri.wide.session_types(end,:))));
+    end
+else
+    % Find which sessions have A and B versions:
+    sessionB    = unique(condition_master.session_nr(condition_master.session_type == 2));
+    nr_sessions = unique(condition_master.session_nr);
+    if params.is_demo && ~params.is_wide
+        assert(length(sessionB)==8);
+        assert(isequal(max(nr_sessions), length(params.exp.session.mri.demo.session_types(:,2))));
+        assert(all(~isnan(params.exp.session.mri.demo.session_types(:))));
+        
+    elseif params.is_wide
+        assert(length(sessionB)==1);
     end
 end
 
@@ -75,7 +86,7 @@ for st = unique(condition_master.session_type)'
                     % of the penultimate session's last global numbers: we want to
                     % use those as a starting point when we update global counters
                     % for the B version of this session.
-                    if update_me 
+                    if update_me
                         % find global run/block/trial nr of session 46A
                         restart_idx = find(condition_master.session_nr == sessionB &  ...
                             condition_master.session_type == 1 &  ...
@@ -107,6 +118,23 @@ for st = unique(condition_master.session_type)'
                 condition_master.global_trial_nr(session_idx(ii)) = global_trial_nrB;
                 
             end
+        elseif strcmp(env_type,'BEHAVIOR') && st == 2 && params.is_demo && ~params.is_wide
+            bi = find(sessionB,condition_master.session_nr(session_idx(ii)));
+            % find global run/block/trial nr of session A
+            restart_idx = find(condition_master.session_nr == sessionB(bi) &  ...
+                condition_master.session_type == 1 &  ...
+                condition_master.run_nr == 1 &  ...
+                condition_master.block_nr == 1 &  ...
+                condition_master.trial_nr == 1);
+            global_run_nrB   = condition_master.global_run_nr(restart_idx);
+            global_block_nrB = condition_master.global_block_nr(restart_idx);
+            global_trial_nrB = condition_master.global_trial_nr(restart_idx);
+            
+            update_me = false;
+        end
+     
+        if params.is_demo && ~params.is_wide
+            assert(isequal(sessionB,[1:params.exp.session.mri.demo.session_nrs]'));
         end
     end
 end
