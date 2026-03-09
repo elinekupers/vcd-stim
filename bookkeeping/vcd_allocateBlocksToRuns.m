@@ -123,7 +123,11 @@ for ses = 1:size(all_sessions,3)
                     if strcmp(env_type,'MRI')
                         task_start = params.exp.session.mri.task_start(tc);
                     elseif strcmp(env_type,'BEHAVIOR')
-                        task_start = params.exp.session.behavior.task_start(tc);
+                    	if params.is_demo 
+                    		task_start = 1;
+                    	else
+                        	task_start = params.exp.session.behavior.task_start(tc);
+                    	end
                     end
                     if  ses >= task_start
                         % get nr of blocks for this specific crossing
@@ -623,7 +627,7 @@ condition_master = condition_master(:,newOrder_idx);
 
 
 % IF WE DEAL WITH A DEMO SESSION, DELETE 50% OF TRIALS
-if params.is_demo
+if params.is_demo && strcmp(env_type,'BEHAVIOR') && params.is_wide
     curr_sessions = unique(condition_master.session_nr);
     for ss = 1:length(curr_sessions)
         curr_runs = unique(condition_master.run_nr(condition_master.session_nr == curr_sessions(ss)));
