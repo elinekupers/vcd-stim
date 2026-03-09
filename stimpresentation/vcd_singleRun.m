@@ -222,11 +222,8 @@ else % if not, then we look user pointed to a timetable_file
 
         % see if there is a subject condition_master_shuffled, which is the precursor of time_table_master
         % and create the time_table_master from there..
-        if strcmp(params.env_type, 'MRI')
-            fname = sprintf('%s_condition_master_%s%s%s*.mat',sprintf('vcd_subj%03d',params.subj_nr),choose(params.is_wide,'wide_','deep_'),choose(params.is_demo,'demo_',''), params.disp.name);
-        else
-            fname = sprintf('%s_condition_master_%s*.mat',sprintf('vcd_subj%03d',params.subj_nr),choose(params.is_demo,'demo_',''));
-        end
+        fname = sprintf('%s_condition_master_%s%s%s*.mat',sprintf('vcd_subj%03d',params.subj_nr),choose(params.is_wide,'wide_','deep_'),choose(params.is_demo,'demo_',''), params.disp.name);
+        
         d = dir(fullfile(params.timetablefiledir, fname));
         if ~isempty(d)
             fprintf('\n !!WARNING!! It appears you have already generated %d time tables for this specific subject.\n', length(d));
@@ -250,11 +247,8 @@ else % if not, then we look user pointed to a timetable_file
             %% %% CREATE CONDITION_MASTER AND TIME_TABLE_MASTER %%%%%%%%%
             % if there is no condition_master_shuffled for this subject, then
             % we create both condition_master_shuffled and time_table_master on the spot.
-            if strcmp(params.env_type, 'MRI')
-                fname = sprintf('condition_master_%s%s%s*.mat', choose(params.is_wide,'wide_','deep_'), choose(params.is_demo,'demo_',''), params.disp.name);
-            else
-                fname = sprintf('condition_master_%s%s*.mat', choose(params.is_demo,'demo_',''), params.disp.name);
-            end
+            fname = sprintf('condition_master_%s%s%s*.mat', choose(params.is_wide,'wide_','deep_'), choose(params.is_demo,'demo_',''), params.disp.name);
+            
             d = dir(fullfile(vcd_rootPath,'workspaces','info', fname));
             if ~isempty(d)
                 a1 = load(fullfile(d(end).folder,d(end).name),'condition_master');
@@ -429,7 +423,12 @@ if ~exist('scan','var') || ~isfield(scan, 'rects') || isempty(scan.rects)
                         
                         % If it is a IMG trial
                         if ismember(run_frames.crossingIDs(nn), find(~cellfun(@isempty, regexp(params.exp.crossingnames, 'img*'))))
-                            centers{nn,side} = [params.stim.xc,params.stim.yc]; % centered
+                            if params.is_demo && ~params.is_wide && run_frames.session_type(nn)==2 && run_frames.frame_event_nr(nn)==95 % IMG perception trial
+                                centers{nn,side} = [params.stim.rdk.x0_pix(side) + params.stim.xc, ... % x-coord (pixels)
+                                    params.stim.rdk.y0_pix(side) + params.stim.yc]; % y-coord (pixels)
+                            else
+                                centers{nn,side} = [params.stim.xc,params.stim.yc]; % centered
+                            end
                         else
                             centers{nn,side} = [params.stim.gabor.x0_pix(side) + params.stim.xc, ... % x-coord (pixels)
                                 params.stim.gabor.y0_pix(side) + params.stim.yc]; % y-coord (pixels)
@@ -440,7 +439,12 @@ if ~exist('scan','var') || ~isfield(scan, 'rects') || isempty(scan.rects)
                         
                         % If it is a IMG trial
                         if ismember(run_frames.crossingIDs(nn), find(~cellfun(@isempty, regexp(params.exp.crossingnames, 'img*'))))
-                            centers{nn,side} = [params.stim.xc,params.stim.yc]; % centered
+                            if params.is_demo && ~params.is_wide && run_frames.session_type(nn)==2 && run_frames.frame_event_nr(nn)==95 % IMG perception trial
+                                centers{nn,side} = [params.stim.rdk.x0_pix(side) + params.stim.xc, ... % x-coord (pixels)
+                                    params.stim.rdk.y0_pix(side) + params.stim.yc]; % y-coord (pixels)
+                            else
+                                centers{nn,side} = [params.stim.xc,params.stim.yc]; % centered
+                            end
                         else
                             centers{nn,side} = [params.stim.rdk.x0_pix(side) + params.stim.xc, ... % x-coord (pixels)
                             params.stim.rdk.y0_pix(side) + params.stim.yc]; % y-coord (pixels)
@@ -450,7 +454,14 @@ if ~exist('scan','var') || ~isfield(scan, 'rects') || isempty(scan.rects)
                     elseif ismember(run_frames.frame_im_nr(nn,side), [params.stim.dot.unique_im_nrs_core,params.stim.dot.unique_im_nrs_wm_test])
                         % If it is a IMG trial
                         if ismember(run_frames.crossingIDs(nn), find(~cellfun(@isempty, regexp(params.exp.crossingnames, 'img*'))))
-                            centers{nn,side} = [params.stim.xc,params.stim.yc]; % centered
+                            if params.is_demo && ~params.is_wide && run_frames.session_type(nn)==2 && run_frames.frame_event_nr(nn)==95 % IMG perception trial
+                                [~,core_im_idx] = ismember(run_frames.frame_im_nr(nn,side), params.stim.dot.unique_im_nrs_core);
+                                dot_x = params.stim.dot.x0_pix(core_im_idx);
+                                dot_y = params.stim.dot.y0_pix(core_im_idx);
+                                centers{nn,side} = [dot_x,dot_y];
+                            else
+                                centers{nn,side} = [params.stim.xc,params.stim.yc]; % centered
+                            end
                         else
                             % deal with dot coords
                             if ismember(run_frames.frame_im_nr(nn,side), params.stim.dot.unique_im_nrs_wm_test)
@@ -473,7 +484,12 @@ if ~exist('scan','var') || ~isfield(scan, 'rects') || isempty(scan.rects)
                     elseif ismember(run_frames.frame_im_nr(nn,side), [params.stim.obj.unique_im_nrs_core,params.stim.obj.unique_im_nrs_wm_test, params.stim.obj.unique_im_nrs_objcatch])
                         % If it is a IMG trial
                         if ismember(run_frames.crossingIDs(nn), find(~cellfun(@isempty, regexp(params.exp.crossingnames, 'img*'))))
-                            centers{nn,side} = [params.stim.xc,params.stim.yc]; % centered
+                            if params.is_demo && ~params.is_wide && run_frames.session_type(nn)==2 && run_frames.frame_event_nr(nn)==95 % IMG perception trial
+                                centers{nn,side} = [params.stim.obj.x0_pix(side) + params.stim.xc, ...
+                                                params.stim.obj.y0_pix(side) + params.stim.yc];
+                            else
+                                centers{nn,side} = [params.stim.xc,params.stim.yc]; % centered
+                            end
                         else
                             centers{nn,side} = [params.stim.obj.x0_pix(side) + params.stim.xc, ...
                                                 params.stim.obj.y0_pix(side) + params.stim.yc];
@@ -483,7 +499,11 @@ if ~exist('scan','var') || ~isfield(scan, 'rects') || isempty(scan.rects)
                             [params.stim.ns.unique_im_nrs_core,params.stim.ns.unique_im_nrs_wm_test,params.stim.ns.unique_im_nrs_novel_ltm_lures])
                         % If it is a IMG trial
                         if ismember(run_frames.crossingIDs(nn), find(~cellfun(@isempty, regexp(params.exp.crossingnames, 'img*'))))
-                            centers{nn,side} = [params.stim.xc,params.stim.yc]; % centered
+                            if params.is_demo && ~params.is_wide && run_frames.session_type(nn)==2 && run_frames.frame_event_nr(nn)==95 % IMG perception trial
+                                centers{nn,side} = [params.stim.ns.x0_pix + params.stim.xc, params.stim.ns.y0_pix + params.stim.yc];
+                            else
+                                centers{nn,side} = [params.stim.xc,params.stim.yc]; % centered
+                            end
                         else
                             centers{nn,side} = [params.stim.ns.x0_pix + params.stim.xc, params.stim.ns.y0_pix + params.stim.yc];
                         end
@@ -583,7 +603,6 @@ else % assume both sides exist (classic stim classes are [1,2,3,4,99])
     nSides = [1,2]; % if we happen to have classic stimulus blocks.. then both columns of stim.centers and stim.size will contain info
 end
 
-img_vec = cell(size(stim.centers,1),1);
 for side = nSides
     % Find the non-empty center and size cells for each stimulus side
     nonemptycenters   = ~cellfun(@isempty, stim.centers(:,side));
@@ -614,13 +633,6 @@ for side = nSides
         zeros(size(size_mat,1),1), zeros(size(size_mat,1),1), size_mat(:,1), size_mat(:,2), ...
         destination_mat(:,1), destination_mat(:,2),destination_mat(:,3), destination_mat(:,4), ...
         'UniformOutput', false);
-    
-%     idx = find(nonemptycenters);
-%     if side == 1
-%         img_vec(idx) = repmat({[1]}, [size(idx,1),1]);
-%     elseif side == 2
-%         img_vec(idx,:) = cellfun(@(x,y) cat(2,x,y), img_vec(idx), repmat({[2]}, [size(idx,1),1]),'UniformOutput',0);
-%     end
     
     % Insert the "rects" into the struct
     stim.rects(nonemptycenters,side) = rects_mat;
