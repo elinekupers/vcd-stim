@@ -599,16 +599,16 @@ else % classic stim
     stim2_is_lure(noncatch_trials_idx,:)  = stim2_is_lure0;
     stim2_is_match(noncatch_trials_idx,:) = stim2_is_match0;
     
-    cond_table0.stim2_im_nr(noncatch_trials_idx,:) = stim2_im_nr;
-    cond_table0.is_lure(noncatch_trials_idx,:)     = stim2_is_lure;
-    cond_table0.stim2_delta(noncatch_trials_idx,:) = stim2_is_match;
+    cond_table0.stim2_im_nr = stim2_im_nr(noncatch_trials_idx,:);
+    cond_table0.is_lure     = stim2_is_lure(noncatch_trials_idx,:);
+    cond_table0.stim2_delta = stim2_is_match(noncatch_trials_idx,:);
     
     clear stim2_im_nr0 stim2_is_lure0 stim2_is_match0
 end
 
 
+noncatch_trials_idx = find(~isnan(stim2_is_match(:,1)));
 for ii = 1:size(cond_table0,1)
-    
     if strcmp(cond_table0.stim_class_name{ii,1}, 'ns')
         nSides = 1;
     else
@@ -630,7 +630,7 @@ for ii = 1:size(cond_table0,1)
         
         % check if cued stim pair matches correct response
         if ismember(cond_table0.is_cued(ii),[side,3])
-            assert(isequal( stim_match, stim2_is_match(ii,side))); % 1=yes, 2=no
+            assert(isequal( stim_match, stim2_is_match(noncatch_trials_idx(ii),side))); % 1=yes, 2=no
             if stim_match==1
                 if side == 1 % left stim
                     assert(isequal(params.stim.all_ltm_pairs(ismember(params.stim.all_ltm_pairs(:,1),cond_table0.stim_nr_left(ii)),2), ...
