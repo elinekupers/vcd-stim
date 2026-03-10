@@ -211,7 +211,7 @@ max_attempts     = 10000;
 
 if params.is_demo && ~params.is_wide
     % DEEP DEMO PERCEPTION RUNS HAVE SHORTER (i.e., 4s) DELAY PERIODS
-    all_block_dur2 = all_block_dur(2)-(4*4);
+    all_block_dur2 = all_block_dur(2)-(4*4*params.disp.refresh_hz);
 end
 
 % Get additional IBI duration (in case we deal with a short run)
@@ -228,7 +228,7 @@ tic;
 for ses = 1:length(unique_sessions)
     for st = 1:size(session_types,2)
         
-        if st==2 && params.is_demo && ~params.is_wide
+        if params.is_demo && ~params.is_wide
             % DEEP DEMO PERCEPTION RUNS HAVE SHORTER (i.e., 4s) DELAY PERIODS 
             all_block_dur(2) = all_block_dur2;
         else
@@ -691,7 +691,7 @@ for ses = 1:length(unique_sessions)
                     % if this is a demo, and there are not 7 blocks in one run, then start over
                     if runs_ok && params.is_demo
                         if ~params.is_wide % deep demos
-                            if tmp_blocks_per_run ~= params.exp.session.mri.demo.nr_blocks_per_run(ses,st)
+                            if tmp_blocks_per_run ~= params.exp.session.behavior.deep.demo.nr_blocks_per_run(ses,st)
                                 runs_ok = false;
                             end
                         else
@@ -767,7 +767,7 @@ for ses = 1:length(unique_sessions)
                             if params.is_demo && params.is_wide
                                 nr_trials = params.exp.block.demo.n_trials_single_epoch;
                             elseif params.is_demo && ~params.is_wide
-                                nr_trials = params.exp.block.mri.demo.n_trials_single_epoch;
+                                nr_trials = params.exp.block.behavior.deep.demo.n_trials_single_epoch;
                             else
                                 nr_trials = params.exp.block.n_trials_single_epoch;
                             end
@@ -775,7 +775,7 @@ for ses = 1:length(unique_sessions)
                             if params.is_demo && params.is_wide
                                 nr_trials = params.exp.block.demo.n_trials_double_epoch;
                             elseif params.is_demo && ~params.is_wide
-                                nr_trials = params.exp.block.mri.demo.n_trials_double_epoch;
+                                nr_trials = params.exp.block.behavior.deep.demo.n_trials_double_epoch;
                             else
                                 nr_trials = params.exp.block.n_trials_double_epoch;
                             end
