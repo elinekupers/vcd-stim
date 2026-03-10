@@ -670,9 +670,8 @@ else % Recreate conditions and blocks and trials
     condition_master.stim_class_unique_block_nr(scc_trials) = new_trial_nr;
 
     %% ---- bookkeeping: Check if button presses are balanced to the extent possible
-    if ~params.is_demo
-        condition_master = vcd_balanceButtonCorrectPresses(params, condition_master, env_type);
-    end
+    condition_master = vcd_balanceButtonCorrectPresses(params, condition_master, env_type);
+    
     %% ---- IMPORTANT FUNCTION: Allocate trials to blocks all unique trials and repeats of trials.
     % !!WARNING!! There is a randomization component involved in creating the
     % conditions (i.e., order of trials allocated to a block). If you don't
