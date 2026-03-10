@@ -68,7 +68,7 @@ max_diff_leftright_cueing = 0; % equal left/right cueing for classic stim
 if strcmp(env_type, 'MRI')
     nr_unique_stim_repeat_single = 1;
     nr_unique_stim_repeat_double = 2;
-    
+    ltm_cat_ns_ratio = 3;
     if params.is_wide
         total_catch_trials = params.exp.nr_catch_trials_wide;
     else
@@ -84,6 +84,7 @@ elseif strcmp(env_type, 'BEHAVIOR')
         max_diff_leftright_cueing = 12;
         nr_unique_stim_repeat_single = 2;
         nr_unique_stim_repeat_double = 2;
+        ltm_cat_ns_ratio = 4;
 	else
 		error('wtf')
 	end
@@ -591,31 +592,38 @@ for ses = session_nrs
                                         else
                                             tmp = n1_ns/min(n1_ns);
                                         end
-                                        n1_ns_ok     = all(tmp<3); % can't have a ratio that is more than 3:1 
+                                        n1_ns_ok     = all(tmp<=ltm_cat_ns_ratio); % can't have a ratio that is more than 3:1 
                                         if min(n1_clsc)==0
                                             tmp = abs(diff([repmat(max(n1_clsc),1,length(n1_clsc));n1_clsc]));
                                         else
                                             tmp = n1_clsc/min(n1_clsc);
                                         end
-                                        n1_clsc_ok   = all(tmp<3); % can't have a ratio that is more than 3:1
+                                        n1_clsc_ok   = all(tmp<=ltm_cat_ns_ratio); % can't have a ratio that is more than 3:1
                                         clear tmp
-                                        % + check 2: Do we have balanced button presses
-                                        if (diff(n)==0) && n1_ns_ok && n1_clsc_ok 
-                                            reshuffle_me = false;
-                                            break % hurray
-                                        elseif trial_to_condition_ratio == 1 && sum(catch_idx) > 0
-                                            % if we sampled all unique conditions AND have catch trials,
-                                            % then we will likely never reach a solution unless we allow for a small difference in response distribution.
-                                            if diff(n)<=sum(catch_idx) && n1_ns_ok && n1_clsc_ok % if difference caused by catch trials, we don't reshuffle
+                                        
+                                        if params.is_demo && ~params.is_wide
+                                            if diff(n) < 20 && n1_ns_ok && n1_clsc_ok % we want somewhat balanced button presses.
+                                                    reshuffle_me = false;
+                                                break % hurray
+                                            end
+                                        else
+                                            % + check 2: Do we have balanced button presses
+                                            if (diff(n)==0) && n1_ns_ok && n1_clsc_ok
                                                 reshuffle_me = false;
-                                                break;
+                                                break % hurray
+                                            elseif trial_to_condition_ratio == 1 && sum(catch_idx) > 0
+                                                % if we sampled all unique conditions AND have catch trials,
+                                                % then we will likely never reach a solution unless we allow for a small difference in response distribution.
+                                                if diff(n)<=sum(catch_idx) && n1_ns_ok && n1_clsc_ok % if difference caused by catch trials, we don't reshuffle
+                                                    reshuffle_me = false;
+                                                    break;
+                                                else
+                                                    reshuffle_me = true;
+                                                end
                                             else
                                                 reshuffle_me = true;
                                             end
-                                        else
-                                            reshuffle_me = true;
                                         end
-                                        
                                     elseif ismember(curr_tc,7)
                                         if (all(diff(n)==0)) % check if we have balanced button presses
                                             reshuffle_me = false;
