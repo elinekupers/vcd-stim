@@ -231,6 +231,11 @@ else
           session_totalrundur,actual_task_run_dur, IBI_to_use, ~, ...
           session_preblankdur, session_postblankdur,~,~,~,block_durs] = ...
             vcd_getSessionEnvironmentParams(params, env_type);
+        
+        if params.is_demo && ~params.is_wide
+             % DEEP DEMO PERCEPTION RUNS HAVE SHORTER (i.e., 4s) DELAY PERIODS
+             block_durs(2) = block_durs(2)-(4*4*params.disp.refresh_hz); % make a copy so we can flip between the two lengths
+        end
 end
 
 % Define event ID within trial for single and double epoch trial types
@@ -261,7 +266,7 @@ for ses = 1:size(all_sessions,3)
             fprintf('\nSESSION %03d %s..\n',ses,choose(st==1,'A','B'))
             
             clear run_time_table
-
+                        
             % check if the number of runs in table matches with how many runs we expect..
             curr_run_nrs = unique(condition_master.run_nr(~isnan(condition_master.run_nr) & condition_master.session_nr==ses & condition_master.session_type==st));
             assert(runs_per_session(ses,st)==length(curr_run_nrs)); 
@@ -808,7 +813,7 @@ for ses = 1:size(all_sessions,3)
                                 
                                 % Shorten delay duration for DEEP DEMO
                                 % LTM/IMG learning/perception trials
-                                if params.is_demo && ~params.is_wide && st==2
+                                if params.is_demo && ~params.is_wide
                                     time_table.event_dur(table_idx)         = params.exp.trial.delay_dur / 2; % 4-s instead of 8-s
                                     time_table.event_end(table_idx)         = time_table.event_start(table_idx) + time_table.event_dur(table_idx);
                                 end
