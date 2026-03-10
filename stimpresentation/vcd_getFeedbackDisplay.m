@@ -16,7 +16,7 @@ if params.is_demo && ~params.is_wide && params.ses_type == 2 % deep demo!
     script     = d(1).name;
     task_name = vcd_getInstructionText(params, script, rect);
     task_name1 = strsplit(task_name,'-');
-    task_name = task_name1(1);
+    task_name = task_name1{1};
     txt = sprintf('All blocks: %d%% correct - %s', ...
         mean_accuracy,task_name);
     
