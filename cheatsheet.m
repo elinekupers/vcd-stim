@@ -60,7 +60,7 @@ all_images = struct;
 [data,all_images] = runme_vcdcore(4, 1, 1, 1, 'PPROOM_EIZOFLEXSCAN', 'wanteyetracking', false, ...
 'all_images',all_images, 'exp_env',2);
 
-%% Run demo
+%% Run WIDE demo
 % Demo Session 1: FIX-GBR, WM-RDK, CD-DOT, HOW-OBJ, WHAT-NS, SCC-ALL (2x)
 % Demo Session 2: WM-GBR, PC-RDK, FIX-DOT, PC-DOT, PC-OBJ, CD-NS, WHERE-NS
 % Demo session 3: PC-GBR, CD-RDK, WM-DOT, WHAT-OBJ, FIX-NS, WM-NS, HOW-NS                                           
@@ -71,10 +71,10 @@ all_images = struct;
     'exp_env',2, 'is_demo', true, 'is_wide', true);
 
 %% Run DEEP demo
-% Demo Session 1-4 A = LTM-only REGULAR TEST runs (10 runs per session).
+% Demo Session 1-4 A = LTM-only REGULAR TEST trials (10 runs per session).
 % Demo Session 1-4 B = LTM-only STUDY trials (10 runs per session).
-% Demo Session 5-8 A = IMG-only REGULAR TEST runs (10 runs per session). 
-% Demo Session 5-8 B = IMG-only PERCEPTION runs (10 runs per session).
+% Demo Session 5-8 A = IMG-only REGULAR TEST trials (10 runs per session). 
+% Demo Session 5-8 B = IMG-only PERCEPTION trials (10 runs per session).
 demo_session = 1; % can be 1 through 8
 demo_session_type = 1; % can be 1 (A - regular) or 2 (B - LTM study/ IMG perception)
 all_images = struct;
