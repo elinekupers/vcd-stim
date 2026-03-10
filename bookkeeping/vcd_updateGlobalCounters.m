@@ -25,8 +25,8 @@ else
     nr_sessions = unique(condition_master.session_nr);
     if params.is_demo && ~params.is_wide
         assert(length(sessionB)==8);
-        assert(isequal(max(nr_sessions), length(params.exp.session.mri.demo.session_types(:,2))));
-        assert(all(~isnan(params.exp.session.mri.demo.session_types(:))));
+        assert(isequal(max(nr_sessions), length(params.exp.session.behavior.deep.demo.session_types(:,2))));
+        assert(all(~isnan(params.exp.session.behavior.deep.demo.session_types(:))));
         
     elseif params.is_wide
         assert(length(sessionB)==1);
@@ -134,7 +134,7 @@ for st = unique(condition_master.session_type)'
         end
      
         if params.is_demo && ~params.is_wide
-            assert(isequal(sessionB,[1:params.exp.session.mri.demo.session_nrs]'));
+            assert(isequal(sessionB,[1:params.exp.session.behavior.deep.demo.session_nrs]'));
         end
     end
 end
