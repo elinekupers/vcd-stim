@@ -274,7 +274,7 @@ for ii = 1:length(stim_row)
                 if strcmp(run_table.event_name(stim_row(ii)),'stim2') && any(isnan(run_frames.frame_im_nr(curr_frames,side)))
                     
                     % If this is a "perception" IMG demo trial, we show the actual image during stim2.
-                    if run_table.session_type(stim_row(ii)) == 2 && params.is_demo==1 && ~params.is_wide
+                    if run_table.session_type(stim_row(ii)) == 2 && params.is_demo && ~params.is_wide
                         if ~isnan(run_frames.frame_im_nr(curr_frames(1),side))
                             assert(all(isequal(run_frames.frame_im_nr(curr_frames,side),run_table.stim2_im_nr(stim_row(ii),side)))); % insert actual stim instead of vivid rating image
                         end
@@ -443,8 +443,28 @@ for ii = 1:length(stim_row)
                             && run_table.is_catch(stim_row(ii)) == 0
                         
                         if ~isnan(run_table.condition_nr(stim_row(ii),side))
-                            run_images{curr_frames(1),side} = all_images.img_prompt(:,:,:,end); % 700x700x3 pixels "How vivid?" text image
-                            % no run_alpha_masks
+                            % PERCEPTION TRIAL IN DEEP DEMO
+                            if run_table.session_type(stim_row(ii)) == 2 && params.is_demo && ~params.is_wide
+                                % GABORS: 6D array: [x,y,orient,contrast,phase,delta]
+                                idx0 = find(all_images.info.gabor.unique_im==unique_im);
+                                gbr_ori      = all_images.info.gabor.orient_deg(idx0);
+                                gbr_contrast = all_images.info.gabor.contrast(idx0);
+                                gbr_phase    = all_images.info.gabor.phase_deg(idx0);
+                                ori_idx      = all_images.info.gabor.orient_i(idx0);
+                                con_idx      = all_images.info.gabor.contrast_i(idx0);
+                                
+                                % check if stim params match
+                                assert(isequal( run_table.orient_dir(stim_row(ii),side) , gbr_ori));
+                                assert(isequal( run_table.contrast(stim_row(ii),side), gbr_contrast));
+                                assert(isequal( run_table.gbr_phase(stim_row(ii),side), gbr_phase));
+                                
+                                run_images{curr_frames(1),side} = all_images.gabor(:,:,:,ori_idx,con_idx,1);
+                                run_alpha_masks{curr_frames(1),side} = []; %all_images.alpha.gabor(:,:,ori_idx,con_idx,1);
+                                
+                            else
+                                run_images{curr_frames(1),side} = all_images.img_prompt(:,:,:,end); % 700x700x3 pixels "How vivid?" text image
+                                % no run_alpha_masks
+                            end
                         end
                         assert(isnan(run_table.correct_response(stim_row(ii))))  % no objective correct response
                         
@@ -607,8 +627,47 @@ for ii = 1:length(stim_row)
                             && run_table.is_catch(stim_row(ii)) == 0
                         
                         if ~isnan(run_table.condition_nr(stim_row(ii),side))
-                            run_images{curr_frames(1),side} = all_images.img_prompt(:,:,:,end); % 700x700x3 pixels "How vivid?" text image
-                            % no run_alpha_masks
+                            % PERCEPTION TRIAL IN DEEP DEMO
+                            if run_table.session_type(stim_row(ii)) == 2 && params.is_demo && ~params.is_wide
+                                % RDKs: 130 mat separate files: 8 directions x 3 coherence levels x 5 deltas (0 + 4 deltas)
+                                stimDir = dir(fullfile(sprintf('%s*',params.stim.rdk.stimfile)));
+                                filename = sprintf('%04d_vcd_rdk_ori%02d_coh%02d_delta%02d',...
+                                    unique_im, ...
+                                    find(run_table.orient_dir(stim_row(ii),side) == params.stim.rdk.dots_direction), ...
+                                    find(run_table.rdk_coherence(stim_row(ii),side) == params.stim.rdk.dots_coherence), ...
+                                    0);
+                                
+                                stimfile = fullfile(stimDir(1).folder,stimDir(1).name,sprintf('%s.mat', filename));
+                                if exist(stimfile,'file')
+                                    load(stimfile, 'frames','rdk_info'); % also contains 'mask', but we don't need that..
+                                else
+                                    error('[%s]: Can''t find RDK stim file!')
+                                end
+                                
+                                % check if stim description matches
+                                idx0 = find(rdk_info.unique_im == unique_im);
+                                dot_motdir = rdk_info.dot_motdir_deg(idx0);
+                                dot_coh    = rdk_info.dot_coh(idx0);
+                                assert(isequal(run_table.rdk_coherence(stim_row(ii),side),dot_coh));
+                                assert(isequal(run_table.orient_dir(stim_row(ii),side),dot_motdir));
+                                
+                                % ensure stimulus duration
+                                frames = frames(:,:,:,1:params.stim.rdk.duration);
+                                
+                                % expand rdk movies into frames
+                                rdk_images = squeeze(mat2cell(frames, size(frames,1), ...
+                                    size(frames,2), size(frames,3), ones(1,size(frames,4))));
+                                
+                                if size(rdk_images,1) < size(rdk_images,2)
+                                    rdk_images = rdk_images';
+                                end
+                                
+                                run_images(curr_frames,side) = rdk_images;
+                                run_alpha_masks(curr_frames,side) = cell(size(rdk_images,1), 1);
+                            else
+                                run_images{curr_frames(1),side} = all_images.img_prompt(:,:,:,end); % 700x700x3 pixels "How vivid?" text image
+                                % no run_alpha_masks
+                            end
                         end
                         assert(isnan(run_table.correct_response(stim_row(ii))))  % no objective correct response
 
@@ -657,8 +716,14 @@ for ii = 1:length(stim_row)
                             && strcmp(run_table.task_class_name(stim_row(ii)),'img')
                                 
                         if ~isnan(run_table.condition_nr(stim_row(ii),side))
-                            run_images{curr_frames(1),side} = all_images.img_prompt(:,:,:,end); % 700x700x3 pixels "How vivid?" text image
-                            % no run_alpha_masks
+                            if run_table.session_type(stim_row(ii)) == 2 && params.is_demo && ~params.is_wide
+                                % PERCEPTION TRIAL in DEEP DEMO
+                                run_images{curr_frames(1),side} = all_images.dot;
+                                run_alpha_masks{curr_frames(1),side} = all_images.alpha.dot;
+                            else
+                                run_images{curr_frames(1),side} = all_images.img_prompt(:,:,:,end); % 700x700x3 pixels "How vivid?" text image
+                                % no run_alpha_masks
+                            end
                         end
                         assert(isnan(run_table.correct_response(stim_row(ii))))  % no objective correct response
                           
@@ -720,20 +785,12 @@ for ii = 1:length(stim_row)
                     elseif strcmp(run_table.event_name(stim_row(ii)),'stim1') && run_table.is_catch(stim_row(ii)) == 0 ...
                             && run_table.is_objectcatch(stim_row(ii)) == 1 && ~strcmp(run_table.task_class_name(stim_row(ii)),'img')
                             
-%                             if any(strcmp(all_images.info.obj.Properties.VariableNames, 'img_quiz_dot_specialcore_stim_nr'))
-%                                 idx = find( (all_images.info.obj.super_cat == run_table.super_cat(stim_row(ii),side)) & ...
-%                                     (all_images.info.obj.basic_cat == run_table.basic_cat(stim_row(ii),side)) & ...
-%                                     (all_images.info.obj.sub_cat == run_table.sub_cat(stim_row(ii),side)) & ...
-%                                     (all_images.info.obj.abs_rot == run_table.orient_dir(stim_row(ii),side)) & ...
-%                                     (all_images.info.obj.rel_rot == 0) & ...
-%                                     isnan(all_images.info.obj.img_quiz_dot_specialcore_stim_nr) );
-%                             else
-                                idx = find( (all_images.info.obj.super_cat == run_table.super_cat(stim_row(ii),side)) & ...
-                                    (all_images.info.obj.basic_cat == run_table.basic_cat(stim_row(ii),side)) & ...
-                                    (all_images.info.obj.sub_cat == run_table.sub_cat(stim_row(ii),side)) & ...
-                                    (all_images.info.obj.abs_rot == run_table.orient_dir(stim_row(ii),side)) & ...
-                                    (all_images.info.obj.rel_rot == 0));
-%                             end
+                            idx = find( (all_images.info.obj.super_cat == run_table.super_cat(stim_row(ii),side)) & ...
+                            (all_images.info.obj.basic_cat == run_table.basic_cat(stim_row(ii),side)) & ...
+                            (all_images.info.obj.sub_cat == run_table.sub_cat(stim_row(ii),side)) & ...
+                            (all_images.info.obj.abs_rot == run_table.orient_dir(stim_row(ii),side)) & ...
+                            (all_images.info.obj.rel_rot == 0));
+                        
                             obj_super = all_images.info.obj.super_cat_name(idx);
                             obj_basic = all_images.info.obj.basic_cat_name(idx);
                             obj_sub   = all_images.info.obj.sub_cat_name(idx);
@@ -818,8 +875,32 @@ for ii = 1:length(stim_row)
                             && run_table.is_catch(stim_row(ii)) == 0 && (run_table.is_objectcatch(stim_row(ii)) == 0 || isnan(run_table.is_objectcatch(stim_row(ii))))
                         
                         if ~isnan(run_table.condition_nr(stim_row(ii),side))
-                            run_images{curr_frames(1),side} = all_images.img_prompt(:,:,:,end); % 700x700x3 pixels "How vivid?" text image
-                            % no run_alpha_masks
+                            % PERCEPTION TRIAL IN DEEP DEMO
+                            if run_table.session_type(stim_row(ii)) == 2 && params.is_demo && ~params.is_wide
+                                idx = find( (all_images.info.obj.super_cat == run_table.super_cat(stim_row(ii),side)) & ...
+                                    (all_images.info.obj.basic_cat == run_table.basic_cat(stim_row(ii),side)) & ...
+                                    (all_images.info.obj.sub_cat == run_table.sub_cat(stim_row(ii),side)) & ...
+                                    (all_images.info.obj.abs_rot == run_table.orient_dir(stim_row(ii),side)) & ...
+                                    (all_images.info.obj.rel_rot == 0));
+                                
+                                obj_super = all_images.info.obj.super_cat_name(idx);
+                                obj_basic = all_images.info.obj.basic_cat_name(idx);
+                                obj_sub   = all_images.info.obj.sub_cat_name(idx);
+                                obj_rotation = all_images.info.obj.abs_rot(idx);
+                                
+                                % check if stim idx matches
+                                assert(isequal(all_images.info.obj.unique_im(idx),     unique_im));
+                                assert(isequal(obj_super,   run_table.super_cat_name(stim_row(ii),side)));
+                                assert(isequal(obj_basic,   run_table.basic_cat_name(stim_row(ii),side)));
+                                assert(isequal(obj_sub,     run_table.sub_cat_name(stim_row(ii),side)));
+                                assert(isequal(obj_rotation,run_table.orient_dir(stim_row(ii),side)));
+                                
+                                run_images{curr_frames(1),side}      = all_images.obj(:,:,:,unique_im==params.stim.obj.unique_im_nrs_core, 1);
+                                run_alpha_masks{curr_frames(1),side} = all_images.alpha.obj(:,:,unique_im==params.stim.obj.unique_im_nrs_core, 1);
+                            else
+                                run_images{curr_frames(1),side} = all_images.img_prompt(:,:,:,end); % 700x700x3 pixels "How vivid?" text image
+                                % no run_alpha_masks
+                            end
                         end
                         assert(isnan(run_table.correct_response(stim_row(ii))))  % no objective correct response        
 
@@ -921,8 +1002,30 @@ for ii = 1:length(stim_row)
                             && run_table.is_catch(stim_row(ii)) == 0
                         
                         if ~isnan(run_table.condition_nr(stim_row(ii),side))
-                            run_images{curr_frames(1),side} = all_images.img_prompt(:,:,:,end); % 700x700x3 pixels "How vivid?" text image
-                            % no run_alpha_masks
+                            % PERCEPTION TRIAL IN DEEP DEMO
+                            if run_table.session_type(stim_row(ii)) == 2 && params.is_demo && ~params.is_wide
+                                idx0 = (all_images.info.ns.super_cat == run_table.super_cat(stim_row(ii),1) & ...
+                                    (all_images.info.ns.basic_cat == run_table.basic_cat(stim_row(ii),1) ) & ...
+                                    (all_images.info.ns.sub_cat == run_table.sub_cat(stim_row(ii),1)) & ...
+                                    (ismember(all_images.info.ns.unique_im, params.stim.ns.unique_im_nrs_core)));
+                                
+                                obj_super = all_images.info.ns.super_cat(idx0);
+                                obj_basic = all_images.info.ns.basic_cat(idx0);
+                                obj_sub   = all_images.info.ns.sub_cat(idx0);
+                                
+                                % check if stim idx matches
+                                assert(isequal(all_images.info.ns.unique_im(idx0),unique_im));
+                                assert(isequal(obj_super,run_table.super_cat(stim_row(ii),1)))
+                                assert(isequal(obj_basic,run_table.basic_cat(stim_row(ii),1)))
+                                assert(isequal(obj_sub,run_table.sub_cat(stim_row(ii),1)))
+                                
+                                % third dim has image and alpha mask
+                                run_images{curr_frames(1),side} = all_images.ns.scenes(:,:,:,i4,i5,i6);
+                                run_alpha_masks{curr_frames(1),side} = [];
+                            else
+                                run_images{curr_frames(1),side} = all_images.img_prompt(:,:,:,end); % 700x700x3 pixels "How vivid?" text image
+                                % no run_alpha_masks
+                            end
                         end
                         assert(isnan(run_table.correct_response(stim_row(ii))))  % no objective correct response
                         
