@@ -192,7 +192,7 @@ else
    % timing DEEP DEMO
     exp.run.pre_blank_dur_DEEP_DEMO     = presentationrate_hz * 4.0;       % pre-run blank period: 4 seconds in number of presentation frames
     exp.run.post_blank_dur_DEEP_DEMO    = presentationrate_hz * 4.0;       % post-blank period: 4 seconds in number of presentation frames
-    exp.run.total_run_dur_DEEP_DEMO     = presentationrate_hz * 376;       % TOTAL RUN DUR = 376 s or 22560 time frames
+    exp.run.total_run_dur_DEEP_DEMO     = presentationrate_hz * 352;       % TOTAL RUN DUR = 352 s or 21,120 time frames
 
     
     
