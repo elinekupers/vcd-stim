@@ -252,9 +252,9 @@ if all(cond_table0.stim_class==5) % NS
     stim2_is_match(noncatch_trials_idx,1) = stim2_is_match0;
     
     
-    cond_table0.stim2_im_nr(noncatch_trials_idx,:) = stim2_im_nr;
-    cond_table0.is_lure(noncatch_trials_idx,:)     = stim2_is_lure;
-    cond_table0.stim2_delta(noncatch_trials_idx,:) = stim2_is_match;
+    cond_table0.stim2_im_nr(cond_table0.is_catch==0,:) = stim2_im_nr(noncatch_trials_idx,:);
+    cond_table0.is_lure(cond_table0.is_catch==0,:)     = stim2_is_lure(noncatch_trials_idx,:);
+    cond_table0.stim2_delta(cond_table0.is_catch==0,:) = stim2_is_match(noncatch_trials_idx,:);
     
     clear stim2_im_nr0 stim2_is_lure0 stim2_is_match0
     
