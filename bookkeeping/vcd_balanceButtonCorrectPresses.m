@@ -80,8 +80,10 @@ elseif strcmp(env_type, 'BEHAVIOR')
     	nr_unique_stim_repeat_single = 1;
     	nr_unique_stim_repeat_double = 1;
 	elseif ~params.is_wide && params.is_demo
-			total_catch_trials = zeros(5,10);
-			max_diff_leftright_cueing = 12;
+        total_catch_trials = zeros(5,10);
+        max_diff_leftright_cueing = 12;
+        nr_unique_stim_repeat_single = 2;
+        nr_unique_stim_repeat_double = 2;
 	else
 		error('wtf')
 	end
