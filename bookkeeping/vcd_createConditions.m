@@ -961,11 +961,11 @@ else % Recreate conditions and blocks and trials
                             end
                         end
                         if st==2
-                            if ~(abs(floor(empirical_nr_of_trials)-expected_nr_of_trials)<=(scc_tolerance(st)+ltm_tolerance(st))) % we allow for x trials difference per stim class due to imbalanced nr of trials for SCC
+                            if ~(abs(floor(empirical_nr_of_trials)-expected_nr_of_trials)<=(scc_tolerance+ltm_tolerance)) % we allow for x trials difference per stim class due to imbalanced nr of trials for SCC
                                 warning('[%s]: %s: there is a difference of %d between the number empirical and expected trials for version B!', mfilename, params.exp.stimclassnames{ii}, abs(floor(empirical_nr_of_trials)-expected_nr_of_trials))
                             end
                         else
-                            assert(abs(floor(empirical_nr_of_trials)-expected_nr_of_trials)<=(scc_tolerance(st)+ltm_tolerance(st))); % we allow for x trials difference per stim class due to imbalanced nr of trials for SCC
+                            assert(abs(floor(empirical_nr_of_trials)-expected_nr_of_trials)<=(scc_tolerance+ltm_tolerance)); % we allow for x trials difference per stim class due to imbalanced nr of trials for SCC
                         end
                     end
                 end
