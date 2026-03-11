@@ -83,6 +83,16 @@ all_images = struct;
     'wanteyetracking', false, 'all_images',all_images, ...
     'exp_env',2, 'is_demo', true, 'is_wide', false);
 
+
+% Demo Session 1A: Runs [1-3,7-10]       have at least 1 LTM-NS block, runs [4-6]       have no LTM-NS blocks
+% Demo Session 1B: Runs [2,5-7,10]       have at least 1 LTM-NS block, runs [1,3,4,8,9] have no LTM-NS blocks
+% Demo Session 2A: Runs [1,2,3-6,7,8,10] have at least 1 LTM-NS block, runs [5,9]       have no LTM-NS blocks
+% Demo Session 2B: Runs [1,3,5-7,10]     have at least 1 LTM-NS block, runs [2,4,8,9]   have no LTM-NS blocks
+% Demo Session 3A: Runs [3-10]           have at least 1 LTM-NS block, runs [1,2]       have no LTM-NS blocks
+% Demo Session 3B: Runs [1,3,7-10]       have at least 1 LTM-NS block, runs [2,4-6]     have no LTM-NS blocks
+% Demo Session 4A: Runs [3-9]            have at least 1 LTM-NS block, runs [1,2,10]    have no LTM-NS blocks
+% Demo Session 4B: Runs [1-7,9]          have at least 1 LTM-NS block, runs [8,10]      have no LTM-NS blocks
+
 %% rerun behavioral performance analysis;
 subj_folder = 'vcd_subj999_ses01';
 mat_file    = 'behavior_20250623124130_vcd_subj999_ses01_A_run01.mat';
