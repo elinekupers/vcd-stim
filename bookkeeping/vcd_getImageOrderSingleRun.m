@@ -72,7 +72,7 @@ elseif strcmp(env_type, 'BEHAVIOR')
         run_ok = ismember([1:params.exp.session.demo.n_runs_per_session(ses_nr,ses_type)],run_nr);
     elseif params.is_demo && ~params.is_wide
         ses_ok = ismember([1:params.exp.session.n_deep_demo_sessions],ses_nr); %#ok<*NBRAK>
-        run_ok = ismember([1:params.exp.session.mri.demo.n_runs_per_session(ses_nr,ses_type)],run_nr);
+        run_ok = ismember([1:params.exp.session.behavior.deep.demo.n_runs_per_session(ses_nr,ses_type)],run_nr);
     else
         ses_ok = ismember([1:params.exp.session.n_behavioral_sessions],ses_nr);
         run_ok = ismember([1:params.exp.session.behavior.n_runs_per_session],run_nr);
