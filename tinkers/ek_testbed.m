@@ -144,28 +144,33 @@ end
 %%
 
 %% DRY-RUN 10 RUNS OF deep MRI EXPERIMENT
-subj_nr = 999; %996;
-ses_nrs = 46;
-ses_types = 2; %[1,2];
+subj_nr = 002; %996;
+ses_nrs = 8:46;
 
 data_dir = fullfile(vcd_rootPath, 'data','MRI',sprintf('vcd_subj%03d',subj_nr));
-
+all_images = struct;
 for ses_nr = ses_nrs
+    
+    if ses_nr == 46
+        ses_types = [1,2];
+    else
+        ses_types = 1;
+    end
+    
     for st = ses_types
 
-%         if ses_nr == 8
-%              all_images = struct;
-%             [data,all_images] = runme_vcdcore(subj_nr, ses_nr, st, 1, '7TAS_BOLDSCREEN32', 'wanteyetracking', false, ...
-%             'all_images',all_images,'wantdatabypass',true,'exp_env',4, 'is_wide', false);
-%             
-%           tt_file = '/Users/kupers/projects/git/toolboxes/vcd-stim/data/MRI/vcd_subj999/vcd_subj999_condition_master_deep_7TAS_BOLDSCREEN32_20260219T140250.mat';
+        if ses_nr == 8
+             
+            [data,all_images] = runme_vcdcore(subj_nr, ses_nr, st, 1, '7TAS_BOLDSCREEN32', 'wanteyetracking', false, ...
+            'all_images',all_images,'wantdatabypass',true,'exp_env',4, 'is_wide', false);
+            
 %             tt_file    = dir(fullfile(data_dir, sprintf('vcd_subj%03d_time_table_master_deep_7TAS_BOLDSCREEN32_2026*.mat',subj_nr)));
 %             load(fullfile(tt_file(end).folder, tt_file(end).name));
 %             writetable(time_table_master,'~/Desktop/time_table_master_deep.csv');
 %             writetable(all_run_frames,'~/Desktop/all_run_frames_deep.csv');
-%         end
+        end
         
-        all_images = struct;
+%         all_images = struct;
         for rr = 1:10
 %             if rr == 1 && ses_nr == 1 && st == 1
 %                 [data,all_images] = runme_vcdcore(subj_nr, ses_nr, st, rr, '7TAS_BOLDSCREEN32', 'wanteyetracking', false, 'is_wide',false, ...
@@ -176,6 +181,28 @@ for ses_nr = ses_nrs
                 [data,all_images] = runme_vcdcore(subj_nr, ses_nr, st, rr, '7TAS_BOLDSCREEN32', 'wanteyetracking', false, 'is_wide',false, ...
                     'all_images',all_images,'wantdatabypass',true,'exp_env',4, 'timetable_file',fullfile(tt_file(end).folder, tt_file(end).name));
 %             end
+        end
+    end
+end
+
+%%
+
+%% DRY-RUN 5 sessions x 5 RUNS OF IMG/LTM DEMO EXPERIMENT
+subj_nr = 3; %996;
+ses_nrs = 1:8;
+
+data_dir = fullfile(vcd_rootPath, 'data','BEHAVIOR',sprintf('vcd_subj%03d',subj_nr));
+all_images = struct;
+for ses_nr = ses_nrs
+
+    for st = [1,2]
+
+        for rr = 1:10
+
+                tt_file = dir(fullfile(data_dir, sprintf('vcd_subj%03d_time_table_master_deep_demo_PPROOM_EIZOFLEXSCAN_2026*.mat',subj_nr)));
+
+                [data,all_images] = runme_vcdcore(subj_nr, ses_nr, st, rr, 'PPROOM_EIZOFLEXSCAN', 'wanteyetracking', false, 'is_wide',false, ...
+                    'is_demo',true,'all_images',all_images,'wantdatabypass',true,'exp_env',4, 'timetable_file',fullfile(tt_file(end).folder, tt_file(end).name));
         end
     end
 end
@@ -222,3 +249,39 @@ end
 results{st} = vcd_checkTimeTable(time_table_master,'behresults',behresults,'is_wide',is_wide);
 
 
+%% DRY-RUN 8 RUNS OF DEEP DEMO LTM/IMG MRI EXPERIMENT
+subj_nr = 996; %996;
+ses_nrs = 1:8;
+
+ses_types = 2;%[1,2];
+
+data_dir = fullfile(vcd_rootPath, 'data','BEHAVIOR',sprintf('vcd_subj%03d',subj_nr));
+
+for ses_nr = ses_nrs
+    for st = ses_types
+
+        if ses_nr == 1
+             all_images = struct;
+            [data,all_images] = runme_vcdcore(subj_nr, ses_nr, st, 1, 'PPROOM_EIZOFLEXSCAN', 'wanteyetracking', false, ...
+            'all_images',all_images,'wantdatabypass',true,'exp_env',4, 'is_wide', false, 'is_demo', true);          
+%             tt_file    = dir(fullfile(data_dir, sprintf('vcd_subj%03d_time_table_master_deep_demo_PPROOM_EIZOFLEXSCAN_2026*.mat',subj_nr)));
+%             load(fullfile(tt_file(end).folder, tt_file(end).name));
+%             writetable(time_table_master,'~/Desktop/time_table_master_deep.csv');
+%             writetable(all_run_frames,'~/Desktop/all_run_frames_deep.csv');
+        end
+        
+        all_images = struct;
+        for rr = 1:10
+%             if rr == 1 && ses_nr == 1 && st == 1
+%                 [data,all_images] = runme_vcdcore(subj_nr, ses_nr, st, rr, '7TAS_BOLDSCREEN32', 'wanteyetracking', false, 'is_wide',false, ...
+%                     'all_images',all_images,'wantdatabypass',true,'exp_env',4);
+%             else
+                tt_file = dir(fullfile(data_dir, sprintf('vcd_subj%03d_time_table_master_deep_demo_PPROOM_EIZOFLEXSCAN_2026*.mat',subj_nr)));
+
+                [data,all_images] = runme_vcdcore(subj_nr, ses_nr, st, rr, 'PPROOM_EIZOFLEXSCAN', 'wanteyetracking', false, 'is_wide',false, ...
+                    'all_images',all_images,'wantdatabypass',true,'exp_env',4, 'is_wide', false, 'is_demo', true, ...
+                    'timetable_file',fullfile(tt_file(end).folder, tt_file(end).name));
+%             end
+        end
+    end
+end
