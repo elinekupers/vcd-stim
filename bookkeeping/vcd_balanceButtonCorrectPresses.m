@@ -69,6 +69,7 @@ if strcmp(env_type, 'MRI')
     nr_unique_stim_repeat_single = 1;
     nr_unique_stim_repeat_double = 2;
     ltm_cat_ns_ratio = 3;
+    ltm_cuing_diff_lr = 4;
     if params.is_wide
         total_catch_trials = params.exp.nr_catch_trials_wide;
     else
@@ -85,6 +86,7 @@ elseif strcmp(env_type, 'BEHAVIOR')
         nr_unique_stim_repeat_single = 2;
         nr_unique_stim_repeat_double = 2;
         ltm_cat_ns_ratio = 6;
+        ltm_cuing_diff_lr = 10;
 	else
 		error('wtf')
 	end
@@ -276,7 +278,7 @@ for ses = session_nrs
 
                                                 hc = histcounts(cued_conds(1:nr_trials),[1:4]);
                                                 block_tmp = length(order)/4;
-                                                if abs(diff([hc(1),hc(2)]))<=4 % we allow for some inequalities in cuing
+                                                if abs(diff([hc(1),hc(2)]))<=ltm_cuing_diff_lr % we allow for some inequalities in cuing
                                                     break;
                                                 end
                                             end
@@ -337,8 +339,12 @@ for ses = session_nrs
                                             elseif all(ismember(cued_conds(bbi),[1,2]))
                                                 cued_counts = histcounts(cued_conds(bbi), [1:3]); % histcount(x,[1:3]) corresponds to bins = [0,1,2]
                                                 if tc == 6
-                                                    if diff(cued_counts) <=2
-                                                        bb_ok(bb) = 1;
+                                                    if params.is_demo && ~params.is_wide
+                                                        bb_ok(bb) = 1; % we don't care
+                                                    else
+                                                        if diff(cued_counts) <=2
+                                                            bb_ok(bb) = 1;
+                                                        end
                                                     end
                                                 elseif diff(cued_counts) <= max_diff_leftright_cueing
                                                     bb_ok(bb) = 1;
@@ -602,7 +608,7 @@ for ses = session_nrs
                                         clear tmp
                                         
                                         if params.is_demo && ~params.is_wide
-                                            if diff(n) < length(n)/2 && n1_ns_ok && n1_clsc_ok % we want somewhat balanced button presses.
+                                            if diff(n) < nr_blocks/2 && n1_ns_ok && n1_clsc_ok % we want somewhat balanced button presses.
                                                     reshuffle_me = false;
                                                 break % hurray
                                             end
@@ -776,8 +782,14 @@ for curr_sc = 1:(length(unique_stim_classes)-1)
                 start_block_nr = max(condition_master.stim_class_unique_block_nr(allocated_idx)) + 1;
             end
             % update stim_class_unique_block_nr
-            nr_blocks = length(unused_idx)/params.exp.nr_trials_per_block(unique_stim_classes(curr_sc),unique_task_classes(curr_tc));
-            
+            if params.is_demo && ~params.is_wide
+                if length(unused_idx) <=2 % ignore used trials if there are 2 or fewer
+                    unused_idx = [];
+                    nr_blocks = NaN;
+                end
+            else
+                nr_blocks = length(unused_idx)/params.exp.nr_trials_per_block(unique_stim_classes(curr_sc),unique_task_classes(curr_tc));
+            end
             if ~isnan(nr_blocks)
                 if mod(nr_blocks,1)~=0
                     tmp = repelem(start_block_nr:(start_block_nr+nr_blocks-1),params.exp.nr_trials_per_block(unique_stim_classes(curr_sc),unique_task_classes(curr_tc)));
