@@ -400,9 +400,9 @@ else
     exp.session.demo.nr_blocks_per_run               = repmat([7,NaN],3,1);  % 7 blocks/run, three sessions, one session types
     exp.session.mri.wide.nr_blocks_per_run           = [7,7];                % 7 blocks/run, two session types
     
-    exp.session.behavior.deep.demo.nr_blocks_per_run           = NaN(46,2);            % allocate space for 30 sessions
-    exp.session.behavior.deep.demo.nr_blocks_per_run(1:45,:)   = repmat([7,NaN],45,1); % 7 blocks/run, one session types
-    exp.session.behavior.deep.demo.nr_blocks_per_run(46,:)     = [7,7];                % 7 blocks/run, two session types
+    exp.session.mri.deep.nr_blocks_per_run           = NaN(46,2);            % allocate space for 30 sessions
+    exp.session.mri.deep.nr_blocks_per_run(1:45,:)   = repmat([7,NaN],45,1); % 7 blocks/run, one session types
+    exp.session.mri.deep.nr_blocks_per_run(46,:)     = [7,7];                % 7 blocks/run, two session types
     
     exp.session.behavior.deep.demo.nr_blocks_per_run           = repmat([5,5],8,1);    % 8 blocks/run, 8 sessions, 2 session types
     
