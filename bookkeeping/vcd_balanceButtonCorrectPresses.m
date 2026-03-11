@@ -84,7 +84,7 @@ elseif strcmp(env_type, 'BEHAVIOR')
         max_diff_leftright_cueing = 12;
         nr_unique_stim_repeat_single = 2;
         nr_unique_stim_repeat_double = 2;
-        ltm_cat_ns_ratio = 4;
+        ltm_cat_ns_ratio = 6;
 	else
 		error('wtf')
 	end
@@ -340,7 +340,7 @@ for ses = session_nrs
                                                     if diff(cued_counts) <=2
                                                         bb_ok(bb) = 1;
                                                     end
-                                                elseif diff(cued_counts) == max_diff_leftright_cueing
+                                                elseif diff(cued_counts) <= max_diff_leftright_cueing
                                                     bb_ok(bb) = 1;
                                                 end
                                             end
@@ -602,7 +602,7 @@ for ses = session_nrs
                                         clear tmp
                                         
                                         if params.is_demo && ~params.is_wide
-                                            if diff(n) < 20 && n1_ns_ok && n1_clsc_ok % we want somewhat balanced button presses.
+                                            if diff(n) < length(n)/2 && n1_ns_ok && n1_clsc_ok % we want somewhat balanced button presses.
                                                     reshuffle_me = false;
                                                 break % hurray
                                             end
