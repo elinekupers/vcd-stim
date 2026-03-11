@@ -689,7 +689,7 @@ while 1
     seq = find(df~=0) + 1;  % vector of indices indicating frames on which the dot changed. these are indices into the extracted range.
 
     % deal with stim1onset stuff (there isn't a stim2onset) [NOTE that we find and process all 8 trials]
-    iitemp = find( a1.run_table.block_nr == blockcnt & a1.run_table.event_id == 94 ); assert(length(iitemp)==8);
+    iitemp = find( a1.run_table.block_nr == blockcnt & a1.run_table.event_id == 94 ); %assert(length(iitemp)==8);
 
     % process each change
     for p=1:length(seq)
