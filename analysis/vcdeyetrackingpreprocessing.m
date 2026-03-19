@@ -100,6 +100,7 @@ function [results,behresults] = vcdeyetrackingpreprocessing(filename,behfilename
 %            histograms (0.25-deg bins).
 %
 % History:
+% - 2026/03/19 - fix crash for rare occasions with zero blinks
 % - 2025/08/23 - add <etloc> derivation from the edf file
 % - 2025/08/15 - add behresults.trialinfo output to handle <stim1maxdeviance> and <stim2maxdeviance>
 % - 2025/07/24 - change default blinkpad to [100 100]; implement half-blink removal;
@@ -261,8 +262,10 @@ yrng = hfun(coords([4 2])'+[.5 -.5]);  % a nice y-range (full screen)
 
 % remove blinks by setting data to NaN
 badix = [];
-for p=1:length(b1.eblink.stime)
-  badix = [badix b1.eblink.stime(p)-blinkpad(1):b1.eblink.etime(p)+blinkpad(2)];
+if ~isempty(b1.eblink)  % in rare occasions, there might be zero blinks
+  for p=1:length(b1.eblink.stime)
+    badix = [badix b1.eblink.stime(p)-blinkpad(1):b1.eblink.etime(p)+blinkpad(2)];
+  end
 end
 ii = ismember(results.eyedata(1,:),badix);
 results.eyedata(2:4,ii) = NaN;
