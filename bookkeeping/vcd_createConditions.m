@@ -771,7 +771,7 @@ else % Recreate conditions and blocks and trials
         
         for ii = 1:length(params.exp.stimclassnames)
             
-            if (strcmp(env_type,'MRI') && ~params.is_wide) || (strcmp(env_type,'BEHAVIOR') && ~params.is_wide && ~params.is_demo)
+            if (strcmp(env_type,'MRI') && ~params.is_wide) || (strcmp(env_type,'BEHAVIOR') && ~params.is_wide && params.is_demo)
                 scc_tolerance = 2*squeeze(sum(all_sessions(ii,3,:,st))); % max 2 per block session type A / 0 per block session type B // A: 104 / B: 0 blocks total
                 ltm_tolerance = 2*squeeze(sum(all_sessions(ii,6,:,st))); % max 1 per block sessoin type A / 2 per block session type B // A: 729 / B: 19 blocks total
             end
@@ -843,18 +843,24 @@ else % Recreate conditions and blocks and trials
                     if ~params.is_demo
                         assert(isequal(size(N,2), length(all_unique_im.(params.exp.stimclassnames{ii}).unique_im_nr)))
                     end
-                    if ~params.is_wide && params.is_demo
-                        colsL = tmp.stim_nr_left(~ismember(tmp.task_class,[3,6,7]) & strcmp(tmp.stim_class_name(:,1), params.exp.stimclassnames{ii})); % exclude SCC, we deal with those trials separately
-                        colsR = tmp.stim_nr_right(~ismember(tmp.task_class,[3,6,7]) & strcmp(tmp.stim_class_name(:,2), params.exp.stimclassnames{ii})); % exclude SCC, we deal with those trials separately
-                        colsLR = [colsL(:),colsR(:)]; % if this fails, then we don't have equal left and right stimulus numbers for classic stimuli
-                        colsLR = [colsL(:),colsR(:)]; % if this fails, then we don't have equal left and right stimulus numbers for classic stimuli
+                    if params.is_demo
+                        if params.is_wide
+                            colsL = tmp.stim_nr_left(~ismember(tmp.task_class,[3,6,7]) & strcmp(tmp.stim_class_name(:,1), params.exp.stimclassnames{ii})); % exclude SCC, we deal with those trials separately
+                            colsR = tmp.stim_nr_right(~ismember(tmp.task_class,[3,6,7]) & strcmp(tmp.stim_class_name(:,2), params.exp.stimclassnames{ii})); % exclude SCC, we deal with those trials separately
+                            colsLR = [colsL(:),colsR(:)]; % if this fails, then we don't have equal left and right stimulus numbers for classic stimuli
+                            
+                            colsLR_scc = [tmp.stim_nr_left(tmp.task_class ==3 & strcmp(tmp.stim_class_name(:,1), params.exp.stimclassnames{ii})); ... % deal with scc trials
+                                tmp.stim_nr_right(tmp.task_class ==3 & strcmp(tmp.stim_class_name(:,2), params.exp.stimclassnames{ii}))];
+                            colsLR_ltm = [];
+                            colsLR_img = [];
+                            unique_im_from_table(ii) = length(unique(colsLR)); % this should be 24 for GBR or RDK, 16 for DOT/OBJ
+                        else
+                            colsLR_ltm = [tmp.stim_nr_left(tmp.task_class ==6 & strcmp(tmp.stim_class_name(:,1), params.exp.stimclassnames{ii})); ... % deal with ltm trials
+                                tmp.stim_nr_right(tmp.task_class ==6 & strcmp(tmp.stim_class_name(:,2), params.exp.stimclassnames{ii}))];
+                            colsLR_img = [tmp.stim_nr_left(tmp.task_class ==7 & strcmp(tmp.stim_class_name(:,1), params.exp.stimclassnames{ii})); ... % deal with ltm trials
+                                tmp.stim_nr_right(tmp.task_class ==7 & strcmp(tmp.stim_class_name(:,2), params.exp.stimclassnames{ii}))];
+                        end
                         
-                        colsLR_scc = [tmp.stim_nr_left(tmp.task_class ==3 & strcmp(tmp.stim_class_name(:,1), params.exp.stimclassnames{ii})); ... % deal with scc trials
-                            tmp.stim_nr_right(tmp.task_class ==3 & strcmp(tmp.stim_class_name(:,2), params.exp.stimclassnames{ii}))];
-                        colsLR_ltm = [tmp.stim_nr_left(tmp.task_class ==6 & strcmp(tmp.stim_class_name(:,1), params.exp.stimclassnames{ii})); ... % deal with ltm trials
-                            tmp.stim_nr_right(tmp.task_class ==6 & strcmp(tmp.stim_class_name(:,2), params.exp.stimclassnames{ii}))];
-                        colsLR_img = [tmp.stim_nr_left(tmp.task_class ==7 & strcmp(tmp.stim_class_name(:,1), params.exp.stimclassnames{ii})); ... % deal with ltm trials
-                            tmp.stim_nr_right(tmp.task_class ==7 & strcmp(tmp.stim_class_name(:,2), params.exp.stimclassnames{ii}))];
                     else
                         colsL = tmp.stim_nr_left(tmp.task_class ~=3 & strcmp(tmp.stim_class_name(:,1), params.exp.stimclassnames{ii})); % exclude SCC, we deal with those trials separately
                         colsR = tmp.stim_nr_right(tmp.task_class ~=3 & strcmp(tmp.stim_class_name(:,2), params.exp.stimclassnames{ii})); % exclude SCC, we deal with those trials separately
@@ -862,23 +868,30 @@ else % Recreate conditions and blocks and trials
                         
                         colsLR_scc = [tmp.stim_nr_left(tmp.task_class ==3 & strcmp(tmp.stim_class_name(:,1), params.exp.stimclassnames{ii})); ... % deal with scc trials
                             tmp.stim_nr_right(tmp.task_class ==3 & strcmp(tmp.stim_class_name(:,2), params.exp.stimclassnames{ii}))];
+                        unique_im_from_table(ii) = length(unique(colsLR)); % this should be 24 for GBR or RDK, 16 for DOT/OBJ
                     end
-                    unique_im_from_table(ii) = length(unique(colsLR)); % this should be 24 for GBR or RDK, 16 for DOT/OBJ
+                    
                     
                     % Calculate the expected nr of trials from the params.exp.behavior.ses_blocks table.
                     expected_nr_of_trials = sum(sum(all_sessions(ii,:,:,st).*params.exp.nr_trials_per_block(ii,:)));
                     
                     if params.is_demo && params.is_wide
-                        expected_nr_of_trials = expected_nr_of_trials*0.5; % again: demo has half the trials per block
+                       expected_nr_of_trials = expected_nr_of_trials*0.5; % again: demo has half the trials per block
                     end
                     
-                    if strcmp(params.exp.stimclassnames{ii},'obj')
-                        empirical_nr_of_trials = ceil(sum([size(colsLR,1),size(unique(colsLR_scc),1)/2])+sum(condition_master.is_objectcatch==1)); % for OBJ: sum regular trials, scc trials and objectcatch trials
+                    if params.is_demo && ~params.is_wide
+                        empirical_nr_of_trials = sum([size(colsLR_ltm,1)/2, size(colsLR_img,1)]);  % for GBR/RDK/DOT: sum regular trials, scc trials
+                        assert((abs(floor(empirical_nr_of_trials)-expected_nr_of_trials))<=ltm_tolerance); % we allow for 1-2 trials difference per stim class due to imbalanced nr of trials for LTM
                     else
-                        empirical_nr_of_trials = sum([size(colsLR,1),size(unique(colsLR_scc),1)/2]);  % for GBR/RDK/DOT: sum regular trials, scc trials
+                        if strcmp(params.exp.stimclassnames{ii},'obj')
+                            empirical_nr_of_trials = ceil(sum([size(colsLR,1),size(unique(colsLR_scc),1)/2])+sum(condition_master.is_objectcatch==1)); % for OBJ: sum regular trials, scc trials and objectcatch trials
+                        else
+                            empirical_nr_of_trials = sum([size(colsLR,1),size(unique(colsLR_scc),1)/2]);  % for GBR/RDK/DOT: sum regular trials, scc trials
+                        end
+                        assert((abs(floor(empirical_nr_of_trials)-expected_nr_of_trials))<=scc_tolerance); % we allow for 1-2 trials difference per stim class due to imbalanced nr of trials for SCC
                     end
+
                     
-                    assert((abs(floor(empirical_nr_of_trials)-expected_nr_of_trials))<=scc_tolerance); % we allow for 1-2 trials difference per stim class due to imbalanced nr of trials for SCC
                     
                     
                 else % if we deal with MRI and version A/B
