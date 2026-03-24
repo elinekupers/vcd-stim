@@ -214,7 +214,7 @@ p.addParameter('userkeys'           , {'1','2','3','4'}, @(x) iscell(x) || isstr
 p.addParameter('store_imgs'         , false     , @islogical)  % whether to save figures locally (true) or not (false).                      
 p.addParameter('is_demo'            , false     , @islogical)  % whether this is a demo run (true) or not (false).
 p.addParameter('wanteyetrackingfigures', true   , @islogical)  % whether to plot preliminary analysis results of eyetracking data.
-p.addParameter('is_wide'            , false     , @islogical)  % whether this is a wide session (true) or a deep session (false).
+p.addParameter('is_wide'            , false     , @islogical)  % whether this is a wide session (true) or a deep session (false). If this is a behavioral session, is_wide = true will load runs without LTM/IMG, if is_wide = false, it will load only LTM/IMG runs
 
 % Parse inputs
 p.parse(subj_nr, ses_nr, ses_type, run_nr, dispName, varargin{:});
@@ -244,7 +244,7 @@ if strcmp(params.env_type,'BEHAVIOR')
         if ~ismember(params.ses_nr,[1:3]), error('[%s]: Session number can only be 1, 3, or 3 for demo runs',mfilename); end
         assert(isequal(params.ses_type,1));
     elseif params.is_demo && ~params.is_wide % deep demo runs for LTM/IMG
-        assert(ismember(params.ses_nr, [1:8]))
+        assert(ismember(params.ses_nr, [1:16]))
         assert(ismember(params.ses_type, [1,2]));
     else % regular behavioral run
         assert(params.run_nr>=1 && params.run_nr<=15);
