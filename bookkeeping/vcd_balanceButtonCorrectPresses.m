@@ -608,7 +608,7 @@ for ses = session_nrs
                                         clear tmp
                                         
                                         if params.is_demo && ~params.is_wide
-                                            if diff(n) < nr_blocks/2 && n1_ns_ok && n1_clsc_ok % we want somewhat balanced button presses.
+                                            if diff(n) <= nr_blocks/2 && n1_ns_ok && n1_clsc_ok % we want somewhat balanced button presses.
                                                     reshuffle_me = false;
                                                 break % hurray
                                             end
