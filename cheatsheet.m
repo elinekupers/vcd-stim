@@ -71,19 +71,32 @@ all_images = struct;
     'exp_env',2, 'is_demo', true, 'is_wide', true);
 
 %% Run DEEP demo
-% Demo Session 1-4 A = LTM-only REGULAR TEST trials (10 runs per session).
-% Demo Session 1-4 B = LTM-only STUDY trials (10 runs per session).
-% Demo Session 5-8 A = IMG-only REGULAR TEST trials (10 runs per session). 
-% Demo Session 5-8 B = IMG-only PERCEPTION trials (10 runs per session).
-demo_session = 5; % can be 1 through 8
-demo_session_type = 2; % can be 1 (A - regular) or 2 (B - LTM study/ IMG perception)
-run_nr      = 1; % can be 1-10 for each session
+% Demo Session 1-4 A = LTM-only REGULAR TEST trials (10 runs per session, 5 blocks per run).
+% Demo Session 1-4 B = LTM-only STUDY trials (10 runs per session, 5 blocks per run).
+% Demo Session 5-8 A = IMG-only REGULAR TEST trials (10 runs per session, 5 blocks per run). 
+% Demo Session 5-8 B = IMG-only PERCEPTION trials (10 runs per session, 5 blocks per run).
+
+% Demo Session 9-12 A = LTM-CLASSIC REGULAR TEST trials (10 runs per session, 5 blocks per run).
+% Demo Session 9-12 B = LTM-CLASSIC STUDY trials (10 runs per session, 5 blocks per run).
+% Demo Session 13-16 A = LTM-NS REGULAR TEST trials (10 runs per session, 5 blocks per run). 
+% Demo Session 13-16 B = LTM-NS STUDY trials (10 runs per session, 5 blocks per run).
+
+subj_nr = 998;
+tt_file = fullfile(vcd_rootPath,'data','BEHAVIOR', sprintf('vcd_subj%03d',subj_nr), sprintf('vcd_subj%03d_time_table_master_deep_demo_PPROOM_EIZOFLEXSCAN_2026*.mat',subj_nr));
 all_images = struct;
-[data,all_images] = runme_vcdcore(999, demo_session, demo_session_type, run_nr, 'PPROOM_EIZOFLEXSCAN', ...
-    'wanteyetracking', false, 'all_images',all_images, ...
-    'exp_env',2, 'is_demo', true, 'is_wide', false);
 
+for demo_session = [1:8] % can be 1 through 8
+    for demo_session_type = [1:2] % can be 1 (A - regular) or 2 (B - LTM study/ IMG perception)
+        for run_nr = [1:10] % can be 1-10 for each session
+            [data,all_images] = runme_vcdcore(998, demo_session, demo_session_type, run_nr, 'EKHOME_ASUSVE247', ...
+                'wanteyetracking', false, 'all_images',all_images, ...
+                'exp_env',4, 'is_demo', true, 'is_wide', false); %, ...
+                %'timetable_file',tt_file);
+        end
+    end
+end
 
+% LTM MIXED RUNS INFO:
 % Demo Session 1A: Runs [1-3,7-10]       have at least 1 LTM-NS block, runs [4-6]       have no LTM-NS blocks
 % Demo Session 1B: Runs [2,5-7,10]       have at least 1 LTM-NS block, runs [1,3,4,8,9] have no LTM-NS blocks
 % Demo Session 2A: Runs [1,2,3-6,7,8,10] have at least 1 LTM-NS block, runs [5,9]       have no LTM-NS blocks
