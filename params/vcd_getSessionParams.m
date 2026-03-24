@@ -156,9 +156,9 @@ else
     exp.session.mri.deep.baseline_sessions              = 1:6;              % Deep sessions dedicated to establish baseline, prior to introducing LTM/IMG
 
     % DEEP DEMO runs
-    exp.session.behavior.deep.demo.session_nrs          = 8;                   % 8 different demo runs
-    exp.session.behavior.deep.demo.session_types        = repmat([1,2],8,1);   % 2 demo session type (no A/B)
-    exp.session.behavior.deep.demo.n_runs_per_session   = repmat([10,10],8,1); % 10 runs for each of the 8 demo sessions/sessiontypes
+    exp.session.behavior.deep.demo.session_nrs          = 16;                   % 16 different demo runs: 1-4 = LTM mix, 5-8 = IMG mix, 9-12 = LTM classic only, 13-16 = LTM NS only
+    exp.session.behavior.deep.demo.session_types        = repmat([1,2],16,1);   % 2 demo session type (no A/B): A = test runs, B = LTM study or IMG perception runs
+    exp.session.behavior.deep.demo.n_runs_per_session   = repmat([10,10],16,1); % 10 runs for each of the 16 demo sessions/sessiontypes (5 blocks per run)
 
     
     % MORE GENERAL PARAMS
@@ -404,7 +404,7 @@ else
     exp.session.mri.deep.nr_blocks_per_run(1:45,:)   = repmat([7,NaN],45,1); % 7 blocks/run, one session types
     exp.session.mri.deep.nr_blocks_per_run(46,:)     = [7,7];                % 7 blocks/run, two session types
     
-    exp.session.behavior.deep.demo.nr_blocks_per_run           = repmat([5,5],8,1);    % 8 blocks/run, 8 sessions, 2 session types
+    exp.session.behavior.deep.demo.nr_blocks_per_run = repmat([5,5],16,1);    % 5 blocks/run, 16 sessions, 2 session types
     
     % Catch trials:
     exp.session.mri.wide.add_catch_trials            = false;                % NO catch trials for wide MRI experiment
@@ -433,81 +433,123 @@ else
                                                 1	1  0.5	 2	 4	 0	 0	 2	 0	  2; % obj
                                                 1	1  0	 4   8	 0	 0	 4	 4	  4]; % ns
 
-   % DEMO session 1 for behavior (7 blocks)    fix cd  scc  pc  wm ltm img what where how
-   exp.session.demo.ses_blocks(:,:,1,1)     = [ 1	0  0.5	0	 0	 0	 0	 0	 0	  0; % FIX-Gabor,  SCC-ALL 2x
+    % DEMO session 1 for behavior (7 blocks)    fix cd  scc  pc  wm ltm img what where how
+    exp.session.demo.ses_blocks(:,:,1,1)     = [1	0  0.5	0	 0	 0	 0	 0	 0	  0; % FIX-Gabor,  SCC-ALL 2x
                                                 0	0  0.5	0	 1	 0	 0	 0	 0	  0; % WM-RDK
                                                 0	1  0.5	0	 0	 0	 0	 0	 0	  0; % CD-Dot
                                                 0	0  0.5	0	 0	 0	 0	 0	 0	  1; % HOW-OBJ
                                                 0	0  0    0    0	 0	 0	 1	 0	  0]; % WHAT-NS
 
-   % DEMO session 2 for behavior (7 blocks)    fix cd  scc  pc  wm ltm img what where how
-   exp.session.demo.ses_blocks(:,:,2,1)     = [ 0	0  0	0	 1	 0	 0	 0	 0	  0; % WM-Gabor
+    % DEMO session 2 for behavior (7 blocks)    fix cd  scc  pc  wm ltm img what where how
+    exp.session.demo.ses_blocks(:,:,2,1)     = [0	0  0	0	 1	 0	 0	 0	 0	  0; % WM-Gabor
                                                 0	0  0	1	 0	 0	 0	 0	 0	  0; % PC-RDK
                                                 1	0  0	1	 0	 0	 0	 0	 0	  0; % FIX-DOT, PC-DOT
                                                 0	0  0	1	 0	 0	 0	 0	 0	  0; % PC-OBJ
                                                 0	1  0	0    0	 0	 0	 0	 1	  0]; % CD-NS, WHERE-NS
 
-   % DEMO session 3 for behavior (7 blocks)    fix cd  scc  pc  wm ltm img what where how
-   exp.session.demo.ses_blocks(:,:,3,1)     = [ 0	0  0	1	 0	 0	 0	 0	 0	  0; % PC-Gabor
+    % DEMO session 3 for behavior (7 blocks)    fix cd  scc  pc  wm ltm img what where how
+    exp.session.demo.ses_blocks(:,:,3,1)     = [0	0  0	1	 0	 0	 0	 0	 0	  0; % PC-Gabor
                                                 0	1  0	0	 0	 0	 0	 0	 0	  0; % CD-RDK
                                                 0	0  0	0	 1	 0	 0	 0	 0	  0; % WM-Dot
                                                 0	0  0	0	 0	 0	 0	 1	 0	  0; % WHAT-OBJ
                                                 1	0  0	0    1	 0	 0	 0	 0	  1]; % FIX-NS, WM-NS, HOW-NS
 
-   % %%%% DEEP LTM/IMG TRAINING AND DEMOS %%%%
-                                            
-   % DEEP DEMO session 1A for LTM test (5 blocks)   fix cd  scc  pc  wm ltm img what where how
-   exp.session.behavior.deep.demo.ses_blocks(:,:,1,1) =     [ 0	0  0	0	 0	10   0	 0	 0	  0; % 
-                                                    0	0  0	0	 0	10	 0	 0	 0	  0; % 
-                                                    0	0  0	0	 0	10	 0	 0	 0	  0; % 
-                                                    0	0  0	0	 0	10	 0	 0	 0	  0; % 
-                                                    0	0  0    0    0	10	 0	 0	 0	  0]; % 
-   % DEEP DEMO session 2-4A for LTM test (5 blocks)
-   exp.session.behavior.deep.demo.ses_blocks(:,:,2,1)     = exp.session.behavior.deep.demo.ses_blocks(:,:,1,1);
-   exp.session.behavior.deep.demo.ses_blocks(:,:,3,1)     = exp.session.behavior.deep.demo.ses_blocks(:,:,1,1);
-   exp.session.behavior.deep.demo.ses_blocks(:,:,4,1)     = exp.session.behavior.deep.demo.ses_blocks(:,:,1,1);
+    % %%%% DEEP LTM/IMG TRAINING AND DEMOS %%%%
+    % DEEP DEMO session 1-4A for LTM test (5 blocks/run)                                         
+    % containing both classic and NS stimblocks          fix cd  scc pc wm ltm img what where how
+    exp.session.behavior.deep.demo.ses_blocks(:,:,1,1)= [0	 0   0	 0	 0	10   0	 0	 0	  0; % 
+                                                         0	 0   0	 0	 0	10	 0	 0	 0	  0; % 
+                                                         0	 0   0	 0	 0	10	 0	 0	 0	  0; % 
+                                                         0	 0   0	 0	 0	10	 0	 0	 0	  0; % 
+                                                         0	 0   0   0   0	10	 0	 0	 0	  0]; % 
+    %
+    exp.session.behavior.deep.demo.ses_blocks(:,:,2,1)     = exp.session.behavior.deep.demo.ses_blocks(:,:,1,1);
+    exp.session.behavior.deep.demo.ses_blocks(:,:,3,1)     = exp.session.behavior.deep.demo.ses_blocks(:,:,1,1);
+    exp.session.behavior.deep.demo.ses_blocks(:,:,4,1)     = exp.session.behavior.deep.demo.ses_blocks(:,:,1,1);
    
-   % Session type 4-7B = practice/learning
-   exp.session.behavior.deep.demo.ses_blocks(:,:,1,2)     = exp.session.behavior.deep.demo.ses_blocks(:,:,1,1);
-   exp.session.behavior.deep.demo.ses_blocks(:,:,2,2)     = exp.session.behavior.deep.demo.ses_blocks(:,:,1,1);
-   exp.session.behavior.deep.demo.ses_blocks(:,:,3,2)     = exp.session.behavior.deep.demo.ses_blocks(:,:,1,1);
-   exp.session.behavior.deep.demo.ses_blocks(:,:,4,2)     = exp.session.behavior.deep.demo.ses_blocks(:,:,1,1);
+    % Session type 1-4B for LTM practice/learning (5 blocks/run), containing both classic and NS stimblocks
+    exp.session.behavior.deep.demo.ses_blocks(:,:,1,2)     = exp.session.behavior.deep.demo.ses_blocks(:,:,1,1);
+    exp.session.behavior.deep.demo.ses_blocks(:,:,2,2)     = exp.session.behavior.deep.demo.ses_blocks(:,:,1,1);
+    exp.session.behavior.deep.demo.ses_blocks(:,:,3,2)     = exp.session.behavior.deep.demo.ses_blocks(:,:,1,1);
+    exp.session.behavior.deep.demo.ses_blocks(:,:,4,2)     = exp.session.behavior.deep.demo.ses_blocks(:,:,1,1);
    
-                                            
-   % DEMO session 8A for IMG test (5 blocks)   fix cd  scc  pc  wm ltm img what where how
-   exp.session.behavior.deep.demo.ses_blocks(:,:,5,1) = [ 0	0  0	0	 0	 0	10	 0	 0	  0; % 
-                                                0	0  0	0	 0	 0	10	 0	 0	  0; % 
-                                                0	0  0	0	 0	 0	10	 0	 0	  0; % 
-                                                0	0  0	0	 0	 0	10	 0	 0	  0; % 
-                                                0	0  0    0    0	 0	10	 0	 0	  0]; % 
-   % DEMO session 9-11A for IMG test (5 blocks)
-   exp.session.behavior.deep.demo.ses_blocks(:,:,6,1)    = exp.session.behavior.deep.demo.ses_blocks(:,:,5,1);
-   exp.session.behavior.deep.demo.ses_blocks(:,:,7,1)   = exp.session.behavior.deep.demo.ses_blocks(:,:,5,1);
-   exp.session.behavior.deep.demo.ses_blocks(:,:,8,1)   = exp.session.behavior.deep.demo.ses_blocks(:,:,5,1);
+   
+    % DEMO session 5-8A for IMG test (5 blocks)            fix cd  scc  pc  wm ltm img what where how
+    exp.session.behavior.deep.demo.ses_blocks(:,:,5,1) = [0   0  0	 0	  0	  0	 10	 0	 0	  0; % 
+                                                          0	  0  0	 0	  0	  0	 10	 0	 0	  0; % 
+                                                          0	  0  0	 0	  0	  0	 10	 0	 0	  0; % 
+                                                          0	  0  0	 0	  0	  0	 10	 0	 0	  0; % 
+                                                          0	  0  0   0    0	  0	 10	 0	 0	  0]; % 
+    %
+    exp.session.behavior.deep.demo.ses_blocks(:,:,6,1)    = exp.session.behavior.deep.demo.ses_blocks(:,:,5,1);
+    exp.session.behavior.deep.demo.ses_blocks(:,:,7,1)   = exp.session.behavior.deep.demo.ses_blocks(:,:,5,1);
+    exp.session.behavior.deep.demo.ses_blocks(:,:,8,1)   = exp.session.behavior.deep.demo.ses_blocks(:,:,5,1);
     
-   % DEMO session 9-11B for IMG perception (5 blocks)
-   exp.session.behavior.deep.demo.ses_blocks(:,:,5,2)   = exp.session.behavior.deep.demo.ses_blocks(:,:,5,1);
-   exp.session.behavior.deep.demo.ses_blocks(:,:,6,2)   = exp.session.behavior.deep.demo.ses_blocks(:,:,5,1);
-   exp.session.behavior.deep.demo.ses_blocks(:,:,7,2)   = exp.session.behavior.deep.demo.ses_blocks(:,:,5,1);
-   exp.session.behavior.deep.demo.ses_blocks(:,:,8,2)   = exp.session.behavior.deep.demo.ses_blocks(:,:,5,1);
+    % DEMO session 5-8B for IMG perception (5 blocks)
+    exp.session.behavior.deep.demo.ses_blocks(:,:,5,2)   = exp.session.behavior.deep.demo.ses_blocks(:,:,5,1);
+    exp.session.behavior.deep.demo.ses_blocks(:,:,6,2)   = exp.session.behavior.deep.demo.ses_blocks(:,:,5,1);
+    exp.session.behavior.deep.demo.ses_blocks(:,:,7,2)   = exp.session.behavior.deep.demo.ses_blocks(:,:,5,1);
+    exp.session.behavior.deep.demo.ses_blocks(:,:,8,2)   = exp.session.behavior.deep.demo.ses_blocks(:,:,5,1);
 
-                                            
-                                            
+    % ** DEEP DEMO SEPARATE CLASSIC/NS STIM CLASS **
+    % DEEP DEMO session 9-12A for LTM-CLASSIC ONLY test (5 blocks/run, 10 runs/session)                                         
+    % containing ONLY classic stimblocks                  fix cd  scc  pc  wm ltm img what where how
+    exp.session.behavior.deep.demo.ses_blocks(:,:,9,1) =  [0	0   0	0	0	13   0	 0	 0	  0; % 
+                                                           0	0   0	0   0	13	 0	 0	 0	  0; % 
+                                                           0	0   0	0   0	12	 0	 0	 0	  0; % 
+                                                           0	0   0	0   0	12	 0	 0	 0	  0; % 
+                                                           0	0   0   0   0	0	 0	 0	 0	  0]; %
+    exp.session.behavior.deep.demo.ses_blocks(:,:,10,1) = [0	0   0	0	0	12   0	 0	 0	  0; % 
+                                                           0	0   0	0   0	13	 0	 0	 0	  0; % 
+                                                           0	0   0	0   0	13	 0	 0	 0	  0; % 
+                                                           0	0   0	0   0	12	 0	 0	 0	  0; % 
+                                                           0	0   0   0   0	0	 0	 0	 0	  0]; %
+    exp.session.behavior.deep.demo.ses_blocks(:,:,11,1) = [0	0   0	0	0	12   0	 0	 0	  0; % 
+                                                           0	0   0	0   0	12	 0	 0	 0	  0; % 
+                                                           0	0   0	0   0	13	 0	 0	 0	  0; % 
+                                                           0	0   0	0   0	13	 0	 0	 0	  0; % 
+                                                           0	0   0   0   0	0	 0	 0	 0	  0]; %
+    exp.session.behavior.deep.demo.ses_blocks(:,:,12,1) = [0	0   0	0	0	13   0	 0	 0	  0; % 
+                                                           0	0   0	0   0	12	 0	 0	 0	  0; % 
+                                                           0	0   0	0   0	12	 0	 0	 0	  0; % 
+                                                           0	0   0	0   0	13	 0	 0	 0	  0; % 
+                                                           0	0   0   0   0	0	 0	 0	 0	  0]; %
+    
+    % DEEP DEMO session 9-12B for LTM-CLASSIC ONLY STUDY (5 blocks/run, 10 runs/session)                                         
+    % containing ONLY classic stimblocks                
+    exp.session.behavior.deep.demo.ses_blocks(:,:,[9:12],2) = exp.session.behavior.deep.demo.ses_blocks(:,:,[9:12],1); 
+   
+    % DEEP DEMO session 13-16A for LTM-NS ONLY test (5 blocks/run, 10 runs/session)                                         
+    % containing ONLY NS stimblocks                       fix cd  scc  pc  wm ltm img what where how
+    exp.session.behavior.deep.demo.ses_blocks(:,:,13,1) = [0	0   0	0	0	0    0	 0	 0	  0; % 
+                                                           0	0   0	0   0	0	 0	 0	 0	  0; % 
+                                                           0	0   0	0   0	0	 0	 0	 0	  0; % 
+                                                           0	0   0	0   0	0	 0	 0	 0	  0; % 
+                                                           0	0   0   0   0	50	 0	 0	 0	  0]; %                                          
+    exp.session.behavior.deep.demo.ses_blocks(:,:,14,1) = exp.session.behavior.deep.demo.ses_blocks(:,:,13,1);
+    exp.session.behavior.deep.demo.ses_blocks(:,:,15,1) = exp.session.behavior.deep.demo.ses_blocks(:,:,13,1);
+    exp.session.behavior.deep.demo.ses_blocks(:,:,16,1) = exp.session.behavior.deep.demo.ses_blocks(:,:,13,1);
+    
+    % DEEP DEMO session 13-16B for LTM-CLASSIC ONLY STUDY (5 blocks/run, 10 runs/session)                                         
+    % containing ONLY NS stimblocks 
+    exp.session.behavior.deep.demo.ses_blocks(:,:,[13:16],2) =exp.session.behavior.deep.demo.ses_blocks(:,:,[13:16],1);                                         
+    % ****************************
+   
     % %%%% MRI SESSIONS %%%%
-    % sessions WIDE 1A fix cd scc pc wm ltm img what where how
-    exp.session.mri.wide.ses_blocks(:,:,1,1) = [1	1	0.5	3	6	0	0	0	0	0	; ...
-                                                1	1	0.5	3	6	0	0	0	0	0	; ...
-                                                1	1	0.5	2	4	0	0	0	0	0	; ...
-                                                1	1	0.5	2	4	0	0	2	0	2	; ...
-                                                1	1	0	4	8	0	0	4	4	4	];
-    % sessions WIDE 1B fix cd scc pc wm ltm img what where how
-    exp.session.mri.wide.ses_blocks(:,:,1,2) = [1	2	1	3	4	0	0	0	0	0	; ...
-                                                1	2	1	3	4	0	0	0	0	0	; ...
-                                                1	2	1	2	3	0	0	0	0	0	; ...
-                                                1	2	1	2	3	0	0	2	0	2	; ...
-                                                3	2	0	2	4	0	0	2	2	2	];
+    % sessions WIDE 1A                              fix cd scc pc wm ltm img what where how
+    exp.session.mri.wide.ses_blocks(:,:,1,1) = [    1	1	0.5	3	6	0	0	0	0	0	; ...
+                                                    1	1	0.5	3	6	0	0	0	0	0	; ...
+                                                    1	1	0.5	2	4	0	0	0	0	0	; ...
+                                                    1	1	0.5	2	4	0	0	2	0	2	; ...
+                                                    1	1	0	4	8	0	0	4	4	4	];
+    % sessions WIDE 1B                              fix cd scc pc wm ltm img what where how
+    exp.session.mri.wide.ses_blocks(:,:,1,2) = [    1	2	1	3	4	0	0	0	0	0	; ...
+                                                    1	2	1	3	4	0	0	0	0	0	; ...
+                                                    1	2	1	2	3	0	0	0	0	0	; ...
+                                                    1	2	1	2	3	0	0	2	0	2	; ...
+                                                    3	2	0	2	4	0	0	2	2	2	];
 
-    % Deep sessions 1-4 have no LTM/IMG  fix  cd  scc pc wm ltm img what where how											
+    % Deep sessions 1-4 have no LTM/IMG             fix  cd  scc pc wm ltm img what where how											
     exp.session.mri.deep.ses_blocks(:,:,1,1) = [	1	2	2	2	4	0	0	0	0	0	; ...
                                                     1	2	3	1	4	0	0	0	0	0	; ...
                                                     1	1	2	2	3	0	0	0	0	0	; ...
