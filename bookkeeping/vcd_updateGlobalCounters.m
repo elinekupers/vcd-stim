@@ -128,8 +128,8 @@ for st = unique(condition_master.session_type)'
                     condition_master.block_nr == 1 &  ...
                     condition_master.trial_nr == 1);
                 assert(condition_master.global_run_nr(restart_idx)==1)
-                ssert(condition_master.global_block_nr(restart_idx)==1)
-                ssert(condition_master.global_trial_nr(restart_idx)==1)
+                assert(condition_master.global_block_nr(restart_idx)==1)
+                assert(condition_master.global_trial_nr(restart_idx)==1)
                 global_run_nrB   = 1;
                 global_block_nrB = 1;
                 global_trial_nrB = 1;
