@@ -24,7 +24,7 @@ else
     sessionB    = unique(condition_master.session_nr(condition_master.session_type == 2));
     nr_sessions = unique(condition_master.session_nr);
     if params.is_demo && ~params.is_wide
-        assert(length(sessionB)==8);
+        assert(length(sessionB)==params.exp.session.behavior.deep.demo.session_nrs);
         assert(isequal(max(nr_sessions), length(params.exp.session.behavior.deep.demo.session_types(:,2))));
         assert(all(~isnan(params.exp.session.behavior.deep.demo.session_types(:))));
         
@@ -52,7 +52,7 @@ for st = unique(condition_master.session_type)'
     for ii = 1:length(session_idx)
         
         % MRI session type 1 uses regular counter. BEHAVIOR has no A/B versions, always use regular counter
-        if strcmp(env_type,'BEHAVIOR') || (strcmp(env_type,'MRI') && st == 1)
+        if ismember(env_type,{'BEHAVIOR','MRI'}) && st == 1
             
             if ii > 1
                 if condition_master.run_nr(session_idx(ii-1)) ~= condition_master.run_nr(session_idx(ii))
@@ -119,18 +119,37 @@ for st = unique(condition_master.session_type)'
                 
             end
         elseif strcmp(env_type,'BEHAVIOR') && st == 2 && params.is_demo && ~params.is_wide
-            bi = find(sessionB,condition_master.session_nr(session_idx(ii)));
-            % find global run/block/trial nr of session A
-            restart_idx = find(condition_master.session_nr == sessionB(bi) &  ...
-                condition_master.session_type == 1 &  ...
-                condition_master.run_nr == 1 &  ...
-                condition_master.block_nr == 1 &  ...
-                condition_master.trial_nr == 1);
-            global_run_nrB   = condition_master.global_run_nr(restart_idx);
-            global_block_nrB = condition_master.global_block_nr(restart_idx);
-            global_trial_nrB = condition_master.global_trial_nr(restart_idx);
-            
-            update_me = false;
+            if update_me
+                bi = find(sessionB,condition_master.session_nr(session_idx(ii)));
+                % find global run/block/trial nr of session A
+                restart_idx = find(condition_master.session_nr == sessionB(bi) &  ...
+                    condition_master.session_type == 1 &  ...
+                    condition_master.run_nr == 1 &  ...
+                    condition_master.block_nr == 1 &  ...
+                    condition_master.trial_nr == 1);
+                assert(condition_master.global_run_nr(restart_idx)==1)
+                ssert(condition_master.global_block_nr(restart_idx)==1)
+                ssert(condition_master.global_trial_nr(restart_idx)==1)
+                global_run_nrB   = 1;
+                global_block_nrB = 1;
+                global_trial_nrB = 1;
+
+                update_me = false;
+            else
+                if condition_master.run_nr(session_idx(ii-1)) ~= condition_master.run_nr(session_idx(ii))
+                    global_run_nrB   = global_run_nrB + 1;
+                end
+                if condition_master.block_nr(session_idx(ii-1)) ~= condition_master.block_nr(session_idx(ii))
+                    global_block_nrB = global_block_nrB + 1;
+                end
+                if condition_master.trial_nr(session_idx(ii-1)) ~= condition_master.trial_nr(session_idx(ii))
+                    global_trial_nrB = global_trial_nrB + 1;
+                end
+            end
+            % update the condition master columns
+            condition_master.global_run_nr(session_idx(ii))   = global_run_nrB;
+            condition_master.global_block_nr(session_idx(ii)) = global_block_nrB;
+            condition_master.global_trial_nr(session_idx(ii)) = global_trial_nrB;
         end
      
         if params.is_demo && ~params.is_wide
