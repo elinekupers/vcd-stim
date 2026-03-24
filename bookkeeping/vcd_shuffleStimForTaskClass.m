@@ -912,8 +912,13 @@ elseif ~isempty(cued_stim_loc)
 %                         assert((min(n2)+3) >= min(expected_distribution))
 %                         assert(max(n2) <= (max(expected_distribution)+3)); % +3 to account for rounding errors
                     else
-                        assert(min(n2) >= min(expected_distribution))
-                        assert(max(n2) <= (max(expected_distribution)+1)); % +1 to account for rounding errors
+                        try
+                            assert(min(n2) >= min(expected_distribution))
+                            assert(max(n2) <= (max(expected_distribution)+1)); % +1 to account for rounding errors
+                        catch ME
+                            restart_shuffle = true;
+                            break;
+                        end
                     end
                     assert(sum(stored_shuffled_cued_side == repmat([1;2],size(stored_shuffled_cued_side,1)/2,1)) >=  size(stored_shuffled_cued_side,1)-(3*nr_of_trials_per_block))
                 else
