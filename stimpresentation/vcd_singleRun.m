@@ -597,8 +597,9 @@ stim.apsize       = apsize;  clear apsize;
 
 stim.rects = cell(size(stim.centers));
 % We assume there will be at least one stimulus in the run, and check:
-if all(run_table.stim_class(~isnan(run_table.stim_class)) == 5)
-    nSides = 1; % if we happen to only have NS blocks.. then only left columns of stim.centers and stim.size will contain info
+if all(run_table.stim_class(~isnan(run_table.stim_class)) == 5) || ...
+        all(cellfun(@(x) strcmp(x,'ns'), run_table.stim_class_name(~isnan(run_table.stim_class),1)))
+    nSides = 1; % if we happen to only have NS blocks.. then only left columns of stim.centers and stim.size will contain info 
 else % assume both sides exist (classic stim classes are [1,2,3,4,99])
     nSides = [1,2]; % if we happen to have classic stimulus blocks.. then both columns of stim.centers and stim.size will contain info
 end
