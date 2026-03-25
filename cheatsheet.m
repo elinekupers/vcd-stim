@@ -88,15 +88,25 @@ all_images = struct;
 for demo_session = [1:15] % can be 1 through 15
     for demo_session_type = [1:2] % can be 1 (A - regular) or 2 (B - LTM study/ IMG perception)
         for run_nr = [1:10] % can be 1-10 for each session
-            [data,all_images] = runme_vcdcore(subj_nr, demo_session, demo_session_type, run_nr, 'EKHOME_ASUSVE247', ...
+            [data,all_images] = runme_vcdcore(subj_nr, demo_session, demo_session_type, run_nr, 'PPROOM_EIZOFLEXSCAN', ...
                 'wanteyetracking', false, 'all_images',all_images, ...
-                'exp_env',4, 'is_demo', true, 'is_wide', false); %, ...
-                %'timetable_file',tt_file);
+                'exp_env',2, 'is_demo', true, 'is_wide', false, 'timetable_file',tt_file);
         end
     end
 end
 
-% LTM MIXED RUNS INFO:
+% LTM MIXED RUNS INFO (CURRENT v20260324):
+% Demo Session 1A: Runs [1-10]           have at least 1 LTM-NS block
+% Demo Session 2A: Runs [1-4,6-8,10]     have at least 1 LTM-NS block, runs [5,9]       have no LTM-NS blocks
+% Demo Session 3A: Runs [1-3,5-8,10]     have at least 1 LTM-NS block, runs [4,9]       have no LTM-NS blocks
+% Demo Session 4A: Runs [1-2,4-10]       have at least 1 LTM-NS block, runs [3]         have no LTM-NS blocks
+
+% Demo Session 1B: Runs [1-10]           have at least 1 LTM-NS block
+% Demo Session 2B: Runs [1-10]           have at least 1 LTM-NS block
+% Demo Session 3B: Runs [1-10]           have at least 1 LTM-NS block
+% Demo Session 4B: Runs [1-10]           have at least 1 LTM-NS block
+
+% LTM MIXED RUNS INFO (OLD v20260310):
 % Demo Session 1A: Runs [1-3,7-10]       have at least 1 LTM-NS block, runs [4-6]       have no LTM-NS blocks
 % Demo Session 1B: Runs [2,5-7,10]       have at least 1 LTM-NS block, runs [1,3,4,8,9] have no LTM-NS blocks
 % Demo Session 2A: Runs [1,2,3-6,7,8,10] have at least 1 LTM-NS block, runs [5,9]       have no LTM-NS blocks
@@ -105,6 +115,8 @@ end
 % Demo Session 3B: Runs [1,3,7-10]       have at least 1 LTM-NS block, runs [2,4-6]     have no LTM-NS blocks
 % Demo Session 4A: Runs [3-9]            have at least 1 LTM-NS block, runs [1,2,10]    have no LTM-NS blocks
 % Demo Session 4B: Runs [1-7,9]          have at least 1 LTM-NS block, runs [8,10]      have no LTM-NS blocks
+
+
 
 %% rerun behavioral performance analysis;
 subj_folder = 'vcd_subj999_ses01';
