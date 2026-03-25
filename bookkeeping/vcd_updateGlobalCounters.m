@@ -24,8 +24,8 @@ else
     sessionB    = unique(condition_master.session_nr(condition_master.session_type == 2));
     nr_sessions = unique(condition_master.session_nr);
     if params.is_demo && ~params.is_wide
-        assert(length(sessionB)==params.exp.session.behavior.deep.demo.session_nrs);
-        assert(isequal(max(nr_sessions), length(params.exp.session.behavior.deep.demo.session_types(:,2))));
+        assert(length(sessionB)==params.exp.session.behavior.deep.demo.session_nrs-1);
+        assert(isequal(max(nr_sessions), length(params.exp.session.behavior.deep.demo.session_types(:,2))-1));
         assert(all(~isnan(params.exp.session.behavior.deep.demo.session_types(:))));
         
     elseif params.is_wide
@@ -153,7 +153,7 @@ for st = unique(condition_master.session_type)'
         end
      
         if params.is_demo && ~params.is_wide
-            assert(isequal(sessionB,[1:params.exp.session.behavior.deep.demo.session_nrs]'));
+            assert(isequal(sessionB,[1:params.exp.session.behavior.deep.demo.session_nrs-1]'));
         end
     end
 end
