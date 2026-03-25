@@ -254,8 +254,14 @@ trial_ID_double_epoch = [params.exp.block.spatial_cue_ID, ...
 % (otherwise table uses 0 for missing values and we don't want that)
 tbl_nrows = 1000; 
 
+if params.is_demo && ~params.is_wide
+   nr_sessions = size(all_sessions,3)-1;
+else
+   nr_sessions = size(all_sessions,3);
+end 
+
 % Loop over sessions
-for ses = 1:size(all_sessions,3)
+for ses = 1:nr_sessions
     
     % Loop over session types (version A or B)
     for st = 1:size(all_sessions,4)
