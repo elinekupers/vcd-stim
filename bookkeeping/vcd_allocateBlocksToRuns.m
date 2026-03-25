@@ -90,9 +90,15 @@ task_class_abbr = upper(params.exp.taskclassnames);
 
 % create separate counters for scc and ltm task crossings, because trials
 % are spread across stimulus classes
-scc_bb = 0; ltm_bb = 0;
+scc_bb = 0; ltm_bb = 0; ltm_bb_ns = 0; ltm_bb_classic = 0; 
+if params.is_demo && ~params.is_wide
+   nr_sessions = size(all_sessions,3)-1;
+else
+   nr_sessions = size(all_sessions,3);
+end 
 
-for ses = 1:size(all_sessions,3)
+
+for ses = 1:nr_sessions
     for st = 1:size(all_sessions,4) % session types
         if ~isnan(session_types(ses,st))
             %% First we check how many repeats of stim-task crossings we want to run within a session
@@ -144,6 +150,27 @@ for ses = 1:size(all_sessions,3)
                                 curr_blocks = [stimtask_tracker_global(sc,tc) : (stimtask_tracker_global(sc,tc)+n_blocks-1)];
                             end
                             
+                            % update current blocks if we have deep demo
+                            % runs where NS and LTM are separated
+                            if params.is_demo && ~params.is_wide
+                                if block_distr(5,6)==0 && any(block_distr([1:4],6)>0)% if we have no LTM-NS blocks in this run, we want to make sure we exclude these trials
+                                    idx0 = ~cellfun(@(x) strcmp(x,'ns'), condition_master.stim_class_name(:,1)) & (condition_master.stim_class==99) & (condition_master.task_class==tc) & (condition_master.stim_class_unique_block_nr > ltm_bb_classic);
+                                    [~,idx1] = sort(condition_master.stim_class_unique_block_nr(idx0,:));
+                                    trial_tmp = find(idx0);
+                                    block_tmp = unique(condition_master.stim_class_unique_block_nr(trial_tmp(idx1)));
+                                    curr_blocks = block_tmp(1:length(curr_blocks));
+                                elseif all(block_distr([1:4],6)==0) && all(block_distr(5,6)>0) % if we have no LTM-classic blocks in this run, we want to make sure we exclude these trials
+                                    idx0 = cellfun(@(x) strcmp(x,'ns'), condition_master.stim_class_name(:,1)) & (condition_master.stim_class==99) & (condition_master.task_class==tc) & isnan(condition_master.session_nr);%(condition_master.stim_class_unique_block_nr > ltm_bb_ns);
+                                    [~,idx1] = sort(condition_master.stim_class_unique_block_nr(idx0,:));
+                                    trial_tmp = find(idx0);
+                                    block_tmp = unique(condition_master.stim_class_unique_block_nr(trial_tmp(idx1)));
+                                    curr_blocks = block_tmp(1:length(curr_blocks));
+                                else
+                                    % otherwise we don't care
+                                end
+                                
+                            end
+                            
                             for ii = 1:length(curr_blocks)
                                 
                                 if ~isint(curr_blocks(ii))
@@ -162,7 +189,15 @@ for ses = 1:size(all_sessions,3)
                                     stim_class_tmp_name = 'ALL';
                                 elseif strcmp(params.exp.taskclassnames{tc},'ltm')
                                     % We can't sort on stim class nr for LTM either (they are all defined as 99)
-                                    idx = ((condition_master.stim_class==99) & (condition_master.task_class==tc) & (condition_master.stim_class_unique_block_nr == ltm_bb + find(curr_blocks==curr_blocks(ii))));
+                                    if params.is_demo && ~params.is_wide
+                                        if (block_distr(5,6)==0 && any(block_distr([1:4],6)>0)) || all(block_distr([1:4],6)==0) && all(block_distr(5,6)>0)
+                                            idx = ((condition_master.stim_class==99) & (condition_master.task_class==tc) & (condition_master.stim_class_unique_block_nr == curr_blocks(ii)));
+                                        else
+                                            idx = ((condition_master.stim_class==99) & (condition_master.task_class==tc) & (condition_master.stim_class_unique_block_nr == ltm_bb + find(curr_blocks==curr_blocks(ii))));
+                                        end
+                                    else
+                                        idx = ((condition_master.stim_class==99) & (condition_master.task_class==tc) & (condition_master.stim_class_unique_block_nr == ltm_bb + find(curr_blocks==curr_blocks(ii))));
+                                    end
                                     condition_master.crossing_name(idx) = {sprintf('%s-all',params.exp.taskclassnames{tc})};
                                     stim_class_tmp_name = 'ALL';
                                 elseif strcmp(params.exp.taskclassnames{tc},'IMG')
@@ -463,6 +498,16 @@ for ses = 1:size(all_sessions,3)
                                 scc_bb = scc_bb + length(curr_blocks);
                             elseif strcmp(params.exp.taskclassnames{tc},'ltm')
                                 ltm_bb = ltm_bb + length(curr_blocks);
+                                if params.is_demo && ~params.is_wide
+                                    if block_distr(5,6)==0 && any(block_distr([1:4],6)>0)
+                                        ltm_bb_classic = min(condition_master.stim_class_unique_block_nr(condition_master.task_class==6 & condition_master.stim_class==99 & isnan(condition_master.session_nr) & ~cellfun(@(x) strcmp(x,'ns'), condition_master.stim_class_name(:,1)))) - 1;
+                                    elseif all(block_distr([1:4],6)==0) && all(block_distr(5,6)>0) 
+                                        ltm_bb_ns      = min(condition_master.stim_class_unique_block_nr(condition_master.task_class==6 & condition_master.stim_class==99 & isnan(condition_master.session_nr) & cellfun(@(x) strcmp(x,'ns'), condition_master.stim_class_name(:,1)))) - 1;
+                                    else
+                                        ltm_bb_ns      = min(condition_master.stim_class_unique_block_nr(condition_master.task_class==6 & condition_master.stim_class==99 & isnan(condition_master.session_nr) & cellfun(@(x) strcmp(x,'ns'), condition_master.stim_class_name(:,1)))) - 1;
+                                        ltm_bb_classic = min(condition_master.stim_class_unique_block_nr(condition_master.task_class==6 & condition_master.stim_class==99 & isnan(condition_master.session_nr) & ~cellfun(@(x) strcmp(x,'ns'), condition_master.stim_class_name(:,1)))) - 1;
+                                    end
+                                end
                             end
                         end
                     end
