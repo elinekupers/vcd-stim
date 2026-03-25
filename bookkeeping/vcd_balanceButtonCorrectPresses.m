@@ -608,7 +608,7 @@ for ses = session_nrs
                                         clear tmp
                                         
                                         if params.is_demo && ~params.is_wide
-                                            if diff(n) <= nr_blocks/2 && n1_ns_ok && n1_clsc_ok % we want somewhat balanced button presses.
+                                            if diff(n) <= sum(n)/2 && n1_ns_ok && n1_clsc_ok % we want somewhat balanced button presses.
                                                     reshuffle_me = false;
                                                 break % hurray
                                             end
@@ -727,15 +727,17 @@ leftover_trials = isnan(condition_master.unique_trial_nr);
 
 for curr_sc = 1:(length(unique_stim_classes)-1)
     for curr_tc = 1:length(unique_task_classes)
-        if unique_task_classes(curr_tc) == 3 && unique_stim_classes(curr_sc) < 5 % SCC
+        if ismember(unique_task_classes(curr_tc),[3,6]) && unique_stim_classes(curr_sc) < 5 % SCC & LTM
             all_trials = (condition_master.stim_class==99 & condition_master.task_class==unique_task_classes(curr_tc));
+            unique_stim_class = 99;
         else
             all_trials = (condition_master.stim_class==unique_stim_classes(curr_sc) & condition_master.task_class==unique_task_classes(curr_tc));
+            unique_stim_class = unique_stim_classes(curr_sc);
         end
         unused_idx    = find(all_trials & leftover_trials);
         allocated_idx = find(all_trials & ~leftover_trials);
         
-        if curr_tc == 1 % FIX
+        if unique_task_classes(curr_tc) == 1 % FIX
             assert(isequal(unused_idx,find(all_trials)))
             
             % update stim_class_unique_block_nr
@@ -783,12 +785,22 @@ for curr_sc = 1:(length(unique_stim_classes)-1)
             end
             % update stim_class_unique_block_nr
             if params.is_demo && ~params.is_wide
-                if length(unused_idx) <=2 % ignore used trials if there are 2 or fewer
+                if ~isempty(unused_idx) && length(unused_idx) <=2 % ignore used trials if there are 2 or fewer
                     unused_idx = [];
                     nr_blocks = NaN;
+                else
+                    if unique_stim_class == 99
+                        nr_blocks = length(unused_idx)/params.exp.nr_trials_per_block(1,unique_task_classes(curr_tc));
+                    else
+                        nr_blocks = length(unused_idx)/params.exp.nr_trials_per_block(unique_stim_classes(curr_sc),unique_task_classes(curr_tc));
+                    end
                 end
             else
-                nr_blocks = length(unused_idx)/params.exp.nr_trials_per_block(unique_stim_classes(curr_sc),unique_task_classes(curr_tc));
+                if unique_stim_class == 99
+                    nr_blocks = length(unused_idx)/params.exp.nr_trials_per_block(1,unique_task_classes(curr_tc));
+                else
+                    nr_blocks = length(unused_idx)/params.exp.nr_trials_per_block(unique_stim_classes(curr_sc),unique_task_classes(curr_tc));
+                end
             end
             if ~isnan(nr_blocks)
                 if mod(nr_blocks,1)~=0
