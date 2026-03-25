@@ -78,14 +78,14 @@ all_images = struct;
 
 % Demo Session 9-12 A = LTM-CLASSIC REGULAR TEST trials (10 runs per session, 5 blocks per run).
 % Demo Session 9-12 B = LTM-CLASSIC STUDY trials (10 runs per session, 5 blocks per run).
-% Demo Session 13-16 A = LTM-NS REGULAR TEST trials (10 runs per session, 5 blocks per run). 
-% Demo Session 13-16 B = LTM-NS STUDY trials (10 runs per session, 5 blocks per run).
+% Demo Session 13-15 A = LTM-NS REGULAR TEST trials (10 runs per session, 5 blocks per run). 
+% Demo Session 13-15 B = LTM-NS STUDY trials (10 runs per session, 5 blocks per run).
 
 subj_nr = 998;
 tt_file = fullfile(vcd_rootPath,'data','BEHAVIOR', sprintf('vcd_subj%03d',subj_nr), sprintf('vcd_subj%03d_time_table_master_deep_demo_PPROOM_EIZOFLEXSCAN_2026*.mat',subj_nr));
 all_images = struct;
 
-for demo_session = [1:8] % can be 1 through 8
+for demo_session = [1:15] % can be 1 through 15
     for demo_session_type = [1:2] % can be 1 (A - regular) or 2 (B - LTM study/ IMG perception)
         for run_nr = [1:10] % can be 1-10 for each session
             [data,all_images] = runme_vcdcore(subj_nr, demo_session, demo_session_type, run_nr, 'EKHOME_ASUSVE247', ...
