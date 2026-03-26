@@ -100,6 +100,7 @@ function [results,behresults] = vcdeyetrackingpreprocessing(filename,behfilename
 %            histograms (0.25-deg bins).
 %
 % History:
+% - 2026/03/26 - tweak to baddata handling
 % - 2026/03/19 - fix crash for rare occasions with zero blinks
 % - 2025/08/23 - add <etloc> derivation from the edf file
 % - 2025/08/15 - add behresults.trialinfo output to handle <stim1maxdeviance> and <stim2maxdeviance>
@@ -316,7 +317,7 @@ assert(abs(((results.eyedata(1,end) - results.eyedata(1,1)) + 1/1000) - behresul
 
 % figure out where we have baddata.
 % check that the data are finite everywhere else.
-baddata = isnan(results.eyedata(4,:));
+baddata = any(isnan(results.eyedata(2:4,:)),1);
 assert(all(isfinite(flatten(results.eyedata(2:4,~baddata)))));
 
 % detrend x and y by fitting low-order polynomials and pupil size and subtracting
