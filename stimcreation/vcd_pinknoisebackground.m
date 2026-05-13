@@ -20,10 +20,14 @@ function bckgrnd_im = vcd_pinknoisebackground(params, varargin)
 %                   - params.stim.bckground.stimfile : (str) where to store images
 %                   - params.stim.store_imgs : (bool) store images or not?
 %   gaptype      : (str) what type of gap do you want. Choose from:
-%                   - puzzle: center square overlayed with 2 parafoveal circular patches.
-%                   - dotring: simple dot iso-eccentricity ring.
-%                   - comb: combination of puzzle piece and dotring. 
-%                   - circle: a 4.2 or 5.2 deg radius circle (default)
+%                   - 'puzzle': center square overlayed with 2 parafoveal circular patches.
+%                   - 'dotring': simple dot iso-eccentricity ring.
+%                   - 'comb': combination of puzzle piece and dotring. 
+%                   - 'circle-big': one large circular patch (default)
+%                   - 'circle-left': one small parafoveal circular patch, left from center fixation
+%                   - 'circle-right': one small parafoveal circular patch, right from center fixation
+%                   - 'circle-leftright': two small parafoveal circular patches, left and right from center fixation
+%                   - 'square': one large square patch (same as scenes)
 %   borderwidth  : (str) how wide should the gap between stimuli and gap be? 
 %                     Choose from:
 %                   - skinny: aligned to stimulus extend
@@ -34,16 +38,25 @@ function bckgrnd_im = vcd_pinknoisebackground(params, varargin)
 % OUTPUTS:
 %   bckgrnd_im   : background images, array:  w (pixels) x h (pixels) x 3 x num
 %
+% Example:
+% params.disp = vcd_getDisplayParams('7TAS_BOLDSCREEN32');
+% params.stim = vcd_getStimParams('disp_name','7TAS_BOLDSCREEN32');
+% bckgrnd_im = vcd_pinknoisebackground(params, 'gaptype','dotring', 'borderwidth','skinny', 'num',1, 'pixoffset',[0 0])
 %
 % Written by Eline Kupers 2024/12, updated 2025/03
 
 %% Parse inputs
 p = inputParser;
 p.addRequired('params'          , @isstruct); % params struct
-p.addParameter('gaptype'        , 'comb' , @(x) any(strcmp(x, {'puzzle','dotring','comb', 'circle'})))
+p.addParameter('gaptype'        , 'comb' , @(x) any(strcmp(x, {'puzzle','dotring','comb', 'circle-big','circle-left','circle-right','circle-leftright','square'})))
 p.addParameter('borderwidth'    , 'fat'  , @(x) any(strcmp(x, {'skinny','fat'}))) % skinny=no gap or fat=+2 deg extra
-p.addParameter('num'            , 1      , @isnumeric);                           % number of generated noise images
-p.addParameter('pixoffset'      , [0 0]  , @isnumeric);                           % [x,y] offset of center in pixels
+p.addParameter('num'            , 1      , @isnumeric);                           % number of unique background images desired.  default: 1.
+p.addParameter('pixoffset'      , [0 0]  , @isnumeric);                           % [x,y] offset of center in pixels  default = no offset: [0 0] 
+p.addParameter('noise_alpha'    , 1      , @isnumeric);                               % exponent to apply to the amplitude spectrum (i.e. 1/f^alpha).  default: 1.
+p.addParameter('noise_mode'     , 0      , @isnumeric);                               % mode of knk pinknoise function, 0 means fixed amplitude spectrum + random phase
+p.addParameter('std_clip_range' , 3.5    , @isnumeric);                             % when converting pixel values to 1-255 range, how many std's of image values do we allow before clipping the range
+p.addParameter('invert_contrast', false  , @islogical);                           % invert contrast of background mask or not.
+p.addParameter('stimfile'       , []     , @ischar); % mat file to store image
 
 % Parse inputs
 p.parse(params, varargin{:});
@@ -55,6 +68,9 @@ for ff = 1:length(rename_me)
 end
 clear rename_me ff p
 
+if ~isfield(params,'verbose') || isempty(params.verbose)
+    params.verbose = false;
+end
 
 %% Generate pink noise image
 pixelrange = [1 255]; % pixel range
@@ -64,14 +80,14 @@ im1 = NaN(params.disp.h_pix,params.disp.w_pix,num);
 for ii = 1:num
     
     % generate pink noise image
-    im0 = generatepinknoise(params.disp.w_pix,1,1,0); % KNK function: mode 0 means fixed amplitude spectrum + random phase
+    im0 = generatepinknoise(params.disp.w_pix,noise_alpha,num,noise_mode); % KNK function: inputs are res,noise_alpha,num,noise_mode. noise_mode of 0 = fixed amplitude spectrum + random phase
     
     % trim edges (initial generated pinknoise image is a square)
     screen_edge_pix = (params.disp.w_pix - params.disp.h_pix)/2;
     trimMe          = [1:screen_edge_pix; (params.disp.w_pix-screen_edge_pix+1):params.disp.w_pix];
     
     % Clip the range based on the predefined std
-    std_norm        = params.stim.bckground.std_clip_range*std(im0(:));
+    std_norm        = std_clip_range*std(im0(:));
 
     im0(trimMe,:) = [];
     im1(:,:,ii) = scale_images_fixedrng(im0,std_norm.*[-1 1]);
@@ -106,7 +122,7 @@ switch gaptype
         % do nothing, keep it gray
         bckground_mask = [];
         
-    case 'circle'
+    case 'circle-big'
         
         % Create the circle mask.
         radius  = ((params.stim.ns.img_sz_pix/2) + rim) *params.disp.ppd;
@@ -114,7 +130,41 @@ switch gaptype
         circMask = (YY - 0).^2 ...
             + (XX - 0).^2 <= radius.^2;
 
-        bckground_mask = logical(circMask);
+        bckground_mask = circMask;
+        bckground_mask = logical(bckground_mask);
+        
+    case 'circle-left'
+        % Next create the circles in the image.
+        radius  = (params.stim.gabor.img_sz_pix + rim)/2;
+        
+        circle_left = (YY - params.stim.gabor.y0_pix(1)).^2 ...
+            + (XX - params.stim.gabor.x0_pix(1)).^2 <= radius.^2;
+        
+        bckground_mask = circle_left;
+        bckground_mask = logical(bckground_mask);
+        
+    case 'circle-right'
+        % Next create the circles in the image.
+        radius  = (params.stim.gabor.img_sz_pix + rim)/2;
+
+        circle_right = (YY - params.stim.gabor.y0_pix(2)).^2 ...
+            + (XX - params.stim.gabor.x0_pix(2)).^2 <= radius.^2;
+        
+        bckground_mask = circle_right;
+        bckground_mask = logical(bckground_mask);
+        
+    case 'circle-leftright'    
+        % Next create the circles in the image.
+        radius  = (params.stim.gabor.img_sz_pix + rim)/2;
+        
+        circle_left = (YY - params.stim.gabor.y0_pix(1)).^2 ...
+            + (XX - params.stim.gabor.x0_pix(1)).^2 <= radius.^2;
+
+        circle_right = (YY - params.stim.gabor.y0_pix(2)).^2 ...
+            + (XX - params.stim.gabor.x0_pix(2)).^2 <= radius.^2;
+        
+        bckground_mask = circle_left + circle_right;
+        bckground_mask = logical(bckground_mask);
     
     case 'puzzle'
         
@@ -134,8 +184,7 @@ switch gaptype
         circle_right = (YY - params.stim.gabor.y0_pix(2)).^2 ...
             + (XX - params.stim.gabor.x0_pix(3)).^2 <= radius.^2;
         
-        bckground_mask = bckground_mask + circle_left;
-        bckground_mask = bckground_mask + circle_right;
+        bckground_mask = bckground_mask + circle_left + circle_right;
         bckground_mask = logical(bckground_mask);
 
     case 'dotring'
@@ -187,30 +236,48 @@ switch gaptype
         bckground_mask = bckground_mask + circle_left + circle_right + circMask;
         bckground_mask = logical(bckground_mask);
         
+    case 'square'
 
+        % Create center square
+        x_square = [1:(params.stim.ns.img_sz_pix+rim)] - ((params.stim.ns.img_sz_pix+rim)/2);
+        bckground_mask(XX < min(x_square))=false;
+        bckground_mask(XX > max(x_square))=false;
+        bckground_mask(YY < min(x_square))=false;
+        bckground_mask(YY > max(x_square))=false;
+        
+        bckground_mask = logical(bckground_mask);
 end
 
 % Reshape back into an image with a gap
 tmp = reshape(im1,size(im1,1)*size(im1,2),[]);
 
+% Invert mask or not
+if invert_contrast
+    bckground_mask = ~bckground_mask;
+end
+        
 if isempty(bckground_mask)
-    tmp(:) = params.stim.bckgrnd_grayval;
-    tmp    = uint8(tmp);
+    tmp(:) = params.stim.bckgrnd_grayval;    
 else
     tmp(bckground_mask(:),:) = params.stim.bckgrnd_grayval;
-    tmp = uint8(tmp);
-    bckgrnd_im = reshape(tmp, size(bckground_mask,1),size(bckground_mask,2),num);
-    bckgrnd_im = repmat(bckgrnd_im, [1 1 1 3]);
-    bckgrnd_im = permute(bckgrnd_im, [1 2 4 3]);
 end
+
+tmp = uint8(tmp);
+bckgrnd_im = reshape(tmp, size(bckground_mask,1),size(bckground_mask,2),num);
+bckgrnd_im = repmat(bckgrnd_im, [1 1 1 3]);
+bckgrnd_im = permute(bckgrnd_im, [1 2 4 3]);
+
 
 % Store images if requested
 if params.stim.store_imgs
     fprintf('[%s]:Storing background image(s)..',mfilename);
     tic
-    saveDir = fileparts(fullfile(params.stim.bckground.stimfile));
+    if ~exist(stimfile,'file') || isempty(stimfile)
+        stimfile = fullfile(vcd_rootPath,'workspaces','stimuli',params.disp.name,sprintf('bckgrnd_%s',params.disp.name));
+    end
+    saveDir = fileparts(fullfile(stimfile));
     if ~exist(saveDir,'dir'), mkdir(saveDir); end
-    save(fullfile(sprintf('%s_%s_%s_%s.mat',params.stim.bckground.stimfile,gaptype,borderwidth,datestr(now,30))),'bckgrnd_im','-v7.3');
+    save(fullfile(sprintf('%s_%s_%s%s_%s.mat',stimfile,gaptype,borderwidth,choose(invert_contrast,'inverted',''),datestr(now,30))),'bckgrnd_im','-v7.3');
     toc
     fprintf('\n')
     
@@ -219,7 +286,7 @@ if params.stim.store_imgs
         mkdir(saveFigDir); end
     
     for jj = 1:size(bckgrnd_im,4)
-        filename = sprintf('%04d_vcd_background_%s%s.png',jj,gaptype, borderwidth);
+        filename = sprintf('%04d_vcd_background_%s%s%s.png',jj,gaptype, borderwidth,choose(invert_contrast,'inverted',''));
         imwrite(bckgrnd_im(:,:,:,jj), fullfile(saveFigDir,filename));
     end
 end
